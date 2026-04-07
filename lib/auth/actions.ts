@@ -49,7 +49,7 @@ export async function signIn(formData: {
     return { error: 'E-mail ou senha incorretos.' }
   }
 
-  redirect('/dashboard')
+  redirect('/family')
 }
 
 // ─── Sign Out ─────────────────────────────────────────────────────────────────
@@ -95,5 +95,5 @@ export async function updatePassword(formData: {
     return { error: 'Não foi possível atualizar a senha. Tente novamente.' }
   }
 
-  redirect('/dashboard')
+  redirect('/family')
 }
