@@ -225,6 +225,8 @@ CREATE INDEX ON knowledge_base
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view own profile"
   ON profiles FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "Users can insert own profile"
+  ON profiles FOR INSERT WITH CHECK (auth.uid() = id);
 CREATE POLICY "Users can update own profile"
   ON profiles FOR UPDATE USING (auth.uid() = id);
 
@@ -269,7 +271,9 @@ CREATE POLICY "Circle members can view their circle"
       WHERE cm.circle_id = circles.id AND cm.user_id = auth.uid()
     )
   );
-CREATE POLICY "Leader can manage circle"
+CREATE POLICY "Authenticated users can create circles"
+  ON circles FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+CREATE POLICY "Leader can update or delete circle"
   ON circles FOR ALL USING (auth.uid() = leader_id);
 
 -- circle_members
@@ -290,7 +294,7 @@ CREATE POLICY "Leader can manage circle members"
     )
   );
 
--- knowledge_base: publicly readable, only service role writes
+-- knowledge_base: readable by authenticated users, writes via service role only
 ALTER TABLE knowledge_base ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Anyone can read knowledge base"
-  ON knowledge_base FOR SELECT USING (true);
+CREATE POLICY "Authenticated users can read knowledge base"
+  ON knowledge_base FOR SELECT USING (auth.uid() IS NOT NULL);
