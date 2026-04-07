@@ -15,35 +15,238 @@ type Inventory = {
   cash_amount: number
 }
 
-type WaterStatus = 'critical' | 'low' | 'ok'
+type ResourceState = 'critical' | 'high' | 'ok'
+type ReadinessLevel = 'critical' | 'low' | 'adequate' | 'excellent'
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// ─── Readiness score ──────────────────────────────────────────────────────────
 
-const DEFAULT_INVENTORY: Inventory = {
-  water_liters: 0,
-  food_days: 0,
-  fuel_liters: 0,
-  battery_percent: 0,
-  has_medical_kit: false,
-  has_communication_device: false,
-  cash_amount: 0,
+function calcReadiness(
+  inv: Inventory,
+  memberCount: number,
+): { score: number; level: ReadinessLevel } {
+  const mc = Math.max(memberCount, 1)
+  let score = 0
+
+  // Water — 30 pts (most critical)
+  const waterPP = inv.water_liters / mc
+  if (waterPP >= 4) score += 30
+  else if (waterPP >= 2) score += 15
+
+  // Food — 25 pts
+  if (inv.food_days >= 7) score += 25
+  else if (inv.food_days >= 3) score += 13
+  else if (inv.food_days >= 1) score += 5
+
+  // Battery — 20 pts
+  if (inv.battery_percent >= 60) score += 20
+  else if (inv.battery_percent >= 30) score += 10
+
+  // Medical kit — 15 pts
+  if (inv.has_medical_kit) score += 15
+
+  // Communication — 10 pts
+  if (inv.has_communication_device) score += 10
+
+  const level: ReadinessLevel =
+    score >= 80 ? 'excellent' :
+    score >= 50 ? 'adequate'  :
+    score >= 25 ? 'low'       : 'critical'
+
+  return { score, level }
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Resource state helper ────────────────────────────────────────────────────
 
-function getWaterStatus(waterLiters: number, memberCount: number): WaterStatus {
-  if (memberCount === 0) return 'ok'
-  const perPerson = waterLiters / memberCount
-  if (perPerson < 2) return 'critical'
-  if (perPerson < 4) return 'low'
+function getResourceState(
+  value: number,
+  threshold: number,
+  criticalThreshold: number,
+  membersCount: number,
+  perPerson: boolean,
+): ResourceState {
+  const mc = Math.max(membersCount, 1)
+  const effective = perPerson && membersCount > 0 ? value / mc : value
+  if (effective < criticalThreshold) return 'critical'
+  if (effective < threshold) return 'high'
   return 'ok'
 }
 
-function fmt(n: number, decimals = 0): string {
-  return n.toLocaleString('pt-BR', {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  })
+// ─── ResourceCard ─────────────────────────────────────────────────────────────
+
+type ResourceCardProps = {
+  icon: string
+  title: string
+  value: number
+  threshold: number           // per-person (or absolute) threshold for LOW
+  criticalThreshold: number   // threshold for CRITICAL
+  membersCount: number
+  perPerson?: boolean         // divide by membersCount before comparing?
+  optional?: boolean
+  children: React.ReactNode
+}
+
+function ResourceCard({
+  icon,
+  title,
+  value,
+  threshold,
+  criticalThreshold,
+  membersCount,
+  perPerson = false,
+  optional = false,
+  children,
+}: ResourceCardProps) {
+  const state = getResourceState(
+    value, threshold, criticalThreshold, membersCount, perPerson,
+  )
+
+  const border =
+    state === 'critical' ? '1px solid rgba(255,107,107,0.4)' :
+    state === 'high'     ? '1px solid rgba(255,179,71,0.4)'  :
+                           '1px solid var(--bd)'
+
+  const bg =
+    state === 'critical' ? 'rgba(255,107,107,0.06)' :
+    state === 'high'     ? 'rgba(255,179,71,0.04)'  :
+                           'var(--sf)'
+
+  return (
+    <div style={{ ...S.card, border, background: bg }}>
+      <div style={S.cardHeader}>
+        <span style={S.cardIcon}>{icon}</span>
+        <span style={S.cardTitle}>{title}</span>
+
+        {state === 'critical' && (
+          <span style={{ ...S.badge, ...S.badgeCritical }}>⚠ CRÍTICO</span>
+        )}
+        {state === 'high' && (
+          <span style={{ ...S.badge, ...S.badgeHigh }}>▲ BAIXO</span>
+        )}
+        {optional && state === 'ok' && (
+          <span style={S.optionalTag}>opcional</span>
+        )}
+      </div>
+      {children}
+    </div>
+  )
+}
+
+// ─── ReadinessSummary ─────────────────────────────────────────────────────────
+
+type ReadinessSummaryProps = {
+  score: number
+  level: ReadinessLevel
+  memberCount: number
+  autonomyDays: number
+}
+
+function ReadinessSummary({ score, level, memberCount, autonomyDays }: ReadinessSummaryProps) {
+  const levelLabel: Record<ReadinessLevel, string> = {
+    critical:  'CRÍTICO',
+    low:       'BAIXO',
+    adequate:  'ADEQUADO',
+    excellent: 'EXCELENTE',
+  }
+  const levelColor: Record<ReadinessLevel, string> = {
+    critical:  'var(--ac3)',
+    low:       'var(--warn)',
+    adequate:  'var(--ac)',
+    excellent: 'var(--ac)',
+  }
+  const barColor: Record<ReadinessLevel, string> = {
+    critical:  'var(--ac3)',
+    low:       'var(--warn)',
+    adequate:  'var(--ac)',
+    excellent: 'var(--ac)',
+  }
+  const summaryBg: Record<ReadinessLevel, string> = {
+    critical:  'rgba(255,107,107,0.07)',
+    low:       'rgba(255,179,71,0.06)',
+    adequate:  'rgba(0,229,160,0.07)',
+    excellent: 'rgba(0,229,160,0.07)',
+  }
+  const summaryBorder: Record<ReadinessLevel, string> = {
+    critical:  '1px solid rgba(255,107,107,0.25)',
+    low:       '1px solid rgba(255,179,71,0.25)',
+    adequate:  '1px solid rgba(0,229,160,0.18)',
+    excellent: '1px solid rgba(0,229,160,0.18)',
+  }
+
+  return (
+    <div
+      style={{
+        ...S.summaryCard,
+        background: summaryBg[level],
+        border: summaryBorder[level],
+      }}
+    >
+      {/* Top row */}
+      <div style={S.summaryTop}>
+        <div>
+          <p style={S.summaryLabel}>RESUMO DE PRONTIDÃO</p>
+          <div style={S.summaryScoreRow}>
+            <span
+              style={{
+                ...S.summaryScore,
+                color: levelColor[level],
+              }}
+            >
+              {String(score).padStart(2, '0')}
+            </span>
+            <span style={S.summaryScoreMax}>/100</span>
+          </div>
+        </div>
+
+        <div style={S.summaryRight}>
+          <span
+            style={{
+              ...S.levelBadge,
+              color: levelColor[level],
+              background:
+                level === 'critical' ? 'rgba(255,107,107,0.15)' :
+                level === 'low'      ? 'rgba(255,179,71,0.15)'  :
+                                       'rgba(0,229,160,0.12)',
+              border: `1px solid ${
+                level === 'critical' ? 'rgba(255,107,107,0.3)' :
+                level === 'low'      ? 'rgba(255,179,71,0.3)'  :
+                                       'rgba(0,229,160,0.25)'
+              }`,
+            }}
+          >
+            {levelLabel[level]}
+          </span>
+          {memberCount > 0 && (
+            <span style={S.memberChip}>
+              {memberCount} membro{memberCount !== 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Score bar */}
+      <div style={S.scoreBarTrack}>
+        <div
+          style={{
+            ...S.scoreBarFill,
+            width: `${score}%`,
+            background: barColor[level],
+            boxShadow: `0 0 8px ${barColor[level]}66`,
+          }}
+        />
+      </div>
+
+      {/* Autonomy row */}
+      <div style={S.autonomyRow}>
+        <span style={S.autonomyLabel}>AUTONOMIA ESTIMADA</span>
+        <span style={S.autonomyValue}>
+          <span style={{ color: levelColor[level], fontFamily: "'DM Mono', monospace", fontWeight: 700 }}>
+            {autonomyDays}
+          </span>
+          {' dias'}
+        </span>
+      </div>
+    </div>
+  )
 }
 
 // ─── Toggle ───────────────────────────────────────────────────────────────────
@@ -86,26 +289,17 @@ function ToggleRow({ label, description, value, onChange, disabled = false }: To
   )
 }
 
-// ─── Water badge ──────────────────────────────────────────────────────────────
-
-function WaterBadge({ status }: { status: WaterStatus }) {
-  if (status === 'ok') return null
-  const isCritical = status === 'critical'
-  return (
-    <span
-      style={{
-        ...S.badge,
-        background: isCritical ? 'rgba(255,107,107,0.15)' : 'rgba(255,179,71,0.15)',
-        color: isCritical ? 'var(--ac3)' : 'var(--warn)',
-        border: `1px solid ${isCritical ? 'rgba(255,107,107,0.3)' : 'rgba(255,179,71,0.3)'}`,
-      }}
-    >
-      {isCritical ? '⚠ CRÍTICO' : '▲ BAIXO'}
-    </span>
-  )
-}
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
+
+const DEFAULT_INVENTORY: Inventory = {
+  water_liters: 0,
+  food_days: 0,
+  fuel_liters: 0,
+  battery_percent: 0,
+  has_medical_kit: false,
+  has_communication_device: false,
+  cash_amount: 0,
+}
 
 export default function InventoryPage() {
   const [inv, setInv] = useState<Inventory>(DEFAULT_INVENTORY)
@@ -129,13 +323,13 @@ export default function InventoryPage() {
       if (invRes.ok) {
         const { inventory } = await invRes.json()
         setInv({
-          water_liters:              Number(inventory.water_liters)              || 0,
-          food_days:                 Number(inventory.food_days)                 || 0,
-          fuel_liters:               Number(inventory.fuel_liters)               || 0,
-          battery_percent:           Number(inventory.battery_percent)           || 0,
-          has_medical_kit:           Boolean(inventory.has_medical_kit),
-          has_communication_device:  Boolean(inventory.has_communication_device),
-          cash_amount:               Number(inventory.cash_amount)               || 0,
+          water_liters:             Number(inventory.water_liters)             || 0,
+          food_days:                Number(inventory.food_days)                || 0,
+          fuel_liters:              Number(inventory.fuel_liters)              || 0,
+          battery_percent:          Number(inventory.battery_percent)          || 0,
+          has_medical_kit:          Boolean(inventory.has_medical_kit),
+          has_communication_device: Boolean(inventory.has_communication_device),
+          cash_amount:              Number(inventory.cash_amount)              || 0,
         })
       }
       if (famRes.ok) {
@@ -151,7 +345,7 @@ export default function InventoryPage() {
 
   useEffect(() => { loadData() }, [loadData])
 
-  // ── Auto-save with debounce ────────────────────────────────────────────────
+  // ── Auto-save ──────────────────────────────────────────────────────────────
   const save = useCallback((data: Inventory) => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => {
@@ -185,21 +379,12 @@ export default function InventoryPage() {
   }
 
   // ── Derived ────────────────────────────────────────────────────────────────
-  const waterStatus   = getWaterStatus(inv.water_liters, memberCount)
-  const autonomyDays  = Math.floor(inv.food_days)
-  const batteryColor  =
-    inv.battery_percent >= 60 ? 'var(--ac)'
-    : inv.battery_percent >= 30 ? 'var(--warn)'
-    : 'var(--ac3)'
-
-  const waterBorder =
-    waterStatus === 'critical' ? '1px solid rgba(255,107,107,0.55)' :
-    waterStatus === 'low'      ? '1px solid rgba(255,179,71,0.55)'  :
-                                 '1px solid var(--bd)'
-  const waterBg =
-    waterStatus === 'critical' ? 'rgba(255,107,107,0.06)' :
-    waterStatus === 'low'      ? 'rgba(255,179,71,0.06)'  :
-                                 'var(--sf)'
+  const { score, level } = calcReadiness(inv, memberCount)
+  const autonomyDays = Math.floor(inv.food_days)
+  const batteryColor =
+    inv.battery_percent >= 60 ? 'var(--ac)' :
+    inv.battery_percent >= 30 ? 'var(--warn)' :
+                                'var(--ac3)'
 
   // ── Loading ────────────────────────────────────────────────────────────────
   if (loading) {
@@ -231,42 +416,36 @@ export default function InventoryPage() {
           <div style={S.errorBanner}>⚠ {saveError}</div>
         )}
 
-        {/* Autonomy summary */}
-        <div style={S.autonomyCard}>
-          <div>
-            <p style={S.autonomyLabel}>AUTONOMIA ESTIMADA</p>
-            <p style={S.autonomyValue}>
-              <span style={S.autonomyNumber}>{autonomyDays}</span>
-              <span style={S.autonomyUnit}> dias</span>
-            </p>
-          </div>
-          {memberCount > 0 && (
-            <span style={S.memberChip}>
-              {memberCount} membro{memberCount !== 1 ? 's' : ''}
-            </span>
-          )}
-        </div>
+        {/* ── Resumo de Prontidão ─────────────────────────────────────────── */}
+        <ReadinessSummary
+          score={score}
+          level={level}
+          memberCount={memberCount}
+          autonomyDays={autonomyDays}
+        />
 
-        {/* ── Água ───────────────────────────────────────────────────────── */}
-        <div style={{ ...S.card, border: waterBorder, background: waterBg }}>
-          <div style={S.cardHeader}>
-            <span style={S.cardIcon}>💧</span>
-            <span style={S.cardTitle}>Água</span>
-            <WaterBadge status={waterStatus} />
-          </div>
-
-          {/* Big monospace value */}
+        {/* ── Água — threshold: 2 L/pessoa CRÍTICO, 4 L/pessoa BAIXO ──────── */}
+        <ResourceCard
+          icon="💧"
+          title="Água"
+          value={inv.water_liters}
+          threshold={4}
+          criticalThreshold={2}
+          membersCount={memberCount}
+          perPerson
+        >
+          {/* Big display */}
           <div style={S.bigValueWrap}>
-            <span style={S.bigValue}>{fmt(inv.water_liters, 1)}</span>
+            <span style={S.bigValue}>
+              {inv.water_liters.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+            </span>
             <span style={S.bigValueUnit}>litros</span>
           </div>
-
           {memberCount > 0 && (
             <p style={S.perPersonHint}>
               {(inv.water_liters / memberCount).toFixed(1)} L / pessoa
             </p>
           )}
-
           <div style={{ marginTop: 12 }}>
             <NumericStepper
               value={inv.water_liters}
@@ -280,14 +459,18 @@ export default function InventoryPage() {
               onChange={(v) => update('water_liters', v)}
             />
           </div>
-        </div>
+        </ResourceCard>
 
-        {/* ── Comida ─────────────────────────────────────────────────────── */}
-        <div style={S.card}>
-          <div style={S.cardHeader}>
-            <span style={S.cardIcon}>🍱</span>
-            <span style={S.cardTitle}>Comida</span>
-          </div>
+        {/* ── Comida — threshold: 1 dia CRÍTICO, 3 dias BAIXO ─────────────── */}
+        <ResourceCard
+          icon="🍱"
+          title="Comida"
+          value={inv.food_days}
+          threshold={3}
+          criticalThreshold={1}
+          membersCount={memberCount}
+          perPerson={false}
+        >
           <NumericStepper
             value={inv.food_days}
             step={1}
@@ -298,15 +481,19 @@ export default function InventoryPage() {
             disabled={isPending}
             onChange={(v) => update('food_days', v)}
           />
-        </div>
+        </ResourceCard>
 
-        {/* ── Combustível ────────────────────────────────────────────────── */}
-        <div style={S.card}>
-          <div style={S.cardHeader}>
-            <span style={S.cardIcon}>⛽</span>
-            <span style={S.cardTitle}>Combustível</span>
-            <span style={S.optionalTag}>opcional</span>
-          </div>
+        {/* ── Combustível — opcional, 0 L = BAIXO ─────────────────────────── */}
+        <ResourceCard
+          icon="⛽"
+          title="Combustível"
+          value={inv.fuel_liters}
+          threshold={5}
+          criticalThreshold={0.001}   // essentially 0 = critical
+          membersCount={memberCount}
+          perPerson={false}
+          optional
+        >
           <NumericStepper
             value={inv.fuel_liters}
             step={1}
@@ -317,14 +504,18 @@ export default function InventoryPage() {
             disabled={isPending}
             onChange={(v) => update('fuel_liters', v)}
           />
-        </div>
+        </ResourceCard>
 
-        {/* ── Bateria ────────────────────────────────────────────────────── */}
-        <div style={S.card}>
-          <div style={S.cardHeader}>
-            <span style={S.cardIcon}>🔋</span>
-            <span style={S.cardTitle}>Bateria / Energia</span>
-          </div>
+        {/* ── Bateria — threshold: 30% BAIXO, 10% CRÍTICO ─────────────────── */}
+        <ResourceCard
+          icon="🔋"
+          title="Bateria / Energia"
+          value={inv.battery_percent}
+          threshold={30}
+          criticalThreshold={10}
+          membersCount={memberCount}
+          perPerson={false}
+        >
           <div style={S.batteryBarTrack}>
             <div
               style={{
@@ -345,13 +536,28 @@ export default function InventoryPage() {
             disabled={isPending}
             onChange={(v) => update('battery_percent', v)}
           />
-        </div>
+        </ResourceCard>
 
-        {/* ── Equipamentos (toggles) ─────────────────────────────────────── */}
-        <div style={S.card}>
+        {/* ── Equipamentos ─────────────────────────────────────────────────── */}
+        <div
+          style={{
+            ...S.card,
+            border:
+              !inv.has_medical_kit && !inv.has_communication_device
+                ? '1px solid rgba(255,179,71,0.4)'
+                : '1px solid var(--bd)',
+            background:
+              !inv.has_medical_kit && !inv.has_communication_device
+                ? 'rgba(255,179,71,0.04)'
+                : 'var(--sf)',
+          }}
+        >
           <div style={S.cardHeader}>
             <span style={S.cardIcon}>🎒</span>
             <span style={S.cardTitle}>Equipamentos</span>
+            {!inv.has_medical_kit && !inv.has_communication_device && (
+              <span style={{ ...S.badge, ...S.badgeHigh }}>▲ BAIXO</span>
+            )}
           </div>
           <ToggleRow
             label="Kit médico"
@@ -370,7 +576,7 @@ export default function InventoryPage() {
           />
         </div>
 
-        {/* ── Dinheiro ───────────────────────────────────────────────────── */}
+        {/* ── Dinheiro ─────────────────────────────────────────────────────── */}
         <div style={S.card}>
           <div style={S.cardHeader}>
             <span style={S.cardIcon}>💵</span>
@@ -413,7 +619,7 @@ const S: Record<string, React.CSSProperties> = {
   },
   headerLabel: {
     fontSize: 11, fontWeight: 700, letterSpacing: '1.2px', color: 'var(--mu)',
-    textTransform: 'uppercase', marginBottom: 4,
+    textTransform: 'uppercase' as const, marginBottom: 4,
   },
   headerTitle: { fontSize: 28, fontWeight: 700, color: 'var(--tx)', lineHeight: 1.1 },
   headerStatus: { display: 'flex', alignItems: 'center', paddingTop: 8 },
@@ -425,34 +631,63 @@ const S: Record<string, React.CSSProperties> = {
     fontSize: 11, fontWeight: 700, color: 'var(--ac)',
     fontFamily: "'DM Mono', monospace", letterSpacing: '0.5px',
   },
-
   errorBanner: {
     background: 'rgba(255,107,107,0.1)', border: '1px solid rgba(255,107,107,0.3)',
     borderRadius: 10, padding: '10px 14px', fontSize: 13, color: 'var(--ac3)',
     marginBottom: 12, fontWeight: 600,
   },
 
-  autonomyCard: {
-    background: 'rgba(0,229,160,0.07)', border: '1px solid rgba(0,229,160,0.18)',
+  // ── ReadinessSummary ──────────────────────────────────────────────────────
+  summaryCard: {
     borderRadius: 16, padding: 16, marginBottom: 12,
-    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+    transition: 'border-color 0.3s, background 0.3s',
   },
-  autonomyLabel: {
-    fontSize: 10, fontWeight: 700, letterSpacing: '1.2px', color: 'var(--mu)',
-    textTransform: 'uppercase', marginBottom: 4, fontFamily: "'DM Mono', monospace",
+  summaryTop: {
+    display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+    marginBottom: 12,
   },
-  autonomyValue: { display: 'flex', alignItems: 'baseline', gap: 4 },
-  autonomyNumber: {
-    fontFamily: "'DM Mono', monospace", fontSize: 36, fontWeight: 700,
-    color: 'var(--ac)', lineHeight: 1,
+  summaryLabel: {
+    fontSize: 10, fontWeight: 700, letterSpacing: '1.2px',
+    color: 'var(--mu)', textTransform: 'uppercase' as const,
+    fontFamily: "'DM Mono', monospace", marginBottom: 6,
   },
-  autonomyUnit: { fontSize: 14, color: 'var(--mu)', fontWeight: 600 },
+  summaryScoreRow: { display: 'flex', alignItems: 'baseline', gap: 3 },
+  summaryScore: {
+    fontFamily: "'DM Mono', monospace", fontSize: 44, fontWeight: 700,
+    lineHeight: 1, letterSpacing: '-2px', transition: 'color 0.3s',
+  },
+  summaryScoreMax: { fontSize: 14, color: 'var(--mu)', fontWeight: 600 },
+  summaryRight: {
+    display: 'flex', flexDirection: 'column' as const, alignItems: 'flex-end', gap: 6,
+  },
+  levelBadge: {
+    fontSize: 11, fontWeight: 700, letterSpacing: '0.8px',
+    padding: '4px 10px', borderRadius: 6,
+    fontFamily: "'DM Mono', monospace", textTransform: 'uppercase' as const,
+  },
   memberChip: {
     fontSize: 11, fontWeight: 700, color: 'var(--ac2)',
     background: 'rgba(124,107,255,0.12)', border: '1px solid rgba(124,107,255,0.2)',
     borderRadius: 20, padding: '3px 10px', fontFamily: "'DM Mono', monospace",
   },
+  scoreBarTrack: {
+    height: 5, background: 'rgba(255,255,255,0.06)', borderRadius: 3,
+    overflow: 'hidden', marginBottom: 12,
+  },
+  scoreBarFill: {
+    height: '100%', borderRadius: 3,
+    transition: 'width 0.5s ease, background 0.3s',
+  },
+  autonomyRow: {
+    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+  },
+  autonomyLabel: {
+    fontSize: 10, fontWeight: 700, letterSpacing: '1px', color: 'var(--mu)',
+    textTransform: 'uppercase' as const, fontFamily: "'DM Mono', monospace",
+  },
+  autonomyValue: { fontSize: 13, color: 'var(--mu)', fontWeight: 600 },
 
+  // ── Cards ─────────────────────────────────────────────────────────────────
   card: {
     background: 'var(--sf)', border: '1px solid var(--bd)',
     borderRadius: 16, padding: 16, marginBottom: 12,
@@ -463,10 +698,28 @@ const S: Record<string, React.CSSProperties> = {
   cardTitle: { fontSize: 15, fontWeight: 700, color: 'var(--tx)', flex: 1 },
   optionalTag: {
     fontSize: 10, fontWeight: 700, letterSpacing: '0.5px', color: 'var(--mu)',
-    textTransform: 'uppercase', background: 'var(--sf2)', border: '1px solid var(--bd)',
-    borderRadius: 4, padding: '2px 7px', fontFamily: "'DM Mono', monospace",
+    textTransform: 'uppercase' as const, background: 'var(--sf2)',
+    border: '1px solid var(--bd)', borderRadius: 4, padding: '2px 7px',
+    fontFamily: "'DM Mono', monospace",
   },
 
+  // Badges
+  badge: {
+    display: 'inline-flex', alignItems: 'center', gap: 4,
+    fontSize: 10, fontWeight: 700, letterSpacing: '0.5px',
+    padding: '3px 8px', borderRadius: 5,
+    fontFamily: "'DM Mono', monospace", textTransform: 'uppercase' as const,
+  },
+  badgeCritical: {
+    background: 'rgba(255,107,107,0.15)', color: 'var(--ac3)',
+    border: '1px solid rgba(255,107,107,0.3)',
+  },
+  badgeHigh: {
+    background: 'rgba(255,179,71,0.15)', color: '#ffb347',
+    border: '1px solid rgba(255,179,71,0.3)',
+  },
+
+  // Big water value
   bigValueWrap: { display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 4 },
   bigValue: {
     fontFamily: "'DM Mono', monospace", fontSize: 48, fontWeight: 700,
@@ -475,48 +728,51 @@ const S: Record<string, React.CSSProperties> = {
   bigValueUnit: { fontSize: 16, color: 'var(--mu)', fontWeight: 600 },
   perPersonHint: { fontSize: 12, color: 'var(--mu)', fontFamily: "'DM Mono', monospace" },
 
+  // Battery bar
   batteryBarTrack: {
-    height: 6, background: 'var(--sf2)', borderRadius: 3, overflow: 'hidden',
-    marginBottom: 14, border: '1px solid var(--bd)',
+    height: 6, background: 'var(--sf2)', borderRadius: 3,
+    overflow: 'hidden', marginBottom: 14, border: '1px solid var(--bd)',
   },
-  batteryBarFill: { height: '100%', borderRadius: 3, transition: 'width 0.25s ease, background 0.25s ease' },
+  batteryBarFill: {
+    height: '100%', borderRadius: 3,
+    transition: 'width 0.25s ease, background 0.25s ease',
+  },
 
+  // Toggles
   toggleRow: {
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
     gap: 12, padding: '4px 0',
   },
-  toggleMeta: { display: 'flex', flexDirection: 'column', gap: 2, flex: 1 },
+  toggleMeta: { display: 'flex', flexDirection: 'column' as const, gap: 2, flex: 1 },
   toggleLabel: { fontSize: 14, fontWeight: 700, color: 'var(--tx)' },
   toggleDesc: { fontSize: 11, color: 'var(--mu)', lineHeight: 1.4 },
   toggle: {
-    position: 'relative', width: 44, height: 26, borderRadius: 13,
-    border: 'none', cursor: 'pointer', flexShrink: 0, transition: 'background 0.2s', padding: 0,
+    position: 'relative' as const, width: 44, height: 26, borderRadius: 13,
+    border: 'none', cursor: 'pointer', flexShrink: 0,
+    transition: 'background 0.2s', padding: 0,
   },
   toggleOn:       { background: 'var(--ac)' },
   toggleOff:      { background: 'var(--sf2)', outline: '1px solid var(--bd)' },
-  toggleDisabled: { opacity: 0.45, cursor: 'not-allowed' },
+  toggleDisabled: { opacity: 0.45, cursor: 'not-allowed' as const },
   toggleThumb: {
-    display: 'block', position: 'absolute', top: '50%', marginTop: -10,
+    display: 'block', position: 'absolute' as const, top: '50%', marginTop: -10,
     width: 20, height: 20, borderRadius: '50%',
     background: '#ffffff', boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
     transition: 'transform 0.2s ease',
   },
   toggleDivider: { height: 1, background: 'var(--bd)', margin: '12px 0' },
 
-  badge: {
-    display: 'inline-flex', alignItems: 'center', gap: 4,
-    fontSize: 10, fontWeight: 700, letterSpacing: '0.5px',
-    padding: '3px 8px', borderRadius: 5,
-    fontFamily: "'DM Mono', monospace", textTransform: 'uppercase',
-  },
-
+  // Loading
   loadingWrap: {
-    display: 'flex', flexDirection: 'column', alignItems: 'center',
-    justifyContent: 'center', gap: 12, minHeight: '60vh', color: 'var(--mu)',
+    display: 'flex', flexDirection: 'column' as const, alignItems: 'center',
+    justifyContent: 'center', gap: 12, minHeight: '60vh',
   },
   loadingDot: {
     display: 'block', width: 10, height: 10, borderRadius: '50%',
     background: 'var(--ac)', animation: 'blink 1.4s ease-in-out infinite',
   },
-  loadingText: { fontSize: 13, fontWeight: 600, color: 'var(--mu)', fontFamily: "'DM Mono', monospace" },
+  loadingText: {
+    fontSize: 13, fontWeight: 600, color: 'var(--mu)',
+    fontFamily: "'DM Mono', monospace",
+  },
 }
