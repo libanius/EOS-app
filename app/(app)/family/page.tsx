@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState, useTransition } from 'react'
+import NumericStepper from '@/components/NumericStepper'
 
 type FamilyMember = {
   id: string
@@ -134,13 +135,6 @@ export default function FamilyPage() {
         ? current.medical_conditions.filter((item) => item !== condition)
         : [...current.medical_conditions, condition],
     }))
-  }
-
-  function adjustAge(delta: number) {
-    setForm((current) => {
-      const next = Math.max(0, Math.min(120, (current.age ?? 0) + delta))
-      return { ...current, age: next }
-    })
   }
 
   function handleSave() {
@@ -405,31 +399,19 @@ export default function FamilyPage() {
 
               <div style={s.fieldGroup}>
                 <label style={s.fieldLabel}>Idade</label>
-                <div style={s.agePanel}>
-                  <button
-                    type="button"
-                    style={s.hudControl}
-                    onClick={() => adjustAge(-1)}
-                    disabled={isPending || (form.age ?? 0) <= 0}
-                  >
-                    −
-                  </button>
-
-                  <div style={s.ageDisplay}>
-                    <span style={s.ageValue}>{form.age === null ? '--' : String(form.age).padStart(2, '0')}</span>
-                    <span style={s.ageLabel}>YEARS</span>
-                  </div>
-
-                  <button
-                    type="button"
-                    style={s.hudControl}
-                    onClick={() => adjustAge(1)}
-                    disabled={isPending || (form.age ?? 0) >= 120}
-                  >
-                    +
-                  </button>
-                </div>
-
+                <NumericStepper
+                  value={form.age ?? 0}
+                  step={1}
+                  min={0}
+                  max={120}
+                  decimals={0}
+                  unit="anos"
+                  size="md"
+                  disabled={isPending}
+                  onChange={(v) =>
+                    setForm((current) => ({ ...current, age: v === 0 ? null : v }))
+                  }
+                />
                 {form.age !== null && (
                   <button
                     type="button"

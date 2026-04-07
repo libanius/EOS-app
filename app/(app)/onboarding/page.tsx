@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import NumericStepper from '@/components/NumericStepper'
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -15,14 +16,6 @@ export default function OnboardingPage() {
   const [isPending, startTransition] = useTransition()
 
   // ── Handlers ──────────────────────────────────────────────────────────────
-
-  function decrement() {
-    setMembers((m) => Math.max(1, m - 1))
-  }
-
-  function increment() {
-    setMembers((m) => Math.min(20, m + 1))
-  }
 
   function handleContinue() {
     if (!name.trim()) {
@@ -55,7 +48,6 @@ export default function OnboardingPage() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   const isLoading = isPending
-  const memberDisplay = String(members).padStart(2, '0')
 
   return (
     <div style={s.page}>
@@ -127,36 +119,16 @@ export default function OnboardingPage() {
             <span style={s.membersTitle}>Membros na família</span>
             <span style={s.membersHint}>Incluindo você</span>
           </div>
-
-          <div style={s.counter}>
-            <button
-              style={{
-                ...s.counterBtn,
-                opacity: members <= 1 ? 0.3 : 1,
-              }}
-              onClick={decrement}
-              disabled={isLoading || members <= 1}
-              aria-label="Diminuir"
-            >
-              −
-            </button>
-
-            <span className="mono" style={s.counterVal}>
-              {memberDisplay}
-            </span>
-
-            <button
-              style={{
-                ...s.counterBtn,
-                opacity: members >= 20 ? 0.3 : 1,
-              }}
-              onClick={increment}
-              disabled={isLoading || members >= 20}
-              aria-label="Aumentar"
-            >
-              +
-            </button>
-          </div>
+          <NumericStepper
+            value={members}
+            step={1}
+            min={1}
+            max={20}
+            decimals={0}
+            unit="pessoas"
+            disabled={isLoading}
+            onChange={setMembers}
+          />
         </div>
 
         {/* ── Submit ────────────────────────────────────────────────────── */}
