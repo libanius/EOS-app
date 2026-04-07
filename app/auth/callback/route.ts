@@ -37,8 +37,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(`${origin}/auth/update-password`)
     }
 
-    // OAuth or email confirmation → go to dashboard
-    return NextResponse.redirect(`${origin}/dashboard`)
+    // OAuth or email confirmation → go to onboarding
+    return NextResponse.redirect(`${origin}/onboarding`)
   }
 
   // No code and no error — shouldn't happen, send to login
