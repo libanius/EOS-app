@@ -17,6 +17,15 @@ type Inventory = {
 
 type ResourceState = 'critical' | 'high' | 'ok'
 type ReadinessLevel = 'critical' | 'low' | 'adequate' | 'excellent'
+type AIRiskLevel = 'baixo' | 'medio' | 'alto'
+
+type AIReadinessBriefing = {
+  overview: string
+  risk_level: AIRiskLevel
+  priorities: string[]
+  strengths: string[]
+  next_steps: string[]
+}
 
 // ─── Readiness score ──────────────────────────────────────────────────────────
 
@@ -306,6 +315,9 @@ export default function InventoryPage() {
   const [memberCount, setMemberCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [aiError, setAiError] = useState<string | null>(null)
+  const [aiBriefing, setAiBriefing] = useState<AIReadinessBriefing | null>(null)
+  const [aiLoading, setAiLoading] = useState(false)
   const [saved, setSaved] = useState(false)
   const [isPending, startTransition] = useTransition()
 
@@ -344,6 +356,27 @@ export default function InventoryPage() {
   }, [])
 
   useEffect(() => { loadData() }, [loadData])
+
+  const loadAIBriefing = useCallback(async () => {
+    setAiLoading(true)
+    setAiError(null)
+    try {
+      const res = await fetch('/api/ai/readiness')
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setAiBriefing(null)
+        setAiError(data.error ?? 'Erro ao gerar análise com IA.')
+        return
+      }
+
+      setAiBriefing(data.briefing ?? null)
+    } catch {
+      setAiBriefing(null)
+      setAiError('Erro de rede ao consultar a OpenAI.')
+    } finally {
+      setAiLoading(false)
+    }
+  }, [])
 
   // ── Auto-save ──────────────────────────────────────────────────────────────
   const save = useCallback((data: Inventory) => {
@@ -385,6 +418,11 @@ export default function InventoryPage() {
     inv.battery_percent >= 60 ? 'var(--ac)' :
     inv.battery_percent >= 30 ? 'var(--warn)' :
                                 'var(--ac3)'
+  const aiRiskColor: Record<AIRiskLevel, string> = {
+    baixo: 'var(--ac)',
+    medio: 'var(--warn)',
+    alto: 'var(--ac3)',
+  }
 
   // ── Loading ────────────────────────────────────────────────────────────────
   if (loading) {
@@ -423,6 +461,60 @@ export default function InventoryPage() {
           memberCount={memberCount}
           autonomyDays={autonomyDays}
         />
+
+        <div style={S.aiCard}>
+          <div style={S.aiHeader}>
+            <div>
+              <p style={S.aiLabel}>OPENAI BRIEFING</p>
+              <h2 style={S.aiTitle}>Análise tática da sua prontidão</h2>
+            </div>
+            <button
+              className="btn bp bsm"
+              onClick={loadAIBriefing}
+              disabled={aiLoading}
+              style={S.aiButton}
+            >
+              {aiLoading ? 'Analisando...' : aiBriefing ? 'Atualizar IA' : 'Gerar com IA'}
+            </button>
+          </div>
+
+          {aiError && <div style={S.errorBanner}>⚠ {aiError}</div>}
+
+          {!aiBriefing && !aiLoading && !aiError && (
+            <p style={S.aiPlaceholder}>
+              Gere um briefing com a OpenAI usando família e inventário reais para identificar riscos, pontos fortes e próximas ações.
+            </p>
+          )}
+
+          {aiLoading && (
+            <p style={S.aiPlaceholder}>Consultando a OpenAI e consolidando os dados da família...</p>
+          )}
+
+          {aiBriefing && (
+            <div style={S.aiBody}>
+              <div style={S.aiOverviewRow}>
+                <span
+                  style={{
+                    ...S.aiRiskBadge,
+                    color: aiRiskColor[aiBriefing.risk_level],
+                    border: `1px solid ${aiRiskColor[aiBriefing.risk_level]}44`,
+                    background: `${aiRiskColor[aiBriefing.risk_level]}14`,
+                  }}
+                >
+                  risco {aiBriefing.risk_level}
+                </span>
+                <p style={S.aiOverview}>{aiBriefing.overview}</p>
+              </div>
+
+              <div style={S.aiGrid}>
+                <AIList title="Prioridades" items={aiBriefing.priorities} />
+                <AIList title="Pontos fortes" items={aiBriefing.strengths} />
+              </div>
+
+              <AIList title="Próximos passos" items={aiBriefing.next_steps} fullWidth />
+            </div>
+          )}
+        </div>
 
         {/* ── Água — threshold: 2 L/pessoa CRÍTICO, 4 L/pessoa BAIXO ──────── */}
         <ResourceCard
@@ -600,6 +692,32 @@ export default function InventoryPage() {
   )
 }
 
+function AIList({
+  title,
+  items,
+  fullWidth = false,
+}: {
+  title: string
+  items: string[]
+  fullWidth?: boolean
+}) {
+  if (items.length === 0) return null
+
+  return (
+    <div style={fullWidth ? S.aiListFull : S.aiListCard}>
+      <p style={S.aiListTitle}>{title}</p>
+      <div style={S.aiListWrap}>
+        {items.map((item) => (
+          <div key={`${title}-${item}`} style={S.aiListItem}>
+            <span style={S.aiListDot} />
+            <span style={S.aiListText}>{item}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const S: Record<string, React.CSSProperties> = {
@@ -635,6 +753,120 @@ const S: Record<string, React.CSSProperties> = {
     background: 'rgba(255,107,107,0.1)', border: '1px solid rgba(255,107,107,0.3)',
     borderRadius: 10, padding: '10px 14px', fontSize: 13, color: 'var(--ac3)',
     marginBottom: 12, fontWeight: 600,
+  },
+  aiCard: {
+    background: 'rgba(0,229,160,0.05)',
+    border: '1px solid rgba(0,229,160,0.18)',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+  },
+  aiHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 12,
+    marginBottom: 12,
+  },
+  aiLabel: {
+    fontSize: 10,
+    fontWeight: 700,
+    letterSpacing: '1.2px',
+    color: 'var(--ac)',
+    textTransform: 'uppercase' as const,
+    fontFamily: "'DM Mono', monospace",
+    marginBottom: 6,
+  },
+  aiTitle: {
+    fontSize: 20,
+    lineHeight: 1.2,
+    color: 'var(--tx)',
+    fontWeight: 700,
+  },
+  aiButton: {
+    minWidth: 124,
+    flexShrink: 0,
+  },
+  aiPlaceholder: {
+    fontSize: 13,
+    lineHeight: 1.6,
+    color: 'var(--mu)',
+  },
+  aiBody: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: 12,
+  },
+  aiOverviewRow: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: 10,
+  },
+  aiRiskBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    borderRadius: 999,
+    padding: '5px 10px',
+    fontSize: 10,
+    fontWeight: 700,
+    letterSpacing: '0.8px',
+    textTransform: 'uppercase' as const,
+    fontFamily: "'DM Mono', monospace",
+  },
+  aiOverview: {
+    fontSize: 14,
+    lineHeight: 1.6,
+    color: 'var(--tx)',
+  },
+  aiGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+    gap: 12,
+  },
+  aiListCard: {
+    background: 'rgba(255,255,255,0.03)',
+    border: '1px solid var(--bd)',
+    borderRadius: 12,
+    padding: 14,
+  },
+  aiListFull: {
+    background: 'rgba(255,255,255,0.03)',
+    border: '1px solid var(--bd)',
+    borderRadius: 12,
+    padding: 14,
+  },
+  aiListTitle: {
+    fontSize: 11,
+    fontWeight: 700,
+    letterSpacing: '1px',
+    color: 'var(--mu)',
+    textTransform: 'uppercase' as const,
+    fontFamily: "'DM Mono', monospace",
+    marginBottom: 10,
+  },
+  aiListWrap: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: 10,
+  },
+  aiListItem: {
+    display: 'flex',
+    gap: 10,
+    alignItems: 'flex-start',
+  },
+  aiListDot: {
+    width: 7,
+    height: 7,
+    borderRadius: '50%',
+    background: 'var(--ac)',
+    marginTop: 6,
+    flexShrink: 0,
+  },
+  aiListText: {
+    fontSize: 13,
+    lineHeight: 1.5,
+    color: 'var(--tx)',
   },
 
   // ── ReadinessSummary ──────────────────────────────────────────────────────

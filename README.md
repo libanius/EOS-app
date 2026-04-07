@@ -6,7 +6,7 @@ A survival intelligence platform that guides families through emergencies with c
 - **Framework**: Next.js 14 App Router
 - **Language**: TypeScript (strict)
 - **Database**: Supabase (Postgres + Auth + pgvector)
-- **AI**: Claude API (claude-sonnet-4-20250514)
+- **AI**: OpenAI API
 - **Deploy**: Vercel
 
 ## Getting Started
@@ -37,4 +37,7 @@ cp .env.example .env.local
 Required:
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `ANTHROPIC_API_KEY`
+- `OPENAI_API_KEY`
+
+Optional:
+- `OPENAI_MODEL` (default: `gpt-5`)

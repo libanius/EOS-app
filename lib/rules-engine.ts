@@ -1,4 +1,4 @@
-import { RulesQuery, RulesResult, ScenarioType, UrgencyLevel } from './types'
+import { type RulesQuery, type RulesResult, ScenarioType, UrgencyLevel } from './types'
 
 // ─── Urgency Escalation Helpers ──────────────────────────────────────────────
 
