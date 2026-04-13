@@ -194,86 +194,95 @@ async function getRelevantChunks(
   scenario: string,
   scenarioType: string
 ): Promise<KnowledgeChunk[]> {
-  // TODO: replace with actual pgvector similarity search
-  // For now returns curated static chunks per scenario type
+  try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    const openaiKey = process.env.OPENAI_API_KEY
+
+    if (!supabaseUrl || !supabaseKey || !openaiKey) {
+      throw new Error('Missing env vars for RAG')
+    }
+
+    // Check if knowledge_base has data
+    const supabase = createClient(supabaseUrl, supabaseKey)
+    const { count } = await supabase
+      .from('knowledge_base')
+      .select('*', { count: 'exact', head: true })
+
+    if (!count || count === 0) {
+      // Knowledge base empty — fall back to static curated chunks
+      return getStaticChunks(scenarioType)
+    }
+
+    // Generate embedding for the query
+    const { OpenAI } = await import('openai')
+    const openai = new OpenAI({ apiKey: openaiKey })
+
+    const queryText = `${scenarioType} emergency: ${scenario}`
+    const embeddingResponse = await openai.embeddings.create({
+      model: 'text-embedding-3-small',
+      input: queryText,
+    })
+    const queryEmbedding = embeddingResponse.data[0].embedding
+
+    // pgvector cosine similarity search via Supabase RPC
+    const { data, error } = await supabase.rpc('match_knowledge', {
+      query_embedding: queryEmbedding,
+      match_threshold: 0.65,
+      match_count: 5,
+      filter_scenario: scenarioType.toUpperCase(),
+    })
+
+    if (error) throw error
+
+    if (!data || data.length === 0) {
+      return getStaticChunks(scenarioType)
+    }
+
+    return (data as Array<{ content: string; source: string; similarity: number }>).map(
+      (row) => ({
+        text: row.content,
+        source: row.source,
+        score: row.similarity,
+      })
+    )
+  } catch (err) {
+    console.error('[RAG] getRelevantChunks error, using static fallback:', err)
+    return getStaticChunks(scenarioType)
+  }
+}
+
+function getStaticChunks(scenarioType: string): KnowledgeChunk[] {
   const chunks: Record<string, KnowledgeChunk[]> = {
     hurricane: [
-      {
-        text: 'Store 1 gallon of water per person per day for at least 3 days. For a hurricane, aim for 2 weeks.',
-        source: 'FEMA Emergency Supply List',
-        score: 0.92,
-      },
-      {
-        text: 'Secure loose outdoor items. Board windows with plywood or install storm shutters.',
-        source: 'Red Cross Disaster Handbook',
-        score: 0.88,
-      },
+      { text: 'Store 1 gallon of water per person per day for at least 3 days. For a hurricane, aim for 2 weeks.', source: 'FEMA Emergency Supply List', score: 0.92 },
+      { text: 'Secure loose outdoor items. Board windows with plywood or install storm shutters.', source: 'Red Cross Disaster Handbook', score: 0.88 },
     ],
     fallout: [
-      {
-        text: 'Shelter-in-place: seal doors and windows with plastic sheeting and duct tape. Turn off HVAC.',
-        source: 'CDC Emergency Preparedness',
-        score: 0.95,
-      },
-      {
-        text: 'Go to the center of the building or basement. Stay away from windows. Monitor emergency broadcasts.',
-        source: 'Military Survival FM 21-76',
-        score: 0.91,
-      },
+      { text: 'Shelter-in-place: seal doors and windows with plastic sheeting and duct tape. Turn off HVAC.', source: 'CDC Emergency Preparedness', score: 0.95 },
+      { text: 'Go to the center of the building or basement. Stay away from windows. Monitor emergency broadcasts.', source: 'Military Survival FM 21-76', score: 0.91 },
     ],
     earthquake: [
-      {
-        text: 'Drop, cover, and hold on during shaking. After shaking stops, check for injuries and hazards.',
-        source: 'Red Cross Disaster Handbook',
-        score: 0.93,
-      },
-      {
-        text: 'Expect aftershocks. Turn off gas if you smell it. Do not use open flames.',
-        source: 'FEMA Emergency Supply List',
-        score: 0.87,
-      },
+      { text: 'Drop, cover, and hold on during shaking. After shaking stops, check for injuries and hazards.', source: 'Red Cross Disaster Handbook', score: 0.93 },
+      { text: 'Expect aftershocks. Turn off gas if you smell it. Do not use open flames.', source: 'FEMA Emergency Supply List', score: 0.87 },
     ],
     pandemic: [
-      {
-        text: 'Isolate sick members. Wash hands frequently. Stock 30 days of essential medications.',
-        source: 'CDC Emergency Preparedness',
-        score: 0.94,
-      },
+      { text: 'Isolate sick members. Wash hands frequently. Stock 30 days of essential medications.', source: 'CDC Emergency Preparedness', score: 0.94 },
     ],
     fire: [
-      {
-        text: 'Evacuate immediately. Stay low to avoid smoke. Never re-enter a burning building.',
-        source: 'Red Cross Disaster Handbook',
-        score: 0.96,
-      },
+      { text: 'Evacuate immediately. Stay low to avoid smoke. Never re-enter a burning building.', source: 'Red Cross Disaster Handbook', score: 0.96 },
     ],
     flood: [
-      {
-        text: 'Move to higher ground immediately. Six inches of moving water can knock a person down.',
-        source: 'Red Cross Disaster Handbook',
-        score: 0.94,
-      },
+      { text: 'Move to higher ground immediately. Six inches of moving water can knock a person down.', source: 'Red Cross Disaster Handbook', score: 0.94 },
     ],
     general: [
-      {
-        text: 'Assess water, food, medical supplies first. Establish communication with family members.',
-        source: 'FEMA Emergency Supply List',
-        score: 0.85,
-      },
-      {
-        text: 'Make a family emergency plan. Identify two meeting places: one near home, one outside neighborhood.',
-        source: 'Red Cross Disaster Handbook',
-        score: 0.82,
-      },
+      { text: 'Assess water, food, medical supplies first. Establish communication with family members.', source: 'FEMA Emergency Supply List', score: 0.85 },
+      { text: 'Make a family emergency plan. Identify two meeting places: one near home, one outside neighborhood.', source: 'Red Cross Disaster Handbook', score: 0.82 },
     ],
   }
-
-  const baseChunks = chunks[scenarioType] || chunks.general
-  const generalChunks = scenarioType !== 'general' ? chunks.general : []
-
-  return [...baseChunks, ...generalChunks]
-    .filter((c) => c.score >= 0.7)
-    .slice(0, 5)
+  const base = chunks[scenarioType.toLowerCase()] || chunks.general
+  const general = scenarioType.toLowerCase() !== 'general' ? chunks.general : []
+  return [...base, ...general].filter((c) => c.score >= 0.7).slice(0, 5)
 }
 
 // ─── Prompt Builder ───────────────────────────────────────────────────────────
