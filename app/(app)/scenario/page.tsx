@@ -14,7 +14,8 @@ type ScenarioType =
   | 'general'
 
 type Priority = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW'
-type Mode = 'CONNECTED' | 'LOCAL AI' | 'SURVIVAL'
+// Mode type alias kept for documentation — actual value lives in IntelligenceResponse
+// type Mode = 'CONNECTED' | 'LOCAL AI' | 'SURVIVAL'
 type Status = 'idle' | 'loading' | 'streaming' | 'done' | 'error'
 
 interface IntelligenceResponse {
