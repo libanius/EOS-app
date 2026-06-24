@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EOS — Project Progress</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f1117; color: #e2e8f0; padding: 2rem; }
+    h1 { font-size: 1.5rem; font-weight: 700; color: #f8fafc; margin-bottom: 0.25rem; }
+    .subtitle { color: #94a3b8; font-size: 0.875rem; margin-bottom: 2rem; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
+    .card { background: #1e2130; border: 1px solid #2d3148; border-radius: 12px; padding: 1.5rem; }
+    .card h2 { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: #64748b; margin-bottom: 1rem; }
+    .task { display: flex; align-items: flex-start; gap: 0.5rem; padding: 0.5rem 0; border-bottom: 1px solid #2d3148; font-size: 0.875rem; }
+    .task:last-child { border-bottom: none; }
+    .badge { display: inline-block; padding: 0.125rem 0.5rem; border-radius: 9999px; font-size: 0.7rem; font-weight: 600; white-space: nowrap; }
+    .badge-done { background: #14532d; color: #4ade80; }
+    .badge-next { background: #1e3a5f; color: #60a5fa; }
+    .badge-draft { background: #292524; color: #78716c; }
+    .badge-blocked { background: #3b1c1c; color: #f87171; }
+    .section-label { font-size: 0.75rem; color: #94a3b8; margin-bottom: 0.75rem; }
+    .gate { padding: 0.5rem 0; border-bottom: 1px solid #2d3148; font-size: 0.875rem; }
+    .gate:last-child { border-bottom: none; }
+    .gate-open { color: #fbbf24; }
+    .stat { text-align: center; }
+    .stat-num { font-size: 2rem; font-weight: 700; color: #f8fafc; }
+    .stat-label { font-size: 0.75rem; color: #64748b; margin-top: 0.25rem; }
+    .stats { display: flex; gap: 2rem; justify-content: center; margin-bottom: 2rem; }
+  </style>
+</head>
+<body>
+  <h1>EOS — Emergency Operating System</h1>
+  <p class="subtitle">Project Progress Dashboard — Last updated: 2026-06-23</p>
+
+  <div class="stats">
+    <div class="stat"><div class="stat-num">P1</div><div class="stat-label">Current Phase</div></div>
+    <div class="stat"><div class="stat-num">3850</div><div class="stat-label">KB Chunks</div></div>
+    <div class="stat"><div class="stat-num">5</div><div class="stat-label">Open Gates</div></div>
+    <div class="stat"><div class="stat-num">14</div><div class="stat-label">PDFs Ingested</div></div>
+  </div>
+
+  <div class="grid">
+
+    <div class="card">
+      <h2>Phase 0 — App Spine</h2>
+      <div class="task"><span class="badge badge-done">DONE</span> Install SDD/App Spine structure</div>
+      <div class="task"><span class="badge badge-done">DONE</span> Review existing product baseline</div>
+      <div class="task"><span class="badge badge-done">DONE</span> Confirm MVP scope</div>
+      <div class="task"><span class="badge badge-done">DONE</span> Sequence first real implementation task</div>
+    </div>
+
+    <div class="card">
+      <h2>Phase 1 — MVP Hardening</h2>
+      <div class="task"><span class="badge badge-done">DONE</span> Fix Decision Engine (auth + schema + persist)</div>
+      <div class="task"><span class="badge badge-done">DONE</span> Ingest knowledge base (3850 chunks)</div>
+      <div class="task"><span class="badge badge-next">NEXT</span> End-to-end test in production</div>
+      <div class="task"><span class="badge badge-draft">DRAFT</span> PWA icons (icon-192 / icon-512)</div>
+      <div class="task"><span class="badge badge-draft">DRAFT</span> Landing page</div>
+      <div class="task"><span class="badge badge-draft">DRAFT</span> Language strategy</div>
+      <div class="task"><span class="badge badge-draft">DRAFT</span> Verify Sentry in production</div>
+      <div class="task"><span class="badge badge-draft">DRAFT</span> Verify Upstash rate limiting</div>
+    </div>
+
+    <div class="card">
+      <h2>Phase 2 — React Native</h2>
+      <div class="task"><span class="badge badge-blocked">BLOCKED</span> Initialize RN project</div>
+      <div class="task"><span class="badge badge-blocked">BLOCKED</span> LOCAL_AI mode (llama.rn)</div>
+      <div class="task"><span class="badge badge-blocked">BLOCKED</span> SURVIVAL mode on mobile</div>
+      <div class="task"><span class="badge badge-blocked">BLOCKED</span> Auth with SecureStore</div>
+      <div class="task"><span class="badge badge-blocked">BLOCKED</span> LoRa BLE bridge screen</div>
+    </div>
+
+    <div class="card">
+      <h2>Open Decision Gates</h2>
+      <div class="gate gate-open">G-01 — Language strategy (EN vs PT)</div>
+      <div class="gate gate-open">G-02 — Landing page approach</div>
+      <div class="gate gate-open">G-03 — Mobile readiness / timeline</div>
+      <div class="gate gate-open">G-04 — Monetization model</div>
+      <div class="gate gate-open">G-05 — LoRa mesh priority</div>
+    </div>
+
+    <div class="card">
+      <h2>Implemented Features</h2>
+      <div class="section-label">16 features live in production</div>
+      <div class="task">✅ Email/password auth</div>
+      <div class="task">✅ Password recovery</div>
+      <div class="task">✅ Onboarding (profile + family)</div>
+      <div class="task">✅ Resource inventory</div>
+      <div class="task">✅ Decision Engine — CONNECTED mode</div>
+      <div class="task">✅ Decision Engine — SURVIVAL mode</div>
+      <div class="task">✅ Rules Engine (urgency evaluation)</div>
+      <div class="task">✅ RAG knowledge search (3850 chunks)</div>
+      <div class="task">✅ Streaming action plan response</div>
+      <div class="task">✅ Action plan persistence</div>
+      <div class="task">✅ Checklist generation</div>
+      <div class="task">✅ Circles (create / join)</div>
+      <div class="task">✅ PWA (installable)</div>
+      <div class="task">✅ IndexedDB offline cache</div>
+      <div class="task">✅ Rate limiting (Upstash)</div>
+      <div class="task">✅ Error monitoring (Sentry — needs DSN)</div>
+    </div>
+
+    <div class="card">
+      <h2>Known Issues</h2>
+      <div class="gate gate-open">PWA icons missing (icon-192, icon-512)</div>
+      <div class="gate gate-open">Landing page is placeholder</div>
+      <div class="gate gate-open">Offline write sync not implemented</div>
+      <div class="gate gate-open">LOCAL_AI mode not implemented</div>
+      <div class="gate gate-open">React Native not initialized</div>
+      <div class="gate gate-open">Supabase free tier auto-pauses (resume manually)</div>
+      <div class="gate gate-open">SAMHSA_Tips: 20/69 chunks skipped (null bytes)</div>
+    </div>
+
+  </div>
+</body>
+</html>

@@ -35,4 +35,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .env.local
-docs/
+# docs/ PDFs and extracted text are too large for git
+docs/*.pdf
+docs/bibles/
+docs/text/
