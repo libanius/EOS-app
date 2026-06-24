@@ -258,16 +258,20 @@ textarea.input { resize: vertical; min-height: 100px; line-height: 1.6; }
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  padding: 8px 0;
+  padding: 10px 4px;
+  min-height: 56px;
   color: var(--mu);
   font-size: 10px;
   font-weight: 600;
   cursor: pointer;
   transition: color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
   text-decoration: none;
 }
 
 .nb.on { color: var(--ac); }
+.nb:active { opacity: 0.7; }
 
 /* ─── MODAL ──────────────────────────────────────────────── */
 .overlay {
