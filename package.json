@@ -13,7 +13,7 @@
     "type-check": "tsc --noEmit",
     "test": "jest --no-coverage",
     "test:watch": "jest --watch",
-    "ingest": "node --max-old-space-size=4096 node_modules/.bin/tsx scripts/ingest.ts"
+    "ingest": "node scripts/ingest.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.86.1",

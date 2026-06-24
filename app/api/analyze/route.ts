@@ -1,6 +1,6 @@
-import { createClient } from '@supabase/supabase-js'
 import { NextRequest } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
+import { createClient } from '@/lib/supabase/server'
 import { getRelevantChunks } from '@/lib/knowledge'
 import { enforceRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
 
@@ -33,18 +33,19 @@ interface Profile {
 interface FamilyMember {
   id: string
   name: string
-  age: number
-  medical_conditions: string | null
-  mobility: string | null
-  priority: boolean
+  age: number | null
+  medical_conditions: string[]
+  mobility_impaired: boolean
+  is_infant: boolean
 }
 
 interface ResourceInventory {
   water_liters: number
   food_days: number
-  fuel: number
-  battery: number
-  medical_kit: boolean
+  fuel_liters: number
+  battery_percent: number
+  has_medical_kit: boolean
+  has_communication_device: boolean
 }
 
 interface RulesResult {
@@ -74,24 +75,27 @@ class RulesEngine {
     }
 
     const { inventory, family, scenarioType } = ctx
-    const hasChildren = family.some((m) => m.age < 18)
-    const hasMedical = family.some((m) => m.medical_conditions)
-    const hasElders = family.some((m) => m.age > 65)
-    const hasLowMobility = family.some(
-      (m) => m.mobility && m.mobility !== 'full'
+    const memberCount = Math.max(family.length, 1)
+    const hasChildren = family.some((m) => m.age !== null && m.age < 18)
+    const hasInfants = family.some((m) => m.is_infant)
+    const hasMedical = family.some(
+      (m) => m.medical_conditions && m.medical_conditions.length > 0
     )
+    const hasElders = family.some((m) => m.age !== null && m.age > 65)
+    const hasMobilityImpaired = family.some((m) => m.mobility_impaired === true)
 
-    // Water rules
-    if (inventory.water_liters < 2) {
+    // Water rules (per person)
+    const waterPerPerson = inventory.water_liters / memberCount
+    if (waterPerPerson < 2) {
       result.priority = 'CRITICAL'
-      result.risks.push('Água abaixo de 2L — risco imediato de desidratação')
+      result.risks.push('Água abaixo de 2L/pessoa — risco imediato de desidratação')
       result.actions.push('Localizar fonte de água potável imediatamente')
-      result.rulesApplied.push('WATER_CRITICAL: water_liters < 2')
-    } else if (inventory.water_liters < 4 * family.length) {
+      result.rulesApplied.push('WATER_CRITICAL: < 2L/pessoa')
+    } else if (waterPerPerson < 4) {
       result.priority = escalate(result.priority, 'HIGH')
-      result.risks.push(`Reserva de água insuficiente para ${family.length} pessoas por 2 dias`)
+      result.risks.push(`Reserva de água insuficiente para ${memberCount} pessoa(s) por 2 dias`)
       result.actions.push('Racionar água: máximo 2L/pessoa/dia')
-      result.rulesApplied.push('WATER_LOW: water_liters < 4 * family_size')
+      result.rulesApplied.push('WATER_LOW: < 4L/pessoa')
     }
 
     // Food rules
@@ -102,11 +106,18 @@ class RulesEngine {
       result.rulesApplied.push('FOOD_CRITICAL: food_days < 1')
     } else if (inventory.food_days < 3) {
       result.priority = escalate(result.priority, 'HIGH')
-      result.risks.push(`Menos de 3 dias de comida para ${family.length} pessoas`)
+      result.risks.push(`Menos de 3 dias de comida para ${memberCount} pessoa(s)`)
       result.rulesApplied.push('FOOD_LOW: food_days < 3')
     }
 
     // Vulnerable population rules
+    if (hasInfants) {
+      result.priority = escalate(result.priority, 'CRITICAL')
+      result.risks.push('Bebê(s) presente(s) — demandas especiais de hidratação e alimentação')
+      result.actions.push('Garantir fórmula/leite e fraldas para 72h mínimo')
+      result.rulesApplied.push('INFANT_PRESENT')
+    }
+
     if (hasChildren) {
       result.priority = escalate(result.priority, 'HIGH')
       result.risks.push('Crianças presentes — prioridade de evacuação elevada')
@@ -117,58 +128,60 @@ class RulesEngine {
     if (hasMedical) {
       result.priority = escalate(result.priority, 'HIGH')
       result.risks.push('Membro(s) com condição médica — verificar medicações')
-      result.actions.push('Verificar estoque de medicamentos essenciais')
-      result.rulesApplied.push('MEDICAL_CONDITIONS: family_member has conditions')
+      result.actions.push('Verificar estoque de medicamentos essenciais para 7 dias')
+      result.rulesApplied.push('MEDICAL_CONDITIONS')
     }
 
     if (hasElders) {
-      result.risks.push('Idosos presentes — mobilidade e calor/frio são fatores críticos')
+      result.risks.push('Idosos presentes — mobilidade e temperatura são fatores críticos')
       result.rulesApplied.push('ELDERLY_PRESENT: age > 65')
     }
 
-    if (hasLowMobility) {
+    if (hasMobilityImpaired) {
       result.priority = escalate(result.priority, 'HIGH')
       result.risks.push('Mobilidade reduzida — plano de evacuação adaptado necessário')
-      result.actions.push('Preparar rota de evacuação acessível')
-      result.rulesApplied.push('LOW_MOBILITY: mobility != full')
+      result.actions.push('Preparar rota de evacuação acessível com antecedência')
+      result.rulesApplied.push('MOBILITY_IMPAIRED')
     }
 
     // Scenario-specific rules
-    if (scenarioType === 'hurricane') {
+    const type = scenarioType.toLowerCase()
+
+    if (type === 'hurricane') {
       result.actions.push('Proteger janelas e reforçar portas antes da chegada')
       result.rulesApplied.push('SCENARIO_HURRICANE: secure_structure')
     }
 
-    if (scenarioType === 'fallout') {
+    if (type === 'fallout') {
       result.priority = escalate(result.priority, 'CRITICAL')
       result.risks.push('Contaminação por radiação — abrigo imediato essencial')
       result.actions.push('Selar portas e janelas com fita e plástico')
-      result.actions.push('Desligar ventilação e ar condicionado')
+      result.actions.push('Desligar ventilação e ar condicionado imediatamente')
       result.rulesApplied.push('SCENARIO_FALLOUT: shelter_in_place_critical')
     }
 
-    if (scenarioType === 'pandemic') {
+    if (type === 'pandemic') {
       result.actions.push('Isolar membros sintomáticos em cômodo separado')
       result.rulesApplied.push('SCENARIO_PANDEMIC: isolation_protocol')
     }
 
     // Battery/power rules
-    if (inventory.battery < 20) {
+    if (inventory.battery_percent < 20) {
       result.risks.push('Energia de reserva crítica — risco de perda de comunicação')
       result.actions.push('Conservar bateria: desligar dispositivos não essenciais')
-      result.rulesApplied.push('BATTERY_LOW: battery < 20%')
+      result.rulesApplied.push('BATTERY_LOW: battery_percent < 20')
     }
 
     // No medical kit
-    if (!inventory.medical_kit) {
+    if (!inventory.has_medical_kit) {
       result.risks.push('Kit médico ausente')
       result.actions.push('Identificar suprimentos médicos alternativos disponíveis')
       result.rulesApplied.push('NO_MEDICAL_KIT')
     }
 
-    // Default low priority if nothing triggered
+    // Default if nothing triggered
     if (result.rulesApplied.length === 0) {
-      result.actions.push('Monitorar situação e manter comunicação')
+      result.actions.push('Monitorar situação e manter comunicação com família')
       result.rulesApplied.push('DEFAULT: no_critical_conditions')
     }
 
@@ -193,72 +206,74 @@ function buildSystemPrompt(
 ): string {
   const { profile, family, inventory, scenario, scenarioType } = ctx
 
-  const familySummary = family
-    .map((m) => {
-      const flags = [
-        m.age < 18 ? 'child' : m.age > 65 ? 'elder' : 'adult',
-        m.medical_conditions ? `medical: ${m.medical_conditions}` : null,
-        m.mobility && m.mobility !== 'full' ? `mobility: ${m.mobility}` : null,
-      ]
-        .filter(Boolean)
-        .join(', ')
-      return `- ${m.name} (${m.age} years, ${flags})`
-    })
-    .join('\n')
+  const familySummary = family.length
+    ? family
+        .map((m) => {
+          const flags = [
+            m.is_infant ? 'bebê' : m.age !== null && m.age < 18 ? 'criança' : m.age !== null && m.age > 65 ? 'idoso' : 'adulto',
+            m.medical_conditions.length > 0 ? `condições: ${m.medical_conditions.join(', ')}` : null,
+            m.mobility_impaired ? 'mobilidade reduzida' : null,
+          ]
+            .filter(Boolean)
+            .join(', ')
+          return `- ${m.name} (${m.age ?? '?'} anos, ${flags})`
+        })
+        .join('\n')
+    : '- Nenhum membro de família cadastrado'
 
   const knowledgeContext = knowledgeChunks.length
-    ? knowledgeChunks.join('\n')
-    : 'No additional knowledge chunks available.'
+    ? knowledgeChunks.join('\n\n---\n\n')
+    : 'Nenhum chunk de conhecimento disponível.'
 
   const criticalWarning =
     rulesResult.priority === 'CRITICAL'
-      ? '\n⚠️ CRITICAL PRIORITY — Rules Engine detected life-threatening conditions. Your plan must address these FIRST.\n'
+      ? '\n⚠️ PRIORIDADE CRÍTICA — Rules Engine detectou condições de risco de vida. Seu plano deve endereçar isso PRIMEIRO.\n'
       : ''
 
-  return `You are EOS — Emergency Operating System. You generate structured, prescriptive survival action plans.
+  return `Você é EOS — Emergency Operating System. Você gera planos de ação de sobrevivência estruturados, prescritivose específicos.
 
-RULES (deterministic — cannot be overridden):
-Priority: ${rulesResult.priority}
-Active rules: ${rulesResult.rulesApplied.join(', ')}
-Identified risks: ${rulesResult.risks.join('; ')}
+REGRAS DETERMINÍSTICAS (não podem ser alteradas pelo LLM):
+Prioridade: ${rulesResult.priority}
+Regras ativadas: ${rulesResult.rulesApplied.join(', ')}
+Riscos identificados: ${rulesResult.risks.join('; ')}
 ${criticalWarning}
-FAMILY PROFILE:
-Name: ${profile.name}
-Location: ${profile.location}
-Members:
+PERFIL DA FAMÍLIA:
+Nome: ${profile.name}
+Localização: ${profile.location || 'Não informada'}
+Membros:
 ${familySummary}
 
-CURRENT INVENTORY:
-Water: ${inventory.water_liters}L | Food: ${inventory.food_days} days | Fuel: ${inventory.fuel}L | Battery: ${inventory.battery}% | Medical kit: ${inventory.medical_kit ? 'Yes' : 'No'}
+INVENTÁRIO ATUAL:
+Água: ${inventory.water_liters}L | Comida: ${inventory.food_days} dias | Combustível: ${inventory.fuel_liters}L | Bateria: ${inventory.battery_percent}% | Kit médico: ${inventory.has_medical_kit ? 'Sim' : 'Não'} | Comunicação: ${inventory.has_communication_device ? 'Sim' : 'Não'}
 
-SCENARIO: ${scenario}
-TYPE: ${scenarioType}
+CENÁRIO: ${scenario}
+TIPO: ${scenarioType}
 
-KNOWLEDGE BASE:
+BASE DE CONHECIMENTO:
 ${knowledgeContext}
 
-OUTPUT FORMAT — respond ONLY in this exact structure, no markdown:
+FORMATO DE SAÍDA — responda APENAS nesta estrutura exata, sem markdown:
 
 PRIORITY: [CRITICAL|HIGH|MEDIUM|LOW]
 
 RISKS:
-- [risk 1]
-- [risk 2]
+- [risco 1]
+- [risco 2]
 
 IMMEDIATE (15 min):
-- [action 1]
-- [action 2]
-- [action 3]
+- [ação 1]
+- [ação 2]
+- [ação 3]
 
 SHORT TERM (1 hour):
-- [action 1]
-- [action 2]
+- [ação 1]
+- [ação 2]
 
 MID TERM (3 hours):
-- [action 1]
-- [action 2]
+- [ação 1]
+- [ação 2]
 
-Rules: never give vague advice. Every action must be specific and executable. Quantities where relevant. Prioritize the most vulnerable family members first.`
+Regras: nunca dê conselhos vagos. Cada ação deve ser específica e executável. Quantidades onde relevante. Priorize os membros mais vulneráveis da família primeiro.`
 }
 
 // ─── Response Parser ──────────────────────────────────────────────────────────
@@ -280,19 +295,15 @@ function parseStructuredResponse(
     }
 
     const priorityMatch = text.match(/PRIORITY:\s*(CRITICAL|HIGH|MEDIUM|LOW)/)
-    const priority = (
-      priorityMatch?.[1] ?? rulesResult.priority
-    ) as IntelligenceResponse['priority']
+    const llmPriority = (priorityMatch?.[1] ?? rulesResult.priority) as IntelligenceResponse['priority']
 
-    // Rules Engine priority cannot be downgraded
-    const finalPriority = escalate(priority, rulesResult.priority)
+    // Rules Engine priority cannot be downgraded by LLM
+    const finalPriority = escalate(llmPriority, rulesResult.priority)
 
     return {
       mode,
       priority: finalPriority,
-      risks: extractList('RISKS').length
-        ? extractList('RISKS')
-        : rulesResult.risks,
+      risks: extractList('RISKS').length ? extractList('RISKS') : rulesResult.risks,
       immediate_actions: extractList('IMMEDIATE'),
       short_term_actions: extractList('SHORT TERM'),
       mid_term_actions: extractList('MID TERM'),
@@ -300,7 +311,6 @@ function parseStructuredResponse(
       knowledgeSources: [],
     }
   } catch {
-    // Parse error fallback
     return {
       mode,
       priority: rulesResult.priority,
@@ -332,28 +342,25 @@ function buildSurvivalResponse(rulesResult: RulesResult): IntelligenceResponse {
   }
 }
 
+// ─── Priority string → smallint mapping (matches action_plans.priority schema) ─
+
+const PRIORITY_INT: Record<string, number> = {
+  CRITICAL: 4,
+  HIGH: 3,
+  MEDIUM: 2,
+  LOW: 1,
+}
+
 // ─── Main Handler ─────────────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
+  // 1. Auth via SSR cookie session (same pattern as all other routes)
+  const supabase = await createClient()
 
-  // 1. Authenticate
-  const authHeader = request.headers.get('Authorization')
-  if (!authHeader?.startsWith('Bearer ')) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' },
-    })
-  }
-
-  const token = authHeader.slice(7)
   const {
     data: { user },
     error: authError,
-  } = await supabase.auth.getUser(token)
+  } = await supabase.auth.getUser()
 
   if (authError || !user) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -371,7 +378,7 @@ export async function POST(request: NextRequest) {
         {
           status: 429,
           headers: { 'Content-Type': 'application/json', ...rateLimitHeaders(rl) },
-        },
+        }
       )
     }
   }
@@ -380,47 +387,44 @@ export async function POST(request: NextRequest) {
   let body: AnalyzeRequest
   try {
     body = await request.json()
-    if (!body.scenario || typeof body.scenario !== 'string') {
-      throw new Error('scenario required')
-    }
-    if (!body.scenarioType || typeof body.scenarioType !== 'string') {
-      throw new Error('scenarioType required')
-    }
+    if (!body.scenario || typeof body.scenario !== 'string') throw new Error('scenario required')
+    if (!body.scenarioType || typeof body.scenarioType !== 'string') throw new Error('scenarioType required')
   } catch (e) {
     return new Response(
-      JSON.stringify({
-        error: 'Bad Request',
-        detail: e instanceof Error ? e.message : 'Invalid body',
-      }),
+      JSON.stringify({ error: 'Bad Request', detail: e instanceof Error ? e.message : 'Invalid body' }),
       { status: 400, headers: { 'Content-Type': 'application/json' } }
     )
   }
 
   // 3. Fetch profile + family + inventory
+  // profiles.id = auth.uid(); family_members and resource_inventory use profile_id
   const [profileRes, familyRes, inventoryRes] = await Promise.all([
-    supabase.from('profiles').select('*').eq('user_id', user.id).single(),
-    supabase.from('family_members').select('*').eq('user_id', user.id),
-    supabase
-      .from('resource_inventory')
-      .select('*')
-      .eq('user_id', user.id)
-      .single(),
+    supabase.from('profiles').select('*').eq('id', user.id).single(),
+    supabase.from('family_members').select('*').eq('profile_id', user.id),
+    supabase.from('resource_inventory').select('*').eq('profile_id', user.id).maybeSingle(),
   ])
 
-  const profile: Profile = profileRes.data ?? {
-    id: user.id,
-    name: 'Unknown',
-    location: 'Unknown',
-  }
+  const profile: Profile = profileRes.data
+    ? { id: profileRes.data.id, name: profileRes.data.name, location: profileRes.data.location ?? '' }
+    : { id: user.id, name: 'Unknown', location: '' }
 
-  const family: FamilyMember[] = familyRes.data ?? []
+  const family: FamilyMember[] = (familyRes.data ?? []).map((m) => ({
+    id: m.id,
+    name: m.name,
+    age: m.age ?? null,
+    medical_conditions: m.medical_conditions ?? [],
+    mobility_impaired: m.mobility_impaired ?? false,
+    is_infant: m.is_infant ?? false,
+  }))
 
-  const inventory: ResourceInventory = inventoryRes.data ?? {
-    water_liters: 0,
-    food_days: 0,
-    fuel: 0,
-    battery: 0,
-    medical_kit: false,
+  const inv = inventoryRes.data
+  const inventory: ResourceInventory = {
+    water_liters: Number(inv?.water_liters) || 0,
+    food_days: Number(inv?.food_days) || 0,
+    fuel_liters: Number(inv?.fuel_liters) || 0,
+    battery_percent: Number(inv?.battery_percent) || 0,
+    has_medical_kit: Boolean(inv?.has_medical_kit),
+    has_communication_device: Boolean(inv?.has_communication_device),
   }
 
   const ctx: QueryContext = {
@@ -435,10 +439,7 @@ export async function POST(request: NextRequest) {
   const rulesResult = RulesEngine.evaluate(ctx)
 
   // 5. Knowledge retrieval
-  const knowledgeChunks = await getRelevantChunks(
-    body.scenario,
-    body.scenarioType
-  )
+  const knowledgeChunks = await getRelevantChunks(body.scenario, body.scenarioType)
 
   // 6. Build system prompt
   const systemPrompt = buildSystemPrompt(ctx, rulesResult, knowledgeChunks)
@@ -459,36 +460,29 @@ export async function POST(request: NextRequest) {
 
       const timeout = setTimeout(() => {
         timedOut = true
-        const survivalResponse = buildSurvivalResponse(rulesResult)
-        send({ done: true, response: survivalResponse })
+        send({ done: true, response: buildSurvivalResponse(rulesResult) })
         controller.close()
       }, TIMEOUT_MS)
 
       const tryCallLLM = async (attempt: number): Promise<boolean> => {
         try {
-          const anthropic = new Anthropic({
-            apiKey: process.env.ANTHROPIC_API_KEY,
-          })
+          const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
-          const stream = await anthropic.messages.stream({
+          const llmStream = await anthropic.messages.stream({
             model: 'claude-sonnet-4-20250514',
             max_tokens: 1500,
             system: systemPrompt,
             messages: [
               {
                 role: 'user',
-                content: `Emergency scenario: ${body.scenario}\nType: ${body.scenarioType}\n\nGenerate the action plan now.`,
+                content: `Cenário de emergência: ${body.scenario}\nTipo: ${body.scenarioType}\n\nGere o plano de ação agora.`,
               },
             ],
           })
 
-          for await (const event of stream) {
+          for await (const event of llmStream) {
             if (timedOut) return false
-
-            if (
-              event.type === 'content_block_delta' &&
-              event.delta.type === 'text_delta'
-            ) {
+            if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
               const token = event.delta.text
               fullText += token
               send({ token })
@@ -498,16 +492,12 @@ export async function POST(request: NextRequest) {
           return true
         } catch (err: unknown) {
           const status =
-            err instanceof Error && 'status' in err
-              ? (err as { status: number }).status
-              : 0
-
+            err instanceof Error && 'status' in err ? (err as { status: number }).status : 0
           // Rate limit: retry once after 1s
           if (status === 429 && attempt === 1) {
             await new Promise((r) => setTimeout(r, 1000))
             return tryCallLLM(2)
           }
-
           return false
         }
       }
@@ -520,42 +510,46 @@ export async function POST(request: NextRequest) {
 
       if (success && fullText) {
         finalResponse = parseStructuredResponse(fullText, 'CONNECTED', rulesResult)
-        finalResponse.knowledgeSources =
-          knowledgeChunks.length > 0
-            ? ['Knowledge Base (pgvector RAG)']
-            : ['Rules Engine (offline)']
+        finalResponse.knowledgeSources = knowledgeChunks.length > 0
+          ? ['Knowledge Base (pgvector RAG)']
+          : ['Rules Engine (offline)']
 
-        // 8. Save action plan (non-blocking, failure doesn't propagate)
+        // 8. Persist scenario + action plan (non-blocking; failure does not propagate)
         try {
-          const { data: plan } = await supabase
-            .from('action_plans')
-            .insert({
-              user_id: user.id,
-              priority: finalResponse.priority,
-              risks: finalResponse.risks,
-              plan_15min: finalResponse.immediate_actions,
-              plan_1h: finalResponse.short_term_actions,
-              plan_3h: finalResponse.mid_term_actions,
-              rules_applied: finalResponse.rulesApplied,
-              mode: finalResponse.mode,
-              scenario_description: body.scenario,
-              scenario_type: body.scenarioType,
-            })
+          const scenarioType = body.scenarioType.toUpperCase() as
+            | 'HURRICANE' | 'EARTHQUAKE' | 'FALLOUT' | 'PANDEMIC' | 'FIRE' | 'FLOOD' | 'GENERAL'
+
+          const { data: scenarioRow } = await supabase
+            .from('scenarios')
+            .insert({ profile_id: user.id, description: body.scenario, type: scenarioType })
             .select('id')
             .single()
 
-          if (plan?.id) {
-            finalResponse.action_plan_id = plan.id
+          if (scenarioRow?.id) {
+            const { data: plan } = await supabase
+              .from('action_plans')
+              .insert({
+                scenario_id: scenarioRow.id,
+                mode: finalResponse.mode,
+                priority: PRIORITY_INT[finalResponse.priority] ?? 1,
+                risks: finalResponse.risks,
+                immediate_actions: finalResponse.immediate_actions,
+                short_term_actions: finalResponse.short_term_actions,
+                mid_term_actions: finalResponse.mid_term_actions,
+                rules_applied: finalResponse.rulesApplied,
+              })
+              .select('id')
+              .single()
+
+            if (plan?.id) finalResponse.action_plan_id = plan.id
           }
         } catch {
-          // Log only — do not fail the response
           console.error('[EOS] Failed to persist action_plan')
         }
       } else {
         finalResponse = buildSurvivalResponse(rulesResult)
       }
 
-      // 9. Send final response
       send({ done: true, response: finalResponse })
       controller.close()
     },

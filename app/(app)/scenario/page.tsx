@@ -398,15 +398,10 @@ export default function ScenarioPage() {
     setResponse(null)
 
     try {
-      const authToken = typeof window !== 'undefined'
-        ? localStorage.getItem('supabase_token') ?? ''
-        : ''
-
       const res = await fetch('/api/analyze', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${authToken}`,
         },
         body: JSON.stringify({
           scenario: description,

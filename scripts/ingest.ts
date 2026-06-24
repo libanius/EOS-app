@@ -1,106 +1,38 @@
 /**
- * EOS — Knowledge Base Ingestion Script
+ * EOS — ingest.ts
  *
- * Pipeline:
- *   docs/*.pdf  →  text extraction  →  chunking  →  OpenAI embeddings  →  Supabase knowledge_base
+ * Reads pre-converted text files from docs/text/, chunks each one,
+ * generates OpenAI embeddings in batches, and upserts into knowledge_base.
+ *
+ * Run pdf_to_text.py first to convert PDFs → text files.
  *
  * Usage:
  *   npm run ingest
- *
- * Required env vars (add to .env.local):
- *   NEXT_PUBLIC_SUPABASE_URL
- *   SUPABASE_SERVICE_ROLE_KEY     ← needed to bypass RLS for inserts
- *   OPENAI_API_KEY
- *
- * Place PDFs in the docs/ folder. File name → scenario_type mapping:
- *   fema*          → GENERAL
- *   red*cross*     → GENERAL
- *   cdc*           → PANDEMIC
- *   bible*         → GENERAL
- *   psych*         → GENERAL
- *   hurricane*     → HURRICANE
- *   earthquake*    → EARTHQUAKE
- *   flood*         → FLOOD
- *   fire*          → FIRE
- *   fallout*       → FALLOUT
- *   (default)      → GENERAL
  */
 
 import * as fs from 'fs'
 import * as path from 'path'
 import * as dotenv from 'dotenv'
 
-// Load .env.local before anything else
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') })
 
 import { createClient } from '@supabase/supabase-js'
 import OpenAI from 'openai'
-// pdf-parse is a CommonJS module
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const pdfParse = require('pdf-parse') as (
-  dataBuffer: Buffer
-) => Promise<{ text: string }>
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
-const DOCS_DIR = path.resolve(process.cwd(), 'docs')
-const CHUNK_SIZE = 1500        // characters per chunk (≈ 300–400 tokens)
-const CHUNK_OVERLAP = 200      // character overlap between consecutive chunks
+const TEXT_DIR       = path.resolve(process.cwd(), 'docs', 'text')
+const CHUNK_SIZE     = 1500
+const CHUNK_OVERLAP  = 200
 const EMBEDDING_MODEL = 'text-embedding-3-small'
-const EMBEDDING_BATCH = 20     // chunks per OpenAI embedding batch call
-const UPSERT_BATCH = 50        // rows per Supabase upsert call
+const EMBEDDING_BATCH = 20
+const UPSERT_BATCH   = 50
 
 type ScenarioTypeEnum =
-  | 'HURRICANE'
-  | 'EARTHQUAKE'
-  | 'FALLOUT'
-  | 'PANDEMIC'
-  | 'FIRE'
-  | 'FLOOD'
-  | 'GENERAL'
+  | 'HURRICANE' | 'EARTHQUAKE' | 'FALLOUT'
+  | 'PANDEMIC'  | 'FIRE'       | 'FLOOD' | 'GENERAL'
 
-// ─── Filename → scenario_type ─────────────────────────────────────────────────
-
-function inferScenarioType(filename: string): ScenarioTypeEnum {
-  const lower = filename.toLowerCase()
-  if (/hurricane/.test(lower)) return 'HURRICANE'
-  if (/earthquake/.test(lower)) return 'EARTHQUAKE'
-  if (/fallout|nuclear|radiation/.test(lower)) return 'FALLOUT'
-  if (/pandemic|cdc|covid|virus/.test(lower)) return 'PANDEMIC'
-  if (/fire/.test(lower)) return 'FIRE'
-  if (/flood/.test(lower)) return 'FLOOD'
-  return 'GENERAL'
-}
-
-// ─── Text chunking ────────────────────────────────────────────────────────────
-
-function chunkText(text: string, chunkSize: number, overlap: number): string[] {
-  // Normalise whitespace
-  const clean = text.replace(/\s+/g, ' ').trim()
-  if (clean.length === 0) return []
-
-  const chunks: string[] = []
-  let start = 0
-
-  while (start < clean.length) {
-    const end = Math.min(start + chunkSize, clean.length)
-    // Try to break at a sentence or paragraph boundary
-    let breakAt = end
-    if (end < clean.length) {
-      const searchFrom = Math.max(start, end - 200)
-      const idx = clean.lastIndexOf('. ', end)
-      if (idx > searchFrom) breakAt = idx + 1
-    }
-    const chunk = clean.slice(start, breakAt).trim()
-    if (chunk.length > 50) chunks.push(chunk) // skip tiny leftovers
-    start = breakAt - overlap
-    if (start <= 0 || start >= clean.length) break
-  }
-
-  return chunks
-}
-
-// ─── Validation ───────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function validateEnv() {
   const required = [
@@ -110,12 +42,105 @@ function validateEnv() {
   ]
   const missing = required.filter((k) => !process.env[k])
   if (missing.length > 0) {
-    console.error(
-      `\n❌  Missing environment variables:\n   ${missing.join('\n   ')}\n` +
-        `\nAdd them to .env.local and re-run.\n`
-    )
+    console.error(`\n❌  Missing environment variables:\n   ${missing.join('\n   ')}\n`)
     process.exit(1)
   }
+}
+
+function inferScenarioType(filename: string): ScenarioTypeEnum {
+  const lower = filename.toLowerCase()
+  if (/hurricane/.test(lower))                 return 'HURRICANE'
+  if (/earthquake/.test(lower))                return 'EARTHQUAKE'
+  if (/fallout|nuclear|radiation/.test(lower)) return 'FALLOUT'
+  if (/pandemic|cdc|covid|virus/.test(lower))  return 'PANDEMIC'
+  if (/fire/.test(lower))                      return 'FIRE'
+  if (/flood/.test(lower))                     return 'FLOOD'
+  return 'GENERAL'
+}
+
+function chunkText(text: string): string[] {
+  const clean = text.replace(/\s+/g, ' ').trim()
+  if (clean.length === 0) return []
+
+  const chunks: string[] = []
+  let start = 0
+
+  while (start < clean.length) {
+    const end = Math.min(start + CHUNK_SIZE, clean.length)
+    let breakAt = end
+    if (end < clean.length) {
+      const idx = clean.lastIndexOf('. ', end)
+      if (idx > Math.max(start, end - 200)) breakAt = idx + 1
+    }
+    const chunk = clean.slice(start, breakAt).trim()
+    if (chunk.length > 50) chunks.push(chunk)
+    start = breakAt - CHUNK_OVERLAP
+    if (start <= 0 || start >= clean.length) break
+  }
+
+  return chunks
+}
+
+// ─── Process one text file ────────────────────────────────────────────────────
+
+async function processFile(
+  filePath: string,
+  openai: OpenAI,
+  supabase: ReturnType<typeof createClient>
+): Promise<{ inserted: number; chunks: number }> {
+  const filename     = path.basename(filePath)
+  const sourceLabel  = filename.replace(/\.txt$/i, '')
+  const scenarioType = inferScenarioType(sourceLabel)
+
+  const rawText = fs.readFileSync(filePath, 'utf-8')
+  if (!rawText.trim()) {
+    console.warn(`   ⚠️  Empty file — skipping.`)
+    return { inserted: 0, chunks: 0 }
+  }
+
+  const chunks = chunkText(rawText)
+  console.log(`   ✂️  ${chunks.length} chunks  [${scenarioType}]`)
+
+  let inserted = 0
+
+  for (let i = 0; i < chunks.length; i += EMBEDDING_BATCH) {
+    const batch = chunks.slice(i, i + EMBEDDING_BATCH)
+    const to    = Math.min(i + EMBEDDING_BATCH, chunks.length)
+    process.stdout.write(`   🔢  ${i + 1}–${to} / ${chunks.length} ...`)
+
+    let embRes
+    try {
+      embRes = await openai.embeddings.create({ model: EMBEDDING_MODEL, input: batch })
+    } catch (err) {
+      console.error(`\n   ❌  Embedding failed: ${err}`)
+      continue
+    }
+
+    // Build rows for this batch only, then immediately upsert
+    const rows = embRes.data.map((item, idx) => ({
+      content:       batch[idx],
+      embedding:     item.embedding,
+      source:        sourceLabel,
+      scenario_type: scenarioType,
+      chunk_index:   i + idx,
+    }))
+
+    for (let j = 0; j < rows.length; j += UPSERT_BATCH) {
+      const { error } = await supabase
+        .from('knowledge_base')
+        .insert(rows.slice(j, j + UPSERT_BATCH))
+
+      if (error) {
+        console.error(`\n   ❌  Supabase error: ${error.message}`)
+      } else {
+        inserted += Math.min(UPSERT_BATCH, rows.length - j)
+      }
+    }
+
+    console.log(` ✅`)
+  }
+
+  return { inserted, chunks: chunks.length }
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
@@ -123,7 +148,31 @@ function validateEnv() {
 async function main() {
   validateEnv()
 
-  // ── Clients ──
+  if (!fs.existsSync(TEXT_DIR)) {
+    console.error(`\n❌  docs/text/ folder not found.`)
+    console.error(`    Run first:  python3 scripts/pdf_to_text.py\n`)
+    process.exit(1)
+  }
+
+  const textFiles = fs
+    .readdirSync(TEXT_DIR)
+    .filter((f) => f.toLowerCase().endsWith('.txt'))
+    .sort()
+    .map((f) => path.join(TEXT_DIR, f))
+
+  if (textFiles.length === 0) {
+    console.warn('\n⚠️  No .txt files found in docs/text/.')
+    console.warn('    Run first:  python3 scripts/pdf_to_text.py\n')
+    return
+  }
+
+  console.log(`\n📚  Found ${textFiles.length} text file(s) to ingest:`)
+  textFiles.forEach((f) => {
+    const kb = (fs.statSync(f).size / 1024).toFixed(0)
+    console.log(`   • ${path.basename(f).padEnd(54)} ${kb.padStart(6)} KB`)
+  })
+  console.log()
+
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -131,126 +180,37 @@ async function main() {
     { auth: { persistSession: false } }
   )
 
-  // ── Discover PDFs ──
-  if (!fs.existsSync(DOCS_DIR)) {
-    console.error(`\n❌  docs/ folder not found at ${DOCS_DIR}`)
-    console.error(
-      '   Create it and add your PDF files (FEMA, Red Cross, CDC, Bible, Psychological).\n'
-    )
-    process.exit(1)
-  }
-
-  const pdfFiles = fs
-    .readdirSync(DOCS_DIR)
-    .filter((f) => f.toLowerCase().endsWith('.pdf'))
-    .map((f) => path.join(DOCS_DIR, f))
-
-  if (pdfFiles.length === 0) {
-    console.warn(
-      '\n⚠️  No PDF files found in docs/. Nothing to ingest.\n' +
-        '   Drop your PDFs there and run npm run ingest again.\n'
-    )
-    return
-  }
-
-  console.log(`\n📚  Found ${pdfFiles.length} PDF(s) to ingest:`)
-  pdfFiles.forEach((f) => console.log(`   • ${path.basename(f)}`))
-  console.log()
-
-  let totalChunks = 0
   let totalInserted = 0
+  let totalChunks   = 0
+  const failed: string[] = []
 
-  for (const pdfPath of pdfFiles) {
-    const filename = path.basename(pdfPath)
-    const scenarioType = inferScenarioType(filename)
-    const sourceLabel = filename.replace(/\.pdf$/i, '')
+  for (let i = 0; i < textFiles.length; i++) {
+    const filePath = textFiles[i]
+    const label    = path.basename(filePath)
+    console.log(`\n─── [${i + 1}/${textFiles.length}] ${label}`)
 
-    console.log(`\n📄  Processing: ${filename}  [${scenarioType}]`)
-
-    // ── Extract text ──
-    let rawText = ''
     try {
-      const buffer = fs.readFileSync(pdfPath)
-      const parsed = await pdfParse(buffer)
-      rawText = parsed.text
+      const { inserted, chunks } = await processFile(filePath, openai, supabase)
+      totalInserted += inserted
+      totalChunks   += chunks
+      console.log(`   ✅  ${inserted} / ${chunks} chunks stored.`)
     } catch (err) {
-      console.error(`   ⚠️  Failed to parse PDF: ${err}`)
-      continue
+      console.error(`   ❌  FAILED: ${err}`)
+      failed.push(label)
     }
-
-    if (!rawText.trim()) {
-      console.warn('   ⚠️  No text extracted — scanned image PDF? Skipping.')
-      continue
-    }
-
-    // ── Chunk ──
-    const chunks = chunkText(rawText, CHUNK_SIZE, CHUNK_OVERLAP)
-    console.log(`   ✂️  ${chunks.length} chunks created`)
-    totalChunks += chunks.length
-
-    // ── Embed in batches ──
-    const rows: {
-      content: string
-      embedding: number[]
-      source: string
-      scenario_type: ScenarioTypeEnum
-      chunk_index: number
-    }[] = []
-
-    for (let i = 0; i < chunks.length; i += EMBEDDING_BATCH) {
-      const batch = chunks.slice(i, i + EMBEDDING_BATCH)
-      process.stdout.write(
-        `   🔢  Embedding chunks ${i + 1}–${Math.min(i + EMBEDDING_BATCH, chunks.length)} / ${chunks.length}...`
-      )
-
-      try {
-        const embRes = await openai.embeddings.create({
-          model: EMBEDDING_MODEL,
-          input: batch,
-        })
-
-        embRes.data.forEach((item, idx) => {
-          rows.push({
-            content: batch[idx],
-            embedding: item.embedding,
-            source: sourceLabel,
-            scenario_type: scenarioType,
-            chunk_index: i + idx,
-          })
-        })
-        console.log(' ✅')
-      } catch (err) {
-        console.error(`\n   ❌  Embedding batch failed: ${err}`)
-        continue
-      }
-    }
-
-    // ── Upsert into Supabase ──
-    console.log(`   💾  Inserting ${rows.length} rows into knowledge_base...`)
-
-    for (let i = 0; i < rows.length; i += UPSERT_BATCH) {
-      const batch = rows.slice(i, i + UPSERT_BATCH)
-      const { error } = await supabase.from('knowledge_base').insert(batch)
-
-      if (error) {
-        console.error(
-          `   ❌  Supabase insert error (chunk ${i}–${i + batch.length}):`,
-          error.message
-        )
-      } else {
-        totalInserted += batch.length
-        process.stdout.write('.')
-      }
-    }
-    console.log(` done`)
   }
 
-  console.log(
-    `\n✅  Ingestion complete — ${totalInserted} / ${totalChunks} chunks stored in knowledge_base.\n`
-  )
+  console.log('\n' + '═'.repeat(60))
+  console.log(`✅  Ingestion complete.`)
+  console.log(`    ${totalInserted} chunks stored across ${textFiles.length - failed.length} file(s).`)
+  if (failed.length > 0) {
+    console.log(`\n⚠️  Failed files (${failed.length}):`)
+    failed.forEach((f) => console.log(`   • ${f}`))
+  }
+  console.log('═'.repeat(60) + '\n')
 }
 
 main().catch((err) => {
-  console.error('\n❌  Ingest script crashed:', err)
+  console.error('\n❌  Ingest crashed:', err)
   process.exit(1)
 })
