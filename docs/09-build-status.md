@@ -10,9 +10,9 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Phase 1 — MVP Hardening |
-| **Last Completed Task** | P1-T06: End-to-end test — CONNECTED mode verified in production |
+| **Last Completed Task** | P1-T09: Bottom navigation + UX flow fix |
 | **Next Task** | P1-T03: Add PWA icons (icon-192.png, icon-512.png) |
-| **Build** | ✅ Passing — `npm run build` clean as of commit `e4f4998` |
+| **Build** | ✅ Passing — `npm run build` clean as of commit `72ac92a` |
 | **Vercel** | ✅ Deployed — auto-deploys on push to `main` |
 | **Supabase** | ✅ Healthy — project ref `alxurmgpyxjhvnliivbf` |
 
@@ -103,7 +103,7 @@ Steps:
 | Issue | Severity | File | Status |
 |---|---|---|---|
 | PWA icons missing (icon-192.png, icon-512.png) | MEDIUM | `public/` | P1-T03 — next task |
-| Landing page is a placeholder | MEDIUM | `app/page.tsx` | P1-T04 |
+| Landing page | ✅ DONE | `app/page.tsx` | Pitch + CTAs deployed |
 | Offline write sync not implemented | MEDIUM | `lib/offline-storage.ts` | Writes to IndexedDB not synced back to Supabase on reconnect |
 | LOCAL_AI mode not implemented | MEDIUM | `app/api/analyze/route.ts` | Phase 2 |
 | React Native project not initialized | MEDIUM | `mobile/` | `/mobile/` has template files but `npx react-native init` not run — Phase 2 |
@@ -152,3 +152,26 @@ To add a new knowledge source: drop PDF in `docs/`, re-run both commands.
 ---
 
 *Update this file after every session. Mark tasks complete. Document what changed and what's next.*
+
+## What Was Done — Session 2026-06-24 (cont.)
+
+**Landing page (P1-T04):**
+- `app/page.tsx` rewritten: brand, headline, 4 feature bullets, CTAs (signup + login)
+- Server component: redirects authenticated users to `/scenario`
+- Auth redirect URLs fixed: `getSiteUrl()` now uses `VERCEL_PROJECT_PRODUCTION_URL` (auto-set by Vercel)
+- Supabase URL Config corrected: Site URL = `https://eos-app-fawn.vercel.app`, added redirect wildcard
+
+**Bottom navigation + UX fix (P1-T09):**
+- `components/BottomNav.tsx` created: 5-tab nav (Cenário/Família/Recursos/Checklist/Círculos)
+  - SVG icons, active state via `usePathname()`, 56px touch targets, safe-area inset
+- `app/(app)/layout.tsx` created: shared layout for all authenticated pages
+- `lib/auth/actions.ts`: post-login redirect changed from `/family` → `/scenario`
+- `app/globals.css` `.nb`: improved touch targets (56px min-height, touch-action: manipulation)
+
+**Git hygiene:**
+- `public/sw.js` and `public/workbox-*.js` removed from git tracking (Vercel regenerates on each build)
+- `EOS documents/` removed from git tracking (nested git repo, personal docs — not app code)
+- `supabase/.temp/` added to `.gitignore`
+- All three added to `.gitignore`
+
+---

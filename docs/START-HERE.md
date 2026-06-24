@@ -36,8 +36,9 @@ Full details: `docs/09-build-status.md`
 | Checklist generation | ✅ Working |
 | Circles (family groups) | ✅ Working |
 | PWA / offline SURVIVAL mode | ✅ Working |
+| Bottom navigation (5 abas) | ✅ Working |
 | PWA icons (192px, 512px) | ❌ Missing — P1-T03 |
-| Landing page | ❌ Placeholder only — P1-T04 |
+| Landing page (pitch + CTAs) | ✅ Working |
 | LOCAL_AI mode | ❌ Phase 2 |
 | React Native app | ❌ Phase 2 |
 
