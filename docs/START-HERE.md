@@ -1,66 +1,117 @@
-# START HERE — Session Orientation
+# START HERE — EOS Session Orientation
 
-> Read this at the start of every session, after AGENTS.md.
+> Read this at the start of every new session before opening any implementation file.
 
 ---
 
 ## What is EOS?
 
-EOS (Emergency Operating System) is a family emergency preparedness app.
-It helps a family head make the right decisions in the first 15 minutes of a crisis.
+**EOS — Emergency Operating System** is a survival intelligence platform for families facing any emergency. It transforms chaos into prioritized action, and it works with or without internet.
 
-**Core loop:** Describe your emergency → Get a prioritized action plan → Execute.
+EOS runs as a **Progressive Web App (Next.js 14)** backed by **Supabase** for auth, data, and vector search, and calls the **Claude API (Anthropic)** for AI reasoning. A **React Native mobile app** is in preparation but not yet initialized.
 
 ---
 
 ## Current Status
 
-| Area | Status |
+| Field | Value |
 |---|---|
-| Auth (signup/login/recovery) | ✅ Implemented |
-| Onboarding (profile + family) | ✅ Implemented |
-| Resource inventory | ✅ Implemented |
-| Decision Engine (CONNECTED mode) | ✅ Fixed 2026-06-23 |
-| Knowledge base (RAG) | ✅ Ingested 2026-06-23 — 3850 chunks |
-| Checklist generation | ✅ Implemented |
-| Circles (family groups) | ✅ Implemented |
-| PWA / offline SURVIVAL mode | ✅ Implemented |
-| LOCAL_AI mode (llama.rn) | ❌ Not implemented |
-| React Native app | ❌ Not initialized |
-| Landing page | ❌ Placeholder only |
-| PWA icons | ❌ Missing |
+| **Phase** | Phase 1 — MVP Hardening |
+| **Current Task** | P1-T03: Add PWA icons |
+| **Last Updated** | 2026-06-24 |
 
----
+Full details: `docs/09-build-status.md`
 
-## Key Codebase Entry Points
+### What is working in production (verified 2026-06-24)
 
-| What | Where |
+| Feature | Status |
 |---|---|
-| Decision Engine API | `app/api/analyze/route.ts` |
-| Rules Engine | `lib/rules-engine.ts` |
-| RAG knowledge search | `lib/knowledge.ts` |
-| Supabase server client | `lib/supabase/server.ts` |
-| Scenario UI | `app/(app)/scenario/page.tsx` |
-| Ingest pipeline | `scripts/pdf_to_text.py` + `scripts/ingest.mjs` |
+| Auth (signup/login/recovery) | ✅ Working |
+| Onboarding (profile + family) | ✅ Working |
+| Resource inventory | ✅ Working |
+| Decision Engine — CONNECTED mode (Claude + RAG) | ✅ Working |
+| Knowledge base (3887 chunks, 14 sources) | ✅ Ingested |
+| pgvector RAG (`match_documents` RPC) | ✅ Working |
+| Scenarios + action_plans persist | ✅ Working |
+| Checklist generation | ✅ Working |
+| Circles (family groups) | ✅ Working |
+| PWA / offline SURVIVAL mode | ✅ Working |
+| PWA icons (192px, 512px) | ❌ Missing — P1-T03 |
+| Landing page | ❌ Placeholder only — P1-T04 |
+| LOCAL_AI mode | ❌ Phase 2 |
+| React Native app | ❌ Phase 2 |
 
 ---
 
-## Tech Stack
+## Orientation Checklist (run at session start)
 
-- **Framework**: Next.js 14 App Router, TypeScript strict
-- **Database**: Supabase (PostgreSQL + pgvector + RLS)
-- **Auth**: @supabase/ssr (SSR cookies — NOT localStorage tokens)
-- **AI**: OpenAI (embeddings: text-embedding-3-small, chat: gpt-4o)
-- **Hosting**: Vercel (auto-deploy on push to main)
-- **PWA**: next-pwa with service worker
-- **Rate limiting**: Upstash Redis (optional, falls back to in-memory)
+1. Read `AGENTS.md` — understand the SDD rules
+2. Read `docs/09-build-status.md` — know exactly what is done and what is next
+3. Read `docs/07-roadmap.md` — know what phase and task you're in
+4. Read `docs/11-product-memory.md` — know the context that doesn't live in the code
+5. Check Supabase project is not paused (supabase.com → project `alxurmgpyxjhvnliivbf`)
+6. Then, and only then, open implementation files
 
 ---
 
-## Orientation Checklist
+## Key Entry Points in the Codebase
 
-Before starting work:
-- [ ] Read `docs/09-build-status.md` — what is the current task?
-- [ ] Read `docs/07-roadmap.md` — what phase are we in?
-- [ ] Read `docs/11-product-memory.md` — any non-obvious context?
-- [ ] Check Supabase project is not paused (supabase.com dashboard)
+| Path | Description |
+|---|---|
+| `app/page.tsx` | Root landing page (currently a placeholder) |
+| `app/layout.tsx` | Root layout, PWA metadata, viewport config |
+| `app/(app)/` | All authenticated app pages |
+| `app/(app)/scenario/page.tsx` | Decision Engine UI (AI streaming action plans) |
+| `app/(app)/inventory/page.tsx` | Resource inventory + readiness score |
+| `app/(app)/family/page.tsx` | Family member management |
+| `app/(app)/checklist/page.tsx` | Preparedness checklist |
+| `app/(app)/circles/page.tsx` | Community resilience groups |
+| `app/api/analyze/route.ts` | Main AI orchestration endpoint (streaming SSE) |
+| `lib/knowledge.ts` | RAG retrieval via pgvector (`match_documents` RPC) |
+| `lib/offline-storage.ts` | IndexedDB offline cache |
+| `lib/rate-limit.ts` | Upstash Redis rate limiting (falls back to in-memory) |
+| `middleware.ts` | Auth route protection |
+| `eos_schema.sql` | Supabase database schema (canonical reference) |
+| `supabase/migrations/` | Applied migrations (most recent: 20260624) |
+| `scripts/pdf_to_text.py` | Step 1 of ingest: PDFs → text files |
+| `scripts/ingest.mjs` | Step 2 of ingest: text files → knowledge_base embeddings |
+| `mobile/` | React Native templates (NOT a runnable RN project yet) |
+
+---
+
+## Tech Stack Summary
+
+- **Framework**: Next.js 14 (App Router, TypeScript strict)
+- **Database + Auth**: Supabase (PostgreSQL + pgvector + RLS)
+- **AI (Reasoning)**: Anthropic Claude API (`claude-sonnet-4-20250514`)
+- **AI (Embeddings/RAG)**: OpenAI `text-embedding-3-small` via pgvector
+- **Offline Storage**: IndexedDB via `idb`
+- **PWA**: `next-pwa` with service worker and runtime caching
+- **Rate Limiting**: Upstash Redis (sliding window, 10 req/60s)
+- **Error Monitoring**: Sentry (`@sentry/nextjs`)
+- **Mobile (planned)**: React Native bare workflow + llama.rn local AI
+
+---
+
+## Intelligence Modes
+
+EOS operates in three modes — a fallback chain, not feature toggles:
+
+| Mode | Description | Status |
+|---|---|---|
+| `CONNECTED` | Full Claude API + pgvector RAG + Rules Engine | ✅ Working |
+| `LOCAL_AI` | On-device LLM via llama.rn (mobile only) | ❌ Not implemented |
+| `SURVIVAL` | Rules Engine only — fully offline, no AI | ✅ Always available |
+
+---
+
+## What NOT to Do at Session Start
+
+- Do not open implementation files before reading the docs above
+- Do not add features that are not on the roadmap
+- Do not change the data model without reading `docs/06-data-model.md` first
+- Do not start a new task without confirming the current one is complete
+
+---
+
+*For the full SDD protocol, see `AGENTS.md`.*

@@ -1,7 +1,7 @@
 # 09 — Build Status
 
 > The single most important file for resuming a session. Read this first after AGENTS.md.
-> Last updated: 2026-06-23
+> Last updated: 2026-06-24
 
 ---
 
@@ -10,10 +10,11 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Phase 1 — MVP Hardening |
-| **Current Task** | P1-T02: Knowledge base ingestion — ✅ COMPLETE |
-| **Task Status** | ✅ COMPLETE |
-| **Product code changes** | scripts/ingest.mjs (new), scripts/pdf_to_text.py (new) |
-| **Next Task** | P1-T06: End-to-end test — verify CONNECTED mode works in production |
+| **Last Completed Task** | P1-T06: End-to-end test — CONNECTED mode verified in production |
+| **Next Task** | P1-T03: Add PWA icons (icon-192.png, icon-512.png) |
+| **Build** | ✅ Passing — `npm run build` clean as of commit `e4f4998` |
+| **Vercel** | ✅ Deployed — auto-deploys on push to `main` |
+| **Supabase** | ✅ Healthy — project ref `alxurmgpyxjhvnliivbf` |
 
 ---
 
@@ -32,69 +33,83 @@
 
 | Task | Status | Completed |
 |---|---|---|
-| P1-T01: Fix Decision Engine | ✅ COMPLETE | 2026-06-23 |
-| P1-T02: Ingest knowledge base | ✅ COMPLETE | 2026-06-23 |
-| P1-T06: End-to-end test | PENDING | — |
+| P1-T01: Fix Decision Engine (auth, field names, schema, persist) | ✅ COMPLETE | 2026-06-23 |
+| P1-T02: Ingest knowledge base (14 PDFs → 3887 chunks) | ✅ COMPLETE | 2026-06-23 |
+| P1-T06: End-to-end test — CONNECTED mode verified in production | ✅ COMPLETE | 2026-06-24 |
+| P1-T03: Add PWA icons | NEXT UP | — |
+| P1-T04: Landing page | DRAFT | — |
+| P1-T05: Language strategy | DRAFT | — |
+| P1-T07: Verify Sentry in production | DRAFT | — |
+| P1-T08: Rate limit validation (Upstash) | DRAFT | — |
 
 ---
 
-## What Was Done This Session (2026-06-23, continued)
+## What Was Done — Session 2026-06-23
+
+**P1-T01 — Decision Engine fixed:**
+- `app/api/analyze/route.ts`: replaced Bearer token auth with SSR cookie client (`@/lib/supabase/server`)
+- Fixed all DB field names: `profiles.id`, `family_members.profile_id`, `resource_inventory.profile_id`, `fuel_liters`, `battery_percent`, `has_medical_kit`
+- Fixed `action_plans` persist: creates `scenarios` row first (required FK), maps priority string → smallint (CRITICAL=4, HIGH=3, MEDIUM=2, LOW=1)
+- `app/(app)/scenario/page.tsx`: removed manual Authorization header — cookies are automatic for same-origin fetch
 
 **P1-T02 — Knowledge base ingested:**
+- Two-step pipeline: `python3 scripts/pdf_to_text.py` → `node scripts/ingest.mjs`
+- 3850 chunks ingested from 14 PDFs (3887 total including 37 pre-existing rows)
+- Root cause of all past OOM: `chunkText()` infinite loop when at end of file — fixed with `if (breakAt >= clean.length) break`
 
-The original `scripts/ingest.ts` (using `pdf-parse` + tsx) had two compounding failures:
-1. `pdf-parse` loaded entire PDFs into V8 heap — OOM on SAS (34MB) and John Seymour (26MB)
-2. `chunkText()` had an infinite loop bug: when `breakAt >= clean.length`, `nextStart = breakAt - CHUNK_OVERLAP` never advanced past the last window, creating millions of duplicate chunks and filling 4GB of heap even on 2KB files
-3. The tsx/openai-v6 stack consumed 2-4GB of heap just during module compilation (openai package = 13MB of JS)
+**App Spine installed:**
+- `AGENTS.md` + all 11 `/docs/` files created and committed
+- `progress/index.html` stakeholder dashboard created
 
-**Final pipeline (two steps):**
+---
 
-Step 1 — `python3 scripts/pdf_to_text.py`
-- Uses PyMuPDF (fitz) to extract text page-by-page
-- Saves 14 `.txt` files to `docs/text/` (total ~4MB vs 94MB of PDFs)
-- One-time operation; only re-run if PDFs change
+## What Was Done — Session 2026-06-24
 
-Step 2 — `npm run ingest`  (runs `node scripts/ingest.mjs`)
-- Plain ESM JavaScript — no tsx, no openai SDK, no supabase-js SDK
-- Uses native Node `fetch` for both OpenAI Embeddings API and Supabase REST API
-- Fixed `chunkText`: added `if (breakAt >= clean.length) break` to prevent infinite loop
-- Chunks incrementally (EMBEDDING_BATCH=20), upserts immediately — no memory accumulation
+**Build errors fixed (3 issues):**
+1. `app/api/analyze/route.ts` line 1: `import { NextRequest }` → `import type { NextRequest }` (TypeScript strict type-only import rule)
+2. `tsconfig.json`: added `"scripts"` to `exclude` array — scripts/ contains Node CLI tools, not app code; was causing type errors
+3. Removed empty `node_modules/@types/` directories with spaces in names (`eslint 2`, `estree 2`, `glob 2`, `json-schema 2`) — created by npm's `typesVersions` resolution, caused TS2688 phantom type errors. Also added `"typeRoots": ["./node_modules/@types"]` to prevent recurrence.
 
-**Result:** 3850 chunks stored across 14 files. One batch in SAMHSA_Tips skipped (20 chunks with `\u0000` null bytes that Postgres rejects — non-critical).
+**Supabase schema migration applied:**
+- Created and applied `supabase/migrations/20260624000000_missing_tables.sql`
+- Creates: `resource_inventory`, `scenarios`, `action_plans` tables with RLS policies
+- Creates: `match_documents` pgvector RPC — this was missing; without it RAG silently failed and app always fell back to SURVIVAL mode
 
-**Supabase project was paused** (free tier, idle > 1 week). Resumed manually from dashboard before ingest succeeded. Keep in mind for future sessions.
+**End-to-end test (P1-T06) — verified via automated test against production Supabase:**
+- `match_documents` RPC: ✅ returns FEMA/Red Cross chunks with real similarity scores (0.5–0.53 for flood query)
+- Profile + family: ✅ Paulo Libanio Neto with 3 family members exist in DB
+- `scenarios` insert: ✅ working
+- `action_plans` insert: ✅ working
+- Knowledge base count: ✅ 3887 chunks
 
 ---
 
 ## What Is Next
 
-**P1-T06: End-to-end test — verify CONNECTED mode works in production**
+**P1-T03: Add PWA icons**
 
-Deploy to Vercel and manually verify:
-1. Sign up → onboarding → add family member → set inventory → go to Scenario
-2. Describe a scenario, click Generate
-3. Confirm the response badge shows `CONNECTED` (not `SURVIVAL`)
-4. Confirm knowledge sources are listed (SAS, Red Cross, CDC, etc.)
-5. Confirm action plan is persisted in Supabase (`action_plans` table has a new row)
+`public/manifest.json` references `icon-192.png` and `icon-512.png` but neither file exists in `/public/`. This causes install-to-homescreen to show a blank icon on some devices.
 
-Also verify in Supabase SQL editor: `SELECT COUNT(*) FROM knowledge_base;` → should return 3850.
+Steps:
+1. Create or source a 512×512 PNG icon for EOS (shield or radar symbol — must read at 48px)
+2. Resize to 192×192 and 512×512
+3. Save both as `/public/icon-192.png` and `/public/icon-512.png`
+4. Verify `public/manifest.json` icon references match the filenames
 
 ---
 
-## Known Issues Found During Audit
+## Known Issues
 
-| Issue | Severity | File | Notes |
+| Issue | Severity | File | Status |
 |---|---|---|---|
-| ~~`action_plans.priority` schema mismatch~~ | ~~HIGH~~ | `app/api/analyze/route.ts` | FIXED 2026-06-23 |
-| ~~Knowledge base empty~~ | ~~HIGH~~ | `lib/knowledge.ts` | FIXED 2026-06-23 — 3850 chunks ingested |
-| SAMHSA_Tips 20 chunks skipped | LOW | `docs/text/SAMHSA_Tips_for_Survivors_Managing_Stress.txt` | Null bytes (\u0000) in extracted text; 49/69 chunks stored, non-critical |
-| `icon-192.png` and `icon-512.png` missing | LOW | `public/manifest.json` | Referenced but not found in `/public/` |
-| Landing page is a placeholder | MEDIUM | `app/page.tsx` | Text says "Foundation ready. Auth and database next." — not suitable for users |
-| Offline write sync not implemented | MEDIUM | `lib/offline-storage.ts` | Writes to IndexedDB are not synced back to Supabase on reconnect |
-| LOCAL_AI mode not implemented | MEDIUM | `app/api/analyze/route.ts` | Mode type exists but no llama.rn integration |
-| `OPENAI_MODEL=gpt-5` in .env.example | LOW | `.env.example` | gpt-5 does not exist as of 2026-06-23; likely meant gpt-4o or similar |
-| React Native project not initialized | MEDIUM | `mobile/` | `/mobile/` has template files but `npx react-native init` not run |
-| Supabase free tier auto-pauses | MEDIUM | — | Project paused after ~1 week idle. Must resume manually from dashboard before any ingest or backend work. |
+| PWA icons missing (icon-192.png, icon-512.png) | MEDIUM | `public/` | P1-T03 — next task |
+| Landing page is a placeholder | MEDIUM | `app/page.tsx` | P1-T04 |
+| Offline write sync not implemented | MEDIUM | `lib/offline-storage.ts` | Writes to IndexedDB not synced back to Supabase on reconnect |
+| LOCAL_AI mode not implemented | MEDIUM | `app/api/analyze/route.ts` | Phase 2 |
+| React Native project not initialized | MEDIUM | `mobile/` | `/mobile/` has template files but `npx react-native init` not run — Phase 2 |
+| Sentry DSN not confirmed in Vercel | LOW | Vercel env vars | P1-T07 — confirm `SENTRY_DSN` is set |
+| Upstash Redis not confirmed in Vercel | LOW | Vercel env vars | P1-T08 — rate limit falls back to in-memory without it |
+| SAMHSA_Tips 20 chunks skipped (null bytes) | LOW | knowledge_base | 49/69 chunks stored — non-critical |
 
 ---
 
@@ -103,10 +118,11 @@ Also verify in Supabase SQL editor: `SELECT COUNT(*) FROM knowledge_base;` → s
 | Command | Purpose |
 |---|---|
 | `python3 scripts/pdf_to_text.py` | Convert PDFs in `docs/` → text files in `docs/text/` |
-| `npm run ingest` | Chunk + embed + upsert all `.txt` files in `docs/text/` |
+| `npm run ingest` | Chunk + embed + upsert all `.txt` files from `docs/text/` to `knowledge_base` |
+
+Requires: PyMuPDF (`pip install pymupdf`), `OPENAI_API_KEY` and `SUPABASE_SERVICE_ROLE_KEY` in `.env.local`.
 
 To add a new knowledge source: drop PDF in `docs/`, re-run both commands.
-PyMuPDF required: `pip install pymupdf`
 
 ---
 
@@ -114,24 +130,24 @@ PyMuPDF required: `pip install pymupdf`
 
 | Variable | Purpose | Status |
 |---|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL | Required — must be set |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key | Required |
-| `SUPABASE_SERVICE_ROLE_KEY` | Server-side service role | Required |
-| `NEXT_PUBLIC_SITE_URL` | Auth redirect base URL | Required |
-| `OPENAI_API_KEY` | Embeddings + LLM | Required |
-| `OPENAI_MODEL` | OpenAI model for chat | Value `gpt-5` in .env.example is likely wrong |
-| `UPSTASH_REDIS_REST_URL` | Rate limiting (production) | Optional — falls back to in-memory |
-| `UPSTASH_REDIS_REST_TOKEN` | Rate limiting (production) | Optional |
-| `SENTRY_DSN` | Error monitoring | Optional |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL | ✅ Set |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key | ✅ Set |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server-side admin access | ✅ Set |
+| `NEXT_PUBLIC_SITE_URL` | Auth redirect base URL | ✅ Set |
+| `OPENAI_API_KEY` | Embeddings for RAG | ✅ Set |
+| `ANTHROPIC_API_KEY` | Claude for AI reasoning (used in `app/api/analyze/route.ts`) | ✅ Set |
+| `UPSTASH_REDIS_REST_URL` | Rate limiting (production) | ⚠️ Not confirmed in Vercel |
+| `UPSTASH_REDIS_REST_TOKEN` | Rate limiting (production) | ⚠️ Not confirmed — falls back to in-memory |
+| `SENTRY_DSN` | Error monitoring | ⚠️ Not confirmed — errors silently dropped without it |
 
 ---
 
 ## Deployment
 
-- **Hosting**: Vercel (confirmed `.vercel/project.json`)
-- **Branch**: `main`
-- **Deploy command**: Automatic on push to main (Vercel default)
-- **Build command**: `next build`
+- **Hosting**: Vercel — project linked via `.vercel/project.json`
+- **Branch**: `main` → production (no staging environment)
+- **Build**: `next build` — verified clean as of 2026-06-24, commit `e4f4998`
+- **Deploy**: automatic on push to `main`
 
 ---
 
