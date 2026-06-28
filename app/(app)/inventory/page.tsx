@@ -5,6 +5,31 @@ import NumericStepper from '@/components/NumericStepper'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+type ChecklistTier = 'ESSENTIAL' | 'MODERATE' | 'EXCELLENT'
+
+interface ChecklistItem {
+  id: string
+  canonical_key: string
+  item_name: string
+  tier: ChecklistTier
+  quantity: number
+  unit: string | null
+  acquired: boolean
+}
+
+const CHECKLIST_TIERS: ChecklistTier[] = ['ESSENTIAL', 'MODERATE', 'EXCELLENT']
+const TIER_LABEL: Record<ChecklistTier, string> = {
+  ESSENTIAL: 'Essencial',
+  MODERATE: 'Moderado',
+  EXCELLENT: 'Excelente',
+}
+const TIER_DAYS: Record<ChecklistTier, number> = { ESSENTIAL: 3, MODERATE: 7, EXCELLENT: 30 }
+const TIER_COLOR: Record<ChecklistTier, string> = {
+  ESSENTIAL: '#ef4444',
+  MODERATE:  '#f59e0b',
+  EXCELLENT: '#22c55e',
+}
+
 type Inventory = {
   water_liters: number
   food_days: number
@@ -321,6 +346,9 @@ export default function InventoryPage() {
   const [saved, setSaved] = useState(false)
   const [isPending, startTransition] = useTransition()
 
+  const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([])
+  const [checklistGenerating, setChecklistGenerating] = useState(false)
+
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // ── Load ───────────────────────────────────────────────────────────────────
@@ -328,9 +356,10 @@ export default function InventoryPage() {
     setLoading(true)
     setSaveError(null)
     try {
-      const [invRes, famRes] = await Promise.all([
+      const [invRes, famRes, clRes] = await Promise.all([
         fetch('/api/inventory'),
         fetch('/api/family-members'),
+        fetch('/api/checklist', { cache: 'no-store' }),
       ])
       if (invRes.ok) {
         const { inventory } = await invRes.json()
@@ -347,6 +376,10 @@ export default function InventoryPage() {
       if (famRes.ok) {
         const { members } = await famRes.json()
         setMemberCount(Array.isArray(members) ? members.length : 0)
+      }
+      if (clRes.ok) {
+        const { items } = await clRes.json()
+        setChecklistItems(Array.isArray(items) ? items : [])
       }
     } catch {
       setSaveError('Erro ao carregar inventário.')
@@ -403,6 +436,44 @@ export default function InventoryPage() {
         }
       })
     }, 600)
+  }, [])
+
+  const toggleChecklistItem = useCallback(async (canonicalKey: string, next: boolean) => {
+    setChecklistItems((prev) =>
+      prev.map((i) => i.canonical_key === canonicalKey ? { ...i, acquired: next } : i)
+    )
+    try {
+      const res = await fetch('/api/checklist/toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ canonicalKey, acquired: next }),
+      })
+      if (!res.ok) throw new Error('toggle failed')
+    } catch {
+      setChecklistItems((prev) =>
+        prev.map((i) => i.canonical_key === canonicalKey ? { ...i, acquired: !next } : i)
+      )
+    }
+  }, [])
+
+  const generateChecklist = useCallback(async () => {
+    setChecklistGenerating(true)
+    try {
+      const res = await fetch('/api/checklist/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scenarioType: 'GENERAL' }),
+      })
+      if (res.ok) {
+        const clRes = await fetch('/api/checklist', { cache: 'no-store' })
+        if (clRes.ok) {
+          const { items } = await clRes.json()
+          setChecklistItems(Array.isArray(items) ? items : [])
+        }
+      }
+    } finally {
+      setChecklistGenerating(false)
+    }
   }, [])
 
   function update<K extends keyof Inventory>(key: K, value: Inventory[K]) {
@@ -684,6 +755,102 @@ export default function InventoryPage() {
             disabled={isPending}
             onChange={(v) => update('cash_amount', v)}
           />
+        </div>
+
+
+        {/* ── Checklist de Preparação ──────────────────────────────────────── */}
+        <div style={{ marginTop: 32, marginBottom: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <div>
+              <p style={{ fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' as const, color: 'var(--mu)', margin: 0 }}>PREPARAÇÃO</p>
+              <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--tx)', margin: '4px 0 0' }}>Checklist</h2>
+            </div>
+            {checklistItems.length === 0 && (
+              <button
+                onClick={generateChecklist}
+                disabled={checklistGenerating}
+                style={{
+                  padding: '8px 16px',
+                  background: checklistGenerating ? 'var(--sf2)' : 'var(--ac)',
+                  color: checklistGenerating ? 'var(--mu)' : '#0a0a0f',
+                  border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 13,
+                  cursor: checklistGenerating ? 'default' : 'pointer',
+                }}
+              >
+                {checklistGenerating ? 'Gerando…' : 'Gerar Checklist'}
+              </button>
+            )}
+          </div>
+
+          {checklistItems.length === 0 ? (
+            <div style={{ padding: '32px 0', textAlign: 'center' as const, color: 'var(--mu)', fontSize: 14 }}>
+              Nenhum item ainda. Clique em &ldquo;Gerar Checklist&rdquo; para começar.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 12 }}>
+              {CHECKLIST_TIERS.map((tier) => {
+                const tierItems = checklistItems.filter((i) => i.tier === tier)
+                if (tierItems.length === 0) return null
+                const done = tierItems.filter((i) => i.acquired).length
+                const pct = Math.round((done / tierItems.length) * 100)
+                const autonomy = Math.round((done / tierItems.length) * TIER_DAYS[tier])
+                return (
+                  <div
+                    key={tier}
+                    style={{ border: '1px solid var(--bd)', borderRadius: 12, overflow: 'hidden', background: 'var(--sf)' }}
+                  >
+                    {/* Tier header */}
+                    <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, borderBottom: '1px solid var(--bd)' }}>
+                      <span style={{ width: 10, height: 10, borderRadius: '50%', background: TIER_COLOR[tier], flexShrink: 0 }} />
+                      <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase' as const, color: TIER_COLOR[tier] }}>
+                        {TIER_LABEL[tier]}
+                      </span>
+                      <div style={{ flex: 1, height: 4, background: 'var(--sf2)', borderRadius: 2, overflow: 'hidden', marginLeft: 4 }}>
+                        <div style={{ width: `${pct}%`, height: '100%', background: TIER_COLOR[tier], transition: 'width .3s' }} />
+                      </div>
+                      <span style={{ fontSize: 12, color: 'var(--mu)', fontFamily: 'ui-monospace,Menlo,monospace', flexShrink: 0 }}>
+                        {done}/{tierItems.length} · ~{autonomy}d
+                      </span>
+                    </div>
+                    {/* Items */}
+                    {tierItems.map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => toggleChecklistItem(item.canonical_key, !item.acquired)}
+                        style={{
+                          width: '100%', textAlign: 'left' as const,
+                          padding: '11px 16px', background: 'transparent',
+                          border: 'none', borderBottom: '1px solid var(--bd)',
+                          color: 'var(--tx)', cursor: 'pointer',
+                          display: 'grid', gridTemplateColumns: '20px 1fr auto',
+                          alignItems: 'center', gap: 12,
+                        }}
+                      >
+                        <span style={{
+                          width: 18, height: 18, borderRadius: 4, flexShrink: 0,
+                          border: `1.5px solid ${item.acquired ? TIER_COLOR[item.tier] : 'var(--bd)'}`,
+                          background: item.acquired ? TIER_COLOR[item.tier] : 'transparent',
+                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        }}>
+                          {item.acquired && (
+                            <svg viewBox="0 0 10 10" width="11" height="11" aria-hidden>
+                              <polyline points="1.5,5 4,7.5 8.5,2.5" fill="none" stroke="#0a0a0f" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          )}
+                        </span>
+                        <span style={{ fontSize: 14, color: item.acquired ? 'var(--mu)' : 'var(--tx)', textDecoration: item.acquired ? 'line-through' : 'none' }}>
+                          {item.item_name}
+                        </span>
+                        <span style={{ fontSize: 12, color: 'var(--mu)', fontFamily: 'ui-monospace,Menlo,monospace', flexShrink: 0 }}>
+                          {item.quantity}{item.unit ? ` ${item.unit}` : ''}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
 
         <div style={{ height: 24 }} />
