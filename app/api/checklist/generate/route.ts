@@ -124,7 +124,7 @@ export async function POST(req: NextRequest) {
   const { data: upserted, error: upsertErr } = await supabase
     .from('checklists')
     .upsert(normalised, {
-      onConflict: 'profile_id,canonical_key,scenario_id',
+      onConflict: 'profile_id,canonical_key',
       ignoreDuplicates: false,
     })
     .select('*')
