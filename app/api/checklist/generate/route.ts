@@ -117,13 +117,21 @@ export async function POST(req: NextRequest) {
     }))
     .filter((i) => i.canonical_key.length > 0)
 
-  if (normalised.length === 0) {
+  // Dedup: keep first occurrence of each canonical_key (LLM may generate duplicates)
+  const seen = new Set<string>()
+  const deduped = normalised.filter((i) => {
+    if (seen.has(i.canonical_key)) return false
+    seen.add(i.canonical_key)
+    return true
+  })
+
+  if (deduped.length === 0) {
     return NextResponse.json({ items: [] })
   }
 
   const { data: upserted, error: upsertErr } = await supabase
     .from('checklists')
-    .upsert(normalised, {
+    .upsert(deduped, {
       onConflict: 'profile_id,canonical_key',
       ignoreDuplicates: false,
     })
