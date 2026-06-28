@@ -49,3 +49,5 @@ supabase/.temp/
 
 # EOS documents — repositório git separado, não faz parte do app
 EOS documents/
+.env*
+public/sw 2.js
