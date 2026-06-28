@@ -22,6 +22,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     name?: string
     age?: number | null
     medical_conditions?: string[]
+    medical_notes?: string | null
+    medications?: string[]
     mobility_impaired?: boolean
     is_infant?: boolean
   }
@@ -37,6 +39,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (body.name !== undefined)               patch.name               = body.name.trim()
   if (body.age !== undefined)                patch.age                = body.age
   if (body.medical_conditions !== undefined) patch.medical_conditions = body.medical_conditions
+  if (body.medical_notes !== undefined)      patch.medical_notes      = body.medical_notes
+  if (body.medications !== undefined)        patch.medications        = body.medications
   if (body.mobility_impaired !== undefined)  patch.mobility_impaired  = body.mobility_impaired
   if (body.is_infant !== undefined)          patch.is_infant          = body.is_infant
 
@@ -54,7 +58,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     .update(patch)
     .eq('id', id)
     .eq('profile_id', user.id)
-    .select('id, profile_id, name, age, medical_conditions, mobility_impaired, is_infant, created_at')
+    .select('id, profile_id, name, age, medical_conditions, medical_notes, medications, mobility_impaired, is_infant, created_at')
     .single()
 
   if (error) {

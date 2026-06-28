@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
 
   const { data: family } = await supabase
     .from('family_members')
-    .select('age, medical_conditions, mobility_impaired, is_infant')
+    .select('age, medical_conditions, medical_notes, medications, mobility_impaired, is_infant')
     .eq('profile_id', user.id)
 
   const familySize = Math.max(1, family?.length ?? 1)
@@ -64,7 +64,10 @@ export async function POST(req: NextRequest) {
     hasInfants: (family ?? []).some((m) => (m.age ?? 99) < 2 || m.is_infant === true),
     hasElderly: (family ?? []).some((m) => (m.age ?? 0) >= 65),
     hasMedicalConditions: (family ?? []).some(
-      (m) => Array.isArray(m.medical_conditions) && m.medical_conditions.length > 0,
+      (m) =>
+        (Array.isArray(m.medical_conditions) && m.medical_conditions.length > 0) ||
+        !!m.medical_notes ||
+        (Array.isArray(m.medications) && m.medications.length > 0),
     ),
   }
 

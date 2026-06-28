@@ -9,6 +9,8 @@ type FamilyMember = {
   name: string
   age: number | null
   medical_conditions: string[]
+  medical_notes: string | null
+  medications: string[]
   mobility_impaired: boolean
   is_infant: boolean
   created_at: string
@@ -18,6 +20,8 @@ type MemberForm = {
   name: string
   age: number | null
   medical_conditions: string[]
+  medical_notes: string
+  medications: string[]
   mobility_impaired: boolean
   is_infant: boolean
 }
@@ -38,18 +42,12 @@ type GaugeProps = {
   tone?: 'green' | 'orange' | 'red'
 }
 
-const CONDITIONS = [
-  'diabetes',
-  'pressao alta',
-  'medicacao continua',
-  'cadeira de rodas',
-  'outros',
-] as const
-
 const EMPTY_FORM: MemberForm = {
   name: '',
   age: null,
   medical_conditions: [],
+  medical_notes: '',
+  medications: [],
   mobility_impaired: false,
   is_infant: false,
 }
@@ -82,6 +80,9 @@ export default function FamilyPage() {
   const [form, setForm] = useState<MemberForm>(EMPTY_FORM)
   const [formError, setFormError] = useState<string | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [suggestedTags, setSuggestedTags] = useState<string[]>([])
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false)
+  const [medicationInput, setMedicationInput] = useState('')
   const [isPending, startTransition] = useTransition()
 
   const loadMembers = useCallback(async () => {
@@ -114,9 +115,13 @@ export default function FamilyPage() {
       name: member.name,
       age: member.age,
       medical_conditions: member.medical_conditions,
+      medical_notes: member.medical_notes ?? '',
+      medications: member.medications ?? [],
       mobility_impaired: member.mobility_impaired,
       is_infant: member.is_infant,
     })
+    setSuggestedTags(member.medical_conditions)
+    setMedicationInput('')
     setEditingId(member.id)
     setFormError(null)
     setModalOpen(true)
@@ -126,15 +131,49 @@ export default function FamilyPage() {
     setModalOpen(false)
     setEditingId(null)
     setFormError(null)
+    setSuggestedTags([])
+    setMedicationInput('')
   }
 
-  function toggleCondition(condition: string) {
+  function toggleTag(tag: string) {
     setForm((current) => ({
       ...current,
-      medical_conditions: current.medical_conditions.includes(condition)
-        ? current.medical_conditions.filter((item) => item !== condition)
-        : [...current.medical_conditions, condition],
+      medical_conditions: current.medical_conditions.includes(tag)
+        ? current.medical_conditions.filter((t) => t !== tag)
+        : [...current.medical_conditions, tag],
     }))
+  }
+
+  async function suggestTags() {
+    const notes = form.medical_notes.trim()
+    if (!notes) return
+    setLoadingSuggestions(true)
+    try {
+      const res = await fetch('/api/family-members/suggest-tags', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ medical_notes: notes }),
+      })
+      if (res.ok) {
+        const { tags } = await res.json() as { tags: string[] }
+        setSuggestedTags(tags)
+        // Auto-selecionar todas as sugestões
+        setForm((current) => ({ ...current, medical_conditions: tags }))
+      }
+    } finally {
+      setLoadingSuggestions(false)
+    }
+  }
+
+  function addMedication() {
+    const med = medicationInput.trim()
+    if (!med || form.medications.includes(med)) return
+    setForm((current) => ({ ...current, medications: [...current.medications, med] }))
+    setMedicationInput('')
+  }
+
+  function removeMedication(med: string) {
+    setForm((current) => ({ ...current, medications: current.medications.filter((m) => m !== med) }))
   }
 
   function handleSave() {
@@ -156,6 +195,8 @@ export default function FamilyPage() {
           name: form.name.trim(),
           age: form.age,
           medical_conditions: form.medical_conditions,
+          medical_notes: form.medical_notes.trim() || null,
+          medications: form.medications,
           mobility_impaired: form.mobility_impaired,
           is_infant: form.is_infant,
         }),
@@ -197,7 +238,7 @@ export default function FamilyPage() {
 
   const totalMembers = members.length
   const vulnerableMembers = members.filter(
-    (member) => member.mobility_impaired || member.is_infant || member.medical_conditions.length > 0,
+    (member) => member.mobility_impaired || member.is_infant || (member.medical_conditions ?? []).length > 0 || (member.medications ?? []).length > 0,
   ).length
   const profiledMembers = members.filter(
     (member) => member.age !== null || member.medical_conditions.length > 0,
@@ -425,25 +466,86 @@ export default function FamilyPage() {
               </div>
             </div>
 
+            {/* ── Condições médicas ──────────────────────────────────────── */}
             <div style={s.fieldGroup}>
               <label style={s.fieldLabel}>Condições médicas</label>
-              <div style={s.chipGrid}>
-                {CONDITIONS.map((condition) => {
-                  const active = form.medical_conditions.includes(condition)
-                  return (
-                    <button
-                      key={condition}
-                      type="button"
-                      onClick={() => toggleCondition(condition)}
-                      disabled={isPending}
-                      style={active ? s.activeChip : s.chip}
-                    >
-                      {active ? '● ' : ''}
-                      {condition}
-                    </button>
-                  )
-                })}
+              <textarea
+                style={s.textarea}
+                placeholder="Ex: diabetes tipo 2 controlada com metformina, hipertensão leve..."
+                value={form.medical_notes}
+                onChange={(e) => setForm((c) => ({ ...c, medical_notes: e.target.value }))}
+                onBlur={() => { if (form.medical_notes.trim().length >= 15 && suggestedTags.length === 0) suggestTags() }}
+                rows={3}
+                disabled={isPending}
+              />
+              <button
+                type="button"
+                style={s.suggestBtn}
+                onClick={suggestTags}
+                disabled={isPending || loadingSuggestions || !form.medical_notes.trim()}
+              >
+                {loadingSuggestions ? '✦ Analisando...' : '✦ Sugerir tags com IA'}
+              </button>
+              {suggestedTags.length > 0 && (
+                <div>
+                  <span style={s.tagsHint}>Toque para marcar / desmarcar:</span>
+                  <div style={s.chipGrid}>
+                    {suggestedTags.map((tag) => {
+                      const active = form.medical_conditions.includes(tag)
+                      return (
+                        <button
+                          key={tag}
+                          type="button"
+                          onClick={() => toggleTag(tag)}
+                          disabled={isPending}
+                          style={active ? s.activeChip : s.chip}
+                        >
+                          {active ? '● ' : ''}{tag}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ── Medicamentos ─────────────────────────────────────────────── */}
+            <div style={s.fieldGroup}>
+              <label style={s.fieldLabel}>Medicamentos em uso</label>
+              <div style={s.medInputRow}>
+                <input
+                  type="text"
+                  style={s.medInput}
+                  placeholder="Ex: Metformina 500mg, Losartana 50mg..."
+                  value={medicationInput}
+                  onChange={(e) => setMedicationInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addMedication())}
+                  disabled={isPending}
+                />
+                <button
+                  type="button"
+                  style={s.medAddBtn}
+                  onClick={addMedication}
+                  disabled={isPending || !medicationInput.trim()}
+                >
+                  + Adicionar
+                </button>
               </div>
+              {form.medications.length > 0 && (
+                <div style={s.medList}>
+                  {form.medications.map((med) => (
+                    <div key={med} style={s.medItem}>
+                      <span style={s.medName}>💊 {med}</span>
+                      <button
+                        type="button"
+                        style={s.medRemove}
+                        onClick={() => removeMedication(med)}
+                        disabled={isPending}
+                      >×</button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div style={s.formGrid}>
@@ -504,7 +606,7 @@ function MemberCard({
 
   if (member.is_infant) tags.push({ label: 'Bebe', tone: 'orange' })
   if (member.mobility_impaired) tags.push({ label: 'Mobilidade', tone: 'red' })
-  for (const condition of member.medical_conditions) {
+  for (const condition of (member.medical_conditions ?? [])) {
     tags.push({ label: condition, tone: 'orange' })
   }
 
@@ -530,13 +632,11 @@ function MemberCard({
         </div>
         <div style={s.metricBlock}>
           <span style={s.metricBlockLabel}>CONDITIONS</span>
-          <span style={s.metricBlockValue}>{String(member.medical_conditions.length).padStart(2, '0')}</span>
+          <span style={s.metricBlockValue}>{String((member.medical_conditions ?? []).length).padStart(2, '0')}</span>
         </div>
         <div style={s.metricBlock}>
-          <span style={s.metricBlockLabel}>FLAGS</span>
-          <span style={s.metricBlockValue}>
-            {String(Number(member.mobility_impaired) + Number(member.is_infant)).padStart(2, '0')}
-          </span>
+          <span style={s.metricBlockLabel}>MEDS</span>
+          <span style={s.metricBlockValue}>{String((member.medications ?? []).length).padStart(2, '0')}</span>
         </div>
       </div>
 
@@ -551,6 +651,18 @@ function MemberCard({
           ))
         )}
       </div>
+      {member.medical_notes && (
+        <p style={s.cardNotes}>
+          {member.medical_notes.length > 100 ? member.medical_notes.slice(0, 100) + '…' : member.medical_notes}
+        </p>
+      )}
+      {(member.medications ?? []).length > 0 && (
+        <div style={s.medPillWrap}>
+          {(member.medications ?? []).map((m) => (
+            <span key={m} style={s.medPill}>💊 {m}</span>
+          ))}
+        </div>
+      )}
 
       <div style={s.cardActions}>
         {!confirmingDelete ? (
@@ -1431,5 +1543,125 @@ const s: Record<string, React.CSSProperties> = {
     letterSpacing: 1.8,
     textTransform: 'uppercase',
     boxShadow: TOKENS.glow,
+  },
+  textarea: {
+    width: '100%',
+    minHeight: 80,
+    background: 'rgba(255,255,255,0.04)',
+    border: `1px solid ${TOKENS.border}`,
+    borderRadius: 12,
+    padding: '12px 14px',
+    color: TOKENS.textHigh,
+    fontSize: 13,
+    lineHeight: 1.6,
+    fontFamily: TOKENS.bodyFont,
+    resize: 'vertical',
+    outline: 'none',
+    boxSizing: 'border-box',
+  } as React.CSSProperties,
+  suggestBtn: {
+    marginTop: 8,
+    padding: '8px 16px',
+    borderRadius: 999,
+    border: '1px solid rgba(13, 232, 100, 0.35)',
+    background: 'rgba(13, 232, 100, 0.08)',
+    color: TOKENS.neonGreen,
+    fontSize: 11,
+    fontWeight: 700,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    cursor: 'pointer',
+  } as React.CSSProperties,
+  tagsHint: {
+    display: 'block',
+    fontSize: 10,
+    color: TOKENS.textLow,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    marginTop: 10,
+    marginBottom: 6,
+  },
+  medInputRow: {
+    display: 'flex',
+    gap: 8,
+    alignItems: 'center',
+  },
+  medInput: {
+    flex: 1,
+    padding: '10px 14px',
+    background: 'rgba(255,255,255,0.04)',
+    border: `1px solid ${TOKENS.border}`,
+    borderRadius: 10,
+    color: TOKENS.textHigh,
+    fontSize: 13,
+    fontFamily: TOKENS.bodyFont,
+    outline: 'none',
+  } as React.CSSProperties,
+  medAddBtn: {
+    padding: '10px 16px',
+    borderRadius: 10,
+    border: `1px solid ${TOKENS.border}`,
+    background: 'rgba(255,255,255,0.06)',
+    color: TOKENS.textMedium,
+    fontSize: 12,
+    fontWeight: 700,
+    letterSpacing: 0.6,
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+  } as React.CSSProperties,
+  medList: {
+    marginTop: 8,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 6,
+  } as React.CSSProperties,
+  medItem: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '8px 12px',
+    borderRadius: 8,
+    background: 'rgba(255,255,255,0.04)',
+    border: `1px solid ${TOKENS.border}`,
+  },
+  medName: {
+    fontSize: 13,
+    color: TOKENS.textHigh,
+  },
+  medRemove: {
+    width: 24,
+    height: 24,
+    borderRadius: '50%',
+    border: `1px solid ${TOKENS.border}`,
+    background: 'transparent',
+    color: TOKENS.danger,
+    fontSize: 16,
+    lineHeight: 1,
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 0,
+  } as React.CSSProperties,
+  cardNotes: {
+    margin: '8px 0 0',
+    fontSize: 11,
+    color: TOKENS.textLow,
+    lineHeight: 1.5,
+    fontStyle: 'italic',
+  },
+  medPillWrap: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 6,
+  } as React.CSSProperties,
+  medPill: {
+    padding: '4px 10px',
+    borderRadius: 999,
+    background: 'rgba(255,255,255,0.06)',
+    border: `1px solid ${TOKENS.border}`,
+    fontSize: 11,
+    color: TOKENS.textMedium,
   },
 }

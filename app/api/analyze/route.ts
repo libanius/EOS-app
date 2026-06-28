@@ -35,6 +35,8 @@ interface FamilyMember {
   name: string
   age: number | null
   medical_conditions: string[]
+  medical_notes: string | null
+  medications: string[]
   mobility_impaired: boolean
   is_infant: boolean
 }
@@ -212,6 +214,8 @@ function buildSystemPrompt(
           const flags = [
             m.is_infant ? 'bebê' : m.age !== null && m.age < 18 ? 'criança' : m.age !== null && m.age > 65 ? 'idoso' : 'adulto',
             m.medical_conditions.length > 0 ? `condições: ${m.medical_conditions.join(', ')}` : null,
+            m.medical_notes ? `obs: ${m.medical_notes}` : null,
+            m.medications.length > 0 ? `medicamentos: ${m.medications.join(', ')}` : null,
             m.mobility_impaired ? 'mobilidade reduzida' : null,
           ]
             .filter(Boolean)
@@ -413,6 +417,8 @@ export async function POST(request: NextRequest) {
     name: m.name,
     age: m.age ?? null,
     medical_conditions: m.medical_conditions ?? [],
+    medical_notes: m.medical_notes ?? null,
+    medications: m.medications ?? [],
     mobility_impaired: m.mobility_impaired ?? false,
     is_infant: m.is_infant ?? false,
   }))
