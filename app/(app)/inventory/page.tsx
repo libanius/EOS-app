@@ -283,6 +283,31 @@ function ReadinessSummary({ score, level, memberCount, autonomyDays }: Readiness
   )
 }
 
+// ─── Checklist → Inventory sync ──────────────────────────────────────────────
+// When a checklist item is marked acquired, map it to the corresponding inventory field.
+
+function getInventoryDelta(item: ChecklistItem): Partial<Inventory> {
+  const k = item.canonical_key
+  const unit = (item.unit ?? '').toLowerCase()
+
+  if (/agua|water/.test(k) && /litro|liter|^l$/.test(unit)) {
+    return { water_liters: item.quantity }
+  }
+  if (/combustivel|gasolina|diesel|fuel/.test(k)) {
+    return { fuel_liters: item.quantity }
+  }
+  if (/kit.*auxilios|kit.*medic|primeiros.*socorro|kit.*first|kit.*pronto/.test(k)) {
+    return { has_medical_kit: true }
+  }
+  if (/radio|comunicac|walkie|handy.talkie/.test(k)) {
+    return { has_communication_device: true }
+  }
+  if (/dinero|dinheiro|efectivo|especie|cash/.test(k)) {
+    return { cash_amount: item.quantity }
+  }
+  return {}
+}
+
 // ─── Toggle ───────────────────────────────────────────────────────────────────
 
 type ToggleRowProps = {
@@ -438,23 +463,43 @@ export default function InventoryPage() {
     }, 600)
   }, [])
 
-  const toggleChecklistItem = useCallback(async (canonicalKey: string, next: boolean) => {
+  const toggleChecklistItem = useCallback(async (canonicalKey: string, nextAcquired: boolean) => {
+    // Optimistic UI update
     setChecklistItems((prev) =>
-      prev.map((i) => i.canonical_key === canonicalKey ? { ...i, acquired: next } : i)
+      prev.map((i) => i.canonical_key === canonicalKey ? { ...i, acquired: nextAcquired } : i)
     )
+
+    // Sync checklist → inventory when marking as acquired (never decrease)
+    if (nextAcquired) {
+      const item = checklistItems.find(i => i.canonical_key === canonicalKey)
+      if (item) {
+        const delta = getInventoryDelta(item)
+        if (Object.keys(delta).length > 0) {
+          const nextInv = { ...inv }
+          if (delta.water_liters !== undefined) nextInv.water_liters = Math.max(inv.water_liters, delta.water_liters)
+          if (delta.fuel_liters  !== undefined) nextInv.fuel_liters  = Math.max(inv.fuel_liters,  delta.fuel_liters)
+          if (delta.cash_amount  !== undefined) nextInv.cash_amount  = Math.max(inv.cash_amount,  delta.cash_amount)
+          if (delta.has_medical_kit)        nextInv.has_medical_kit        = true
+          if (delta.has_communication_device) nextInv.has_communication_device = true
+          setInv(nextInv)
+          save(nextInv)
+        }
+      }
+    }
+
     try {
       const res = await fetch('/api/checklist/toggle', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ canonicalKey, acquired: next }),
+        body: JSON.stringify({ canonicalKey, acquired: nextAcquired }),
       })
       if (!res.ok) throw new Error('toggle failed')
     } catch {
       setChecklistItems((prev) =>
-        prev.map((i) => i.canonical_key === canonicalKey ? { ...i, acquired: !next } : i)
+        prev.map((i) => i.canonical_key === canonicalKey ? { ...i, acquired: !nextAcquired } : i)
       )
     }
-  }, [])
+  }, [checklistItems, inv, save])
 
   const generateChecklist = useCallback(async () => {
     setChecklistGenerating(true)
