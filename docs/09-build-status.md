@@ -1,7 +1,7 @@
 # 09 — Build Status
 
 > The single most important file for resuming a session. Read this first after AGENTS.md.
-> Last updated: 2026-06-24
+> Last updated: 2026-06-28
 
 ---
 
@@ -10,7 +10,7 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Phase 1 — MVP Hardening |
-| **Last Completed Task** | E2E agent: 14/14 testes passando em produção (2026-06-28) |
+| **Last Completed Task** | Checklist → Inventory sync (2026-06-28) |
 | **Next Task** | P1-T03: Add PWA icons (icon-192.png, icon-512.png) |
 | **Build** | ✅ Passing — `npm run build` clean as of commit `8776817` |
 | **Vercel** | ✅ Deployed — auto-deploys on push to `main` |
@@ -40,6 +40,7 @@
 | P1-T04: Landing page | ✅ COMPLETE | 2026-06-28 |
 | P1-T09: Bottom navigation (5 tabs) | ✅ COMPLETE | 2026-06-28 |
 | P1-T10: E2E test agent | ✅ COMPLETE | 2026-06-28 |
+| P1-T11: Recursos screen — checklist integration + inventory sync | ✅ COMPLETE | 2026-06-28 |
 | P1-T05: Language strategy | DRAFT | — |
 | P1-T07: Verify Sentry in production | DRAFT | — |
 | P1-T08: Rate limit validation (Upstash) | DRAFT | — |
@@ -137,7 +138,7 @@ To add a new knowledge source: drop PDF in `docs/`, re-run both commands.
 | `SUPABASE_SERVICE_ROLE_KEY` | Server-side admin access | ✅ Set |
 | `NEXT_PUBLIC_SITE_URL` | Auth redirect base URL | ✅ Set |
 | `OPENAI_API_KEY` | Embeddings for RAG | ✅ Set |
-| `ANTHROPIC_API_KEY` | Claude for AI reasoning (used in `app/api/analyze/route.ts`) | ✅ Set |
+| `ANTHROPIC_API_KEY` | (removido — todo LLM migrado para OpenAI) | ❌ Não usado |
 | `UPSTASH_REDIS_REST_URL` | Rate limiting (production) | ⚠️ Not confirmed in Vercel |
 | `UPSTASH_REDIS_REST_TOKEN` | Rate limiting (production) | ⚠️ Not confirmed — falls back to in-memory |
 | `SENTRY_DSN` | Error monitoring | ⚠️ Not confirmed — errors silently dropped without it |
@@ -200,4 +201,37 @@ To add a new knowledge source: drop PDF in `docs/`, re-run both commands.
 
 **Known env var issue discovered:**
 - `ANTHROPIC_API_KEY` is NOT set in the Vercel project — `/api/analyze` silently falls back to rules-based `buildSurvivalResponse` mode instead of LLM
-- To enable Claude in production: add `ANTHROPIC_API_KEY` to Vercel env vars (project settings → Environment Variables)
+- `OPENAI_MODEL` no Vercel está setado como `gpt-5` (inválido) — hardcoded `gpt-4o-mini` nos routes afetados
+
+---
+
+## What Was Done — Session 2026-06-28 (cont. — segunda parte)
+
+**Todo LLM migrado de Anthropic → OpenAI (`app/api/analyze/route.ts`):**
+- Usuário confirmou: apenas OpenAI é usada no projeto (nunca houve intenção de usar Anthropic)
+- `tryCallLLM` reescrita: `openai.chat.completions.stream()` com `gpt-4o-mini`
+- Tokens transmitidos via `chunk.choices[0]?.delta?.content`
+- Fallback para `buildSurvivalResponse` mantido se LLM falhar
+- `ANTHROPIC_API_KEY` removida da tabela de env vars (não é usada)
+
+**Tela de Recursos — Checklist integrado (P1-T11):**
+- `app/(app)/inventory/page.tsx` expandido para mostrar itens do checklist por tier
+- Barra de progresso por tier (ESSENCIAL / MODERADO / EXCELENTE)
+- Toggle de itens diretamente na tela de Recursos (sincroniza via `/api/checklist/toggle`)
+- Botão "Gerar Checklist" se não houver itens ainda
+- Itens continuam editáveis na tela dedicada `/checklist`
+
+**Sincronização checklist → inventory (P1-T11):**
+- Ao marcar um item como adquirido no checklist, o campo correspondente do inventário atualiza automaticamente
+- Mapeamento: `agua-*` → `water_liters`, `combustivel-*` → `fuel_liters`, `kit-*-auxilios` → `has_medical_kit`, `radio-*` → `has_communication_device`, `dinero-*` → `cash_amount`
+- Usa `Math.max`: valores existentes nunca são reduzidos (apenas aumentam)
+- Suporta canonical_keys em Português E Espanhol (o LLM gera itens no idioma do contexto)
+
+**Investigação do bug de save do inventory:**
+- Confirmado via teste E2E: o save funciona — Paulo tem linha na DB com valores corretos
+- `resource_inventory`: 1 linha para Paulo (water=45, food=7, fuel=5, battery=80%, medical_kit=true, cash=200)
+- `updated_at` existia e o bug anterior (coluna não existia) foi corrigido na migration 20260628000100
+
+**Decisão: `OPENAI_MODEL` env var no Vercel está como `gpt-5` (modelo inválido):**
+- Hardcoded `gpt-4o-mini` diretamente nos routes afetados para contornar o env var quebrado
+- **Ação recomendada**: atualizar `OPENAI_MODEL` no Vercel para `gpt-4o-mini` e remover os hardcodes

@@ -82,3 +82,24 @@
 | PD-002 | Landing page approach: minimal orienting page vs full marketing? | P1-T04 |
 | PD-003 | Monetization model: freemium, subscription, or free? | Phase 3 |
 | PD-004 | Mobile timeline: when to initialize React Native? | P2 start |
+
+---
+
+## D-011 — Apenas OpenAI como provedor LLM
+**Date**: 2026-06-28  
+**Decision**: O projeto usa exclusivamente a API da OpenAI. Anthropic nunca foi intencional.  
+**Rationale**: O usuário confirmou: "eu nunca quis usar a api da anthropic pois eu uso da open ai". Todo código com Anthropic SDK foi removido. `/api/analyze` e `/api/checklist/generate` usam `gpt-4o-mini`.
+
+---
+
+## D-012 — Checklist integrado na tela de Recursos
+**Date**: 2026-06-28  
+**Decision**: Os itens do checklist são exibidos e interativos na tela de Recursos (inventory), não apenas na tela dedicada `/checklist`.  
+**Rationale**: O usuário quer ver os recursos e o checklist juntos — "devem estar integrados tudo que é gerado o checklist com a tela de Recursos". Marcar um item como adquirido atualiza automaticamente o inventário.
+
+---
+
+## D-013 — Sync unidirecional: checklist → inventory (nunca decresce)
+**Date**: 2026-06-28  
+**Decision**: Marcar um item do checklist como adquirido ATUALIZA o inventário (via `Math.max`). Desmarcar NÃO diminui o inventário.  
+**Rationale**: Preservar dados inseridos manualmente. Se o usuário já tem 100L de água no inventário e marca um item de 45L, o inventário continua 100L. A sincronização é aditiva, não substitutiva.
