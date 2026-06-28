@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
+import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@/lib/supabase/server'
-import { getOpenAIClient, getOpenAIModel } from '@/lib/openai'
 import { enforceRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
 import {
   buildChecklistPrompt,
@@ -24,38 +24,22 @@ interface LLMItem {
 
 const TIERS: ChecklistTier[] = ['ESSENTIAL', 'MODERATE', 'EXCELLENT']
 
-/**
- * POST /api/checklist/generate
- * Body: { scenarioType: string; scenarioDescription?: string; scenarioId?: string }
- *
- * Pipeline:
- *   auth -> load profile+family -> LLM (JSON) -> normalise -> upsert
- *   (canonical_key,scenario_id) uniqueness guarantees cross-scenario dedup.
- */
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
 
-  // 1. Auth
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // 1b. Rate limit — 10 req / 60 s / user
-  {
-    const rl = await enforceRateLimit(`checklist:${user.id}`)
-    if (!rl.success) {
-      return NextResponse.json(
-        { error: 'Rate limit exceeded. Try again in a minute.' },
-        { status: 429, headers: rateLimitHeaders(rl) },
-      )
-    }
+  const rl = await enforceRateLimit(`checklist:${user.id}`)
+  if (!rl.success) {
+    return NextResponse.json(
+      { error: 'Rate limit exceeded. Try again in a minute.' },
+      { status: 429, headers: rateLimitHeaders(rl) },
+    )
   }
 
-  // 2. Body
   let body: GenerateBody
   try {
     body = (await req.json()) as GenerateBody
@@ -66,51 +50,40 @@ export async function POST(req: NextRequest) {
   const scenarioType = (body.scenarioType ?? 'GENERAL').toUpperCase()
   const scenarioId = body.scenarioId ?? null
 
-  // 3. Load family
   const { data: family } = await supabase
     .from('family_members')
     .select('age, medical_conditions, mobility_impaired, is_infant')
     .eq('profile_id', user.id)
 
   const familySize = Math.max(1, family?.length ?? 1)
-  const hasChildren = (family ?? []).some((m) => (m.age ?? 99) < 18)
-  const hasInfants = (family ?? []).some(
-    (m) => (m.age ?? 99) < 2 || m.is_infant === true,
-  )
-  const hasElderly = (family ?? []).some((m) => (m.age ?? 0) >= 65)
-  const hasMedicalConditions = (family ?? []).some(
-    (m) => Array.isArray(m.medical_conditions) && m.medical_conditions.length > 0,
-  )
-
   const input: ChecklistGenerateInput = {
     scenarioType,
     scenarioDescription: body.scenarioDescription,
     familySize,
-    hasChildren,
-    hasInfants,
-    hasElderly,
-    hasMedicalConditions,
+    hasChildren: (family ?? []).some((m) => (m.age ?? 99) < 18),
+    hasInfants: (family ?? []).some((m) => (m.age ?? 99) < 2 || m.is_infant === true),
+    hasElderly: (family ?? []).some((m) => (m.age ?? 0) >= 65),
+    hasMedicalConditions: (family ?? []).some(
+      (m) => Array.isArray(m.medical_conditions) && m.medical_conditions.length > 0,
+    ),
   }
 
-  // 4. LLM call
   let items: LLMItem[]
   try {
-    const openai = getOpenAIClient()
-    const completion = await openai.chat.completions.create({
-      model: getOpenAIModel(),
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+    const message = await client.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 2048,
       messages: [
         {
-          role: 'system',
-          content:
-            'You generate tiered emergency preparedness checklists as strict JSON. Never add prose.',
+          role: 'user',
+          content: buildChecklistPrompt(input),
         },
-        { role: 'user', content: buildChecklistPrompt(input) },
       ],
-      response_format: { type: 'json_object' },
-      temperature: 0.4,
+      system: 'You generate tiered emergency preparedness checklists as strict JSON. Never add prose or markdown fences. Respond only with valid JSON.',
     })
 
-    const raw = completion.choices[0]?.message?.content ?? '{"items":[]}'
+    const raw = message.content[0]?.type === 'text' ? message.content[0].text : '{"items":[]}'
     const parsed = JSON.parse(raw) as { items?: LLMItem[] }
     items = Array.isArray(parsed.items) ? parsed.items : []
   } catch (err) {
@@ -121,7 +94,6 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // 5. Normalise + upsert
   const normalised = items
     .filter(
       (i) =>
@@ -145,7 +117,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ items: [] })
   }
 
-  // Upsert — (profile_id, canonical_key, scenario_id) is unique (see migration).
   const { data: upserted, error: upsertErr } = await supabase
     .from('checklists')
     .upsert(normalised, {
