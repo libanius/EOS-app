@@ -50,6 +50,13 @@
 | P2-T03 | Inventário: toggle compartilhar por campo + `shared_fields` na DB | PENDING | MEDIUM |
 | P2-T04 | Household view: visão agregada dos recursos compartilhados no círculo | PENDING | MEDIUM |
 | P2-T05 | Merge de membro manual → vinculado (badge + decisão do usuário) | PENDING | MEDIUM |
+| P2-T08 | Localização: `profiles.location_lat/lng` + geocoding (pré-req monitoramento) | PENDING | HIGH |
+| P2-T09 | `/api/monitor` — agregador server-side NWS + USGS (tier gratuito) | PENDING | HIGH |
+| P2-T10 | Tela Cenário redesenhada: painel de ameaças + campo livre abaixo | PENDING | HIGH |
+| P2-T11 | Feature gates de monitoramento em `lib/feature-gates.ts` | PENDING | HIGH |
+| P2-T12 | Monitoramento multi-localização (membros do círculo, tier Família) | PENDING | MEDIUM |
+
+**Spec de monitoramento**: ver `docs/14-monitoring.md`.
 
 ---
 
