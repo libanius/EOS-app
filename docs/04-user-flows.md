@@ -70,3 +70,13 @@
 4. `navigator.onLine === false` detected
 5. Rules Engine runs locally → SURVIVAL mode response
 6. No API calls made — fully offline
+
+---
+
+## Flow 7 — Language Selection
+
+1. User opens `/settings`
+2. User selects Português or English
+3. Preference is saved on the device
+4. Interface copy and document language update immediately
+5. The same preference is restored on the next visit

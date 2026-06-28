@@ -11,7 +11,7 @@
 |---|---|
 | **Current Phase** | Phase 1 — MVP Hardening |
 | **Last Completed Task** | P1-T03: Add PWA icons (2026-06-28) |
-| **Next Task** | P1-T05: Decide language strategy (Gate G-01) |
+| **Current Task** | P1-T05: Implement bilingual PT/EN settings and align UI copy |
 | **Build** | ✅ Passing — `npm run build` clean as of 2026-06-28 |
 | **Vercel** | ✅ Deployed — auto-deploys on push to `main` |
 | **Supabase** | ✅ Healthy — project ref `alxurmgpyxjhvnliivbf` |
@@ -41,7 +41,7 @@
 | P1-T09: Bottom navigation (5 tabs) | ✅ COMPLETE | 2026-06-28 |
 | P1-T10: E2E test agent | ✅ COMPLETE | 2026-06-28 |
 | P1-T11: Recursos screen — checklist integration + inventory sync | ✅ COMPLETE | 2026-06-28 |
-| P1-T05: Language strategy | NEXT UP | — |
+| P1-T05: Bilingual PT/EN settings | IN PROGRESS | — |
 | P1-T07: Verify Sentry in production | DRAFT | — |
 | P1-T08: Rate limit validation (Upstash) | DRAFT | — |
 
@@ -106,9 +106,9 @@
 
 ## What Is Next
 
-**P1-T05: Decide language strategy (Gate G-01)**
+**P1-T05: Implement bilingual PT/EN settings**
 
-Choose Portuguese-only, English-only, or bilingual PT/EN before aligning the remaining mixed UI copy.
+Decision complete: bilingual Portuguese/English, selected by the user in Settings. Implement preference persistence and align the interface copy.
 
 ---
 
@@ -256,3 +256,15 @@ To add a new knowledge source: drop PDF in `docs/`, re-run both commands.
 - Confirmed both files are valid PNGs at the exact dimensions declared in `public/manifest.json`
 - Verified the production build with `npm run build`
 - Next task is P1-T05: resolve language strategy through Gate G-01
+
+---
+
+## What Was Done — Session 2026-06-28 (P1-T05, in progress)
+
+**Bilingual settings foundation:**
+- Gate G-01 cleared: Portuguese/English selected explicitly in Settings
+- Added `/settings` with immediate PT/EN selection
+- Preference persists in localStorage and a same-site cookie
+- Document `lang`, global action labels, and bottom navigation react to the selection
+- Added Settings to the PWA page cache
+- Remaining before P1-T05 completion: migrate page-level interface copy to the shared dictionary

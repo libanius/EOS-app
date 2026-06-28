@@ -2,11 +2,12 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useLanguage, type MessageKey } from '@/lib/i18n'
 
-const NAV = [
+const NAV: Array<{ href: string; labelKey: MessageKey; icon: React.ReactNode }> = [
   {
     href: '/scenario',
-    label: 'Cenário',
+    labelKey: 'nav.scenario',
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
@@ -15,7 +16,7 @@ const NAV = [
   },
   {
     href: '/family',
-    label: 'Família',
+    labelKey: 'nav.family',
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -27,7 +28,7 @@ const NAV = [
   },
   {
     href: '/inventory',
-    label: 'Recursos',
+    labelKey: 'nav.inventory',
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
@@ -38,7 +39,7 @@ const NAV = [
   },
   {
     href: '/checklist',
-    label: 'Checklist',
+    labelKey: 'nav.checklist',
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M9 11l3 3L22 4" />
@@ -48,7 +49,7 @@ const NAV = [
   },
   {
     href: '/circles',
-    label: 'Círculos',
+    labelKey: 'nav.circles',
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="18" cy="5" r="3" />
@@ -63,12 +64,14 @@ const NAV = [
 
 export default function BottomNav() {
   const pathname = usePathname()
+  const { t } = useLanguage()
 
   return (
-    <nav className="nav" role="navigation" aria-label="Navegação principal">
+    <nav className="nav" role="navigation" aria-label={t('nav.main')}>
       <div className="nav-tabs">
-        {NAV.map(({ href, label, icon }) => {
+        {NAV.map(({ href, labelKey, icon }) => {
           const active = pathname === href || pathname.startsWith(href + '/')
+          const label = t(labelKey)
           return (
             <Link
               key={href}

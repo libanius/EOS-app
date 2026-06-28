@@ -8,7 +8,7 @@ const withPWA = nextPwa({
   runtimeCaching: [
     // App shell & static pages → cache-first
     {
-      urlPattern: /^https?.*\/(?:onboarding|family|inventory|scenario|checklist|circles|login|signup)$/i,
+      urlPattern: /^https?.*\/(?:onboarding|family|inventory|scenario|checklist|circles|settings|login|signup)$/i,
       handler: 'CacheFirst',
       options: {
         cacheName: 'eos-pages',

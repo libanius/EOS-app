@@ -14,7 +14,7 @@
 
 **Blocks**: P1-T05 (language alignment), any marketing work.
 
-**Status**: OPEN
+**Status**: CLEARED — bilingual PT/EN selected in Settings (D-026, 2026-06-28)
 
 ---
 
