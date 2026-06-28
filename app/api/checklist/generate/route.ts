@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { getOpenAIClient, getOpenAIModel } from '@/lib/openai'
+import { getOpenAIClient } from '@/lib/openai'
 import { enforceRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
 import {
   buildChecklistPrompt,
@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
   try {
     const openai = getOpenAIClient()
     const completion = await openai.chat.completions.create({
-      model: getOpenAIModel(),
+      model: 'gpt-4o-mini',
       max_tokens: 2048,
       temperature: 0.3,
       messages: [
