@@ -103,3 +103,37 @@
 **Date**: 2026-06-28  
 **Decision**: Marcar um item do checklist como adquirido ATUALIZA o inventário (via `Math.max`). Desmarcar NÃO diminui o inventário.  
 **Rationale**: Preservar dados inseridos manualmente. Se o usuário já tem 100L de água no inventário e marca um item de 45L, o inventário continua 100L. A sincronização é aditiva, não substitutiva.
+---
+
+## D-014 — Círculo como espaço compartilhado (não lista de contatos)
+**Date**: 2026-06-28
+**Decision**: Entrar num círculo dá acesso imediato a todos os dados do grupo — membros, inventário, checklist, fichas.
+**Rationale**: O usuário não deve re-cadastrar o que o líder já configurou. O círculo é o "sistema nervoso" da família preparada.
+
+---
+
+## D-015 — Household inventory = soma calculada (não entidade separada)
+**Date**: 2026-06-28
+**Decision**: Não existe tabela "household_inventory". O Household é uma vista calculada: soma dos itens pessoais de cada membro onde `shared = true`.
+**Rationale**: Evita duplicação de dados e conflitos de sync. Cada pessoa é dona dos seus itens. O sharing é granular por campo, não por perfil inteiro.
+
+---
+
+## D-016 — Roles no círculo: Admin / Editor / Viewer
+**Date**: 2026-06-28
+**Decision**: Três roles com permissões distintas. Admin = full control + nomear roles. Editor = editar dados, não gerenciar membros. Viewer = leitura + comentários.
+**Rationale**: Família tem hierarquia natural. Pai e mãe têm controle total, filha mais velha pode editar, filha mais nova só visualiza. O líder (criador) é sempre Admin e não pode ser rebaixado.
+
+---
+
+## D-017 — Merge de membro manual ao entrar como vinculado: badge + decisão do usuário
+**Date**: 2026-06-28
+**Decision**: Quando um membro vinculado (conta real) entra no círculo e já existe um cadastro manual para a mesma pessoa, mostra badge "possível duplicata". O Admin decide vincular ou manter separado. Nenhum merge automático no MVP.
+**Rationale**: Merge automático por nome/idade é propenso a erro. Melhor deixar o humano decidir.
+
+---
+
+## D-018 — UX: nunca bloquear com erro por falta de círculo
+**Date**: 2026-06-28
+**Decision**: Se o usuário tenta convidar alguém ou compartilhar ficha sem ter um círculo, o app guia para criar o círculo primeiro — nunca exibe erro cru.
+**Rationale**: O usuário não pensa em "criar círculo" e "convidar" como passos separados. Ele pensa em "trazer minha filha para o app". A sequência técnica não pode vazar para a UX.

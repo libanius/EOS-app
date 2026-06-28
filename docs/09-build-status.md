@@ -10,8 +10,8 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Phase 1 — MVP Hardening |
-| **Last Completed Task** | Checklist → Inventory sync (2026-06-28) |
-| **Next Task** | P1-T03: Add PWA icons (icon-192.png, icon-512.png) |
+| **Last Completed Task** | Family: medical notes + AI tags + medications (2026-06-28) |
+| **Next Task** | P2-T01: Ficha Pessoal + QR público (Incremento 1 — Círculos) |
 | **Build** | ✅ Passing — `npm run build` clean as of commit `8776817` |
 | **Vercel** | ✅ Deployed — auto-deploys on push to `main` |
 | **Supabase** | ✅ Healthy — project ref `alxurmgpyxjhvnliivbf` |
@@ -84,6 +84,21 @@
 - `scenarios` insert: ✅ working
 - `action_plans` insert: ✅ working
 - Knowledge base count: ✅ 3887 chunks
+
+
+---
+
+## Phase 2 Progress — Círculos & Fichas
+
+| Task | Status | Completed |
+|---|---|---|
+| P2-T00: Circle model spec + decisions documented | ✅ COMPLETE | 2026-06-28 |
+| P2-T01: Ficha Pessoal + QR público | NEXT UP | — |
+| P2-T02: Circle invitations + approval + roles | PLANNED | — |
+| P2-T03: Inventory sharing toggle per field | PLANNED | — |
+| P2-T04: Household view in Círculos screen | PLANNED | — |
+
+**Spec**: ver `docs/12-circle-model.md` antes de implementar qualquer tarefa P2.
 
 ---
 

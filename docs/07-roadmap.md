@@ -36,7 +36,22 @@
 
 ---
 
-## Phase 2 — Mobile App (React Native)
+## Phase 2 — Círculos, Fichas & Household (Web PWA)
+
+*Spec completa em `docs/12-circle-model.md`*
+
+| Task ID | Description | Status | Priority |
+|---|---|---|---|
+| P2-T00 | Circle model spec + decisions documented | ✅ COMPLETE | HIGH |
+| P2-T01 | Ficha Pessoal: perfil de emergência + QR público (`/ficha/[id]`) | NEXT UP | HIGH |
+| P2-T02 | Círculos: convite por código/QR + aprovação + roles (Admin/Editor/Viewer) | PENDING | HIGH |
+| P2-T03 | Inventário: toggle compartilhar por campo + `shared_fields` na DB | PENDING | HIGH |
+| P2-T04 | Household view: visão agregada dos recursos compartilhados no círculo | PENDING | MEDIUM |
+| P2-T05 | Merge de membro manual → vinculado (badge + decisão do usuário) | PENDING | MEDIUM |
+
+---
+
+## Phase 3 — Mobile App (React Native)
 
 *Goal: Initialize the React Native project, integrate the intelligence layer, and ship LOCAL_AI mode.*
 
