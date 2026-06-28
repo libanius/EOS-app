@@ -10,7 +10,7 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Phase 1 — MVP Hardening |
-| **Last Completed Task** | DB: checklists + circles + circle_members criadas (2026-06-28) |
+| **Last Completed Task** | E2E agent: 14/14 testes passando em produção (2026-06-28) |
 | **Next Task** | P1-T03: Add PWA icons (icon-192.png, icon-512.png) |
 | **Build** | ✅ Passing — `npm run build` clean as of commit `8776817` |
 | **Vercel** | ✅ Deployed — auto-deploys on push to `main` |
@@ -37,7 +37,9 @@
 | P1-T02: Ingest knowledge base (14 PDFs → 3887 chunks) | ✅ COMPLETE | 2026-06-23 |
 | P1-T06: End-to-end test — CONNECTED mode verified in production | ✅ COMPLETE | 2026-06-24 |
 | P1-T03: Add PWA icons | NEXT UP | — |
-| P1-T04: Landing page | DRAFT | — |
+| P1-T04: Landing page | ✅ COMPLETE | 2026-06-28 |
+| P1-T09: Bottom navigation (5 tabs) | ✅ COMPLETE | 2026-06-28 |
+| P1-T10: E2E test agent | ✅ COMPLETE | 2026-06-28 |
 | P1-T05: Language strategy | DRAFT | — |
 | P1-T07: Verify Sentry in production | DRAFT | — |
 | P1-T08: Rate limit validation (Upstash) | DRAFT | — |
@@ -175,3 +177,27 @@ To add a new knowledge source: drop PDF in `docs/`, re-run both commands.
 - All three added to `.gitignore`
 
 ---
+
+---
+
+## What Was Done — Session 2026-06-28 (cont.)
+
+**Checklist LLM fixed (P1-T10 / bugfix):**
+- Root cause 1: `OPENAI_MODEL=gpt-5` in Vercel env — model doesn't exist; hardcoded `gpt-4o-mini` directly in route to bypass broken env var
+- Root cause 2: Unique index used `COALESCE(scenario_id,...)` expression — PostgREST `onConflict` can't match expression indexes; fixed to `UNIQUE (profile_id, canonical_key)`
+- Root cause 3: LLM generated duplicate `canonical_key` items; fixed by deduping before upsert
+- Migration applied: `20260628000200_fix_checklists_conflict_constraint.sql`
+
+**DB hotfixes applied (2026-06-28):**
+- `resource_inventory.updated_at` column added (API was selecting it but column didn't exist)
+- Circles RLS infinite recursion fixed via `SECURITY DEFINER` helper functions
+- Migration: `20260628000100_fix_inventory_updated_at_and_circles_rls.sql`
+
+**E2E test agent created (`scripts/e2e-agent.mjs`):**
+- Creates test user via Supabase Admin API, seeds profile + family, logs in, tests all 7 API endpoints, cleans up
+- Final result: **14/14 ✅ PASSOU** against production `eos-app-fawn.vercel.app`
+- Usage: `node scripts/e2e-agent.mjs [--url https://eos-app-fawn.vercel.app]`
+
+**Known env var issue discovered:**
+- `ANTHROPIC_API_KEY` is NOT set in the Vercel project — `/api/analyze` silently falls back to rules-based `buildSurvivalResponse` mode instead of LLM
+- To enable Claude in production: add `ANTHROPIC_API_KEY` to Vercel env vars (project settings → Environment Variables)
