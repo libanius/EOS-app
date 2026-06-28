@@ -10,9 +10,9 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Phase 1 — MVP Hardening |
-| **Last Completed Task** | P2-T01: Ficha Pessoal + QR público (2026-06-28) |
-| **Next Task** | P2-T06: Ficha Master — identidade central unificada |
-| **Build** | ✅ Passing — `npm run build` clean as of commit `8776817` |
+| **Last Completed Task** | P1-T03: Add PWA icons (2026-06-28) |
+| **Next Task** | P1-T05: Decide language strategy (Gate G-01) |
+| **Build** | ✅ Passing — `npm run build` clean as of 2026-06-28 |
 | **Vercel** | ✅ Deployed — auto-deploys on push to `main` |
 | **Supabase** | ✅ Healthy — project ref `alxurmgpyxjhvnliivbf` |
 
@@ -36,12 +36,12 @@
 | P1-T01: Fix Decision Engine (auth, field names, schema, persist) | ✅ COMPLETE | 2026-06-23 |
 | P1-T02: Ingest knowledge base (14 PDFs → 3887 chunks) | ✅ COMPLETE | 2026-06-23 |
 | P1-T06: End-to-end test — CONNECTED mode verified in production | ✅ COMPLETE | 2026-06-24 |
-| P1-T03: Add PWA icons | NEXT UP | — |
+| P1-T03: Add PWA icons | ✅ COMPLETE | 2026-06-28 |
 | P1-T04: Landing page | ✅ COMPLETE | 2026-06-28 |
 | P1-T09: Bottom navigation (5 tabs) | ✅ COMPLETE | 2026-06-28 |
 | P1-T10: E2E test agent | ✅ COMPLETE | 2026-06-28 |
 | P1-T11: Recursos screen — checklist integration + inventory sync | ✅ COMPLETE | 2026-06-28 |
-| P1-T05: Language strategy | DRAFT | — |
+| P1-T05: Language strategy | NEXT UP | — |
 | P1-T07: Verify Sentry in production | DRAFT | — |
 | P1-T08: Rate limit validation (Upstash) | DRAFT | — |
 
@@ -94,7 +94,7 @@
 |---|---|---|
 | P2-T00: Circle model spec + decisions documented | ✅ COMPLETE | 2026-06-28 |
 | P2-T01: Ficha Pessoal + QR público | ✅ COMPLETE | 2026-06-28 |
-| P2-T06: Ficha Master — identidade central unificada + onboarding | NEXT UP | — |
+| P2-T06: Ficha Master — identidade central unificada + onboarding | PENDING | — |
 | P2-T07: Subscription tiers — feature gates + UI upgrade | PENDING | — |
 | P2-T02: Circle invitations + approval + roles | PENDING | — |
 | P2-T03: Inventory sharing toggle per field | PENDING | — |
@@ -106,15 +106,9 @@
 
 ## What Is Next
 
-**P1-T03: Add PWA icons**
+**P1-T05: Decide language strategy (Gate G-01)**
 
-`public/manifest.json` references `icon-192.png` and `icon-512.png` but neither file exists in `/public/`. This causes install-to-homescreen to show a blank icon on some devices.
-
-Steps:
-1. Create or source a 512×512 PNG icon for EOS (shield or radar symbol — must read at 48px)
-2. Resize to 192×192 and 512×512
-3. Save both as `/public/icon-192.png` and `/public/icon-512.png`
-4. Verify `public/manifest.json` icon references match the filenames
+Choose Portuguese-only, English-only, or bilingual PT/EN before aligning the remaining mixed UI copy.
 
 ---
 
@@ -122,7 +116,7 @@ Steps:
 
 | Issue | Severity | File | Status |
 |---|---|---|---|
-| PWA icons missing (icon-192.png, icon-512.png) | MEDIUM | `public/` | P1-T03 — next task |
+| PWA icons missing (icon-192.png, icon-512.png) | ✅ FIXED | `public/` | P1-T03 — completed 2026-06-28 |
 | Landing page | ✅ DONE | `app/page.tsx` | Pitch + CTAs deployed |
 | Offline write sync not implemented | MEDIUM | `lib/offline-storage.ts` | Writes to IndexedDB not synced back to Supabase on reconnect |
 | LOCAL_AI mode not implemented | MEDIUM | `app/api/analyze/route.ts` | Phase 2 |
@@ -252,3 +246,13 @@ To add a new knowledge source: drop PDF in `docs/`, re-run both commands.
 **Decisão: `OPENAI_MODEL` env var no Vercel está como `gpt-5` (modelo inválido):**
 - Hardcoded `gpt-4o-mini` diretamente nos routes afetados para contornar o env var quebrado
 - **Ação recomendada**: atualizar `OPENAI_MODEL` no Vercel para `gpt-4o-mini` e remover os hardcodes
+
+---
+
+## What Was Done — Session 2026-06-28 (P1-T03)
+
+**PWA icons completed:**
+- Generated `public/icon-192.png` and `public/icon-512.png` from the canonical `public/icon.svg`
+- Confirmed both files are valid PNGs at the exact dimensions declared in `public/manifest.json`
+- Verified the production build with `npm run build`
+- Next task is P1-T05: resolve language strategy through Gate G-01

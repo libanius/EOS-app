@@ -87,7 +87,7 @@ This bug existed in all previous versions of the ingest script and is the root c
 
 - CSS custom properties (no Tailwind)
 - No design system — raw CSS variables in globals.css
-- PWA manifest references `icon-192.png` and `icon-512.png` — these files do not exist in `/public/` yet (P1-T03)
+- PWA PNG icons are derived from the canonical `public/icon.svg`; update the SVG first if the app mark changes, then regenerate both PNG sizes.
 
 ---
 

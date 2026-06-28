@@ -1,6 +1,6 @@
 # 07 — Roadmap
 
-> Last updated: 2026-06-23
+> Last updated: 2026-06-28
 
 ---
 
@@ -27,10 +27,10 @@
 |---|---|---|---|
 | P1-T01 | Fix Decision Engine: auth, field names, schema, persist | ✅ COMPLETE | HIGH |
 | P1-T02 | Ingest knowledge base (14 PDFs → 3850 chunks in Supabase) | ✅ COMPLETE | HIGH |
-| P1-T03 | Add PWA icons (icon-192.png, icon-512.png) referenced in manifest but missing | DRAFT | MEDIUM |
-| P1-T04 | Landing page: replace placeholder with minimal orienting page | DRAFT | MEDIUM |
-| P1-T05 | Language strategy: decide on English-only or bilingual; align all UI copy | DRAFT | MEDIUM |
-| P1-T06 | End-to-end test: full user flow from signup to action plan in production | PENDING | HIGH |
+| P1-T03 | Add PWA icons (icon-192.png, icon-512.png) referenced in manifest but missing | ✅ COMPLETE | MEDIUM |
+| P1-T04 | Landing page: replace placeholder with minimal orienting page | ✅ COMPLETE | MEDIUM |
+| P1-T05 | Language strategy: decide on English-only or bilingual; align all UI copy | NEXT UP | MEDIUM |
+| P1-T06 | End-to-end test: full user flow from signup to action plan in production | ✅ COMPLETE | HIGH |
 | P1-T07 | Verify Sentry is capturing errors in production | DRAFT | MEDIUM |
 | P1-T08 | Rate limit validation: confirm Upstash Redis is connected in production | DRAFT | MEDIUM |
 
