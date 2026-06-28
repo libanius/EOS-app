@@ -1,5 +1,5 @@
 import type { NextRequest } from 'next/server'
-import Anthropic from '@anthropic-ai/sdk'
+import OpenAI from 'openai'
 import { createClient } from '@/lib/supabase/server'
 import { getRelevantChunks } from '@/lib/knowledge'
 import { enforceRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
@@ -466,24 +466,24 @@ export async function POST(request: NextRequest) {
 
       const tryCallLLM = async (attempt: number): Promise<boolean> => {
         try {
-          const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+          const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
-          const llmStream = await anthropic.messages.stream({
-            model: 'claude-sonnet-4-20250514',
+          const llmStream = await openai.chat.completions.stream({
+            model: 'gpt-4o-mini',
             max_tokens: 1500,
-            system: systemPrompt,
             messages: [
+              { role: 'system', content: systemPrompt },
               {
                 role: 'user',
-                content: `Cenário de emergência: ${body.scenario}\nTipo: ${body.scenarioType}\n\nGere o plano de ação agora.`,
+                content: `Cenário de emergência: \${body.scenario}\nTipo: \${body.scenarioType}\n\nGere o plano de ação agora.`,
               },
             ],
           })
 
-          for await (const event of llmStream) {
+          for await (const chunk of llmStream) {
             if (timedOut) return false
-            if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-              const token = event.delta.text
+            const token = chunk.choices[0]?.delta?.content ?? ''
+            if (token) {
               fullText += token
               send({ token })
             }
