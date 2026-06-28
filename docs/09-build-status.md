@@ -10,9 +10,9 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Phase 1 — MVP Hardening |
-| **Last Completed Task** | P1-T09: Bottom navigation + UX flow fix |
+| **Last Completed Task** | DB: checklists + circles + circle_members criadas (2026-06-28) |
 | **Next Task** | P1-T03: Add PWA icons (icon-192.png, icon-512.png) |
-| **Build** | ✅ Passing — `npm run build` clean as of commit `72ac92a` |
+| **Build** | ✅ Passing — `npm run build` clean as of commit `8776817` |
 | **Vercel** | ✅ Deployed — auto-deploys on push to `main` |
 | **Supabase** | ✅ Healthy — project ref `alxurmgpyxjhvnliivbf` |
 
