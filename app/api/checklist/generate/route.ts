@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
-import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@/lib/supabase/server'
+import { getOpenAIClient, getOpenAIModel } from '@/lib/openai'
 import { enforceRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
 import {
   buildChecklistPrompt,
@@ -70,20 +70,24 @@ export async function POST(req: NextRequest) {
 
   let items: LLMItem[]
   try {
-    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-    const message = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+    const openai = getOpenAIClient()
+    const completion = await openai.chat.completions.create({
+      model: getOpenAIModel(),
       max_tokens: 2048,
+      temperature: 0.3,
       messages: [
+        {
+          role: 'system',
+          content: 'You generate tiered emergency preparedness checklists as strict JSON. Never add prose or markdown fences. Respond only with valid JSON.',
+        },
         {
           role: 'user',
           content: buildChecklistPrompt(input),
         },
       ],
-      system: 'You generate tiered emergency preparedness checklists as strict JSON. Never add prose or markdown fences. Respond only with valid JSON.',
     })
 
-    const raw = message.content[0]?.type === 'text' ? message.content[0].text : '{"items":[]}'
+    const raw = completion.choices[0]?.message?.content ?? '{"items":[]}'
     const parsed = JSON.parse(raw) as { items?: LLMItem[] }
     items = Array.isArray(parsed.items) ? parsed.items : []
   } catch (err) {
