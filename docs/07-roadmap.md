@@ -43,9 +43,11 @@
 | Task ID | Description | Status | Priority |
 |---|---|---|---|
 | P2-T00 | Circle model spec + decisions documented | ✅ COMPLETE | HIGH |
-| P2-T01 | Ficha Pessoal: perfil de emergência + QR público (`/ficha/[id]`) | NEXT UP | HIGH |
+| P2-T01 | Ficha Pessoal: perfil de emergência + QR público (`/ficha/[id]`) | ✅ COMPLETE | HIGH |
+| P2-T06 | Ficha Master: identidade central unificada + onboarding progressivo | NEXT UP | HIGH |
+| P2-T07 | Subscription tiers: `profiles.plan` + `lib/feature-gates.ts` + UI de upgrade | PENDING | HIGH |
 | P2-T02 | Círculos: convite por código/QR + aprovação + roles (Admin/Editor/Viewer) | PENDING | HIGH |
-| P2-T03 | Inventário: toggle compartilhar por campo + `shared_fields` na DB | PENDING | HIGH |
+| P2-T03 | Inventário: toggle compartilhar por campo + `shared_fields` na DB | PENDING | MEDIUM |
 | P2-T04 | Household view: visão agregada dos recursos compartilhados no círculo | PENDING | MEDIUM |
 | P2-T05 | Merge de membro manual → vinculado (badge + decisão do usuário) | PENDING | MEDIUM |
 

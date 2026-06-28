@@ -11,7 +11,7 @@
 |---|---|
 | **Current Phase** | Phase 1 — MVP Hardening |
 | **Last Completed Task** | P2-T01: Ficha Pessoal + QR público (2026-06-28) |
-| **Next Task** | P2-T02: Circle invitations + approval + roles |
+| **Next Task** | P2-T06: Ficha Master — identidade central unificada |
 | **Build** | ✅ Passing — `npm run build` clean as of commit `8776817` |
 | **Vercel** | ✅ Deployed — auto-deploys on push to `main` |
 | **Supabase** | ✅ Healthy — project ref `alxurmgpyxjhvnliivbf` |
@@ -94,9 +94,11 @@
 |---|---|---|
 | P2-T00: Circle model spec + decisions documented | ✅ COMPLETE | 2026-06-28 |
 | P2-T01: Ficha Pessoal + QR público | ✅ COMPLETE | 2026-06-28 |
-| P2-T02: Circle invitations + approval + roles | PLANNED | — |
-| P2-T03: Inventory sharing toggle per field | PLANNED | — |
-| P2-T04: Household view in Círculos screen | PLANNED | — |
+| P2-T06: Ficha Master — identidade central unificada + onboarding | NEXT UP | — |
+| P2-T07: Subscription tiers — feature gates + UI upgrade | PENDING | — |
+| P2-T02: Circle invitations + approval + roles | PENDING | — |
+| P2-T03: Inventory sharing toggle per field | PENDING | — |
+| P2-T04: Household view in Círculos screen | PENDING | — |
 
 **Spec**: ver `docs/12-circle-model.md` antes de implementar qualquer tarefa P2.
 
