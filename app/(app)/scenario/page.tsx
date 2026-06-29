@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { useLanguage, type Language, type MessageKey } from '@/lib/i18n'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -33,21 +34,21 @@ interface IntelligenceResponse {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const SCENARIO_TYPES: { id: ScenarioType; label: string }[] = [
-  { id: 'hurricane', label: 'Hurricane' },
-  { id: 'earthquake', label: 'Earthquake' },
-  { id: 'fallout', label: 'Fallout' },
-  { id: 'pandemic', label: 'Pandemic' },
-  { id: 'fire', label: 'Fire' },
-  { id: 'flood', label: 'Flood' },
-  { id: 'general', label: 'General' },
+const SCENARIO_TYPES: { id: ScenarioType; labelKey: MessageKey }[] = [
+  { id: 'hurricane', labelKey: 'scenario.hurricane' },
+  { id: 'earthquake', labelKey: 'scenario.earthquake' },
+  { id: 'fallout', labelKey: 'scenario.fallout' },
+  { id: 'pandemic', labelKey: 'scenario.pandemic' },
+  { id: 'fire', labelKey: 'scenario.fire' },
+  { id: 'flood', labelKey: 'scenario.flood' },
+  { id: 'general', labelKey: 'scenario.general' },
 ]
 
-const LOADING_DOTS = [
-  'Scanning threat vectors...',
-  'Profiling family context...',
-  'Cross-referencing protocols...',
-  'Building action plan...',
+const LOADING_KEYS: MessageKey[] = [
+  'scenario.loading1',
+  'scenario.loading2',
+  'scenario.loading3',
+  'scenario.loading4',
 ]
 
 const MODE_STYLES: Record<
@@ -122,11 +123,12 @@ function useTypewriter(
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function LoadingDots() {
+  const { t } = useLanguage()
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: '32px 0' }}>
-      {LOADING_DOTS.map((label, i) => (
+      {LOADING_KEYS.map((key, i) => (
         <div
-          key={label}
+          key={key}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -154,7 +156,7 @@ function LoadingDots() {
               fontFamily: 'inherit',
             }}
           >
-            {label}
+            {t(key)}
           </span>
         </div>
       ))}
@@ -171,9 +173,10 @@ function StreamOutput({
   response: IntelligenceResponse | null
   status: Status
 }) {
+  const { language } = useLanguage()
   const displayText =
     status === 'done' && response
-      ? formatResponse(response)
+      ? formatResponse(response, language)
       : streamBuffer
 
   const { displayed, done: twDone } = useTypewriter(
@@ -219,32 +222,35 @@ function StreamOutput({
   )
 }
 
-function formatResponse(r: IntelligenceResponse): string {
+function formatResponse(r: IntelligenceResponse, language: Language): string {
   const lines: string[] = []
+  const labels = language === 'pt'
+    ? { priority: 'PRIORIDADE', risks: 'RISCOS', immediate: 'AÇÕES IMEDIATAS (15 min)', short: 'CURTO PRAZO (1 hora)', mid: 'MÉDIO PRAZO (3 horas)' }
+    : { priority: 'PRIORITY', risks: 'RISKS', immediate: 'IMMEDIATE ACTIONS (15 min)', short: 'SHORT TERM (1 hour)', mid: 'MID TERM (3 hours)' }
 
-  lines.push(`PRIORITY: ${r.priority}`)
+  lines.push(`${labels.priority}: ${r.priority}`)
   lines.push('')
 
   if (r.risks.length > 0) {
-    lines.push('RISKS:')
+    lines.push(`${labels.risks}:`)
     r.risks.forEach((risk) => lines.push(`· ${risk}`))
     lines.push('')
   }
 
   if (r.immediate_actions.length > 0) {
-    lines.push('IMMEDIATE ACTIONS (15 min):')
+    lines.push(`${labels.immediate}:`)
     r.immediate_actions.forEach((a, i) => lines.push(`${i + 1}. ${a}`))
     lines.push('')
   }
 
   if (r.short_term_actions.length > 0) {
-    lines.push('SHORT TERM (1 hour):')
+    lines.push(`${labels.short}:`)
     r.short_term_actions.forEach((a, i) => lines.push(`${i + 1}. ${a}`))
     lines.push('')
   }
 
   if (r.mid_term_actions.length > 0) {
-    lines.push('MID TERM (3 hours):')
+    lines.push(`${labels.mid}:`)
     r.mid_term_actions.forEach((a, i) => lines.push(`${i + 1}. ${a}`))
   }
 
@@ -307,6 +313,7 @@ function PriorityBadge({ priority }: { priority: Priority }) {
 
 function CollapsibleRules({ rules }: { rules: string[] }) {
   const [open, setOpen] = useState(false)
+  const { t } = useLanguage()
 
   return (
     <div>
@@ -336,7 +343,7 @@ function CollapsibleRules({ rules }: { rules: string[] }) {
         >
           ▶
         </span>
-        Rules Applied ({rules.length})
+        {t('scenario.rules')} ({rules.length})
       </button>
 
       {open && (
@@ -371,6 +378,7 @@ function CollapsibleRules({ rules }: { rules: string[] }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function ScenarioPage() {
+  const { t } = useLanguage()
   const [selectedType, setSelectedType] = useState<ScenarioType>('general')
   const [description, setDescription] = useState('')
   const [status, setStatus] = useState<Status>('idle')
@@ -454,17 +462,17 @@ export default function ScenarioPage() {
       if (err instanceof Error && err.name === 'AbortError') return
 
       console.error('[EOS] Stream error:', err)
-      showToast('Falha na conexão. Usando modo offline.')
+      showToast(t('scenario.connectionError'))
       setStatus('error')
 
       // Show survival mode fallback
       setResponse({
         mode: 'SURVIVAL',
         priority: 'MEDIUM',
-        risks: ['Conexão com servidor perdida'],
+        risks: [t('scenario.networkRisk')],
         immediate_actions: [
-          'Avaliar recursos disponíveis localmente',
-          'Manter comunicação com família',
+          t('scenario.localResources'),
+          t('scenario.familyCommunication'),
         ],
         short_term_actions: [],
         mid_term_actions: [],
@@ -472,7 +480,7 @@ export default function ScenarioPage() {
         knowledgeSources: ['Rules Engine (offline)'],
       })
     }
-  }, [description, selectedType, status])
+  }, [description, selectedType, status, t])
 
   const isLoading = status === 'loading'
   const isStreaming = status === 'streaming'
@@ -622,7 +630,7 @@ export default function ScenarioPage() {
               marginBottom: 4,
             }}
           >
-            Decision Engine
+            {t('scenario.engine')}
           </p>
           <h1
             style={{
@@ -632,7 +640,7 @@ export default function ScenarioPage() {
               margin: 0,
             }}
           >
-            Generate Action Plan
+            {t('scenario.title')}
           </h1>
         </div>
 
@@ -650,7 +658,7 @@ export default function ScenarioPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {/* Scenario Type */}
             <div className="card">
-              <div className="ct">Scenario Type</div>
+              <div className="ct">{t('scenario.type')}</div>
               <div
                 style={{
                   display: 'flex',
@@ -658,14 +666,14 @@ export default function ScenarioPage() {
                   gap: 8,
                 }}
               >
-                {SCENARIO_TYPES.map(({ id, label }) => (
+                {SCENARIO_TYPES.map(({ id, labelKey }) => (
                   <button
                     key={id}
                     className={`eos-chip${selectedType === id ? ' on' : ''}`}
                     onClick={() => setSelectedType(id)}
                     disabled={isActive}
                   >
-                    {label}
+                    {t(labelKey)}
                   </button>
                 ))}
               </div>
@@ -673,10 +681,10 @@ export default function ScenarioPage() {
 
             {/* Scenario Description */}
             <div className="card">
-              <div className="ct">Situation Description</div>
+              <div className="ct">{t('scenario.description')}</div>
               <textarea
                 className="eos-textarea"
-                placeholder="Descreva sua situação atual — localização, ameaças imediatas, condições da família..."
+                placeholder={t('scenario.placeholder')}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 disabled={isActive}
@@ -688,7 +696,7 @@ export default function ScenarioPage() {
                   margin: '8px 0 0',
                 }}
               >
-                {description.length}/2000 characters
+                {description.length}/2000 {t('scenario.characters')}
               </p>
             </div>
 
@@ -699,10 +707,10 @@ export default function ScenarioPage() {
               disabled={!canSubmit}
             >
               {isLoading
-                ? 'Analyzing...'
+                ? t('scenario.analyzing')
                 : isStreaming
-                ? 'Generating...'
-                : 'Generate Action Plan'}
+                ? t('scenario.generating')
+                : t('scenario.generate')}
             </button>
           </div>
 
@@ -721,7 +729,7 @@ export default function ScenarioPage() {
                   padding: 32,
                 }}
               >
-                Configure o cenário e clique em Generate
+                {t('scenario.empty')}
               </div>
             )}
 
@@ -769,7 +777,7 @@ export default function ScenarioPage() {
                           margin: 0,
                         }}
                       >
-                        Sources:{' '}
+                        {t('scenario.sources')}:{' '}
                         {response.knowledgeSources.join(' · ')}
                       </p>
                     )}
