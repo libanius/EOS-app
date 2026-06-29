@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useLanguage, type MessageKey } from '@/lib/i18n'
 
 type Tier = 'ESSENTIAL' | 'MODERATE' | 'EXCELLENT'
 
@@ -29,6 +30,7 @@ const TIER_COLOR: Record<Tier, string> = {
 }
 
 export default function ChecklistPage() {
+  const { t } = useLanguage()
   const [items, setItems] = useState<ChecklistItem[]>([])
   const [filter, setFilter] = useState<'ALL' | Tier>('ALL')
   const [loading, setLoading] = useState(true)
@@ -42,14 +44,14 @@ export default function ChecklistPage() {
     try {
       const res = await fetch('/api/checklist', { cache: 'no-store' })
       const json = await res.json()
-      if (!res.ok) throw new Error(json.error ?? 'Falha ao carregar')
+      if (!res.ok) throw new Error(json.error ?? t('checklist.loadError'))
       setItems(json.items ?? [])
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erro desconhecido')
+      setError(e instanceof Error ? e.message : t('checklist.unknownError'))
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [t])
 
   useEffect(() => {
     void load()
@@ -65,14 +67,24 @@ export default function ChecklistPage() {
         body: JSON.stringify({ scenarioType }),
       })
       const json = await res.json()
-      if (!res.ok) throw new Error(json.error ?? 'Falha ao gerar')
+      if (!res.ok) throw new Error(json.error ?? t('checklist.generateError'))
       await load()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erro desconhecido')
+      setError(e instanceof Error ? e.message : t('checklist.unknownError'))
     } finally {
       setGenerating(false)
     }
-  }, [scenarioType, load])
+  }, [scenarioType, load, t])
+
+  const tierLabel = useCallback((tier: Tier | 'ALL') => {
+    const keys: Record<Tier | 'ALL', MessageKey> = {
+      ALL: 'checklist.all',
+      ESSENTIAL: 'checklist.essential',
+      MODERATE: 'checklist.moderate',
+      EXCELLENT: 'checklist.excellent',
+    }
+    return t(keys[tier])
+  }, [t])
 
   const toggle = useCallback(
     async (canonicalKey: string, next: boolean) => {
@@ -167,7 +179,7 @@ export default function ChecklistPage() {
             color: '#8a8a99',
           }}
         >
-          EOS · Preparedness
+          {t('checklist.eyebrow')}
         </div>
         <h1 style={{ margin: '6px 0 0', fontSize: 28, fontWeight: 600 }}>
           Checklist
@@ -214,13 +226,13 @@ export default function ChecklistPage() {
             borderRadius: 6,
           }}
         >
-          <option value="GENERAL">General</option>
-          <option value="HURRICANE">Hurricane</option>
-          <option value="EARTHQUAKE">Earthquake</option>
-          <option value="PANDEMIC">Pandemic</option>
-          <option value="FIRE">Fire</option>
-          <option value="FLOOD">Flood</option>
-          <option value="FALLOUT">Fallout</option>
+          <option value="GENERAL">{t('checklist.general')}</option>
+          <option value="HURRICANE">{t('checklist.hurricane')}</option>
+          <option value="EARTHQUAKE">{t('checklist.earthquake')}</option>
+          <option value="PANDEMIC">{t('checklist.pandemic')}</option>
+          <option value="FIRE">{t('checklist.fire')}</option>
+          <option value="FLOOD">{t('checklist.flood')}</option>
+          <option value="FALLOUT">{t('checklist.fallout')}</option>
         </select>
         <button
           onClick={generate}
@@ -235,10 +247,10 @@ export default function ChecklistPage() {
             cursor: generating ? 'default' : 'pointer',
           }}
         >
-          {generating ? 'Gerando…' : 'Gerar checklist'}
+          {generating ? t('checklist.generating') : t('checklist.generate')}
         </button>
         <div style={{ fontSize: 13, color: '#8a8a99' }}>
-          Items are deduplicated across scenarios via canonical_key.
+          {t('checklist.dedupe')}
         </div>
       </section>
 
@@ -251,13 +263,13 @@ export default function ChecklistPage() {
           marginBottom: 22,
         }}
       >
-        {TIERS.map((t) => {
-          const pct = stats[t].total
-            ? Math.round((stats[t].done / stats[t].total) * 100)
+        {TIERS.map((tier) => {
+          const pct = stats[tier].total
+            ? Math.round((stats[tier].done / stats[tier].total) * 100)
             : 0
           return (
             <div
-              key={t}
+              key={tier}
               style={{
                 border: '1px solid #222231',
                 borderRadius: 10,
@@ -268,15 +280,15 @@ export default function ChecklistPage() {
                 style={{
                   fontSize: 11,
                   letterSpacing: 1.5,
-                  color: TIER_COLOR[t],
+                  color: TIER_COLOR[tier],
                   fontWeight: 700,
                   textTransform: 'uppercase',
                 }}
               >
-                {t}
+                {tierLabel(tier)}
               </div>
               <div style={{ marginTop: 6, fontSize: 22, fontWeight: 600 }}>
-                {stats[t].done}
+                {stats[tier].done}
                 <span
                   style={{
                     color: '#4a4a5a',
@@ -285,7 +297,7 @@ export default function ChecklistPage() {
                   }}
                 >
                   {' '}
-                  / {stats[t].total}
+                  / {stats[tier].total}
                 </span>
               </div>
               <div
@@ -301,7 +313,7 @@ export default function ChecklistPage() {
                   style={{
                     width: `${pct}%`,
                     height: '100%',
-                    background: TIER_COLOR[t],
+                    background: TIER_COLOR[tier],
                     transition: 'width .3s',
                   }}
                 />
@@ -314,7 +326,7 @@ export default function ChecklistPage() {
                   fontFamily: 'ui-monospace, Menlo, monospace',
                 }}
               >
-                ~{autonomyDays[t]}d autonomia
+                ~{autonomyDays[tier]} {t('checklist.autonomy')}
               </div>
             </div>
           )
@@ -340,7 +352,7 @@ export default function ChecklistPage() {
               textTransform: 'uppercase',
             }}
           >
-            {f}
+            {tierLabel(f)}
           </button>
         ))}
       </section>
@@ -361,7 +373,7 @@ export default function ChecklistPage() {
               textAlign: 'center',
             }}
           >
-            carregando…
+            {t('common.loading')}
           </div>
         ) : visible.length === 0 ? (
           <div
@@ -371,7 +383,7 @@ export default function ChecklistPage() {
               textAlign: 'center',
             }}
           >
-            Nenhum item — clique em &ldquo;Gerar checklist&rdquo;.
+            {t('checklist.empty')}
           </div>
         ) : (
           visible.map((it) => (
@@ -459,7 +471,7 @@ export default function ChecklistPage() {
                       textTransform: 'uppercase',
                     }}
                   >
-                    shared
+                    {t('checklist.shared')}
                   </span>
                 )}
                 <span
@@ -474,7 +486,7 @@ export default function ChecklistPage() {
                     textTransform: 'uppercase',
                   }}
                 >
-                  {it.tier}
+                  {tierLabel(it.tier)}
                 </span>
               </span>
             </button>

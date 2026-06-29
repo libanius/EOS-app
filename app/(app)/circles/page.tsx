@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { useLanguage } from '@/lib/i18n'
 
 interface CircleRow {
   id: string
@@ -38,6 +39,7 @@ const BAND_COLOR: Record<CircleRow['score']['band'], string> = {
 }
 
 export default function CirclesPage() {
+  const { t } = useLanguage()
   const [circles, setCircles] = useState<CircleRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -51,14 +53,14 @@ export default function CirclesPage() {
     try {
       const res = await fetch('/api/circles', { cache: 'no-store' })
       const j = await res.json()
-      if (!res.ok) throw new Error(j.error ?? 'Falha ao carregar')
+      if (!res.ok) throw new Error(j.error ?? t('circles.loadError'))
       setCircles(j.circles ?? [])
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erro')
+      setError(e instanceof Error ? e.message : t('common.error'))
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [t])
 
   useEffect(() => {
     void load()
@@ -77,11 +79,11 @@ export default function CirclesPage() {
       setNewName('')
       await load()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erro')
+      setError(e instanceof Error ? e.message : t('common.error'))
     } finally {
       setBusy(false)
     }
-  }, [newName, load])
+  }, [newName, load, t])
 
   const join = useCallback(async () => {
     if (joinCode.trim().length !== 6) return
@@ -96,11 +98,11 @@ export default function CirclesPage() {
       setJoinCode('')
       await load()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erro')
+      setError(e instanceof Error ? e.message : t('common.error'))
     } finally {
       setBusy(false)
     }
-  }, [joinCode, load])
+  }, [joinCode, load, t])
 
   const toggleShare = useCallback(
     async (id: string, next: boolean) => {
@@ -123,7 +125,7 @@ export default function CirclesPage() {
 
   const leave = useCallback(
     async (id: string) => {
-      if (!confirm('Sair deste Circle?')) return
+      if (!confirm(t('circles.leaveConfirm'))) return
       setBusy(true)
       try {
         const res = await fetch(`/api/circles/${id}/leave`, {
@@ -132,12 +134,12 @@ export default function CirclesPage() {
         if (!res.ok) throw new Error((await res.json()).error)
         await load()
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'Erro')
+        setError(e instanceof Error ? e.message : t('common.error'))
       } finally {
         setBusy(false)
       }
     },
-    [load],
+    [load, t],
   )
 
   return (
@@ -160,10 +162,10 @@ export default function CirclesPage() {
             color: '#8a8a99',
           }}
         >
-          EOS · Social
+          {t('circles.eyebrow')}
         </div>
         <h1 style={{ margin: '6px 0 0', fontSize: 28, fontWeight: 600 }}>
-          Circles
+          {t('circles.title')}
         </h1>
       </header>
 
@@ -199,10 +201,10 @@ export default function CirclesPage() {
           }}
         >
           <div style={{ fontSize: 12, color: '#8a8a99', marginBottom: 8 }}>
-            CRIAR CIRCLE
+            {t('circles.create')}
           </div>
           <input
-            placeholder="Ex: Família Libânio"
+            placeholder={t('circles.namePlaceholder')}
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             style={{
@@ -228,7 +230,7 @@ export default function CirclesPage() {
               cursor: busy ? 'default' : 'pointer',
             }}
           >
-            Criar
+            {t('circles.createAction')}
           </button>
         </div>
 
@@ -240,7 +242,7 @@ export default function CirclesPage() {
           }}
         >
           <div style={{ fontSize: 12, color: '#8a8a99', marginBottom: 8 }}>
-            ENTRAR COM CÓDIGO
+            {t('circles.join')}
           </div>
           <input
             placeholder="ABCDEF"
@@ -275,14 +277,14 @@ export default function CirclesPage() {
               cursor: busy || joinCode.length !== 6 ? 'default' : 'pointer',
             }}
           >
-            Entrar
+            {t('circles.joinAction')}
           </button>
         </div>
       </section>
 
       {/* Circles list */}
       {loading ? (
-        <div style={{ color: '#8a8a99' }}>carregando…</div>
+        <div style={{ color: '#8a8a99' }}>{t('common.loading')}</div>
       ) : circles.length === 0 ? (
         <div
           style={{
@@ -293,7 +295,7 @@ export default function CirclesPage() {
             borderRadius: 10,
           }}
         >
-          Você ainda não faz parte de nenhum Circle.
+          {t('circles.empty')}
         </div>
       ) : (
         <div style={{ display: 'grid', gap: 14 }}>
@@ -343,7 +345,7 @@ export default function CirclesPage() {
                       letterSpacing: 2,
                     }}
                   >
-                    invite · {c.invite_code}
+                    {t('circles.invite')} · {c.invite_code}
                   </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
@@ -439,11 +441,11 @@ export default function CirclesPage() {
                     gap: 16,
                   }}
                 >
-                  <span>👥 {c.pooled.member_count} membros</span>
+                  <span>👥 {c.pooled.member_count} {t('circles.members')}</span>
                   <span>💧 {Number(c.pooled.water_liters).toFixed(1)} L</span>
-                  <span>🍲 {Number(c.pooled.food_days).toFixed(1)} dias</span>
-                  <span>⛑ {c.pooled.medical_kit_count} kits</span>
-                  <span>📻 {c.pooled.communication_device_count} comms</span>
+                  <span>🍲 {Number(c.pooled.food_days).toFixed(1)} {t('circles.days')}</span>
+                  <span>⛑ {c.pooled.medical_kit_count} {t('circles.kits')}</span>
+                  <span>📻 {c.pooled.communication_device_count} {t('circles.comms')}</span>
                 </div>
               )}
 
@@ -471,7 +473,7 @@ export default function CirclesPage() {
                     checked={c.share_inventory}
                     onChange={(e) => toggleShare(c.id, e.target.checked)}
                   />
-                  Compartilhar meu inventário neste Circle
+                  {t('circles.shareInventory')}
                 </label>
 
                 {!c.is_leader && (
@@ -488,7 +490,7 @@ export default function CirclesPage() {
                       cursor: 'pointer',
                     }}
                   >
-                    Sair
+                    {t('circles.leave')}
                   </button>
                 )}
               </div>

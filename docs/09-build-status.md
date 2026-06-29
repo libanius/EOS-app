@@ -268,4 +268,5 @@ To add a new knowledge source: drop PDF in `docs/`, re-run both commands.
 - Document `lang`, global action labels, and bottom navigation react to the selection
 - Added Settings to the PWA page cache
 - Migrated Onboarding and the private Emergency Card editor to the shared PT/EN dictionary
-- Remaining before P1-T05 completion: migrate Checklist, Circles, Scenario, Family, Resources, auth, landing, and the public Emergency Card
+- Migrated Checklist and Circles, including loading/error states, scenario labels, tier labels, controls, and empty states
+- Remaining before P1-T05 completion: migrate Scenario, Family, Resources, auth, landing, and the public Emergency Card
