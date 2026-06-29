@@ -271,7 +271,8 @@ To add a new knowledge source: drop PDF in `docs/`, re-run both commands.
 - Migrated Checklist and Circles, including loading/error states, scenario labels, tier labels, controls, and empty states
 - Migrated Scenario, including scenario types, loading sequence, fallback copy, plan headings, rules, sources, and controls
 - Migrated Family, including dashboard metrics, risk feed, empty state, member form, medical fields, status toggles, and member-card actions
-- Remaining before P1-T05 completion: migrate Resources, auth, landing, and the public Emergency Card
+- Migrated Resources, including readiness, AI briefing, inventory fields, units, equipment, cash, errors, and integrated checklist
+- Remaining before P1-T05 completion: migrate auth, landing, and the public Emergency Card
 
 ---
 

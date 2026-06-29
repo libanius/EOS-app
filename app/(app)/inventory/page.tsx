@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
 import NumericStepper from '@/components/NumericStepper'
+import { useLanguage } from '@/lib/i18n'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -18,11 +19,6 @@ interface ChecklistItem {
 }
 
 const CHECKLIST_TIERS: ChecklistTier[] = ['ESSENTIAL', 'MODERATE', 'EXCELLENT']
-const TIER_LABEL: Record<ChecklistTier, string> = {
-  ESSENTIAL: 'Essencial',
-  MODERATE: 'Moderado',
-  EXCELLENT: 'Excelente',
-}
 const TIER_DAYS: Record<ChecklistTier, number> = { ESSENTIAL: 3, MODERATE: 7, EXCELLENT: 30 }
 const TIER_COLOR: Record<ChecklistTier, string> = {
   ESSENTIAL: '#ef4444',
@@ -130,6 +126,7 @@ function ResourceCard({
   optional = false,
   children,
 }: ResourceCardProps) {
+  const { t } = useLanguage()
   const state = getResourceState(
     value, threshold, criticalThreshold, membersCount, perPerson,
   )
@@ -151,13 +148,13 @@ function ResourceCard({
         <span style={S.cardTitle}>{title}</span>
 
         {state === 'critical' && (
-          <span style={{ ...S.badge, ...S.badgeCritical }}>⚠ CRÍTICO</span>
+          <span style={{ ...S.badge, ...S.badgeCritical }}>⚠ {t('inventory.critical')}</span>
         )}
         {state === 'high' && (
-          <span style={{ ...S.badge, ...S.badgeHigh }}>▲ BAIXO</span>
+          <span style={{ ...S.badge, ...S.badgeHigh }}>▲ {t('inventory.low')}</span>
         )}
         {optional && state === 'ok' && (
-          <span style={S.optionalTag}>opcional</span>
+          <span style={S.optionalTag}>{t('inventory.optional')}</span>
         )}
       </div>
       {children}
@@ -175,11 +172,12 @@ type ReadinessSummaryProps = {
 }
 
 function ReadinessSummary({ score, level, memberCount, autonomyDays }: ReadinessSummaryProps) {
+  const { t } = useLanguage()
   const levelLabel: Record<ReadinessLevel, string> = {
-    critical:  'CRÍTICO',
-    low:       'BAIXO',
-    adequate:  'ADEQUADO',
-    excellent: 'EXCELENTE',
+    critical:  t('inventory.critical'),
+    low:       t('inventory.low'),
+    adequate:  t('inventory.adequate'),
+    excellent: t('inventory.excellent'),
   }
   const levelColor: Record<ReadinessLevel, string> = {
     critical:  'var(--ac3)',
@@ -217,7 +215,7 @@ function ReadinessSummary({ score, level, memberCount, autonomyDays }: Readiness
       {/* Top row */}
       <div style={S.summaryTop}>
         <div>
-          <p style={S.summaryLabel}>RESUMO DE PRONTIDÃO</p>
+          <p style={S.summaryLabel}>{t('inventory.readiness')}</p>
           <div style={S.summaryScoreRow}>
             <span
               style={{
@@ -251,7 +249,7 @@ function ReadinessSummary({ score, level, memberCount, autonomyDays }: Readiness
           </span>
           {memberCount > 0 && (
             <span style={S.memberChip}>
-              {memberCount} membro{memberCount !== 1 ? 's' : ''}
+              {memberCount} {t('inventory.members')}
             </span>
           )}
         </div>
@@ -271,12 +269,12 @@ function ReadinessSummary({ score, level, memberCount, autonomyDays }: Readiness
 
       {/* Autonomy row */}
       <div style={S.autonomyRow}>
-        <span style={S.autonomyLabel}>AUTONOMIA ESTIMADA</span>
+        <span style={S.autonomyLabel}>{t('inventory.autonomy')}</span>
         <span style={S.autonomyValue}>
           <span style={{ color: levelColor[level], fontFamily: "'DM Mono', monospace", fontWeight: 700 }}>
             {autonomyDays}
           </span>
-          {' dias'}
+          {' '}{t('inventory.days')}
         </span>
       </div>
     </div>
@@ -361,6 +359,7 @@ const DEFAULT_INVENTORY: Inventory = {
 }
 
 export default function InventoryPage() {
+  const { language, t } = useLanguage()
   const [inv, setInv] = useState<Inventory>(DEFAULT_INVENTORY)
   const [memberCount, setMemberCount] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -407,11 +406,11 @@ export default function InventoryPage() {
         setChecklistItems(Array.isArray(items) ? items : [])
       }
     } catch {
-      setSaveError('Erro ao carregar inventário.')
+      setSaveError(t('inventory.loadError'))
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [t])
 
   useEffect(() => { loadData() }, [loadData])
 
@@ -423,18 +422,18 @@ export default function InventoryPage() {
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
         setAiBriefing(null)
-        setAiError(data.error ?? 'Erro ao gerar análise com IA.')
+        setAiError(data.error ?? t('inventory.aiError'))
         return
       }
 
       setAiBriefing(data.briefing ?? null)
     } catch {
       setAiBriefing(null)
-      setAiError('Erro de rede ao consultar a OpenAI.')
+      setAiError(t('inventory.aiNetworkError'))
     } finally {
       setAiLoading(false)
     }
-  }, [])
+  }, [t])
 
   // ── Auto-save ──────────────────────────────────────────────────────────────
   const save = useCallback((data: Inventory) => {
@@ -451,17 +450,17 @@ export default function InventoryPage() {
           })
           if (!res.ok) {
             const body = await res.json()
-            setSaveError(body.error ?? 'Erro ao salvar.')
+            setSaveError(body.error ?? t('common.saveError'))
           } else {
             setSaved(true)
             setTimeout(() => setSaved(false), 2000)
           }
         } catch {
-          setSaveError('Erro de rede ao salvar.')
+          setSaveError(t('inventory.networkSaveError'))
         }
       })
     }, 600)
-  }, [])
+  }, [t])
 
   const toggleChecklistItem = useCallback(async (canonicalKey: string, nextAcquired: boolean) => {
     // Optimistic UI update
@@ -545,7 +544,7 @@ export default function InventoryPage() {
     return (
       <div style={S.loadingWrap}>
         <span style={S.loadingDot} />
-        <span style={S.loadingText}>Carregando inventário…</span>
+        <span style={S.loadingText}>{t('inventory.loading')}</span>
       </div>
     )
   }
@@ -557,8 +556,8 @@ export default function InventoryPage() {
         {/* Header */}
         <div style={S.header}>
           <div>
-            <p style={S.headerLabel}>INVENTÁRIO</p>
-            <h1 style={S.headerTitle}>Recursos</h1>
+            <p style={S.headerLabel}>{t('inventory.eyebrow')}</p>
+            <h1 style={S.headerTitle}>{t('inventory.title')}</h1>
           </div>
           <div style={S.headerStatus}>
             {isPending && <span style={S.savingDot} />}
@@ -582,7 +581,7 @@ export default function InventoryPage() {
           <div style={S.aiHeader}>
             <div>
               <p style={S.aiLabel}>OPENAI BRIEFING</p>
-              <h2 style={S.aiTitle}>Análise tática da sua prontidão</h2>
+              <h2 style={S.aiTitle}>{t('inventory.aiTitle')}</h2>
             </div>
             <button
               className="btn bp bsm"
@@ -590,7 +589,7 @@ export default function InventoryPage() {
               disabled={aiLoading}
               style={S.aiButton}
             >
-              {aiLoading ? 'Analisando...' : aiBriefing ? 'Atualizar IA' : 'Gerar com IA'}
+              {aiLoading ? t('inventory.aiAnalyze') : aiBriefing ? t('inventory.aiRefresh') : t('inventory.aiGenerate')}
             </button>
           </div>
 
@@ -598,12 +597,12 @@ export default function InventoryPage() {
 
           {!aiBriefing && !aiLoading && !aiError && (
             <p style={S.aiPlaceholder}>
-              Gere um briefing com a OpenAI usando família e inventário reais para identificar riscos, pontos fortes e próximas ações.
+              {t('inventory.aiPrompt')}
             </p>
           )}
 
           {aiLoading && (
-            <p style={S.aiPlaceholder}>Consultando a OpenAI e consolidando os dados da família...</p>
+            <p style={S.aiPlaceholder}>{t('inventory.aiLoading')}</p>
           )}
 
           {aiBriefing && (
@@ -617,17 +616,17 @@ export default function InventoryPage() {
                     background: `${aiRiskColor[aiBriefing.risk_level]}14`,
                   }}
                 >
-                  risco {aiBriefing.risk_level}
+                  {t('inventory.risk')} {aiBriefing.risk_level}
                 </span>
                 <p style={S.aiOverview}>{aiBriefing.overview}</p>
               </div>
 
               <div style={S.aiGrid}>
-                <AIList title="Prioridades" items={aiBriefing.priorities} />
-                <AIList title="Pontos fortes" items={aiBriefing.strengths} />
+                <AIList title={t('inventory.priorities')} items={aiBriefing.priorities} />
+                <AIList title={t('inventory.strengths')} items={aiBriefing.strengths} />
               </div>
 
-              <AIList title="Próximos passos" items={aiBriefing.next_steps} fullWidth />
+              <AIList title={t('inventory.nextSteps')} items={aiBriefing.next_steps} fullWidth />
             </div>
           )}
         </div>
@@ -635,7 +634,7 @@ export default function InventoryPage() {
         {/* ── Água — threshold: 2 L/pessoa CRÍTICO, 4 L/pessoa BAIXO ──────── */}
         <ResourceCard
           icon="💧"
-          title="Água"
+          title={t('inventory.water')}
           value={inv.water_liters}
           threshold={4}
           criticalThreshold={2}
@@ -645,13 +644,13 @@ export default function InventoryPage() {
           {/* Big display */}
           <div style={S.bigValueWrap}>
             <span style={S.bigValue}>
-              {inv.water_liters.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+              {inv.water_liters.toLocaleString(language === 'pt' ? 'pt-BR' : 'en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
             </span>
-            <span style={S.bigValueUnit}>litros</span>
+            <span style={S.bigValueUnit}>{t('inventory.liters')}</span>
           </div>
           {memberCount > 0 && (
             <p style={S.perPersonHint}>
-              {(inv.water_liters / memberCount).toFixed(1)} L / pessoa
+              {(inv.water_liters / memberCount).toFixed(1)} L / {t('inventory.perPerson')}
             </p>
           )}
           <div style={{ marginTop: 12 }}>
@@ -660,7 +659,7 @@ export default function InventoryPage() {
               step={0.5}
               min={0}
               decimals={1}
-              label="Água"
+              label={t('inventory.water')}
               unit="L"
               accent
               disabled={isPending}
@@ -672,7 +671,7 @@ export default function InventoryPage() {
         {/* ── Comida — threshold: 1 dia CRÍTICO, 3 dias BAIXO ─────────────── */}
         <ResourceCard
           icon="🍱"
-          title="Comida"
+          title={t('inventory.food')}
           value={inv.food_days}
           threshold={3}
           criticalThreshold={1}
@@ -684,8 +683,8 @@ export default function InventoryPage() {
             step={1}
             min={0}
             decimals={0}
-            label="Dias de suprimento"
-            unit="dias"
+            label={t('inventory.supplyDays')}
+            unit={t('inventory.days')}
             disabled={isPending}
             onChange={(v) => update('food_days', v)}
           />
@@ -694,7 +693,7 @@ export default function InventoryPage() {
         {/* ── Combustível — opcional, 0 L = BAIXO ─────────────────────────── */}
         <ResourceCard
           icon="⛽"
-          title="Combustível"
+          title={t('inventory.fuel')}
           value={inv.fuel_liters}
           threshold={5}
           criticalThreshold={0.001}   // essentially 0 = critical
@@ -707,8 +706,8 @@ export default function InventoryPage() {
             step={1}
             min={0}
             decimals={1}
-            label="Combustível"
-            unit="litros"
+            label={t('inventory.fuel')}
+            unit={t('inventory.liters')}
             disabled={isPending}
             onChange={(v) => update('fuel_liters', v)}
           />
@@ -717,7 +716,7 @@ export default function InventoryPage() {
         {/* ── Bateria — threshold: 30% BAIXO, 10% CRÍTICO ─────────────────── */}
         <ResourceCard
           icon="🔋"
-          title="Bateria / Energia"
+          title={t('inventory.battery')}
           value={inv.battery_percent}
           threshold={30}
           criticalThreshold={10}
@@ -739,7 +738,7 @@ export default function InventoryPage() {
             min={0}
             max={100}
             decimals={0}
-            label="Carga"
+            label={t('inventory.charge')}
             unit="%"
             disabled={isPending}
             onChange={(v) => update('battery_percent', v)}
@@ -762,22 +761,22 @@ export default function InventoryPage() {
         >
           <div style={S.cardHeader}>
             <span style={S.cardIcon}>🎒</span>
-            <span style={S.cardTitle}>Equipamentos</span>
+            <span style={S.cardTitle}>{t('inventory.equipment')}</span>
             {!inv.has_medical_kit && !inv.has_communication_device && (
-              <span style={{ ...S.badge, ...S.badgeHigh }}>▲ BAIXO</span>
+              <span style={{ ...S.badge, ...S.badgeHigh }}>▲ {t('inventory.low')}</span>
             )}
           </div>
           <ToggleRow
-            label="Kit médico"
-            description="Curativos, medicação básica, torniquete"
+            label={t('inventory.medicalKit')}
+            description={t('inventory.medicalKitDesc')}
             value={inv.has_medical_kit}
             onChange={(v) => update('has_medical_kit', v)}
             disabled={isPending}
           />
           <div style={S.toggleDivider} />
           <ToggleRow
-            label="Comunicação / Rádio"
-            description="Rádio AM/FM, walkie-talkie ou celular reserva"
+            label={t('inventory.communication')}
+            description={t('inventory.communicationDesc')}
             value={inv.has_communication_device}
             onChange={(v) => update('has_communication_device', v)}
             disabled={isPending}
@@ -788,14 +787,14 @@ export default function InventoryPage() {
         <div style={S.card}>
           <div style={S.cardHeader}>
             <span style={S.cardIcon}>💵</span>
-            <span style={S.cardTitle}>Dinheiro em espécie</span>
+            <span style={S.cardTitle}>{t('inventory.cash')}</span>
           </div>
           <NumericStepper
             value={inv.cash_amount}
             step={50}
             min={0}
             decimals={0}
-            label="Valor disponível"
+            label={t('inventory.availableAmount')}
             unit="R$"
             disabled={isPending}
             onChange={(v) => update('cash_amount', v)}
@@ -807,7 +806,7 @@ export default function InventoryPage() {
         <div style={{ marginTop: 32, marginBottom: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
             <div>
-              <p style={{ fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' as const, color: 'var(--mu)', margin: 0 }}>PREPARAÇÃO</p>
+              <p style={{ fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' as const, color: 'var(--mu)', margin: 0 }}>{t('inventory.preparedness')}</p>
               <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--tx)', margin: '4px 0 0' }}>Checklist</h2>
             </div>
             {checklistItems.length === 0 && (
@@ -822,14 +821,14 @@ export default function InventoryPage() {
                   cursor: checklistGenerating ? 'default' : 'pointer',
                 }}
               >
-                {checklistGenerating ? 'Gerando…' : 'Gerar Checklist'}
+                {checklistGenerating ? t('checklist.generating') : t('inventory.generateChecklist')}
               </button>
             )}
           </div>
 
           {checklistItems.length === 0 ? (
             <div style={{ padding: '32px 0', textAlign: 'center' as const, color: 'var(--mu)', fontSize: 14 }}>
-              Nenhum item ainda. Clique em &ldquo;Gerar Checklist&rdquo; para começar.
+              {t('inventory.emptyChecklist')}
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 12 }}>
@@ -848,7 +847,7 @@ export default function InventoryPage() {
                     <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, borderBottom: '1px solid var(--bd)' }}>
                       <span style={{ width: 10, height: 10, borderRadius: '50%', background: TIER_COLOR[tier], flexShrink: 0 }} />
                       <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase' as const, color: TIER_COLOR[tier] }}>
-                        {TIER_LABEL[tier]}
+                        {tier === 'ESSENTIAL' ? t('checklist.essential') : tier === 'MODERATE' ? t('checklist.moderate') : t('checklist.excellent')}
                       </span>
                       <div style={{ flex: 1, height: 4, background: 'var(--sf2)', borderRadius: 2, overflow: 'hidden', marginLeft: 4 }}>
                         <div style={{ width: `${pct}%`, height: '100%', background: TIER_COLOR[tier], transition: 'width .3s' }} />
