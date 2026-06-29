@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, useTransition } from 'react'
 import NumericStepper from '@/components/NumericStepper'
+import { useLanguage } from '@/lib/i18n'
 
 type FamilyMember = {
   id: string
@@ -73,6 +74,7 @@ const TOKENS = {
 } as const
 
 export default function FamilyPage() {
+  const { t } = useLanguage()
   const [members, setMembers] = useState<FamilyMember[]>([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
@@ -178,7 +180,7 @@ export default function FamilyPage() {
 
   function handleSave() {
     if (!form.name.trim()) {
-      setFormError('Informe o nome do membro.')
+      setFormError(t('family.nameRequired'))
       return
     }
 
@@ -204,7 +206,7 @@ export default function FamilyPage() {
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        setFormError(data.error ?? 'Erro ao salvar membro.')
+        setFormError(data.error ?? t('family.saveError'))
         return
       }
 
@@ -275,20 +277,20 @@ export default function FamilyPage() {
         </section>
 
         <section style={s.hero}>
-          <span style={s.eyebrow}>Family Management</span>
-          <h1 style={s.heroTitle}>FAMILY VAULT</h1>
-          <p style={s.heroSubtitle}>Seu nucleo familiar esta organizado em um painel de monitoramento continuo.</p>
+          <span style={s.eyebrow}>{t('family.management')}</span>
+          <h1 style={s.heroTitle}>{t('family.title')}</h1>
+          <p style={s.heroSubtitle}>{t('family.subtitle')}</p>
         </section>
 
         <section style={s.heroGrid}>
           <div style={s.metricPanel}>
             <div style={s.metricHeader}>
               <div>
-                <span style={s.metricLabel}>Security Score</span>
-                <p style={s.metricCaption}>Cobertura do cadastro e sinais de atencao consolidados.</p>
+                <span style={s.metricLabel}>{t('family.securityScore')}</span>
+                <p style={s.metricCaption}>{t('family.scoreCaption')}</p>
               </div>
               <button type="button" style={s.primaryAction} onClick={openAdd} disabled={isPending}>
-                + Add Member
+                + {t('family.addMember')}
               </button>
             </div>
 
@@ -298,36 +300,36 @@ export default function FamilyPage() {
                   <span style={s.metricValue}>{String(coverageScore).padStart(2, '0')}</span>
                   <span style={s.metricArrow}>↗</span>
                 </div>
-                <p style={s.metricFootnote}>Prontidao do cadastro familiar</p>
+                <p style={s.metricFootnote}>{t('family.readiness')}</p>
               </div>
 
               <div style={s.gauges}>
-                <Gauge label="Members" value={totalMembers} tone="green" />
-                <Gauge label="Alerts" value={activeAlerts} tone={activeAlerts > 0 ? 'orange' : 'green'} />
-                <Gauge label="Signals" value={riskSignals} tone={riskSignals > 2 ? 'red' : 'green'} />
+                <Gauge label={t('family.members')} value={totalMembers} tone="green" />
+                <Gauge label={t('family.alerts')} value={activeAlerts} tone={activeAlerts > 0 ? 'orange' : 'green'} />
+                <Gauge label={t('family.signals')} value={riskSignals} tone={riskSignals > 2 ? 'red' : 'green'} />
               </div>
             </div>
           </div>
 
           <div style={s.sideStack}>
             <div style={s.glassCard}>
-              <span style={s.panelLabel}>Live Summary</span>
+              <span style={s.panelLabel}>{t('family.summary')}</span>
               <div style={s.summaryGrid}>
-                <StatTile label="Active Profiles" value={totalMembers} helper="membros cadastrados" />
-                <StatTile label="Protected" value={safeMembers} helper="sem flags criticas" />
-                <StatTile label="Priority Care" value={vulnerableMembers} helper="requerem atencao" />
+                <StatTile label={t('family.activeProfiles')} value={totalMembers} helper={t('family.registered')} />
+                <StatTile label={t('family.protected')} value={safeMembers} helper={t('family.noCriticalFlags')} />
+                <StatTile label={t('family.priorityCare')} value={vulnerableMembers} helper={t('family.requiresAttention')} />
               </div>
             </div>
 
             <div style={s.glassCard}>
               <div style={s.feedHeader}>
-                <span style={s.panelLabel}>Threat Feed</span>
+                <span style={s.panelLabel}>{t('family.feed')}</span>
                 <span style={s.feedRange}>24H</span>
               </div>
 
               <div style={s.feedList}>
                 <FeedItem
-                  label={totalMembers === 0 ? 'Nenhum perfil registrado' : `${totalMembers} perfis ativos`}
+                  label={totalMembers === 0 ? t('family.noProfiles') : `${totalMembers} ${t('family.activeProfilesCount')}`}
                   severity={totalMembers === 0 ? 'Standby' : 'Safe'}
                   time="NOW"
                   tone="green"
@@ -335,8 +337,8 @@ export default function FamilyPage() {
                 <FeedItem
                   label={
                     vulnerableMembers === 0
-                      ? 'Nenhum membro prioritario'
-                      : `${vulnerableMembers} membro${vulnerableMembers > 1 ? 's' : ''} com cuidado especial`
+                      ? t('family.noPriority')
+                      : `${vulnerableMembers} ${t('family.specialCare')}`
                   }
                   severity={vulnerableMembers === 0 ? 'Nominal' : 'Monitor'}
                   time="SYNC"
@@ -345,8 +347,8 @@ export default function FamilyPage() {
                 <FeedItem
                   label={
                     riskSignals === 0
-                      ? 'Sem sinais adicionais'
-                      : `${riskSignals} sinal${riskSignals > 1 ? 's' : ''} medico${riskSignals > 1 ? 's' : ''}`
+                      ? t('family.noSignals')
+                      : `${riskSignals} ${t('family.medicalSignals')}`
                   }
                   severity={riskSignals > 2 ? 'High' : 'Medium'}
                   time="SCAN"
@@ -371,13 +373,13 @@ export default function FamilyPage() {
               <div style={s.emptyRing}>
                 <span style={s.emptyRingText}>00</span>
               </div>
-              <span style={s.panelLabel}>No Members Registered</span>
-              <h2 style={s.emptyTitle}>Inicie a malha de seguranca da familia</h2>
+              <span style={s.panelLabel}>{t('family.emptyLabel')}</span>
+              <h2 style={s.emptyTitle}>{t('family.emptyTitle')}</h2>
               <p style={s.emptyCopy}>
-                Adicione cada pessoa relevante para montar um plano de emergencia com prioridades reais.
+                {t('family.emptyCopy')}
               </p>
               <button type="button" style={s.scanButton} onClick={openAdd} disabled={isPending}>
-                SCAN + ADD
+                {t('family.scanAdd')}
               </button>
             </div>
           </section>
@@ -408,10 +410,10 @@ export default function FamilyPage() {
             <div style={s.modalAccent} />
             <div style={s.modalHeader}>
               <div>
-                <span style={s.panelLabel}>{editingId ? 'Edit Profile' : 'New Profile'}</span>
-                <h2 style={s.modalTitle}>{editingId ? 'UPDATE MEMBER NODE' : 'CREATE MEMBER NODE'}</h2>
+                <span style={s.panelLabel}>{editingId ? t('family.editProfile') : t('family.newProfile')}</span>
+                <h2 style={s.modalTitle}>{editingId ? t('family.updateMember') : t('family.createMember')}</h2>
               </div>
-              <button type="button" style={s.closeButton} onClick={closeModal} aria-label="Fechar">
+              <button type="button" style={s.closeButton} onClick={closeModal} aria-label={t('family.close')}>
                 ✕
               </button>
             </div>
@@ -425,11 +427,11 @@ export default function FamilyPage() {
 
             <div style={s.formGrid}>
               <div style={s.fieldGroup}>
-                <label style={s.fieldLabel}>Nome</label>
+                <label style={s.fieldLabel}>{t('family.name')}</label>
                 <input
                   className="input"
                   type="text"
-                  placeholder="Nome do membro"
+                  placeholder={t('family.namePlaceholder')}
                   value={form.name}
                   onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
                   disabled={isPending}
@@ -439,14 +441,14 @@ export default function FamilyPage() {
               </div>
 
               <div style={s.fieldGroup}>
-                <label style={s.fieldLabel}>Idade</label>
+                <label style={s.fieldLabel}>{t('family.age')}</label>
                 <NumericStepper
                   value={form.age ?? 0}
                   step={1}
                   min={0}
                   max={120}
                   decimals={0}
-                  unit="anos"
+                  unit={t('family.years')}
                   size="md"
                   disabled={isPending}
                   onChange={(v) =>
@@ -460,7 +462,7 @@ export default function FamilyPage() {
                     onClick={() => setForm((current) => ({ ...current, age: null }))}
                     disabled={isPending}
                   >
-                    limpar idade
+                    {t('family.clearAge')}
                   </button>
                 )}
               </div>
@@ -468,10 +470,10 @@ export default function FamilyPage() {
 
             {/* ── Condições médicas ──────────────────────────────────────── */}
             <div style={s.fieldGroup}>
-              <label style={s.fieldLabel}>Condições médicas</label>
+              <label style={s.fieldLabel}>{t('family.medicalConditions')}</label>
               <textarea
                 style={s.textarea}
-                placeholder="Ex: diabetes tipo 2 controlada com metformina, hipertensão leve..."
+                placeholder={t('family.medicalPlaceholder')}
                 value={form.medical_notes}
                 onChange={(e) => setForm((c) => ({ ...c, medical_notes: e.target.value }))}
                 onBlur={() => { if (form.medical_notes.trim().length >= 15 && suggestedTags.length === 0) suggestTags() }}
@@ -484,11 +486,11 @@ export default function FamilyPage() {
                 onClick={suggestTags}
                 disabled={isPending || loadingSuggestions || !form.medical_notes.trim()}
               >
-                {loadingSuggestions ? '✦ Analisando...' : '✦ Sugerir tags com IA'}
+                {loadingSuggestions ? `✦ ${t('family.analyzing')}` : `✦ ${t('family.suggestTags')}`}
               </button>
               {suggestedTags.length > 0 && (
                 <div>
-                  <span style={s.tagsHint}>Toque para marcar / desmarcar:</span>
+                  <span style={s.tagsHint}>{t('family.tagsHint')}</span>
                   <div style={s.chipGrid}>
                     {suggestedTags.map((tag) => {
                       const active = form.medical_conditions.includes(tag)
@@ -511,12 +513,12 @@ export default function FamilyPage() {
 
             {/* ── Medicamentos ─────────────────────────────────────────────── */}
             <div style={s.fieldGroup}>
-              <label style={s.fieldLabel}>Medicamentos em uso</label>
+              <label style={s.fieldLabel}>{t('family.medications')}</label>
               <div style={s.medInputRow}>
                 <input
                   type="text"
                   style={s.medInput}
-                  placeholder="Ex: Metformina 500mg, Losartana 50mg..."
+                  placeholder={t('family.medicationsPlaceholder')}
                   value={medicationInput}
                   onChange={(e) => setMedicationInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addMedication())}
@@ -528,7 +530,7 @@ export default function FamilyPage() {
                   onClick={addMedication}
                   disabled={isPending || !medicationInput.trim()}
                 >
-                  + Adicionar
+                  + {t('common.add')}
                 </button>
               </div>
               {form.medications.length > 0 && (
@@ -560,9 +562,9 @@ export default function FamilyPage() {
                 }
                 disabled={isPending}
               >
-                <span style={s.toggleLabel}>Mobility</span>
-                <strong style={s.toggleTitle}>Mobilidade reduzida</strong>
-                <span style={s.toggleState}>{form.mobility_impaired ? 'ACTIVE' : 'INACTIVE'}</span>
+                <span style={s.toggleLabel}>{t('family.mobility')}</span>
+                <strong style={s.toggleTitle}>{t('family.reducedMobility')}</strong>
+                <span style={s.toggleState}>{form.mobility_impaired ? t('family.active') : t('family.inactive')}</span>
               </button>
 
               <button
@@ -576,14 +578,14 @@ export default function FamilyPage() {
                 }
                 disabled={isPending}
               >
-                <span style={s.toggleLabel}>Age Class</span>
-                <strong style={s.toggleTitle}>Bebe</strong>
-                <span style={s.toggleState}>{form.is_infant ? 'ACTIVE' : 'INACTIVE'}</span>
+                <span style={s.toggleLabel}>{t('family.ageClass')}</span>
+                <strong style={s.toggleTitle}>{t('family.infant')}</strong>
+                <span style={s.toggleState}>{form.is_infant ? t('family.active') : t('family.inactive')}</span>
               </button>
             </div>
 
             <button type="button" style={s.scanButtonWide} onClick={handleSave} disabled={isPending}>
-              {isPending ? 'SYNCING...' : editingId ? 'SAVE NODE' : 'REGISTER NODE'}
+              {isPending ? t('family.syncing') : editingId ? t('family.save') : t('family.register')}
             </button>
           </div>
         </div>
@@ -602,10 +604,11 @@ function MemberCard({
   isPending,
   styleDelay,
 }: CardProps & { styleDelay: number }) {
+  const { t } = useLanguage()
   const tags: Array<{ label: string; tone: 'green' | 'orange' | 'red' }> = []
 
-  if (member.is_infant) tags.push({ label: 'Bebe', tone: 'orange' })
-  if (member.mobility_impaired) tags.push({ label: 'Mobilidade', tone: 'red' })
+  if (member.is_infant) tags.push({ label: t('family.infant'), tone: 'orange' })
+  if (member.mobility_impaired) tags.push({ label: t('family.mobility'), tone: 'red' })
   for (const condition of (member.medical_conditions ?? [])) {
     tags.push({ label: condition, tone: 'orange' })
   }
@@ -619,7 +622,7 @@ function MemberCard({
 
       <div style={s.memberHead}>
         <div>
-          <span style={s.memberLabel}>Member Node</span>
+          <span style={s.memberLabel}>{t('family.member')}</span>
           <h3 style={s.memberName}>{member.name}</h3>
         </div>
         <span style={{ ...s.levelPill, color: alertTone, borderColor: `${alertTone}44` }}>{alertLevel}</span>
@@ -627,22 +630,22 @@ function MemberCard({
 
       <div style={s.memberMetrics}>
         <div style={s.metricBlock}>
-          <span style={s.metricBlockLabel}>AGE</span>
+          <span style={s.metricBlockLabel}>{t('family.age')}</span>
           <span style={s.metricBlockValue}>{member.age === null ? '--' : String(member.age).padStart(2, '0')}</span>
         </div>
         <div style={s.metricBlock}>
-          <span style={s.metricBlockLabel}>CONDITIONS</span>
+          <span style={s.metricBlockLabel}>{t('family.conditions')}</span>
           <span style={s.metricBlockValue}>{String((member.medical_conditions ?? []).length).padStart(2, '0')}</span>
         </div>
         <div style={s.metricBlock}>
-          <span style={s.metricBlockLabel}>MEDS</span>
+          <span style={s.metricBlockLabel}>{t('family.meds')}</span>
           <span style={s.metricBlockValue}>{String((member.medications ?? []).length).padStart(2, '0')}</span>
         </div>
       </div>
 
       <div style={s.tagWrap}>
         {tags.length === 0 ? (
-          <span style={s.safeTag}>sem alertas adicionais</span>
+          <span style={s.safeTag}>{t('family.noExtraAlerts')}</span>
         ) : (
           tags.map((tag) => (
             <span key={`${member.id}-${tag.label}`} style={tag.tone === 'red' ? s.redTag : s.orangeTag}>
@@ -668,16 +671,16 @@ function MemberCard({
         {!confirmingDelete ? (
           <>
             <button type="button" style={s.secondaryButton} onClick={onEdit} disabled={isPending}>
-              Editar
+              {t('family.edit')}
             </button>
             <button type="button" style={s.dangerButton} onClick={onDelete} disabled={isPending}>
-              Remover
+              {t('family.remove')}
             </button>
           </>
         ) : (
           <>
             <button type="button" style={s.dangerButton} onClick={onConfirmDelete} disabled={isPending}>
-              {isPending ? '...' : 'Confirmar'}
+              {isPending ? '...' : t('family.confirm')}
             </button>
             <button type="button" style={s.secondaryButton} onClick={onCancelDelete} disabled={isPending}>
               Cancelar

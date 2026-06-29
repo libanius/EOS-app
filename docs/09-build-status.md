@@ -270,7 +270,8 @@ To add a new knowledge source: drop PDF in `docs/`, re-run both commands.
 - Migrated Onboarding and the private Emergency Card editor to the shared PT/EN dictionary
 - Migrated Checklist and Circles, including loading/error states, scenario labels, tier labels, controls, and empty states
 - Migrated Scenario, including scenario types, loading sequence, fallback copy, plan headings, rules, sources, and controls
-- Remaining before P1-T05 completion: migrate Family, Resources, auth, landing, and the public Emergency Card
+- Migrated Family, including dashboard metrics, risk feed, empty state, member form, medical fields, status toggles, and member-card actions
+- Remaining before P1-T05 completion: migrate Resources, auth, landing, and the public Emergency Card
 
 ---
 
