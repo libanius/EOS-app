@@ -93,6 +93,18 @@
 
 ---
 
+## F09 — Master Profile
+
+| ID | Requirement | Status |
+|---|---|---|
+| F09-1 | `/ficha` unifies identity and emergency information from `profiles` | ✅ IMPLEMENTED |
+| F09-2 | User can edit name and location alongside emergency fields | ✅ IMPLEMENTED |
+| F09-3 | User sees progressive profile completion | ✅ IMPLEMENTED |
+| F09-4 | Existing public emergency QR remains available | ✅ IMPLEMENTED |
+| F09-5 | Master Profile UI supports PT/EN | ✅ IMPLEMENTED |
+
+---
+
 ## Non-Functional Requirements
 
 | ID | Requirement | Status |

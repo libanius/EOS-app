@@ -9,10 +9,10 @@
 
 | Field | Value |
 |---|---|
-| **Current Phase** | Phase 1 — MVP Hardening |
-| **Last Completed Task** | P1-T03: Add PWA icons (2026-06-28) |
-| **Current Task** | P1-T05: Implement bilingual PT/EN settings and align UI copy |
-| **Build** | ✅ Passing — `npm run build` clean as of 2026-06-28 |
+| **Current Phase** | Phase 2 — Círculos, Fichas & Household |
+| **Last Completed Task** | P2-T06: Ficha Master (2026-06-29) |
+| **Current Task** | P1-T05: Resume remaining bilingual UI alignment |
+| **Build** | ✅ Passing — `npm run build` clean as of 2026-06-29 |
 | **Vercel** | ✅ Deployed — auto-deploys on push to `main` |
 | **Supabase** | ✅ Healthy — project ref `alxurmgpyxjhvnliivbf` |
 
@@ -94,7 +94,7 @@
 |---|---|---|
 | P2-T00: Circle model spec + decisions documented | ✅ COMPLETE | 2026-06-28 |
 | P2-T01: Ficha Pessoal + QR público | ✅ COMPLETE | 2026-06-28 |
-| P2-T06: Ficha Master — identidade central unificada + onboarding | PENDING | — |
+| P2-T06: Ficha Master — identidade central unificada + onboarding | ✅ COMPLETE | 2026-06-29 |
 | P2-T07: Subscription tiers — feature gates + UI upgrade | PENDING | — |
 | P2-T02: Circle invitations + approval + roles | PENDING | — |
 | P2-T03: Inventory sharing toggle per field | PENDING | — |
@@ -106,9 +106,9 @@
 
 ## What Is Next
 
-**P1-T05: Implement bilingual PT/EN settings**
+**P1-T05: Resume bilingual UI alignment**
 
-Decision complete: bilingual Portuguese/English, selected by the user in Settings. Implement preference persistence and align the interface copy.
+Continue migrating Scenario, Family, Resources, auth, landing, and the public Emergency Card to the shared PT/EN dictionary.
 
 ---
 
@@ -270,3 +270,16 @@ To add a new knowledge source: drop PDF in `docs/`, re-run both commands.
 - Migrated Onboarding and the private Emergency Card editor to the shared PT/EN dictionary
 - Migrated Checklist and Circles, including loading/error states, scenario labels, tier labels, controls, and empty states
 - Remaining before P1-T05 completion: migrate Scenario, Family, Resources, auth, landing, and the public Emergency Card
+
+---
+
+## What Was Done — Session 2026-06-29 (P2-T06)
+
+**Ficha Master completed:**
+- Added the complete feature specification in `docs/13-ficha-master.md`
+- Unified name, location, medical data, emergency contact, and public QR in `/ficha`
+- Added seven-signal profile completion progress
+- Expanded `/api/profile/ficha` to read and update identity fields with required-name validation
+- Kept `profiles` as the single source of truth; no duplicate Master Profile table
+- Added PT/EN copy for the new identity and completion interface
+- Verified with a clean production build

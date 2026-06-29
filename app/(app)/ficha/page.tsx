@@ -9,6 +9,7 @@ import { useLanguage } from '@/lib/i18n'
 type Ficha = {
   id: string
   name: string
+  location: string | null
   blood_type: string | null
   allergies: string[]
   emergency_contact_name: string | null
@@ -22,6 +23,7 @@ const BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
 const EMPTY: Ficha = {
   id: '',
   name: '',
+  location: null,
   blood_type: null,
   allergies: [],
   emergency_contact_name: null,
@@ -58,6 +60,7 @@ export default function FichaPage() {
         setFicha({
           id: data.id ?? '',
           name: data.name ?? '',
+          location: data.location ?? null,
           blood_type: data.blood_type ?? null,
           allergies: data.allergies ?? [],
           emergency_contact_name: data.emergency_contact_name ?? null,
@@ -84,6 +87,8 @@ export default function FichaPage() {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            name:                    data.name,
+            location:                data.location,
             blood_type:              data.blood_type,
             allergies:               data.allergies,
             emergency_contact_name:  data.emergency_contact_name,
@@ -130,6 +135,19 @@ export default function FichaPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────
 
+  const completionSignals = [
+    Boolean(ficha.name.trim()),
+    Boolean(ficha.location?.trim()),
+    Boolean(ficha.blood_type),
+    Boolean(ficha.allergies.length || ficha.medical_notes?.trim() || ficha.medications.length),
+    Boolean(ficha.emergency_contact_name?.trim()),
+    Boolean(ficha.emergency_contact_phone?.trim()),
+    Boolean(fichaUrl),
+  ]
+  const completion = Math.round(
+    (completionSignals.filter(Boolean).length / completionSignals.length) * 100,
+  )
+
   if (loading) {
     return (
       <div style={S.loading}>
@@ -146,9 +164,9 @@ export default function FichaPage() {
         {/* Header */}
         <div style={S.header}>
           <div>
-            <p style={S.headerLabel}>{t('card.identification')}</p>
-            <h1 style={S.headerTitle}>{t('card.title')}</h1>
-            <p style={S.headerSub}>{t('card.subtitle')}</p>
+            <p style={S.headerLabel}>{t('master.eyebrow')}</p>
+            <h1 style={S.headerTitle}>{t('master.title')}</h1>
+            <p style={S.headerSub}>{t('master.subtitle')}</p>
           </div>
           <div style={S.saveStatus}>
             {isPending && <span style={S.savingDot} />}
@@ -157,6 +175,50 @@ export default function FichaPage() {
         </div>
 
         {saveError && <div style={S.errorBanner}>⚠ {saveError}</div>}
+
+        {/* Completion */}
+        <div style={S.completionCard}>
+          <div style={S.completionHeader}>
+            <div>
+              <p style={S.completionLabel}>{t('master.completion')}</p>
+              <p style={S.completionHint}>{t('master.progressHint')}</p>
+            </div>
+            <strong style={S.completionValue}>{completion}%</strong>
+          </div>
+          <div style={S.progressTrack}>
+            <div style={{ ...S.progressFill, width: `${completion}%` }} />
+          </div>
+        </div>
+
+        {/* Identity */}
+        <div style={S.section}>
+          <h2 style={S.sectionTitle}>{t('master.identity')}</h2>
+          <div style={S.contactGrid}>
+            <div style={S.fieldGroup}>
+              <label style={S.fieldLabel}>{t('master.name')}</label>
+              <input
+                type="text"
+                style={S.input}
+                value={ficha.name}
+                onChange={(e) => update({ name: e.target.value })}
+                disabled={isPending}
+                autoComplete="name"
+              />
+            </div>
+            <div style={S.fieldGroup}>
+              <label style={S.fieldLabel}>{t('master.location')}</label>
+              <input
+                type="text"
+                style={S.input}
+                placeholder={t('master.locationPlaceholder')}
+                value={ficha.location ?? ''}
+                onChange={(e) => update({ location: e.target.value || null })}
+                disabled={isPending}
+                autoComplete="address-level2"
+              />
+            </div>
+          </div>
+        </div>
 
         {/* QR Code */}
         {fichaUrl && (
@@ -328,6 +390,13 @@ const S: Record<string, React.CSSProperties> = {
   savingDot:   { width: 6, height: 6, borderRadius: '50%', background: AC, opacity: 0.6 },
   savedBadge:  { fontSize: 11, color: AC, fontWeight: 700, letterSpacing: 0.5 },
   errorBanner: { background: 'rgba(232,65,13,0.1)', border: `1px solid ${DNG}44`, borderRadius: 10, padding: '10px 14px', fontSize: 13, color: DNG, marginBottom: 16 },
+  completionCard: { background: SF, border: `1px solid ${BD}`, borderRadius: 16, padding: '16px 20px', marginBottom: 12 },
+  completionHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 20, marginBottom: 12 },
+  completionLabel: { fontSize: 12, fontWeight: 700, color: TX, marginBottom: 4 },
+  completionHint: { fontSize: 11, color: MU, lineHeight: 1.45, maxWidth: 330 },
+  completionValue: { color: AC, fontSize: 24, fontFamily: 'monospace' },
+  progressTrack: { height: 7, overflow: 'hidden', borderRadius: 99, background: 'rgba(255,255,255,0.07)' },
+  progressFill: { height: '100%', borderRadius: 99, background: AC, transition: 'width 240ms ease' },
   qrCard:      { background: SF, border: `1px solid ${BD}`, borderRadius: 20, padding: 20, display: 'flex', gap: 20, alignItems: 'center', marginBottom: 24 },
   qrBox:       { flexShrink: 0, background: '#000', padding: 12, borderRadius: 12 },
   qrMeta:      { flex: 1 },

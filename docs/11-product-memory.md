@@ -10,6 +10,12 @@
 The product exists for one moment: a family head in the first 15 minutes of a crisis.
 Every feature decision must answer: "does this help in the next 15 minutes?"
 
+## Ficha Master
+
+- `profiles` is the only identity record; there is no separate Master Profile table.
+- `/ficha` is the unified editor for identity, location, medical information, emergency contact, and public QR.
+- Completion is a UI calculation over seven signals defined in `docs/13-ficha-master.md`; it is not persisted in the database.
+
 ---
 
 ## Intelligence Modes

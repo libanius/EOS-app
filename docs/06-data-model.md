@@ -13,6 +13,12 @@
 | created_at | timestamptz | |
 | updated_at | timestamptz | |
 
+`profiles` is also the storage source for the Ficha Master. Emergency-card fields
+added by migration `20260628000400_profile_emergency_card.sql` are:
+`blood_type`, `allergies`, `emergency_contact_name`,
+`emergency_contact_phone`, `medical_notes`, and `medications`.
+There is no separate Master Profile table.
+
 ### family_members
 | Column | Type | Notes |
 |---|---|---|

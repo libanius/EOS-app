@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 
-const FICHA_FIELDS = 'id, name, blood_type, allergies, emergency_contact_name, emergency_contact_phone, medical_notes, medications'
+const FICHA_FIELDS = 'id, name, location, blood_type, allergies, emergency_contact_name, emergency_contact_phone, medical_notes, medications'
 
 // ─── GET /api/profile/ficha ───────────────────────────────────────────────────
 export async function GET() {
@@ -25,6 +25,8 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 })
   }
   let body: {
+    name?: string
+    location?: string | null
     blood_type?: string | null
     allergies?: string[]
     emergency_contact_name?: string | null
@@ -36,6 +38,12 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'Corpo inválido.' }, { status: 400 })
   }
   const patch: Record<string, unknown> = {}
+  if (body.name !== undefined) {
+    const name = body.name.trim()
+    if (!name) return NextResponse.json({ error: 'Nome é obrigatório.' }, { status: 400 })
+    patch.name = name
+  }
+  if (body.location !== undefined) patch.location = body.location?.trim() || null
   if (body.blood_type              !== undefined) patch.blood_type              = body.blood_type
   if (body.allergies               !== undefined) patch.allergies               = body.allergies
   if (body.emergency_contact_name  !== undefined) patch.emergency_contact_name  = body.emergency_contact_name
