@@ -267,4 +267,5 @@ To add a new knowledge source: drop PDF in `docs/`, re-run both commands.
 - Preference persists in localStorage and a same-site cookie
 - Document `lang`, global action labels, and bottom navigation react to the selection
 - Added Settings to the PWA page cache
-- Remaining before P1-T05 completion: migrate page-level interface copy to the shared dictionary
+- Migrated Onboarding and the private Emergency Card editor to the shared PT/EN dictionary
+- Remaining before P1-T05 completion: migrate Checklist, Circles, Scenario, Family, Resources, auth, landing, and the public Emergency Card

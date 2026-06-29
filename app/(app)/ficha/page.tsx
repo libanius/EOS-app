@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
+import { useLanguage } from '@/lib/i18n'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -32,6 +33,7 @@ const EMPTY: Ficha = {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function FichaPage() {
+  const { t } = useLanguage()
   const [ficha, setFicha] = useState<Ficha>(EMPTY)
   const [loading, setLoading] = useState(true)
   const [saved, setSaved] = useState(false)
@@ -91,10 +93,10 @@ export default function FichaPage() {
           }),
         })
         if (res.ok) { setSaved(true); setTimeout(() => setSaved(false), 2000) }
-        else { const b = await res.json(); setSaveError(b.error ?? 'Erro ao salvar.') }
+        else { const b = await res.json(); setSaveError(b.error ?? t('common.saveError')) }
       })
     }, 700)
-  }, [])
+  }, [t])
 
   function update(patch: Partial<Ficha>) {
     const next = { ...ficha, ...patch }
@@ -132,7 +134,7 @@ export default function FichaPage() {
     return (
       <div style={S.loading}>
         <span style={S.loadingDot} />
-        <span style={S.loadingText}>Carregando ficha…</span>
+        <span style={S.loadingText}>{t('card.loading')}</span>
       </div>
     )
   }
@@ -144,13 +146,13 @@ export default function FichaPage() {
         {/* Header */}
         <div style={S.header}>
           <div>
-            <p style={S.headerLabel}>IDENTIFICAÇÃO</p>
-            <h1 style={S.headerTitle}>Minha Ficha</h1>
-            <p style={S.headerSub}>Visível para socorristas ao escanear o QR</p>
+            <p style={S.headerLabel}>{t('card.identification')}</p>
+            <h1 style={S.headerTitle}>{t('card.title')}</h1>
+            <p style={S.headerSub}>{t('card.subtitle')}</p>
           </div>
           <div style={S.saveStatus}>
             {isPending && <span style={S.savingDot} />}
-            {saved && !isPending && <span style={S.savedBadge}>✓ salvo</span>}
+            {saved && !isPending && <span style={S.savedBadge}>✓ {t('common.saved')}</span>}
           </div>
         </div>
 
@@ -169,9 +171,9 @@ export default function FichaPage() {
               />
             </div>
             <div style={S.qrMeta}>
-              <p style={S.qrLabel}>QR de Emergência</p>
+              <p style={S.qrLabel}>{t('card.qrTitle')}</p>
               <p style={S.qrHint}>
-                Qualquer pessoa pode escanear com a câmera do celular — sem precisar do app.
+                {t('card.qrHint')}
               </p>
               <p style={S.qrUrl}>{fichaUrl}</p>
             </div>
@@ -180,7 +182,7 @@ export default function FichaPage() {
 
         {/* Tipo sanguíneo */}
         <div style={S.section}>
-          <h2 style={S.sectionTitle}>Tipo Sanguíneo</h2>
+          <h2 style={S.sectionTitle}>{t('card.bloodType')}</h2>
           <div style={S.bloodGrid}>
             {BLOOD_TYPES.map((bt) => (
               <button
@@ -198,19 +200,19 @@ export default function FichaPage() {
 
         {/* Alergias */}
         <div style={S.section}>
-          <h2 style={S.sectionTitle}>Alergias</h2>
+          <h2 style={S.sectionTitle}>{t('card.allergies')}</h2>
           <div style={S.inputRow}>
             <input
               type="text"
               style={S.input}
-              placeholder="Ex: Penicilina, Amendoim, Látex…"
+              placeholder={t('card.allergiesPlaceholder')}
               value={allergyInput}
               onChange={(e) => setAllergyInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addAllergy())}
               disabled={isPending}
             />
             <button type="button" style={S.addBtn} onClick={addAllergy} disabled={isPending || !allergyInput.trim()}>
-              + Adicionar
+              + {t('common.add')}
             </button>
           </div>
           {ficha.allergies.length > 0 && (
@@ -227,10 +229,10 @@ export default function FichaPage() {
 
         {/* Condições médicas */}
         <div style={S.section}>
-          <h2 style={S.sectionTitle}>Condições Médicas</h2>
+          <h2 style={S.sectionTitle}>{t('card.medicalConditions')}</h2>
           <textarea
             style={S.textarea}
-            placeholder="Ex: Diabetes tipo 2, hipertensão controlada, epilepsia…"
+            placeholder={t('card.medicalPlaceholder')}
             value={ficha.medical_notes ?? ''}
             onChange={(e) => update({ medical_notes: e.target.value || null })}
             rows={3}
@@ -240,19 +242,19 @@ export default function FichaPage() {
 
         {/* Medicamentos */}
         <div style={S.section}>
-          <h2 style={S.sectionTitle}>Medicamentos de Uso Contínuo</h2>
+          <h2 style={S.sectionTitle}>{t('card.medications')}</h2>
           <div style={S.inputRow}>
             <input
               type="text"
               style={S.input}
-              placeholder="Ex: Metformina 500mg, Insulina NPH…"
+              placeholder={t('card.medicationsPlaceholder')}
               value={medInput}
               onChange={(e) => setMedInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addMed())}
               disabled={isPending}
             />
             <button type="button" style={S.addBtn} onClick={addMed} disabled={isPending || !medInput.trim()}>
-              + Adicionar
+              + {t('common.add')}
             </button>
           </div>
           {ficha.medications.length > 0 && (
@@ -269,21 +271,21 @@ export default function FichaPage() {
 
         {/* Contato de emergência */}
         <div style={S.section}>
-          <h2 style={S.sectionTitle}>Contato de Emergência</h2>
+          <h2 style={S.sectionTitle}>{t('card.emergencyContact')}</h2>
           <div style={S.contactGrid}>
             <div style={S.fieldGroup}>
-              <label style={S.fieldLabel}>Nome</label>
+              <label style={S.fieldLabel}>{t('card.contactName')}</label>
               <input
                 type="text"
                 style={S.input}
-                placeholder="Nome completo"
+                placeholder={t('card.contactNamePlaceholder')}
                 value={ficha.emergency_contact_name ?? ''}
                 onChange={(e) => update({ emergency_contact_name: e.target.value || null })}
                 disabled={isPending}
               />
             </div>
             <div style={S.fieldGroup}>
-              <label style={S.fieldLabel}>Telefone</label>
+              <label style={S.fieldLabel}>{t('card.contactPhone')}</label>
               <input
                 type="tel"
                 style={S.input}

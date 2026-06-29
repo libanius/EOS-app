@@ -3,11 +3,13 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import NumericStepper from '@/components/NumericStepper'
+import { useLanguage } from '@/lib/i18n'
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function OnboardingPage() {
   const router = useRouter()
+  const { t } = useLanguage()
 
   const [name, setName] = useState('')
   const [location, setLocation] = useState('')
@@ -19,7 +21,7 @@ export default function OnboardingPage() {
 
   function handleContinue() {
     if (!name.trim()) {
-      setError('Informe seu nome.')
+      setError(t('onboarding.nameRequired'))
       return
     }
     setError(null)
@@ -36,7 +38,7 @@ export default function OnboardingPage() {
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        setError(data.error ?? 'Erro ao salvar perfil.')
+        setError(data.error ?? t('onboarding.saveError'))
         return
       }
 
@@ -61,8 +63,8 @@ export default function OnboardingPage() {
 
         {/* ── Headline ──────────────────────────────────────────────────── */}
         <div style={s.headline}>
-          <h1 style={s.title}>Configure seu perfil</h1>
-          <p style={s.sub}>Seus dados ficam salvos localmente.</p>
+          <h1 style={s.title}>{t('onboarding.title')}</h1>
+          <p style={s.sub}>{t('onboarding.subtitle')}</p>
         </div>
 
         {/* ── Error ─────────────────────────────────────────────────────── */}
@@ -74,15 +76,15 @@ export default function OnboardingPage() {
         )}
 
         {/* ── Divider label ─────────────────────────────────────────────── */}
-        <span className="label">Identificação</span>
+        <span className="label">{t('onboarding.identification')}</span>
 
         {/* ── Name ──────────────────────────────────────────────────────── */}
         <div style={s.fieldGroup}>
-          <label style={s.label}>Nome</label>
+          <label style={s.label}>{t('onboarding.name')}</label>
           <input
             className="input"
             type="text"
-            placeholder="Seu nome completo"
+            placeholder={t('onboarding.namePlaceholder')}
             value={name}
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleContinue()}
@@ -94,30 +96,30 @@ export default function OnboardingPage() {
 
         {/* ── Location ──────────────────────────────────────────────────── */}
         <div style={s.fieldGroup}>
-          <label style={s.label}>Localização</label>
+          <label style={s.label}>{t('onboarding.location')}</label>
           <input
             className="input"
             type="text"
-            placeholder="Cidade, Estado"
+            placeholder={t('onboarding.locationPlaceholder')}
             value={location}
             onChange={(e) => setLocation(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleContinue()}
             disabled={isLoading}
             autoComplete="address-level2"
           />
-          <span style={s.hint}>Usada para alertas e rotas de evacuação</span>
+          <span style={s.hint}>{t('onboarding.locationHint')}</span>
         </div>
 
         {/* ── Divider ───────────────────────────────────────────────────── */}
         <hr />
 
         {/* ── Members counter ───────────────────────────────────────────── */}
-        <span className="label">Família</span>
+        <span className="label">{t('onboarding.family')}</span>
 
         <div style={s.membersCard}>
           <div style={s.membersText}>
-            <span style={s.membersTitle}>Membros na família</span>
-            <span style={s.membersHint}>Incluindo você</span>
+            <span style={s.membersTitle}>{t('onboarding.members')}</span>
+            <span style={s.membersHint}>{t('onboarding.membersHint')}</span>
           </div>
           <NumericStepper
             value={members}
@@ -125,7 +127,7 @@ export default function OnboardingPage() {
             min={1}
             max={20}
             decimals={0}
-            unit="pessoas"
+            unit={t('onboarding.people')}
             disabled={isLoading}
             onChange={setMembers}
           />
@@ -137,11 +139,11 @@ export default function OnboardingPage() {
           onClick={handleContinue}
           disabled={isLoading}
         >
-          {isLoading ? 'Salvando…' : 'Continuar →'}
+          {isLoading ? t('onboarding.saving') : t('onboarding.continue')}
         </button>
 
         {/* ── Footer ────────────────────────────────────────────────────── */}
-        <p style={s.footer}>Seus dados ficam locais. Sempre.</p>
+        <p style={s.footer}>{t('onboarding.footer')}</p>
 
       </div>
     </div>
