@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
     .insert({
       circle_id: circle.id,
       user_id: user.id,
-      role: 'MEMBER',
+      role: 'Viewer',
       share_inventory: false,
     })
 

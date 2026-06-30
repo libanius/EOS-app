@@ -31,9 +31,16 @@ export async function POST(_req: NextRequest, { params }: Ctx) {
     return NextResponse.json({ error: 'Circle not found' }, { status: 404 })
   }
 
-  if (circle.leader_id === user.id) {
+  const { data: myRole } = await supabase
+    .from('circle_members')
+    .select('role')
+    .eq('circle_id', params.id)
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  if (myRole?.role === 'Admin') {
     return NextResponse.json(
-      { error: 'Leader cannot leave — delete the circle or transfer leadership.' },
+      { error: 'Admin cannot leave — transfer admin role first or delete the circle.' },
       { status: 400 },
     )
   }
