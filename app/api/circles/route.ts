@@ -30,7 +30,7 @@ export async function GET() {
     const [{ data: pooled }, { data: members }] = await Promise.all([
       supabase.rpc('circle_pooled_inventory', { circle_uuid: c.id }),
       supabase.from('circle_members')
-        .select('user_id, role, profiles(name, location_lat, location_lng)')
+        .select('user_id, role, share_inventory, shared_fields, profiles(name, location_lat, location_lng, emergency_contact_name, emergency_contact_phone)')
         .eq('circle_id', c.id),
     ])
     const row = Array.isArray(pooled) ? pooled[0] : pooled
@@ -51,14 +51,22 @@ export async function GET() {
       shared_fields: (myMembership?.shared_fields as string[] | undefined) ?? [],
       pooled: row,
       score,
-      members: (members ?? []).map(m => ({
-        user_id: m.user_id,
-        role: m.role as CircleRole,
-        name: (m.profiles as { name?: string } | null)?.name ?? '—',
-        location_lat: (m.profiles as { location_lat?: number } | null)?.location_lat ?? null,
-        location_lng: (m.profiles as { location_lng?: number } | null)?.location_lng ?? null,
-        is_me: m.user_id === user.id,
-      })),
+      members: (members ?? []).map(m => {
+        const p = m.profiles as { name?: string; location_lat?: number; location_lng?: number; emergency_contact_name?: string; emergency_contact_phone?: string } | null
+        const sharedFields = (m.shared_fields as string[] | undefined) ?? []
+        const sharesContact = m.share_inventory && (sharedFields.length === 0 || sharedFields.includes('emergency_contact'))
+        return {
+          user_id: m.user_id,
+          role: m.role as CircleRole,
+          name: p?.name ?? '—',
+          location_lat: p?.location_lat ?? null,
+          location_lng: p?.location_lng ?? null,
+          emergency_contact_name: sharesContact ? (p?.emergency_contact_name ?? null) : null,
+          emergency_contact_phone: sharesContact ? (p?.emergency_contact_phone ?? null) : null,
+          share_inventory: m.share_inventory as boolean,
+          is_me: m.user_id === user.id,
+        }
+      }),
     })
   }
   return NextResponse.json({ circles: results })

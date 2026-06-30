@@ -32,6 +32,18 @@ interface CircleMember {
   role: CircleRole
   name: string
   is_me: boolean
+  share_inventory: boolean
+  emergency_contact_name: string | null
+  emergency_contact_phone: string | null
+}
+
+interface ActionPlan {
+  id: string
+  title: string
+  body: string
+  author: string
+  is_mine: boolean
+  updated_at: string
 }
 
 interface CircleRow {
@@ -75,6 +87,9 @@ export default function CirclesPage() {
   const [busy, setBusy] = useState(false)
   const [plan, setPlan] = useState<Plan>('free')
   const [monitoring, setMonitoring] = useState<Record<string, CircleMonitor>>({})
+  const [plans, setPlans] = useState<Record<string, ActionPlan[]>>({})
+  const [newPlan, setNewPlan] = useState<{ circleId: string; title: string; body: string } | null>(null)
+  const [editPlan, setEditPlan] = useState<ActionPlan & { circleId: string } | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -370,11 +385,72 @@ export default function CirclesPage() {
                             {m.role}
                           </span>
                         )}
+                        {m.emergency_contact_name && (
+                          <a href={m.emergency_contact_phone ? `tel:${m.emergency_contact_phone}` : undefined} style={{ fontSize: 11, color: '#22c55e', textDecoration: 'none', flexShrink: 0, padding: '2px 8px', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 6 }}>
+                            📞 {m.emergency_contact_name}
+                          </a>
+                        )}
                       </div>
                     ))}
                   </div>
                 </div>
               )}
+
+              {/* Action Plans */}
+              <div style={{ marginTop: 14 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <div style={{ fontSize: 11, color: '#8a8a99', textTransform: 'uppercase', letterSpacing: 1 }}>
+                    Planos de Ação ({plans[c.id]?.length ?? 0})
+                  </div>
+                  {(c.is_admin || c.role === 'Editor') && (
+                    <button onClick={() => setNewPlan({ circleId: c.id, title: '', body: '' })} style={{ fontSize: 11, padding: '2px 10px', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.25)', borderRadius: 6, color: '#22c55e', cursor: 'pointer' }}>
+                      + Novo plano
+                    </button>
+                  )}
+                </div>
+
+                {newPlan?.circleId === c.id && (
+                  <div style={{ padding: 12, background: '#0f0f17', borderRadius: 8, marginBottom: 10 }}>
+                    <input value={newPlan.title} onChange={e => setNewPlan(p => p ? { ...p, title: e.target.value } : null)} placeholder="Título do plano" maxLength={100} style={{ width: '100%', padding: '6px 10px', background: '#1a1a24', color: '#e6e6eb', border: '1px solid #2a2a3a', borderRadius: 6, marginBottom: 8, fontSize: 13, boxSizing: 'border-box' }} />
+                    <textarea value={newPlan.body} onChange={e => setNewPlan(p => p ? { ...p, body: e.target.value } : null)} placeholder="Descreva os passos do plano de emergência…" rows={4} maxLength={5000} style={{ width: '100%', padding: '6px 10px', background: '#1a1a24', color: '#e6e6eb', border: '1px solid #2a2a3a', borderRadius: 6, marginBottom: 8, fontSize: 13, resize: 'vertical', boxSizing: 'border-box' }} />
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button onClick={() => savePlan(c.id, newPlan.title, newPlan.body)} disabled={busy || !newPlan.title.trim() || !newPlan.body.trim()} style={{ padding: '6px 14px', background: '#22c55e', color: '#0a0a0f', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Salvar</button>
+                      <button onClick={() => setNewPlan(null)} style={{ padding: '6px 14px', background: 'transparent', color: '#8a8a99', border: '1px solid #2a2a3a', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}>Cancelar</button>
+                    </div>
+                  </div>
+                )}
+
+                {(plans[c.id] ?? []).map(plan => (
+                  <div key={plan.id} style={{ padding: 12, background: '#0f0f17', borderRadius: 8, marginBottom: 8 }}>
+                    {editPlan?.id === plan.id ? (
+                      <>
+                        <input value={editPlan.title} onChange={e => setEditPlan(p => p ? { ...p, title: e.target.value } : null)} maxLength={100} style={{ width: '100%', padding: '6px 10px', background: '#1a1a24', color: '#e6e6eb', border: '1px solid #2a2a3a', borderRadius: 6, marginBottom: 8, fontSize: 13, boxSizing: 'border-box' }} />
+                        <textarea value={editPlan.body} onChange={e => setEditPlan(p => p ? { ...p, body: e.target.value } : null)} rows={4} maxLength={5000} style={{ width: '100%', padding: '6px 10px', background: '#1a1a24', color: '#e6e6eb', border: '1px solid #2a2a3a', borderRadius: 6, marginBottom: 8, fontSize: 13, resize: 'vertical', boxSizing: 'border-box' }} />
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button onClick={() => savePlan(c.id, editPlan.title, editPlan.body, plan.id)} disabled={busy} style={{ padding: '6px 14px', background: '#22c55e', color: '#0a0a0f', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Salvar</button>
+                          <button onClick={() => setEditPlan(null)} style={{ padding: '6px 14px', background: 'transparent', color: '#8a8a99', border: '1px solid #2a2a3a', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}>Cancelar</button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
+                          <div>
+                            <span style={{ fontSize: 14, fontWeight: 600 }}>{plan.title}</span>
+                            <span style={{ fontSize: 11, color: '#52525b', marginLeft: 8 }}>{plan.author} · {new Date(plan.updated_at).toLocaleDateString('pt-BR')}</span>
+                          </div>
+                          {(c.is_admin || plan.is_mine) && (
+                            <div style={{ display: 'flex', gap: 6 }}>
+                              <button onClick={() => setEditPlan({ ...plan, circleId: c.id })} style={{ fontSize: 11, padding: '2px 8px', background: 'transparent', color: '#8a8a99', border: '1px solid #2a2a3a', borderRadius: 4, cursor: 'pointer' }}>Editar</button>
+                              {c.is_admin && <button onClick={() => deletePlan(c.id, plan.id)} style={{ fontSize: 11, padding: '2px 8px', background: 'transparent', color: '#ef4444', border: '1px solid rgba(239,68,68,0.4)', borderRadius: 4, cursor: 'pointer' }}>×</button>}
+                            </div>
+                          )}
+                        </div>
+                        <p style={{ margin: 0, fontSize: 13, color: '#a5a5b5', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{plan.body}</p>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
 
               {/* Controls */}
               <div style={{ marginTop: 14 }}>
