@@ -45,7 +45,8 @@ export default function FichaPage() {
   const [allergyInput, setAllergyInput] = useState('')
   const [medInput, setMedInput] = useState('')
   const [isPending, startTransition] = useTransition()
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const isDirtyRef = useRef(false)
+  const [isDirty, setIsDirty] = useState(false)
 
   const fichaUrl = typeof window !== 'undefined' && ficha.id
     ? `${window.location.origin}/ficha/${ficha.id}`
@@ -53,7 +54,8 @@ export default function FichaPage() {
 
   // ── Load ─────────────────────────────────────────────────────────────────
 
-  const loadFicha = useCallback(async () => {
+  const loadFicha = useCallback(async (skipIfDirty = false) => {
+    if (skipIfDirty && isDirtyRef.current) return
     setLoading(true)
     const snap = loadSnapshot<Ficha>('ficha')
     if (snap) setFicha(snap)
@@ -80,41 +82,52 @@ export default function FichaPage() {
     }
   }, [])
 
-  useRealtimeSync(['profiles'], () => { void loadFicha() })
+  useRealtimeSync(['profiles'], () => { void loadFicha(true) })
 
   useEffect(() => { loadFicha() }, [loadFicha])
 
-  // ── Save (debounced) ──────────────────────────────────────────────────────
+  // ── Save ─────────────────────────────────────────────────────────────────
 
   const save = useCallback((data: Ficha) => {
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => {
-      startTransition(async () => {
-        setSaveError(null)
-        const res = await fetch('/api/profile/ficha', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name:                    data.name,
-            location:                data.location,
-            blood_type:              data.blood_type,
-            allergies:               data.allergies,
-            emergency_contact_name:  data.emergency_contact_name,
-            emergency_contact_phone: data.emergency_contact_phone,
-            medical_notes:           data.medical_notes,
-            medications:             data.medications,
-          }),
-        })
-        if (res.ok) { setSaved(true); setTimeout(() => setSaved(false), 2000) }
-        else { const b = await res.json(); setSaveError(b.error ?? t('common.saveError')) }
+    startTransition(async () => {
+      setSaveError(null)
+      const res = await fetch('/api/profile/ficha', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name:                    data.name,
+          location:                data.location,
+          blood_type:              data.blood_type,
+          allergies:               data.allergies,
+          emergency_contact_name:  data.emergency_contact_name,
+          emergency_contact_phone: data.emergency_contact_phone,
+          medical_notes:           data.medical_notes,
+          medications:             data.medications,
+        }),
       })
-    }, 700)
+      if (res.ok) {
+        isDirtyRef.current = false
+        setIsDirty(false)
+        setSaved(true)
+        setTimeout(() => setSaved(false), 2000)
+      } else {
+        const b = await res.json()
+        setSaveError(b.error ?? t('common.saveError'))
+      }
+    })
   }, [t])
 
-  function update(patch: Partial<Ficha>) {
+  function update(patch: Partial<Ficha>, immediate = false) {
     const next = { ...ficha, ...patch }
     setFicha(next)
-    save(next)
+    isDirtyRef.current = true
+    setIsDirty(true)
+    if (immediate) save(next)
+  }
+
+  function handleBlur(patch?: Partial<Ficha>) {
+    if (!isDirtyRef.current) return
+    save(patch ? { ...ficha, ...patch } : ficha)
   }
 
   // ── Allergy + Medication list ─────────────────────────────────────────────
@@ -122,23 +135,23 @@ export default function FichaPage() {
   function addAllergy() {
     const a = allergyInput.trim()
     if (!a || ficha.allergies.includes(a)) return
-    update({ allergies: [...ficha.allergies, a] })
+    update({ allergies: [...ficha.allergies, a] }, true)
     setAllergyInput('')
   }
 
   function removeAllergy(a: string) {
-    update({ allergies: ficha.allergies.filter((x) => x !== a) })
+    update({ allergies: ficha.allergies.filter((x) => x !== a) }, true)
   }
 
   function addMed() {
     const m = medInput.trim()
     if (!m || ficha.medications.includes(m)) return
-    update({ medications: [...ficha.medications, m] })
+    update({ medications: [...ficha.medications, m] }, true)
     setMedInput('')
   }
 
   function removeMed(m: string) {
-    update({ medications: ficha.medications.filter((x) => x !== m) })
+    update({ medications: ficha.medications.filter((x) => x !== m) }, true)
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -179,6 +192,11 @@ export default function FichaPage() {
           <div style={S.saveStatus}>
             {isPending && <span style={S.savingDot} />}
             {saved && !isPending && <span style={S.savedBadge}>✓ {t('common.saved')}</span>}
+            {isDirty && !isPending && !saved && (
+              <button type="button" onClick={() => save(ficha)} style={S.saveBtn}>
+                {t('common.save')}
+              </button>
+            )}
           </div>
         </div>
 
@@ -209,6 +227,7 @@ export default function FichaPage() {
                 style={S.input}
                 value={ficha.name}
                 onChange={(e) => update({ name: e.target.value })}
+                onBlur={() => handleBlur()}
                 disabled={isPending}
                 autoComplete="name"
               />
@@ -221,6 +240,7 @@ export default function FichaPage() {
                 placeholder={t('master.locationPlaceholder')}
                 value={ficha.location ?? ''}
                 onChange={(e) => update({ location: e.target.value || null })}
+                onBlur={() => handleBlur()}
                 disabled={isPending}
                 autoComplete="address-level2"
               />
@@ -259,7 +279,7 @@ export default function FichaPage() {
                 key={bt}
                 type="button"
                 style={ficha.blood_type === bt ? S.bloodActive : S.bloodBtn}
-                onClick={() => update({ blood_type: ficha.blood_type === bt ? null : bt })}
+                onClick={() => update({ blood_type: ficha.blood_type === bt ? null : bt }, true)}
                 disabled={isPending}
               >
                 {bt}
@@ -305,6 +325,7 @@ export default function FichaPage() {
             placeholder={t('card.medicalPlaceholder')}
             value={ficha.medical_notes ?? ''}
             onChange={(e) => update({ medical_notes: e.target.value || null })}
+            onBlur={() => handleBlur()}
             rows={3}
             disabled={isPending}
           />
@@ -351,6 +372,7 @@ export default function FichaPage() {
                 placeholder={t('card.contactNamePlaceholder')}
                 value={ficha.emergency_contact_name ?? ''}
                 onChange={(e) => update({ emergency_contact_name: e.target.value || null })}
+                onBlur={() => handleBlur()}
                 disabled={isPending}
               />
             </div>
@@ -362,6 +384,7 @@ export default function FichaPage() {
                 placeholder="+55 11 99999-9999"
                 value={ficha.emergency_contact_phone ?? ''}
                 onChange={(e) => update({ emergency_contact_phone: e.target.value || null })}
+                onBlur={() => handleBlur()}
                 disabled={isPending}
               />
             </div>
@@ -397,6 +420,7 @@ const S: Record<string, React.CSSProperties> = {
   saveStatus:  { display: 'flex', alignItems: 'center', gap: 8 },
   savingDot:   { width: 6, height: 6, borderRadius: '50%', background: AC, opacity: 0.6 },
   savedBadge:  { fontSize: 11, color: AC, fontWeight: 700, letterSpacing: 0.5 },
+  saveBtn:     { fontSize: 13, fontWeight: 700, color: '#fff', background: AC, border: 'none', borderRadius: 8, padding: '6px 14px', cursor: 'pointer' },
   errorBanner: { background: 'rgba(232,65,13,0.1)', border: `1px solid ${DNG}44`, borderRadius: 10, padding: '10px 14px', fontSize: 13, color: DNG, marginBottom: 16 },
   completionCard: { background: SF, border: `1px solid ${BD}`, borderRadius: 16, padding: '16px 20px', marginBottom: 12 },
   completionHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 20, marginBottom: 12 },
