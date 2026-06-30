@@ -88,8 +88,8 @@
 | Task ID | Task | Status |
 |---|---|---|
 | P3-T01 | Circle: share action plan with members | ✅ COMPLETE |
-| P3-T02 | Push notifications (emergency alerts from circle leaders) | DRAFT |
-| P3-T03 | Multi-language support (i18n) | DRAFT |
+| P3-T02 | Push notifications (emergency alerts from circle leaders) | ✅ COMPLETE |
+| P3-T03 | Multi-language support (i18n) | ✅ COMPLETE |
 | P3-T04 | Monetization: subscription model decision and implementation | GATE NEEDED |
 | P3-T05 | Emergency contact sharing within circles | ✅ COMPLETE |
 

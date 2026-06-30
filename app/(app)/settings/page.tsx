@@ -53,6 +53,8 @@ const PLAN_COLOR: Record<Plan, string> = {
 export default function SettingsPage() {
   const { language, setLanguage, t } = useLanguage()
   const [plan, setPlan] = useState<Plan | null>(null)
+  const [pushEnabled, setPushEnabled] = useState(false)
+  const [pushBusy, setPushBusy] = useState(false)
 
   useEffect(() => {
     fetch('/api/profile/plan')
@@ -60,6 +62,36 @@ export default function SettingsPage() {
       .then(d => d?.plan && setPlan(d.plan as Plan))
       .catch(() => {})
   }, [])
+
+  useEffect(() => {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
+    navigator.serviceWorker.ready.then(reg => reg.pushManager.getSubscription())
+      .then(sub => setPushEnabled(!!sub)).catch(() => {})
+  }, [])
+
+  const togglePush = async () => {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
+    setPushBusy(true)
+    try {
+      const reg = await navigator.serviceWorker.ready
+      if (pushEnabled) {
+        const sub = await reg.pushManager.getSubscription()
+        if (sub) {
+          await fetch('/api/push/subscribe', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ endpoint: sub.endpoint }) })
+          await sub.unsubscribe()
+          setPushEnabled(false)
+        }
+      } else {
+        const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+        if (!vapidKey) { alert('Push não configurado (VAPID key ausente)'); return }
+        const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: vapidKey })
+        const subJson = sub.toJSON()
+        await fetch('/api/push/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(subJson) })
+        setPushEnabled(true)
+      }
+    } catch (e) { console.error('Push toggle error:', e) }
+    finally { setPushBusy(false) }
+  }
 
   const userPlan: Plan = plan ?? 'free'
 
@@ -144,6 +176,28 @@ export default function SettingsPage() {
             </button>
           )}
         </div>
+
+        {/* Push notifications */}
+        {'serviceWorker' in (typeof navigator !== 'undefined' ? navigator : {}) && (
+          <div style={{ ...styles.card, marginTop: 20 }}>
+            <div style={styles.planHeader}>
+              <div>
+                <h2 style={styles.sectionTitle}>Alertas Push</h2>
+                <p style={styles.help}>Receba notificações de emergência do seu círculo mesmo com o app fechado.</p>
+              </div>
+              <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, color: pushEnabled ? '#22c55e' : '#71717a', padding: '4px 12px', background: (pushEnabled ? '#22c55e' : '#71717a') + '18', border: '1px solid ' + (pushEnabled ? '#22c55e' : '#71717a') + '44', borderRadius: 999, letterSpacing: '0.06em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                {pushEnabled ? 'Ativado' : 'Desativado'}
+              </span>
+            </div>
+            <button
+              onClick={togglePush}
+              disabled={pushBusy}
+              style={{ ...styles.upgradeBtn, marginTop: 16, background: pushEnabled ? 'rgba(239,68,68,0.1)' : 'rgba(34,197,94,0.1)', borderColor: pushEnabled ? 'rgba(239,68,68,0.3)' : 'rgba(34,197,94,0.3)', color: pushEnabled ? '#ef4444' : '#22c55e' }}
+            >
+              {pushBusy ? 'Aguarde…' : pushEnabled ? 'Desativar alertas push' : 'Ativar alertas push'}
+            </button>
+          </div>
+        )}
       </section>
     </main>
   )

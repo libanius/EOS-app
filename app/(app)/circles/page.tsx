@@ -219,6 +219,46 @@ export default function CirclesPage() {
     finally { setBusy(false) }
   }, [load, t])
 
+
+  const loadPlans = async (circleId: string) => {
+    try {
+      const res = await fetch(`/api/circles/${circleId}/plans`)
+      const d = await res.json()
+      if (res.ok) setPlans(prev => ({ ...prev, [circleId]: d.plans ?? [] }))
+    } catch {}
+  }
+
+  useEffect(() => {
+    circles.forEach(c => { void loadPlans(c.id) })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [circles])
+
+  const savePlan = async (circleId: string, title: string, body: string, planId?: string) => {
+    setBusy(true)
+    try {
+      const res = await fetch(planId ? `/api/circles/${circleId}/plans/${planId}` : `/api/circles/${circleId}/plans`, {
+        method: planId ? 'PATCH' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, body }),
+      })
+      if (!res.ok) throw new Error((await res.json()).error)
+      setNewPlan(null)
+      setEditPlan(null)
+      await loadPlans(circleId)
+    } catch (e) { setError(e instanceof Error ? e.message : t('common.error')) }
+    finally { setBusy(false) }
+  }
+
+  const deletePlan = async (circleId: string, planId: string) => {
+    if (!confirm('Excluir este plano?')) return
+    setBusy(true)
+    try {
+      await fetch(`/api/circles/${circleId}/plans/${planId}`, { method: 'DELETE' })
+      await loadPlans(circleId)
+    } catch {}
+    finally { setBusy(false) }
+  }
+
   if (!canAccess('circulos', plan)) {
     return (
       <main style={{ maxWidth: 640, margin: '0 auto', padding: '80px 20px', color: '#e6e6eb', fontFamily: 'system-ui, -apple-system, sans-serif', textAlign: 'center' }}>
