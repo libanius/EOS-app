@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, useTransition } from 'react'
 import NumericStepper from '@/components/NumericStepper'
+import HouseholdHealthCard from '@/components/HouseholdHealthCard'
 import { useLanguage } from '@/lib/i18n'
 
 type FamilyMember = {
@@ -383,6 +384,10 @@ export default function FamilyPage() {
               </button>
             </div>
           </section>
+        )}
+
+        {!loading && members.length > 0 && (
+          <HouseholdHealthCard members={members} />
         )}
 
         {!loading && totalMembers > 0 && (
