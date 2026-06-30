@@ -47,7 +47,7 @@
 | P2-T06 | Ficha Master: identidade central unificada + onboarding progressivo | ✅ COMPLETE | HIGH |
 | P2-T07 | Subscription tiers: `profiles.plan` + `lib/feature-gates.ts` + UI de upgrade | ✅ COMPLETE | HIGH |
 | P2-T02 | Círculos: convite por código/QR + aprovação + roles (Admin/Editor/Viewer) | ✅ COMPLETE | HIGH |
-| P2-T03 | Inventário: toggle compartilhar por campo + `shared_fields` na DB | PENDING | MEDIUM |
+| P2-T03 | Inventário: toggle compartilhar por campo + `shared_fields` na DB | ✅ COMPLETE | MEDIUM |
 | P2-T04 | Household view: visão agregada dos recursos compartilhados no círculo | ✅ COMPLETE | MEDIUM |
 | P2-T05 | Merge de membro manual → vinculado (badge + decisão do usuário) | PENDING | MEDIUM |
 | P2-T08 | Localização: `profiles.location_lat/lng` + geocoding (pré-req monitoramento) | ✅ COMPLETE | HIGH |

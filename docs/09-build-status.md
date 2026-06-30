@@ -13,8 +13,9 @@
 | **Last Completed Task** | P2-T11: Feature gates + monitoring integration complete (2026-06-29)
 | | P2-T12: Circles role upgrade + multi-location monitoring (2026-06-30)
 | | P2-T03: Family plan gate on circles + pooled inventory (2026-06-30)
-| | P2-T04: HouseholdHealthCard — stats + gap detection (2026-06-30) | | | |
-| **Next Task** | P2-T05: Family member ↔ circle profile merge |
+| | P2-T04: HouseholdHealthCard — stats + gap detection (2026-06-30)
+| | P2-T03: Per-field inventory sharing + shared_fields migration (2026-06-30) | | | | |
+| **Next Task** | P2-T05: Family member ↔ circle profile merge (PENDING — LOW priority) |
 | **Build** | ✅ Passing — `npm run build` clean as of 2026-06-29 |
 | **Vercel** | ✅ Deployed — auto-deploys on push to `main` |
 | **Supabase** | ✅ Healthy — project ref `alxurmgpyxjhvnliivbf` |
