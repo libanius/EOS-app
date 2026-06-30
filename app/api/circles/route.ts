@@ -11,7 +11,7 @@ export async function GET() {
 
   const { data: memberships, error: mErr } = await supabase
     .from('circle_members')
-    .select('circle_id, role, share_inventory')
+    .select('circle_id, role, share_inventory, shared_fields')
     .eq('user_id', user.id)
   if (mErr) return NextResponse.json({ error: mErr.message }, { status: 500 })
 
@@ -48,6 +48,7 @@ export async function GET() {
       is_admin: myRole === 'Admin',
       role: myRole,
       share_inventory: myMembership?.share_inventory ?? false,
+      shared_fields: (myMembership?.shared_fields as string[] | undefined) ?? [],
       pooled: row,
       score,
       members: (members ?? []).map(m => ({

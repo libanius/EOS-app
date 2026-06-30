@@ -42,6 +42,7 @@ interface CircleRow {
   is_admin: boolean
   role: CircleRole
   share_inventory: boolean
+  shared_fields: string[]
   pooled: {
     water_liters: number
     food_days: number
@@ -148,6 +149,25 @@ export default function CirclesPage() {
       await load()
     } catch { await load() }
   }, [load])
+
+  const toggleField = useCallback(async (id: string, field: string, checked: boolean) => {
+    setCircles(prev => prev.map(c => {
+      if (c.id !== id) return c
+      const fields = checked ? [...c.shared_fields, field] : c.shared_fields.filter(f => f !== field)
+      return { ...c, shared_fields: fields }
+    }))
+    try {
+      const circle = circles.find(c => c.id === id)
+      if (!circle) return
+      const fields = checked
+        ? Array.from(new Set([...circle.shared_fields, field]))
+        : circle.shared_fields.filter(f => f !== field)
+      await fetch(`/api/circles/${id}/share`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shared_fields: fields }),
+      })
+    } catch { await load() }
+  }, [circles, load])
 
   const leave = useCallback(async (id: string) => {
     if (!confirm(t('circles.leaveConfirm'))) return
@@ -357,15 +377,31 @@ export default function CirclesPage() {
               )}
 
               {/* Controls */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#a5a5b5', cursor: 'pointer' }}>
-                  <input type="checkbox" checked={c.share_inventory} onChange={e => toggleShare(c.id, e.target.checked)} />
-                  {t('circles.shareInventory')}
-                </label>
-                {!c.is_admin && (
-                  <button onClick={() => leave(c.id)} disabled={busy} style={{ padding: '6px 14px', background: 'transparent', color: '#ef4444', border: '1px solid #ef4444', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}>
-                    {t('circles.leave')}
-                  </button>
+              <div style={{ marginTop: 14 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: c.share_inventory ? 10 : 0 }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#a5a5b5', cursor: 'pointer' }}>
+                    <input type="checkbox" checked={c.share_inventory} onChange={e => toggleShare(c.id, e.target.checked)} />
+                    {t('circles.shareInventory')}
+                  </label>
+                  {!c.is_admin && (
+                    <button onClick={() => leave(c.id)} disabled={busy} style={{ padding: '6px 14px', background: 'transparent', color: '#ef4444', border: '1px solid #ef4444', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}>
+                      {t('circles.leave')}
+                    </button>
+                  )}
+                </div>
+                {c.share_inventory && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, paddingTop: 8, borderTop: '1px solid #1a1a24' }}>
+                    {(['water', 'food', 'medical', 'comms', 'emergency_contact'] as const).map(field => {
+                      const checked = c.shared_fields.length === 0 || c.shared_fields.includes(field)
+                      const labels: Record<string, string> = { water: '💧 Água', food: '🍲 Comida', medical: '⛑ Saúde', comms: '📻 Comms', emergency_contact: '📞 Contato' }
+                      return (
+                        <label key={field} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: checked ? '#a5a5b5' : '#4a4a5a', cursor: 'pointer', padding: '4px 8px', background: checked ? 'rgba(34,197,94,0.06)' : '#0f0f17', borderRadius: 6, border: `1px solid ${checked ? 'rgba(34,197,94,0.2)' : '#1a1a24'}` }}>
+                          <input type="checkbox" checked={checked} onChange={e => toggleField(c.id, field, e.target.checked)} style={{ width: 12, height: 12, accentColor: '#22c55e' }} />
+                          {labels[field]}
+                        </label>
+                      )
+                    })}
+                  </div>
                 )}
               </div>
             </article>
