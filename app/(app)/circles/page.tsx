@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useLanguage } from '@/lib/i18n'
+import { canAccess, type Plan } from '@/lib/feature-gates'
 
 type CircleRole = 'Admin' | 'Editor' | 'Viewer'
 type Severity = 'CRITICAL' | 'HIGH' | 'WATCH' | 'MODERATE' | 'CLEAR'
@@ -71,6 +72,7 @@ export default function CirclesPage() {
   const [newName, setNewName] = useState('')
   const [joinCode, setJoinCode] = useState('')
   const [busy, setBusy] = useState(false)
+  const [plan, setPlan] = useState<Plan>('free')
   const [monitoring, setMonitoring] = useState<Record<string, CircleMonitor>>({})
 
   const load = useCallback(async () => {
@@ -89,6 +91,10 @@ export default function CirclesPage() {
   }, [t])
 
   useEffect(() => { void load() }, [load])
+
+  useEffect(() => {
+    fetch('/api/profile/plan').then(r => r.ok ? r.json() : null).then(d => { if (d?.plan) setPlan(d.plan as Plan) }).catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (!circles.length) return
@@ -177,6 +183,21 @@ export default function CirclesPage() {
     } catch (e) { setError(e instanceof Error ? e.message : t('common.error')) }
     finally { setBusy(false) }
   }, [load, t])
+
+  if (!canAccess('circulos', plan)) {
+    return (
+      <main style={{ maxWidth: 640, margin: '0 auto', padding: '80px 20px', color: '#e6e6eb', fontFamily: 'system-ui, -apple-system, sans-serif', textAlign: 'center' }}>
+        <div style={{ fontSize: 48, marginBottom: 16 }}>🔒</div>
+        <h1 style={{ fontSize: 24, marginBottom: 12 }}>{t('circles.title')}</h1>
+        <p style={{ color: '#8a8a99', marginBottom: 24, lineHeight: 1.6 }}>
+          {t('circles.eyebrow')} — disponível no plano Família
+        </p>
+        <button onClick={() => alert('Upgrade de plano em breve!')} style={{ padding: '12px 28px', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: 12, color: '#22c55e', fontSize: 15, fontWeight: 650, cursor: 'pointer' }}>
+          Fazer upgrade para Família →
+        </button>
+      </main>
+    )
+  }
 
   return (
     <main style={{ maxWidth: 920, margin: '0 auto', padding: '32px 20px', color: '#e6e6eb', fontFamily: 'system-ui, -apple-system, "SF Pro Text", "Segoe UI", sans-serif' }}>

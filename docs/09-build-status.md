@@ -11,8 +11,9 @@
 |---|---|
 | **Current Phase** | Phase 2 — Círculos, Fichas & Household |
 | **Last Completed Task** | P2-T11: Feature gates + monitoring integration complete (2026-06-29)
-| | P2-T12: Circles role upgrade + multi-location monitoring (2026-06-30) | |
-| **Next Task** | P2-T03: Inventory sharing between circle members |
+| | P2-T12: Circles role upgrade + multi-location monitoring (2026-06-30)
+| | P2-T03: Family plan gate on circles + pooled inventory (2026-06-30) | | |
+| **Next Task** | P2-T04: Household view — aggregate health + critical gaps |
 | **Build** | ✅ Passing — `npm run build` clean as of 2026-06-29 |
 | **Vercel** | ✅ Deployed — auto-deploys on push to `main` |
 | **Supabase** | ✅ Healthy — project ref `alxurmgpyxjhvnliivbf` |
