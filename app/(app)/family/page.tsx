@@ -15,6 +15,7 @@ type FamilyMember = {
   medications: string[]
   mobility_impaired: boolean
   is_infant: boolean
+  linked_user_id: string | null
   created_at: string
 }
 
@@ -36,6 +37,9 @@ type CardProps = {
   onCancelDelete: () => void
   confirmingDelete: boolean
   isPending: boolean
+  possibleMatch?: { user_id: string; name: string } | null
+  onLink?: (userId: string) => void
+  onUnlink?: () => void
 }
 
 type GaugeProps = {
@@ -76,6 +80,9 @@ const TOKENS = {
 
 export default function FamilyPage() {
   const { t } = useLanguage()
+
+  // Circle members for link suggestions (P2-T05)
+  const [circlePossibleMatches, setCirclePossibleMatches] = useState<Record<string, { user_id: string; name: string }>>({})
   const [members, setMembers] = useState<FamilyMember[]>([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
@@ -104,6 +111,15 @@ export default function FamilyPage() {
 
   useEffect(() => {
     loadMembers()
+    // Fetch circle members to suggest links for manually-added family members (P2-T05)
+    fetch('/api/circles').then(r => r.ok ? r.json() : null)
+      .then((d: { circles?: Array<{ members: Array<{ user_id: string; name: string; is_me: boolean }> }> } | null) => {
+        if (!d?.circles) return
+        const allMembers = d.circles.flatMap(c => (c.members ?? []).filter(m => !m.is_me))
+        const uniq: Record<string, { user_id: string; name: string }> = {}
+        allMembers.forEach(m => { uniq[m.user_id] = m })
+        setCirclePossibleMatches(uniq)
+      }).catch(() => {})
   }, [loadMembers])
 
   function openAdd() {
@@ -237,6 +253,22 @@ export default function FamilyPage() {
       }
       setConfirmDeleteId(null)
     })
+  }
+
+  const linkMember = async (memberId: string, userId: string) => {
+    await fetch(`/api/family-members/${memberId}/link`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ linked_user_id: userId }),
+    })
+    await loadMembers()
+  }
+
+  const unlinkMember = async (memberId: string) => {
+    await fetch(`/api/family-members/${memberId}/link`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ linked_user_id: null }),
+    })
+    await loadMembers()
   }
 
   const totalMembers = members.length
@@ -403,6 +435,9 @@ export default function FamilyPage() {
                 confirmingDelete={confirmDeleteId === member.id}
                 isPending={isPending}
                 styleDelay={index}
+                possibleMatch={!member.linked_user_id ? Object.values(circlePossibleMatches).find(m => m.name.toLowerCase() === member.name.toLowerCase()) ?? null : null}
+                onLink={(uid) => linkMember(member.id, uid)}
+                onUnlink={() => unlinkMember(member.id)}
               />
             ))}
           </section>
@@ -608,8 +643,12 @@ function MemberCard({
   confirmingDelete,
   isPending,
   styleDelay,
+  possibleMatch,
+  onLink,
+  onUnlink,
 }: CardProps & { styleDelay: number }) {
   const { t } = useLanguage()
+
   const tags: Array<{ label: string; tone: 'green' | 'orange' | 'red' }> = []
 
   if (member.is_infant) tags.push({ label: t('family.infant'), tone: 'orange' })
@@ -632,6 +671,27 @@ function MemberCard({
         </div>
         <span style={{ ...s.levelPill, color: alertTone, borderColor: `${alertTone}44` }}>{alertLevel}</span>
       </div>
+
+      {/* Link suggestion / linked badge (P2-T05) */}
+      {possibleMatch && onLink && (
+        <div style={{ marginBottom: 12, padding: '8px 12px', background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.25)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          <span style={{ fontSize: 12, color: '#93c5fd' }}>
+            🔗 Possível match: <strong>{possibleMatch.name}</strong> está no seu círculo
+          </span>
+          <button
+            onClick={() => onLink(possibleMatch.user_id)}
+            style={{ fontSize: 11, padding: '3px 10px', background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.4)', borderRadius: 6, color: '#93c5fd', cursor: 'pointer', whiteSpace: 'nowrap' }}
+          >
+            Vincular
+          </button>
+        </div>
+      )}
+      {member.linked_user_id && onUnlink && (
+        <div style={{ marginBottom: 12, padding: '6px 12px', background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          <span style={{ fontSize: 12, color: '#86efac' }}>✓ Vinculado ao perfil EOS</span>
+          <button onClick={onUnlink} style={{ fontSize: 11, color: '#52525b', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 6px' }}>desvincular</button>
+        </div>
+      )}
 
       <div style={s.memberMetrics}>
         <div style={s.metricBlock}>

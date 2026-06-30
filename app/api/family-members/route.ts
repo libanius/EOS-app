@@ -14,7 +14,7 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from('family_members')
-    .select('id, profile_id, name, age, medical_conditions, medical_notes, medications, mobility_impaired, is_infant, created_at')
+    .select('id, profile_id, name, age, medical_conditions, medical_notes, medications, mobility_impaired, is_infant, linked_user_id, created_at')
     .eq('profile_id', user.id)
     .order('created_at', { ascending: true })
 
@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
       mobility_impaired:  body.mobility_impaired ?? false,
       is_infant:          body.is_infant ?? false,
     })
-    .select('id, profile_id, name, age, medical_conditions, medical_notes, medications, mobility_impaired, is_infant, created_at')
+    .select('id, profile_id, name, age, medical_conditions, medical_notes, medications, mobility_impaired, is_infant, linked_user_id, created_at')
     .single()
 
   if (error) {
