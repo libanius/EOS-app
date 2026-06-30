@@ -1,7 +1,7 @@
 # 09 — Build Status
 
 > The single most important file for resuming a session. Read this first after AGENTS.md.
-> Last updated: 2026-06-29
+> Last updated: 2026-06-30
 
 ---
 
@@ -15,7 +15,7 @@
 | | P2-T03: Family plan gate on circles + pooled inventory (2026-06-30)
 | | P2-T04: HouseholdHealthCard — stats + gap detection (2026-06-30)
 | | P2-T03: Per-field inventory sharing + shared_fields migration (2026-06-30) | | | | |
-| **Next Task** | P2-T05: Family member ↔ circle profile merge (PENDING — LOW priority) |
+| **Next Task** | Cross-device sync complete. P3-T04 Monetization gate needed. |
 | **Build** | ✅ Passing — `npm run build` clean as of 2026-06-29 |
 | **Vercel** | ✅ Deployed — auto-deploys on push to `main` |
 | **Supabase** | ✅ Healthy — project ref `alxurmgpyxjhvnliivbf` |
@@ -292,3 +292,44 @@ To add a new knowledge source: drop PDF in `docs/`, re-run both commands.
 - Kept `profiles` as the single source of truth; no duplicate Master Profile table
 - Added PT/EN copy for the new identity and completion interface
 - Verified with a clean production build
+
+---
+
+## What Was Done — Session 2026-06-30 (P2-T02..T12 + P3-T01..T06)
+
+**Círculos complete rewrite:**
+- Admin/Editor/Viewer roles replacing LEADER/MEMBER (split migration for PostgreSQL enum safety)
+- Member list with inline role selector + remove; per-field sharing chips; monitoring panel
+- QR code toggle for invite code; action plans CRUD; push notification broadcast
+- New API routes: `circles/[id]/members/[userId]`, `circles/[id]/monitoring`, `circles/[id]/plans`, `circles/[id]/push`
+
+**Household health:**
+- `HouseholdHealthCard` showing member stats and coverage gaps (blood type, emergency contact, etc.)
+- Family member ↔ circle profile merge (linked_user_id, "Vinculado" badge, "Possível match" banner)
+
+**Cross-device sync (P3-T06):**
+- `lib/sync.ts` — offline write queue (localStorage) + sessionStorage snapshot cache
+- `hooks/useRealtimeSync.ts` — Supabase `postgres_changes` subscriptions per table
+- `hooks/useOfflineQueue.ts` — online/offline detection + auto-flush on reconnect
+- `components/SyncStatus.tsx` — fixed-position sync indicator in app layout
+- Integrated into: family, ficha, inventory pages (snapshot pre-load + Realtime invalidation)
+- API Workbox cache TTL: 24h → 2min
+
+**Push notifications (P3-T02):**
+- VAPID keys generated; `push_subscriptions` table + RLS
+- ServiceWorker push/notificationclick handlers via next-pwa `customWorkerSrc`
+- Settings page toggle for subscribe/unsubscribe
+- Circle Admin → broadcast push to all member subscribers
+
+**Feature gates (P2-T07):**
+- `lib/feature-gates.ts` with `canAccess(feature, plan)`, tiers: free/family/premium
+- All gated features show locked state with upgrade CTA for free users
+
+**Monitor upgrades (P2-T09..T12):**
+- `lib/monitor.ts` extracted as shared module (NWS weather + USGS earthquakes)
+- `app/api/circles/[id]/monitoring` — parallel per-member geo monitoring
+
+**Pending before ship:**
+- Apply 3 migrations to Supabase: circle_action_plans, push_subscriptions, family_member_link
+- Add VAPID keys to Vercel env vars (NEXT_PUBLIC_VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT)
+- P3-T04: Monetization gate — decision needed from owner
