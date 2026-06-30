@@ -32,7 +32,7 @@ const withPWA = nextPwa({
       options: {
         cacheName: 'eos-api',
         networkTimeoutSeconds: 10,
-        expiration: { maxEntries: 60, maxAgeSeconds: 60 * 60 * 24 },
+        expiration: { maxEntries: 60, maxAgeSeconds: 60 * 2 },
       },
     },
     // Everything else

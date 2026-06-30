@@ -1,6 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
+import { useRealtimeSync } from '@/hooks/useRealtimeSync'
+import { saveSnapshot, loadSnapshot } from '@/lib/sync'
 import NumericStepper from '@/components/NumericStepper'
 import { useLanguage } from '@/lib/i18n'
 
@@ -379,14 +381,22 @@ export default function InventoryPage() {
   const loadData = useCallback(async () => {
     setLoading(true)
     setSaveError(null)
+    // Show snapshot immediately
+    const snap = loadSnapshot<{ inv: object; memberCount: number }>('inventory')
+    if (snap) {
+      if (snap.inv) setInv(prev => ({ ...prev, ...(snap.inv as typeof prev) }))
+      if (snap.memberCount != null) setMemberCount(snap.memberCount)
+    }
     try {
       const [invRes, famRes, clRes] = await Promise.all([
         fetch('/api/inventory'),
         fetch('/api/family-members'),
         fetch('/api/checklist', { cache: 'no-store' }),
       ])
+      let parsedInv: Record<string, unknown> | null = null
       if (invRes.ok) {
         const { inventory } = await invRes.json()
+        parsedInv = inventory
         setInv({
           water_liters:             Number(inventory.water_liters)             || 0,
           food_days:                Number(inventory.food_days)                || 0,
@@ -399,7 +409,9 @@ export default function InventoryPage() {
       }
       if (famRes.ok) {
         const { members } = await famRes.json()
-        setMemberCount(Array.isArray(members) ? members.length : 0)
+        const mc = Array.isArray(members) ? members.length : 0
+        setMemberCount(mc)
+        if (parsedInv) saveSnapshot('inventory', { inv: parsedInv, memberCount: mc })
       }
       if (clRes.ok) {
         const { items } = await clRes.json()
@@ -413,6 +425,7 @@ export default function InventoryPage() {
   }, [t])
 
   useEffect(() => { loadData() }, [loadData])
+  useRealtimeSync(['resource_inventory', 'family_members', 'checklists'], () => { void loadData() })
 
   const loadAIBriefing = useCallback(async () => {
     setAiLoading(true)

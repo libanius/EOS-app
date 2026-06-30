@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState, useTransition } from 'react'
 import NumericStepper from '@/components/NumericStepper'
 import HouseholdHealthCard from '@/components/HouseholdHealthCard'
+import { useRealtimeSync } from '@/hooks/useRealtimeSync'
+import { saveSnapshot, loadSnapshot } from '@/lib/sync'
 import { useLanguage } from '@/lib/i18n'
 
 type FamilyMember = {
@@ -97,17 +99,23 @@ export default function FamilyPage() {
 
   const loadMembers = useCallback(async () => {
     setLoading(true)
+    const snap = loadSnapshot<FamilyMember[]>('family_members')
+    if (snap) setMembers(snap)
     try {
       const res = await fetch('/api/family-members')
       if (!res.ok) throw new Error('Erro ao carregar membros.')
       const data = await res.json()
-      setMembers(data.members ?? [])
+      const mems = data.members ?? []
+      setMembers(mems)
+      saveSnapshot('family_members', mems)
     } catch {
-      setMembers([])
+      if (!loadSnapshot<FamilyMember[]>('family_members')) setMembers([])
     } finally {
       setLoading(false)
     }
   }, [])
+
+  useRealtimeSync(['family_members'], () => { void loadMembers() })
 
   useEffect(() => {
     loadMembers()

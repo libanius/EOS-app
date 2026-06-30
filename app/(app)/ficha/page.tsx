@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import { useLanguage } from '@/lib/i18n'
+import { useRealtimeSync } from '@/hooks/useRealtimeSync'
+import { saveSnapshot, loadSnapshot } from '@/lib/sync'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -53,11 +55,13 @@ export default function FichaPage() {
 
   const loadFicha = useCallback(async () => {
     setLoading(true)
+    const snap = loadSnapshot<Ficha>('ficha')
+    if (snap) setFicha(snap)
     try {
       const res = await fetch('/api/profile/ficha')
       if (res.ok) {
         const { ficha: data } = await res.json()
-        setFicha({
+        const f: Ficha = {
           id: data.id ?? '',
           name: data.name ?? '',
           location: data.location ?? null,
@@ -67,12 +71,16 @@ export default function FichaPage() {
           emergency_contact_phone: data.emergency_contact_phone ?? null,
           medical_notes: data.medical_notes ?? null,
           medications: data.medications ?? [],
-        })
+        }
+        setFicha(f)
+        saveSnapshot('ficha', f)
       }
     } finally {
       setLoading(false)
     }
   }, [])
+
+  useRealtimeSync(['profiles'], () => { void loadFicha() })
 
   useEffect(() => { loadFicha() }, [loadFicha])
 
