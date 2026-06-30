@@ -50,10 +50,19 @@ CREATE TYPE circle_role_enum AS ENUM (
 -- One row per authenticated user. id mirrors auth.users.id.
 
 CREATE TABLE IF NOT EXISTS profiles (
-  id          uuid        PRIMARY KEY DEFAULT auth.uid(),
-  name        text        NOT NULL,
-  location    text,
-  created_at  timestamptz NOT NULL DEFAULT now()
+  id                      uuid        PRIMARY KEY DEFAULT auth.uid(),
+  name                    text        NOT NULL,
+  location                text,
+  location_lat            float8,
+  location_lng            float8,
+  blood_type              text,
+  allergies               text[]  NOT NULL DEFAULT '{}',
+  emergency_contact_name  text,
+  emergency_contact_phone text,
+  medical_notes           text,
+  medications             text[]  NOT NULL DEFAULT '{}',
+  plan                    text    NOT NULL DEFAULT 'free' CHECK (plan IN ('free','family','premium')),
+  created_at              timestamptz NOT NULL DEFAULT now()
 );
 
 -- Row Level Security

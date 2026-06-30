@@ -1,7 +1,7 @@
 # 09 — Build Status
 
 > The single most important file for resuming a session. Read this first after AGENTS.md.
-> Last updated: 2026-06-28
+> Last updated: 2026-06-29
 
 ---
 
@@ -10,8 +10,8 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Phase 2 — Círculos, Fichas & Household |
-| **Last Completed Task** | P1-T05: Bilingual PT/EN interface (2026-06-29) |
-| **Next Task** | P1-T07: Verify Sentry in production |
+| **Last Completed Task** | P2-T11: Feature gates + monitoring integration complete (2026-06-29) |
+| **Next Task** | P2-T12: Multi-location monitoring (circle members) |
 | **Build** | ✅ Passing — `npm run build` clean as of 2026-06-29 |
 | **Vercel** | ✅ Deployed — auto-deploys on push to `main` |
 | **Supabase** | ✅ Healthy — project ref `alxurmgpyxjhvnliivbf` |
@@ -42,7 +42,7 @@
 | P1-T10: E2E test agent | ✅ COMPLETE | 2026-06-28 |
 | P1-T11: Recursos screen — checklist integration + inventory sync | ✅ COMPLETE | 2026-06-28 |
 | P1-T05: Bilingual PT/EN settings | ✅ COMPLETE | 2026-06-29 |
-| P1-T07: Verify Sentry in production | NEXT UP | — |
+| P1-T07: Sentry error monitoring | DEFERRED | D-028 |
 | P1-T08: Rate limit validation (Upstash) | DRAFT | — |
 
 ---

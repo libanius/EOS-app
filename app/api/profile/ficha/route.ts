@@ -1,8 +1,10 @@
 import { type NextRequest, NextResponse } from 'next/server'
+import { geocodeLocation } from '@/lib/geocode'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 
-const FICHA_FIELDS = 'id, name, location, blood_type, allergies, emergency_contact_name, emergency_contact_phone, medical_notes, medications'
+const FICHA_FIELDS = 'id, name, location, location_lat, location_lng, blood_type, allergies, emergency_contact_name, emergency_contact_phone, medical_notes, medications'
+
 
 // ─── GET /api/profile/ficha ───────────────────────────────────────────────────
 export async function GET() {
@@ -43,7 +45,20 @@ export async function PATCH(req: NextRequest) {
     if (!name) return NextResponse.json({ error: 'Nome é obrigatório.' }, { status: 400 })
     patch.name = name
   }
-  if (body.location !== undefined) patch.location = body.location?.trim() || null
+  if (body.location !== undefined) {
+    const loc = body.location?.trim() || null
+    patch.location = loc
+    if (loc) {
+      const coords = await geocodeLocation(loc)
+      if (coords) {
+        patch.location_lat = coords.lat
+        patch.location_lng = coords.lng
+      }
+    } else {
+      patch.location_lat = null
+      patch.location_lng = null
+    }
+  }
   if (body.blood_type              !== undefined) patch.blood_type              = body.blood_type
   if (body.allergies               !== undefined) patch.allergies               = body.allergies
   if (body.emergency_contact_name  !== undefined) patch.emergency_contact_name  = body.emergency_contact_name

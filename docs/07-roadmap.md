@@ -1,6 +1,6 @@
 # 07 — Roadmap
 
-> Last updated: 2026-06-28
+> Last updated: 2026-06-29
 
 ---
 
@@ -31,7 +31,7 @@
 | P1-T04 | Landing page: replace placeholder with minimal orienting page | ✅ COMPLETE | MEDIUM |
 | P1-T05 | Bilingual PT/EN UI selected in Settings; align all UI copy | ✅ COMPLETE | MEDIUM |
 | P1-T06 | End-to-end test: full user flow from signup to action plan in production | ✅ COMPLETE | HIGH |
-| P1-T07 | Verify Sentry is capturing errors in production | NEXT UP | MEDIUM |
+| P1-T07 | Sentry error monitoring integration | DEFERRED | — ver D-028 |
 | P1-T08 | Rate limit validation: confirm Upstash Redis is connected in production | DRAFT | MEDIUM |
 
 ---
@@ -45,16 +45,16 @@
 | P2-T00 | Circle model spec + decisions documented | ✅ COMPLETE | HIGH |
 | P2-T01 | Ficha Pessoal: perfil de emergência + QR público (`/ficha/[id]`) | ✅ COMPLETE | HIGH |
 | P2-T06 | Ficha Master: identidade central unificada + onboarding progressivo | ✅ COMPLETE | HIGH |
-| P2-T07 | Subscription tiers: `profiles.plan` + `lib/feature-gates.ts` + UI de upgrade | PENDING | HIGH |
+| P2-T07 | Subscription tiers: `profiles.plan` + `lib/feature-gates.ts` + UI de upgrade | ✅ COMPLETE | HIGH |
 | P2-T02 | Círculos: convite por código/QR + aprovação + roles (Admin/Editor/Viewer) | PENDING | HIGH |
 | P2-T03 | Inventário: toggle compartilhar por campo + `shared_fields` na DB | PENDING | MEDIUM |
 | P2-T04 | Household view: visão agregada dos recursos compartilhados no círculo | PENDING | MEDIUM |
 | P2-T05 | Merge de membro manual → vinculado (badge + decisão do usuário) | PENDING | MEDIUM |
-| P2-T08 | Localização: `profiles.location_lat/lng` + geocoding (pré-req monitoramento) | PENDING | HIGH |
-| P2-T09 | `/api/monitor` — agregador server-side NWS + USGS (tier gratuito) | PENDING | HIGH |
-| P2-T10 | Tela Cenário redesenhada: painel de ameaças + campo livre abaixo | PENDING | HIGH |
-| P2-T11 | Feature gates de monitoramento em `lib/feature-gates.ts` | PENDING | HIGH |
-| P2-T12 | Monitoramento multi-localização (membros do círculo, tier Família) | PENDING | MEDIUM |
+| P2-T08 | Localização: `profiles.location_lat/lng` + geocoding (pré-req monitoramento) | ✅ COMPLETE | HIGH |
+| P2-T09 | `/api/monitor` — agregador server-side NWS + USGS (tier gratuito) | ✅ COMPLETE | HIGH |
+| P2-T10 | Tela Cenário redesenhada: painel de ameaças + campo livre abaixo | ✅ COMPLETE | HIGH |
+| P2-T11 | Feature gates de monitoramento em `lib/feature-gates.ts` | ✅ COMPLETE | HIGH |
+| P2-T12 | Monitoramento multi-localização (membros do círculo, tier Família) | NEXT UP | MEDIUM |
 
 **Spec de monitoramento**: ver `docs/14-monitoring.md`.
 

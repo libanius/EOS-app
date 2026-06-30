@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useLanguage, type Language, type MessageKey } from '@/lib/i18n'
+import { useRouter } from 'next/navigation'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -18,6 +19,23 @@ type Priority = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW'
 // Mode type alias kept for documentation — actual value lives in IntelligenceResponse
 // type Mode = 'CONNECTED' | 'LOCAL AI' | 'SURVIVAL'
 type Status = 'idle' | 'loading' | 'streaming' | 'done' | 'error'
+
+type Severity = 'CRITICAL' | 'HIGH' | 'WATCH' | 'MODERATE' | 'CLEAR'
+
+interface MonitorAlert {
+  source: string
+  type: string
+  severity: Severity
+  headline: string
+  expires: string | null
+  url: string | null
+}
+
+interface MonitorData {
+  alerts: MonitorAlert[]
+  status: { weather: Severity; earthquake: Severity }
+  cached_at: string
+}
 
 interface IntelligenceResponse {
   mode: 'CONNECTED' | 'LOCAL_AI' | 'SURVIVAL'
@@ -77,6 +95,125 @@ const PRIORITY_STYLES: Record<Priority, { color: string }> = {
   HIGH: { color: '#FFB347' },
   MEDIUM: { color: '#7c6bff' },
   LOW: { color: '#00e5a0' },
+}
+
+const SEVERITY_COLOR: Record<Severity, string> = {
+  CRITICAL: '#ff6b6b',
+  HIGH: '#FFB347',
+  WATCH: '#f5d76e',
+  MODERATE: '#7ec8e3',
+  CLEAR: '#00e5a0',
+}
+
+// ─── Monitoring Panel ─────────────────────────────────────────────────────────
+
+function MonitoringPanel({
+  lat, lng,
+  onAnalyze,
+}: {
+  lat: number | null; lng: number | null
+  onAnalyze: (headline: string) => void
+}) {
+  const { t } = useLanguage()
+  const router = useRouter()
+  const [data, setData] = useState<MonitorData | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  const fetchMonitor = useCallback(async () => {
+    if (!lat || !lng) return
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/monitor?lat=${lat}&lng=${lng}`)
+      if (res.ok) setData(await res.json())
+    } catch { /* silent */ } finally {
+      setLoading(false)
+    }
+  }, [lat, lng])
+
+  useEffect(() => {
+    fetchMonitor()
+    if (!lat || !lng) return
+    const id = setInterval(fetchMonitor, 5 * 60 * 1000)
+    return () => clearInterval(id)
+  }, [fetchMonitor, lat, lng])
+
+  if (!lat || !lng) {
+    return (
+      <div style={{ padding: '12px 16px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, marginBottom: 4 }}>
+        <p style={{ margin: 0, fontSize: 13, color: '#71717a', lineHeight: 1.5 }}>{t('monitoring.noLocation')}</p>
+        <button
+          onClick={() => router.push('/ficha')}
+          style={{ marginTop: 8, background: 'none', border: 'none', color: '#22c55e', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: 0 }}
+        >
+          {t('monitoring.setLocation')}
+        </button>
+      </div>
+    )
+  }
+
+  if (loading && !data) {
+    return (
+      <div style={{ padding: '12px 16px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, marginBottom: 4 }}>
+        <p style={{ margin: 0, fontSize: 12, color: '#71717a' }}>{t('monitoring.loading')}</p>
+      </div>
+    )
+  }
+
+  const activeAlerts = data?.alerts.filter(a => a.severity !== 'CLEAR') ?? []
+  const worstSeverity: Severity = activeAlerts.length > 0
+    ? (activeAlerts[0].severity as Severity)
+    : 'CLEAR'
+  const borderColor = SEVERITY_COLOR[worstSeverity]
+
+  return (
+    <div style={{ border: `1px solid ${borderColor}55`, borderRadius: 12, overflow: 'hidden', marginBottom: 4 }}>
+      {/* Header */}
+      <div style={{ padding: '10px 14px', background: `${borderColor}12`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: borderColor }}>
+          {t('monitoring.title')}
+        </span>
+        {activeAlerts.length > 0 && (
+          <span style={{ fontSize: 11, color: borderColor, fontWeight: 600 }}>
+            {activeAlerts.length} {t('monitoring.activeAlerts')}
+          </span>
+        )}
+      </div>
+
+      {/* Source status rows */}
+      {data && (
+        <div style={{ padding: '8px 14px', display: 'grid', gap: 6 }}>
+          {[
+            { key: 'weather', label: t('monitoring.weather'), sev: data.status.weather },
+            { key: 'earthquake', label: t('monitoring.earthquake'), sev: data.status.earthquake },
+          ].map(({ key, label, sev }) => (
+            <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 13 }}>
+              <span style={{ color: '#a1a1aa' }}>{label}</span>
+              <span style={{ fontWeight: 700, fontSize: 11, letterSpacing: '0.06em', color: SEVERITY_COLOR[sev as Severity] }}>
+                {t(`monitoring.severity.${sev}` as MessageKey)}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Active alert cards */}
+      {activeAlerts.slice(0, 2).map((alert, i) => (
+        <div key={i} style={{ margin: '0 14px 10px', padding: '10px 12px', background: `${SEVERITY_COLOR[alert.severity as Severity]}10`, border: `1px solid ${SEVERITY_COLOR[alert.severity as Severity]}30`, borderRadius: 8 }}>
+          <p style={{ margin: '0 0 6px', fontSize: 12, color: '#f5f5f5', lineHeight: 1.4 }}>{alert.headline}</p>
+          <button
+            onClick={() => onAnalyze(alert.headline)}
+            style={{ background: 'none', border: 'none', color: SEVERITY_COLOR[alert.severity as Severity], fontSize: 11, fontWeight: 700, cursor: 'pointer', padding: 0 }}
+          >
+            {t('monitoring.analyze')}
+          </button>
+        </div>
+      ))}
+
+      {data && activeAlerts.length === 0 && (
+        <p style={{ margin: '0 14px 12px', fontSize: 12, color: '#52525b' }}>{t('monitoring.noAlerts')}</p>
+      )}
+    </div>
+  )
 }
 
 // ─── Hooks ────────────────────────────────────────────────────────────────────
@@ -385,8 +522,27 @@ export default function ScenarioPage() {
   const [streamBuffer, setStreamBuffer] = useState('')
   const [response, setResponse] = useState<IntelligenceResponse | null>(null)
   const [toast, setToast] = useState<string | null>(null)
+  const [profileCoords, setProfileCoords] = useState<{ lat: number; lng: number } | null>(null)
+
+  useEffect(() => {
+    fetch('/api/profile/ficha')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        const lat = d?.ficha?.location_lat
+        const lng = d?.ficha?.location_lng
+        if (typeof lat === 'number' && typeof lng === 'number') {
+          setProfileCoords({ lat, lng })
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   const abortRef = useRef<AbortController | null>(null)
+
+  const handleAnalyzeFromMonitor = useCallback((headline: string) => {
+    setDescription(headline)
+    setSelectedType('general')
+  }, [])
 
   const showToast = (msg: string) => {
     setToast(msg)
@@ -656,6 +812,13 @@ export default function ScenarioPage() {
         >
           {/* ── LEFT: Configuration ── */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* Monitoring Panel */}
+            <MonitoringPanel
+              lat={profileCoords?.lat ?? null}
+              lng={profileCoords?.lng ?? null}
+              onAnalyze={handleAnalyzeFromMonitor}
+            />
+
             {/* Scenario Type */}
             <div className="card">
               <div className="ct">{t('scenario.type')}</div>
