@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useLanguage } from '@/lib/i18n'
 import { canAccess, type Plan } from '@/lib/feature-gates'
+import { QRCodeSVG } from 'qrcode.react'
 
 type CircleRole = 'Admin' | 'Editor' | 'Viewer'
 type Severity = 'CRITICAL' | 'HIGH' | 'WATCH' | 'MODERATE' | 'CLEAR'
@@ -88,6 +89,7 @@ export default function CirclesPage() {
   const [plan, setPlan] = useState<Plan>('free')
   const [monitoring, setMonitoring] = useState<Record<string, CircleMonitor>>({})
   const [plans, setPlans] = useState<Record<string, ActionPlan[]>>({})
+  const [qrCircleId, setQrCircleId] = useState<string | null>(null)
   const [newPlan, setNewPlan] = useState<{ circleId: string; title: string; body: string } | null>(null)
   const [editPlan, setEditPlan] = useState<ActionPlan & { circleId: string } | null>(null)
 
@@ -340,9 +342,20 @@ export default function CirclesPage() {
                     </span>
                   </div>
                   <div style={{ fontSize: 20, fontWeight: 600 }}>{c.name}</div>
-                  <div style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 13, color: '#8a8a99', marginTop: 4, letterSpacing: 2 }}>
-                    {t('circles.invite')} · {c.invite_code}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
+                    <span style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 13, color: '#8a8a99', letterSpacing: 2 }}>
+                      {t('circles.invite')} · {c.invite_code}
+                    </span>
+                    <button onClick={() => setQrCircleId(qrCircleId === c.id ? null : c.id)} style={{ fontSize: 11, padding: '2px 8px', background: 'transparent', border: '1px solid #2a2a3a', borderRadius: 4, color: '#8a8a99', cursor: 'pointer' }}>
+                      QR
+                    </button>
                   </div>
+                  {qrCircleId === c.id && (
+                    <div style={{ marginTop: 12, padding: 16, background: '#fff', borderRadius: 10, display: 'inline-block' }}>
+                      <QRCodeSVG value={c.invite_code} size={140} level="M" />
+                      <div style={{ marginTop: 6, textAlign: 'center', fontSize: 12, color: '#111', fontFamily: 'ui-monospace, Menlo, monospace', letterSpacing: 3 }}>{c.invite_code}</div>
+                    </div>
+                  )}
                 </div>
                 <div style={{ textAlign: 'right', flexShrink: 0 }}>
                   <div style={{ fontSize: 11, letterSpacing: 2, color: BAND_COLOR[c.score.band], fontWeight: 700 }}>{c.score.band}</div>
