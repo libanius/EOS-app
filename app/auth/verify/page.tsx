@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { cookies } from 'next/headers'
 
 interface Props {
   searchParams: Promise<{ email?: string }>
@@ -6,6 +7,7 @@ interface Props {
 
 export default async function VerifyPage({ searchParams }: Props) {
   const { email } = await searchParams
+  const isPt = (await cookies()).get('eos-language')?.value !== 'en'
 
   return (
     <div style={styles.page}>
@@ -27,24 +29,24 @@ export default async function VerifyPage({ searchParams }: Props) {
           </svg>
         </div>
 
-        <h1 style={styles.title}>Verifique seu e-mail</h1>
+        <h1 style={styles.title}>{isPt ? 'Verifique seu e-mail' : 'Check your email'}</h1>
 
         <p style={styles.body}>
-          Enviamos um link de confirmação para{' '}
+          {isPt ? 'Enviamos um link de confirmação para ' : 'We sent a confirmation link to '}
           {email ? (
             <strong style={{ color: 'var(--tx)' }}>{email}</strong>
           ) : (
-            'seu e-mail'
+            (isPt ? 'seu e-mail' : 'your email')
           )}
-          . Clique no link para acessar o EOS.
+          {isPt ? '. Clique no link para acessar o EOS.' : '. Click the link to access EOS.'}
         </p>
 
         <p style={styles.hint}>
-          Não recebeu? Verifique a pasta de spam.
+          {isPt ? 'Não recebeu? Verifique a pasta de spam.' : 'Did not receive it? Check your spam folder.'}
         </p>
 
         <Link href="/auth/login" style={styles.backLink}>
-          ← Voltar ao login
+          {isPt ? '← Voltar ao login' : '← Back to sign in'}
         </Link>
       </div>
     </div>

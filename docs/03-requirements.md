@@ -88,7 +88,7 @@
 |---|---|---|
 | F08-1 | User can choose Portuguese or English in `/settings` | ✅ IMPLEMENTED |
 | F08-2 | Language preference persists on the device | ✅ IMPLEMENTED |
-| F08-3 | The app applies the selected language to navigation and interface copy | IN PROGRESS |
+| F08-3 | The app applies the selected language to navigation and interface copy | ✅ IMPLEMENTED |
 | F08-4 | The document language metadata reflects the selected language | ✅ IMPLEMENTED |
 
 ---

@@ -2,8 +2,10 @@
 
 import { useState, useTransition } from 'react'
 import { updatePassword } from '@/lib/auth/actions'
+import { useLanguage } from '@/lib/i18n'
 
 export default function UpdatePasswordPage() {
+  const { t } = useLanguage()
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -12,11 +14,11 @@ export default function UpdatePasswordPage() {
   function handleSubmit() {
     // Client-side validation
     if (newPassword.length < 6) {
-      setError('A senha deve ter pelo menos 6 caracteres.')
+      setError(t('auth.passwordLength'))
       return
     }
     if (newPassword !== confirmPassword) {
-      setError('As senhas não coincidem.')
+      setError(t('auth.passwordMismatch'))
       return
     }
     setError(null)
@@ -35,18 +37,18 @@ export default function UpdatePasswordPage() {
           <span style={styles.brandName}>EOS</span>
         </div>
 
-        <h1 style={styles.title}>Criar nova senha</h1>
+        <h1 style={styles.title}>{t('auth.newPasswordTitle')}</h1>
 
         {/* Error */}
         {error && <div style={styles.errorBox}>{error}</div>}
 
         {/* Fields */}
         <div style={styles.fieldGroup}>
-          <label style={styles.label}>Nova senha</label>
+          <label style={styles.label}>{t('auth.newPassword')}</label>
           <input
             className="input"
             type="password"
-            placeholder="Mínimo 6 caracteres"
+            placeholder={t('auth.passwordPlaceholder')}
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
             disabled={isPending}
@@ -55,11 +57,11 @@ export default function UpdatePasswordPage() {
         </div>
 
         <div style={styles.fieldGroup}>
-          <label style={styles.label}>Confirmar nova senha</label>
+          <label style={styles.label}>{t('auth.confirmPassword')}</label>
           <input
             className="input"
             type="password"
-            placeholder="Repita a senha"
+            placeholder={t('auth.repeatPassword')}
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
@@ -75,7 +77,7 @@ export default function UpdatePasswordPage() {
           onClick={handleSubmit}
           disabled={isPending}
         >
-          {isPending ? 'Salvando…' : 'Salvar nova senha'}
+          {isPending ? t('onboarding.saving') : t('auth.savePassword')}
         </button>
       </div>
     </div>

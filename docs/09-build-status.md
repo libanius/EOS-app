@@ -10,8 +10,8 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Phase 2 — Círculos, Fichas & Household |
-| **Last Completed Task** | P2-T06: Ficha Master (2026-06-29) |
-| **Current Task** | P1-T05: Resume remaining bilingual UI alignment |
+| **Last Completed Task** | P1-T05: Bilingual PT/EN interface (2026-06-29) |
+| **Next Task** | P1-T07: Verify Sentry in production |
 | **Build** | ✅ Passing — `npm run build` clean as of 2026-06-29 |
 | **Vercel** | ✅ Deployed — auto-deploys on push to `main` |
 | **Supabase** | ✅ Healthy — project ref `alxurmgpyxjhvnliivbf` |
@@ -41,8 +41,8 @@
 | P1-T09: Bottom navigation (5 tabs) | ✅ COMPLETE | 2026-06-28 |
 | P1-T10: E2E test agent | ✅ COMPLETE | 2026-06-28 |
 | P1-T11: Recursos screen — checklist integration + inventory sync | ✅ COMPLETE | 2026-06-28 |
-| P1-T05: Bilingual PT/EN settings | IN PROGRESS | — |
-| P1-T07: Verify Sentry in production | DRAFT | — |
+| P1-T05: Bilingual PT/EN settings | ✅ COMPLETE | 2026-06-29 |
+| P1-T07: Verify Sentry in production | NEXT UP | — |
 | P1-T08: Rate limit validation (Upstash) | DRAFT | — |
 
 ---
@@ -106,9 +106,9 @@
 
 ## What Is Next
 
-**P1-T05: Resume bilingual UI alignment**
+**P1-T07: Verify Sentry in production**
 
-Continue migrating Scenario, Family, Resources, auth, landing, and the public Emergency Card to the shared PT/EN dictionary.
+Confirm `SENTRY_DSN` is configured in Vercel and verify that a controlled production error reaches the Sentry project.
 
 ---
 
@@ -272,7 +272,9 @@ To add a new knowledge source: drop PDF in `docs/`, re-run both commands.
 - Migrated Scenario, including scenario types, loading sequence, fallback copy, plan headings, rules, sources, and controls
 - Migrated Family, including dashboard metrics, risk feed, empty state, member form, medical fields, status toggles, and member-card actions
 - Migrated Resources, including readiness, AI briefing, inventory fields, units, equipment, cash, errors, and integrated checklist
-- Remaining before P1-T05 completion: migrate auth, landing, and the public Emergency Card
+- Moved the language provider to the root layout so public and authenticated surfaces share one preference
+- Migrated login, signup, password recovery, password update, email verification, landing, and public Emergency Card
+- P1-T05 completed with a clean production build
 
 ---
 

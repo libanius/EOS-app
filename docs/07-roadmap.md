@@ -29,9 +29,9 @@
 | P1-T02 | Ingest knowledge base (14 PDFs → 3850 chunks in Supabase) | ✅ COMPLETE | HIGH |
 | P1-T03 | Add PWA icons (icon-192.png, icon-512.png) referenced in manifest but missing | ✅ COMPLETE | MEDIUM |
 | P1-T04 | Landing page: replace placeholder with minimal orienting page | ✅ COMPLETE | MEDIUM |
-| P1-T05 | Bilingual PT/EN UI selected in Settings; align all UI copy | IN PROGRESS | MEDIUM |
+| P1-T05 | Bilingual PT/EN UI selected in Settings; align all UI copy | ✅ COMPLETE | MEDIUM |
 | P1-T06 | End-to-end test: full user flow from signup to action plan in production | ✅ COMPLETE | HIGH |
-| P1-T07 | Verify Sentry is capturing errors in production | DRAFT | MEDIUM |
+| P1-T07 | Verify Sentry is capturing errors in production | NEXT UP | MEDIUM |
 | P1-T08 | Rate limit validation: confirm Upstash Redis is connected in production | DRAFT | MEDIUM |
 
 ---

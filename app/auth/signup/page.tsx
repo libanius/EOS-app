@@ -4,9 +4,11 @@ import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { signUp } from '@/lib/auth/actions'
+import { useLanguage } from '@/lib/i18n'
 
 export default function SignUpPage() {
   const router = useRouter()
+  const { t } = useLanguage()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -15,9 +17,9 @@ export default function SignUpPage() {
 
   function handleSignUp() {
     // Client-side validation (RN-05)
-    if (!name.trim()) { setError('Informe seu nome.'); return }
-    if (!email.trim()) { setError('Informe seu e-mail.'); return }
-    if (password.length < 6) { setError('A senha deve ter pelo menos 6 caracteres.'); return }
+    if (!name.trim()) { setError(t('auth.nameRequired')); return }
+    if (!email.trim()) { setError(t('auth.emailRequired')); return }
+    if (password.length < 6) { setError(t('auth.passwordLength')); return }
 
     setError(null)
     startTransition(async () => {
@@ -39,18 +41,18 @@ export default function SignUpPage() {
           <span style={styles.brandName}>EOS</span>
         </div>
 
-        <h1 style={styles.title}>Criar sua conta</h1>
+        <h1 style={styles.title}>{t('auth.signupTitle')}</h1>
 
         {/* Error */}
         {error && <div style={styles.errorBox}>{error}</div>}
 
         {/* Fields */}
         <div style={styles.fieldGroup}>
-          <label style={styles.label}>Nome</label>
+          <label style={styles.label}>{t('auth.name')}</label>
           <input
             className="input"
             type="text"
-            placeholder="Seu nome"
+            placeholder={t('auth.namePlaceholder')}
             value={name}
             onChange={(e) => setName(e.target.value)}
             disabled={isPending}
@@ -59,7 +61,7 @@ export default function SignUpPage() {
         </div>
 
         <div style={styles.fieldGroup}>
-          <label style={styles.label}>E-mail</label>
+          <label style={styles.label}>{t('auth.email')}</label>
           <input
             className="input"
             type="email"
@@ -72,18 +74,18 @@ export default function SignUpPage() {
         </div>
 
         <div style={styles.fieldGroup}>
-          <label style={styles.label}>Senha</label>
+          <label style={styles.label}>{t('auth.password')}</label>
           <input
             className="input"
             type="password"
-            placeholder="Mínimo 6 caracteres"
+            placeholder={t('auth.passwordPlaceholder')}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSignUp()}
             disabled={isPending}
             autoComplete="new-password"
           />
-          <span style={styles.hint}>mín. 6 caracteres</span>
+          <span style={styles.hint}>{t('auth.passwordHint')}</span>
         </div>
 
         {/* Submit */}
@@ -93,14 +95,14 @@ export default function SignUpPage() {
           onClick={handleSignUp}
           disabled={isPending}
         >
-          {isPending ? 'Criando conta…' : 'Criar conta'}
+          {isPending ? t('auth.creating') : t('auth.signup')}
         </button>
 
         {/* Footer */}
         <p style={styles.footer}>
-          Já tem conta?{' '}
+          {t('auth.hasAccount')}{' '}
           <Link href="/auth/login" style={styles.link}>
-            Entrar
+            {t('auth.login')}
           </Link>
         </p>
       </div>

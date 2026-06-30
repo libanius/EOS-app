@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
+import { LanguageProvider } from '@/lib/i18n'
 
 export const metadata: Metadata = {
   title: 'EOS — Emergency Operating System',
@@ -38,7 +39,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
+    <html lang="pt-BR">
       <head>
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta
@@ -47,7 +48,9 @@ export default function RootLayout({
         />
       </head>
       <body>
-        <div id="app">{children}</div>
+        <LanguageProvider>
+          <div id="app">{children}</div>
+        </LanguageProvider>
       </body>
     </html>
   )

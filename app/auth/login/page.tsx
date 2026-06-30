@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { signIn, signUp } from '@/lib/auth/actions'
+import { useLanguage } from '@/lib/i18n'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -13,6 +14,7 @@ type Mode = 'login' | 'signup'
 
 export default function LoginPage() {
   const router = useRouter()
+  const { t } = useLanguage()
 
   const [mode, setMode] = useState<Mode>('login')
   const [name, setName] = useState('')
@@ -33,7 +35,7 @@ export default function LoginPage() {
 
     if (mode === 'login') {
       if (!email || !password) {
-        setError('Preencha e-mail e senha.')
+        setError(t('auth.fillCredentials'))
         return
       }
       startTransition(async () => {
@@ -41,10 +43,10 @@ export default function LoginPage() {
         if (result?.error) setError(result.error)
       })
     } else {
-      if (!name.trim()) { setError('Informe seu nome.'); return }
-      if (!email)        { setError('Informe seu e-mail.'); return }
+      if (!name.trim()) { setError(t('auth.nameRequired')); return }
+      if (!email)        { setError(t('auth.emailRequired')); return }
       if (password.length < 6) {
-        setError('A senha deve ter pelo menos 6 caracteres.')
+        setError(t('auth.passwordLength'))
         return
       }
       startTransition(async () => {
@@ -66,8 +68,8 @@ export default function LoginPage() {
 
   const isLogin  = mode === 'login'
   const btnLabel = isPending
-    ? isLogin ? 'Entrando…' : 'Criando conta…'
-    : isLogin ? 'Entrar'   : 'Criar conta'
+    ? isLogin ? t('auth.loggingIn') : t('auth.creating')
+    : isLogin ? t('auth.login') : t('auth.signup')
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -88,14 +90,14 @@ export default function LoginPage() {
             onClick={() => switchMode('login')}
             disabled={isPending}
           >
-            Entrar
+            {t('auth.login')}
           </button>
           <button
             className={`chip${!isLogin ? ' on' : ''}`}
             onClick={() => switchMode('signup')}
             disabled={isPending}
           >
-            Criar conta
+            {t('auth.signup')}
           </button>
         </div>
 
@@ -110,11 +112,11 @@ export default function LoginPage() {
         {/* ── Name field (signup only) ─────────────────────────────────── */}
         {!isLogin && (
           <div style={s.fieldGroup}>
-            <label style={s.label}>Nome</label>
+            <label style={s.label}>{t('auth.name')}</label>
             <input
               className="input"
               type="text"
-              placeholder="Seu nome"
+              placeholder={t('auth.namePlaceholder')}
               value={name}
               onChange={(e) => setName(e.target.value)}
               onKeyDown={onKeyDown}
@@ -127,7 +129,7 @@ export default function LoginPage() {
 
         {/* ── Email ────────────────────────────────────────────────────── */}
         <div style={s.fieldGroup}>
-          <label style={s.label}>E-mail</label>
+          <label style={s.label}>{t('auth.email')}</label>
           <input
             className="input"
             type="email"
@@ -144,17 +146,17 @@ export default function LoginPage() {
         {/* ── Password ─────────────────────────────────────────────────── */}
         <div style={s.fieldGroup}>
           <div style={s.labelRow}>
-            <label style={s.label}>Senha</label>
+            <label style={s.label}>{t('auth.password')}</label>
             {isLogin && (
               <Link href="/auth/forgot-password" style={s.linkSmall} tabIndex={isPending ? -1 : 0}>
-                Esqueci minha senha
+                {t('auth.forgot')}
               </Link>
             )}
           </div>
           <input
             className="input"
             type="password"
-            placeholder={isLogin ? '••••••••' : 'Mínimo 6 caracteres'}
+            placeholder={isLogin ? '••••••••' : t('auth.passwordPlaceholder')}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             onKeyDown={onKeyDown}
@@ -162,7 +164,7 @@ export default function LoginPage() {
             autoComplete={isLogin ? 'current-password' : 'new-password'}
           />
           {!isLogin && (
-            <span style={s.hint}>mín. 6 caracteres</span>
+            <span style={s.hint}>{t('auth.passwordHint')}</span>
           )}
         </div>
 
@@ -178,7 +180,7 @@ export default function LoginPage() {
 
         {/* ── Footer ───────────────────────────────────────────────────── */}
         <p style={s.footer}>
-          Seus dados ficam locais. Sempre.
+          {t('auth.localData')}
         </p>
 
       </div>

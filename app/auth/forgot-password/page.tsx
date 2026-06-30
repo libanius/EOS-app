@@ -5,9 +5,11 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { forgotPassword } from '@/lib/auth/actions'
 import { Suspense } from 'react'
+import { useLanguage } from '@/lib/i18n'
 
 function ForgotPasswordForm() {
   const searchParams = useSearchParams()
+  const { t } = useLanguage()
   const linkExpired = searchParams.get('error') === 'link_expired'
 
   const [email, setEmail] = useState('')
@@ -34,35 +36,33 @@ function ForgotPasswordForm() {
         {sent ? (
           // ── Success state ──────────────────────────────────────
           <>
-            <h1 style={styles.title}>Link enviado</h1>
+            <h1 style={styles.title}>{t('auth.linkSent')}</h1>
             <p style={styles.successMsg}>
-              Se este e-mail estiver cadastrado, você receberá o link em
-              instantes. Verifique também a pasta de spam.
+              {t('auth.linkSentBody')}
             </p>
             <Link href="/auth/login" style={styles.backLink}>
-              ← Voltar ao login
+              {t('auth.backLogin')}
             </Link>
           </>
         ) : (
           // ── Form state ─────────────────────────────────────────
           <>
             <div>
-              <h1 style={styles.title}>Recuperar senha</h1>
+              <h1 style={styles.title}>{t('auth.recover')}</h1>
               <p style={styles.subtitle}>
-                Informe seu e-mail e enviaremos um link para criar uma nova
-                senha.
+                {t('auth.recoverBody')}
               </p>
             </div>
 
             {/* Link expired alert */}
             {linkExpired && (
               <div style={styles.errorBox}>
-                Link expirado ou inválido. Solicite um novo.
+                {t('auth.expired')}
               </div>
             )}
 
             <div style={styles.fieldGroup}>
-              <label style={styles.label}>E-mail</label>
+              <label style={styles.label}>{t('auth.email')}</label>
               <input
                 className="input"
                 type="email"
@@ -80,13 +80,13 @@ function ForgotPasswordForm() {
               onClick={handleSubmit}
               disabled={isPending || !email.trim()}
             >
-              {isPending ? 'Enviando…' : 'Enviar link'}
+              {isPending ? t('auth.sending') : t('auth.sendLink')}
             </button>
 
             <p style={styles.footer}>
-              Lembrou a senha?{' '}
+              {t('auth.remembered')}{' '}
               <Link href="/auth/login" style={styles.link}>
-                Entrar
+                {t('auth.login')}
               </Link>
             </p>
           </>

@@ -95,7 +95,7 @@ This bug existed in all previous versions of the ingest script and is the root c
 - No design system — raw CSS variables in globals.css
 - PWA PNG icons are derived from the canonical `public/icon.svg`; update the SVG first if the app mark changes, then regenerate both PNG sizes.
 - UI language is explicitly selected in `/settings`; `lib/i18n.tsx` is the canonical client-side PT/EN dictionary and persists the preference under `eos-language`.
-- Page translation is being migrated incrementally under P1-T05; all authenticated product screens now consume the shared dictionary. Remaining surfaces are auth, landing, and the public Emergency Card.
+- P1-T05 completed: authenticated screens, auth, landing, and the public Emergency Card support PT/EN. Client surfaces use `lib/i18n.tsx`; server-rendered public surfaces read the `eos-language` cookie.
 
 ---
 

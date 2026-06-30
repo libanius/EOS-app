@@ -1,9 +1,24 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { cookies } from 'next/headers'
 
 export default async function Home() {
   const supabase = await createClient()
+  const language = (await cookies()).get('eos-language')?.value === 'en' ? 'en' : 'pt'
+  const copy = language === 'pt' ? {
+    line1: 'Nos primeiros 15 minutos', line2: 'de uma crise,', accent: 'cada decisão importa.',
+    sub: 'EOS analisa sua família, seus recursos e o cenário de emergência — e entrega um plano de ação claro, mesmo sem internet.',
+    features: ['Plano de ação com IA adaptado à sua família', 'Funciona offline — modo sobrevivência sem rede', 'Base de conhecimento: FEMA, Cruz Vermelha, OMS e SAS', 'Círculos familiares para coordenação em grupo'],
+    signup: 'Criar conta gratuita', login: 'Já tenho conta — Entrar',
+    footnote: 'Seus dados ficam protegidos e não são compartilhados.',
+  } : {
+    line1: 'In the first 15 minutes', line2: 'of a crisis,', accent: 'every decision matters.',
+    sub: 'EOS analyzes your family, resources, and emergency scenario — then delivers a clear action plan, even without internet.',
+    features: ['AI action plans adapted to your family', 'Works offline with network-free survival mode', 'Knowledge base: FEMA, Red Cross, WHO, and SAS', 'Family circles for group coordination'],
+    signup: 'Create free account', login: 'Already have an account — Sign in',
+    footnote: 'Your data stays protected and is not shared.',
+  }
   const { data: { user } } = await supabase.auth.getUser()
 
   if (user) redirect('/scenario')
@@ -19,49 +34,38 @@ export default async function Home() {
       {/* Headline */}
       <div style={s.hero}>
         <h1 style={s.headline}>
-          Nos primeiros 15 minutos<br />
-          de uma crise,<br />
-          <span style={s.accent}>cada decisão importa.</span>
+          {copy.line1}<br />
+          {copy.line2}<br />
+          <span style={s.accent}>{copy.accent}</span>
         </h1>
         <p style={s.sub}>
-          EOS analisa sua situação familiar, seus recursos e o cenário de emergência
-          — e entrega um plano de ação claro, mesmo sem internet.
+          {copy.sub}
         </p>
       </div>
 
       {/* Feature list */}
       <ul style={s.features}>
-        <li style={s.feature}>
-          <span style={s.featureDot} />
-          Plano de ação com IA adaptado à sua família
-        </li>
-        <li style={s.feature}>
-          <span style={s.featureDot} />
-          Funciona offline — modo sobrevivência sem rede
-        </li>
-        <li style={s.feature}>
-          <span style={s.featureDot} />
-          Base de conhecimento: FEMA, Cruz Vermelha, OMS, SAS
-        </li>
-        <li style={s.feature}>
-          <span style={s.featureDot} />
-          Círculos familiares para coordenar em grupo
-        </li>
+        {copy.features.map((feature) => (
+          <li key={feature} style={s.feature}>
+            <span style={s.featureDot} />
+            {feature}
+          </li>
+        ))}
       </ul>
 
       {/* CTAs */}
       <div style={s.ctas}>
         <Link href="/auth/signup" className="btn bp bfull" style={s.ctaPrimary}>
-          Criar conta gratuita
+          {copy.signup}
         </Link>
         <Link href="/auth/login" className="btn bs bfull" style={s.ctaSecondary}>
-          Já tenho conta — Entrar
+          {copy.login}
         </Link>
       </div>
 
       {/* Footer note */}
       <p style={s.footnote}>
-        Seus dados ficam protegidos e não são compartilhados.
+        {copy.footnote}
       </p>
     </main>
   )
