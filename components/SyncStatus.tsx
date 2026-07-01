@@ -47,7 +47,7 @@ export default function SyncStatus({ onReconnect }: { onReconnect?: () => void }
 
   return (
     <div style={{
-      position: 'fixed', bottom: 72, left: 12, right: 12, maxWidth: 360,
+      position: 'fixed', bottom: 'calc(72px + env(safe-area-inset-bottom, 0px))', left: 12, right: 12, maxWidth: 360,
       margin: '0 auto', padding: '8px 14px',
       background: '#111116', border: `1px solid ${color}44`,
       borderRadius: 10, display: 'flex', alignItems: 'center', gap: 8,
