@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ACTIVITIES, CATEGORY_LABELS, generateRecommendations } from '@/lib/weather/engine'
+import { KITS } from '@/lib/checklist'
 import type { WeatherSnapshot, ActivityId, ActivityCategory, WeatherRecommendation, RiskLevel } from '@/lib/weather/types'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -62,7 +63,7 @@ function RiskBadge({ risk }: { risk: RiskLevel }) {
   )
 }
 
-function RecommendationCard({ rec }: { rec: WeatherRecommendation }) {
+function RecommendationCard({ rec, onSave }: { rec: WeatherRecommendation; onSave?: (items: string[]) => void }) {
   const [open, setOpen] = useState(false)
   const color = RISK_COLOR[rec.risk]
   return (
@@ -114,7 +115,15 @@ function RecommendationCard({ rec }: { rec: WeatherRecommendation }) {
 
           {rec.checklist.length > 0 && (
             <div>
-              <p style={{ margin: '0 0 6px', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: '#71717a', textTransform: 'uppercase' }}>Checklist</p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <p style={{ margin: 0, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: '#71717a', textTransform: 'uppercase' }}>Checklist</p>
+                {onSave && (
+                  <button onClick={() => onSave(rec.checklist)} style={{
+                    fontSize: 10, padding: '3px 8px', background: `${AC}18`, border: `1px solid ${AC}44`,
+                    borderRadius: 6, color: AC, fontWeight: 700, cursor: 'pointer',
+                  }}>+ Salvar no Kit</button>
+                )}
+              </div>
               {rec.checklist.map((item, i) => (
                 <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 4 }}>
                   <span style={{ color: AC, fontSize: 12, marginTop: 1, flexShrink: 0 }}>✓</span>
@@ -126,6 +135,7 @@ function RecommendationCard({ rec }: { rec: WeatherRecommendation }) {
         </div>
       )}
     </div>
+
   )
 }
 
@@ -147,6 +157,10 @@ export default function WeatherPage() {
     risk: 'low' | 'medium' | 'high' | 'critical'
     title: string; reason: string; checklist: string[]; best_time: string | null
   } | null>(null)
+  const [kitPicker, setKitPicker] = useState<{ items: string[] } | null>(null)
+  const [saveKit, setSaveKit] = useState('BUG_OUT')
+  const [saving, setSaving] = useState(false)
+  const [savedMsg, setSavedMsg] = useState<string | null>(null)
 
   // ── Location ──────────────────────────────────────────────────────────────
 
@@ -240,6 +254,22 @@ export default function WeatherPage() {
       })
       if (res.ok) setCustomResult(await res.json())
     } finally { setCustomLoading(false) }
+  }
+
+  async function saveToKit(items: string[]) {
+    setSaving(true)
+    try {
+      const res = await fetch('/api/checklist/save-items', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kitType: saveKit, items: items.map((name) => ({ name })) }),
+      })
+      if (res.ok) {
+        setSavedMsg(`${items.length} itens salvos em ${KITS.find(k => k.type === saveKit)?.label ?? saveKit}`)
+        setKitPicker(null)
+        setTimeout(() => setSavedMsg(null), 4000)
+      }
+    } finally { setSaving(false) }
   }
 
   // ── Render states ─────────────────────────────────────────────────────────
@@ -451,6 +481,13 @@ export default function WeatherPage() {
                 <span style={{ fontSize: 12, color: AC, fontWeight: 700 }}>⏱ {customResult.best_time}</span>
               </div>
             )}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '4px 0 6px' }}>
+              <p style={{ margin: 0, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: '#71717a', textTransform: 'uppercase' }}>Checklist</p>
+              <button onClick={() => setKitPicker({ items: customResult.checklist })} style={{
+                fontSize: 10, padding: '3px 8px', background: `${AC}18`, border: `1px solid ${AC}44`,
+                borderRadius: 6, color: AC, fontWeight: 700, cursor: 'pointer',
+              }}>+ Salvar no Kit</button>
+            </div>
             {customResult.checklist.map((item, i) => (
               <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 4 }}>
                 <span style={{ color: AC, fontSize: 12, marginTop: 1, flexShrink: 0 }}>✓</span>
@@ -536,7 +573,7 @@ export default function WeatherPage() {
           )}
 
           {recommendations.map(rec => (
-            <RecommendationCard key={rec.activity_id} rec={rec} />
+            <RecommendationCard key={rec.activity_id} rec={rec} onSave={(items) => { setKitPicker({ items }); setSaveKit('BUG_OUT') }} />
           ))}
 
           {/* Summary badge */}
@@ -574,6 +611,60 @@ export default function WeatherPage() {
               </span>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Kit picker modal */}
+      {kitPicker && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,.75)', zIndex: 200,
+          display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '0 16px 32px',
+        }} onClick={() => setKitPicker(null)}>
+          <div style={{
+            background: '#13131e', border: '1px solid #2a2a3a', borderRadius: 16,
+            padding: 20, width: '100%', maxWidth: 440,
+          }} onClick={(e) => e.stopPropagation()}>
+            <p style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 700, color: '#f0f0f8' }}>
+              Salvar {kitPicker.items.length} itens no Kit
+            </p>
+            <p style={{ margin: '0 0 14px', fontSize: 12, color: '#8a8a99' }}>Escolha o kit de destino:</p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+              {KITS.map((k) => (
+                <button key={k.type} onClick={() => setSaveKit(k.type)} style={{
+                  padding: '8px 14px', borderRadius: 10, cursor: 'pointer',
+                  border: `1.5px solid ${saveKit === k.type ? k.color : '#2a2a3a'}`,
+                  background: saveKit === k.type ? `${k.color}18` : 'transparent',
+                  color: saveKit === k.type ? k.color : '#8a8a99',
+                  fontSize: 13, fontWeight: 600,
+                }}>
+                  {k.icon} {k.label}
+                </button>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setKitPicker(null)} style={{
+                flex: 1, padding: '10px 0', background: 'transparent', border: '1px solid #2a2a3a',
+                borderRadius: 10, color: '#8a8a99', fontSize: 13, cursor: 'pointer',
+              }}>Cancelar</button>
+              <button onClick={() => void saveToKit(kitPicker.items)} disabled={saving} style={{
+                flex: 2, padding: '10px 0', background: saving ? '#2a2a3a' : AC,
+                border: 'none', borderRadius: 10,
+                color: saving ? '#8a8a99' : '#0a0a0f',
+                fontSize: 13, fontWeight: 700, cursor: saving ? 'default' : 'pointer',
+              }}>{saving ? 'Salvando…' : 'Salvar'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {savedMsg && (
+        <div style={{
+          position: 'fixed', bottom: 90, left: '50%', transform: 'translateX(-50%)',
+          background: '#22c55e', color: '#0a0a0f', padding: '10px 20px',
+          borderRadius: 24, fontSize: 13, fontWeight: 700, zIndex: 300,
+          boxShadow: '0 4px 20px rgba(34,197,94,.4)', whiteSpace: 'nowrap',
+        }}>
+          ✓ {savedMsg}
         </div>
       )}
     </div>

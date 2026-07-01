@@ -11,6 +11,7 @@ import {
 } from '@/lib/checklist'
 
 interface GenerateBody {
+  kitType?: string
   scenarioType?: string
   scenarioDescription?: string
   scenarioId?: string | null
@@ -48,6 +49,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
+  const kitType = (body.kitType ?? 'GERAL').toUpperCase()
   const scenarioType = (body.scenarioType ?? 'GENERAL').toUpperCase()
   const scenarioId = body.scenarioId ?? null
 
@@ -58,6 +60,7 @@ export async function POST(req: NextRequest) {
 
   const familySize = Math.max(1, family?.length ?? 1)
   const input: ChecklistGenerateInput = {
+    kitType,
     scenarioType,
     scenarioDescription: body.scenarioDescription,
     familySize,
@@ -72,11 +75,11 @@ export async function POST(req: NextRequest) {
     ),
   }
 
-  // Fetch RAG context from verified sources (FEMA, Red Cross, SAS, etc.)
-  const ragQuery = `emergency preparedness checklist ${scenarioType} supplies equipment`
+  // RAG context from verified sources (FEMA, Red Cross, SAS, etc.)
+  const ragQuery = `preparedness checklist ${kitType} ${scenarioType} supplies equipment`
   const ragChunks = await getRelevantChunks(ragQuery, scenarioType).catch(() => [] as string[])
   const ragContext = ragChunks.length > 0
-    ? `\n\nREFERENCE MATERIAL (verified sources — FEMA, Red Cross, WHO, SAS):\n${ragChunks.map((c, i) => `[${i+1}] ${c}`).join('\n\n')}`
+    ? `\n\nMATERIAL DE REFERÊNCIA (fontes verificadas — FEMA, Cruz Vermelha, OMS, SAS):\n${ragChunks.map((c, i) => `[${i + 1}] ${c}`).join('\n\n')}`
     : ''
 
   let items: LLMItem[]
@@ -89,69 +92,53 @@ export async function POST(req: NextRequest) {
       messages: [
         {
           role: 'system',
-          content: 'You generate tiered emergency preparedness checklists as strict JSON. Never add prose or markdown fences. Respond only with valid JSON. All item names must be in Brazilian Portuguese (pt-BR).',
+          content: 'You are EOS preparedness planner. Respond ONLY with valid JSON. All item names in Brazilian Portuguese (pt-BR). Never use Spanish or English for item names.',
         },
         {
           role: 'user',
           content: buildChecklistPrompt(input) + ragContext,
         },
       ],
+      response_format: { type: 'json_object' },
     })
 
-    const raw = completion.choices[0]?.message?.content ?? '{"items":[]}'
+    const raw = completion.choices[0]?.message.content ?? '{}'
     const parsed = JSON.parse(raw) as { items?: LLMItem[] }
-    items = Array.isArray(parsed.items) ? parsed.items : []
-  } catch (err) {
-    console.error('[EOS] checklist.generate LLM failed:', err)
+    items = (parsed.items ?? []).filter(
+      (i) => typeof i.name === 'string' && TIERS.includes(i.tier),
+    )
+  } catch (e) {
     return NextResponse.json(
-      { error: 'LLM generation failed. Try again in a moment.' },
-      { status: 502 },
+      { error: e instanceof Error ? e.message : 'AI generation failed' },
+      { status: 500 },
     )
   }
 
-  const normalised = items
-    .filter(
-      (i) =>
-        typeof i?.name === 'string' &&
-        TIERS.includes(i.tier as ChecklistTier) &&
-        typeof i.quantity === 'number' &&
-        i.quantity > 0,
-    )
-    .map((i) => ({
-      profile_id: user.id,
-      scenario_id: scenarioId,
-      canonical_key: canonicalKey(i.name),
-      item_name: i.name,
-      tier: i.tier,
-      quantity: i.quantity,
-      unit: i.unit ?? null,
-    }))
-    .filter((i) => i.canonical_key.length > 0)
-
-  // Dedup: keep first occurrence of each canonical_key (LLM may generate duplicates)
-  const seen = new Set<string>()
-  const deduped = normalised.filter((i) => {
-    if (seen.has(i.canonical_key)) return false
-    seen.add(i.canonical_key)
-    return true
-  })
-
-  if (deduped.length === 0) {
-    return NextResponse.json({ items: [] })
+  if (items.length === 0) {
+    return NextResponse.json({ error: 'No items generated' }, { status: 500 })
   }
 
-  const { data: upserted, error: upsertErr } = await supabase
+  const rows = items.map((i) => ({
+    profile_id: user.id,
+    scenario_id: scenarioId,
+    kit_type: kitType,
+    canonical_key: canonicalKey(i.name),
+    item_name: i.name,
+    tier: i.tier,
+    quantity: i.quantity ?? 1,
+    unit: i.unit ?? null,
+  }))
+
+  const { error: insertError } = await supabase
     .from('checklists')
-    .upsert(deduped, {
-      onConflict: 'profile_id,canonical_key',
-      ignoreDuplicates: false,
+    .upsert(rows, {
+      onConflict: 'profile_id,canonical_key,kit_type',
+      ignoreDuplicates: true,
     })
-    .select('*')
 
-  if (upsertErr) {
-    console.error('[EOS] checklist.upsert failed:', upsertErr)
-    return NextResponse.json({ error: upsertErr.message }, { status: 500 })
+  if (insertError) {
+    return NextResponse.json({ error: insertError.message }, { status: 500 })
   }
 
-  return NextResponse.json({ items: upserted ?? [] })
+  return NextResponse.json({ ok: true, count: rows.length })
 }
