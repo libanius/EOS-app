@@ -196,7 +196,7 @@ export default function WeatherPage() {
   function toggleActivity(id: ActivityId) {
     setActiveActivities(prev => {
       const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
+      if (next.has(id)) { next.delete(id) } else { next.add(id) }
       return next
     })
   }
@@ -204,7 +204,7 @@ export default function WeatherPage() {
   function toggleCategory(cat: ActivityCategory) {
     setOpenCategories(prev => {
       const next = new Set(prev)
-      next.has(cat) ? next.delete(cat) : next.add(cat)
+      if (next.has(cat)) { next.delete(cat) } else { next.add(cat) }
       return next
     })
   }
@@ -364,7 +364,7 @@ export default function WeatherPage() {
               <span style={{ fontSize: 13, color: '#a1a1aa', width: 80 }}>{i === 0 ? 'Today' : fmtDate(d.date)}</span>
               <span style={{ fontSize: 18 }}>{d.condition ? (d.weather_code >= 95 ? '⛈' : d.weather_code >= 80 ? '🌧' : d.weather_code >= 61 ? '🌧' : d.weather_code >= 51 ? '🌦' : d.weather_code >= 45 ? '🌫' : d.weather_code >= 3 ? '☁️' : d.weather_code >= 2 ? '⛅' : '☀️') : '—'}</span>
               <span style={{ fontSize: 12, color: '#71717a' }}>UV {d.uv_max}</span>
-              {d.precip_sum_in > 0 && <span style={{ fontSize: 12, color: '#7ec8e3' }}>🌧 {d.precip_sum_in.toFixed(2)}"</span>}
+              {d.precip_sum_in > 0 && <span style={{ fontSize: 12, color: '#7ec8e3' }}>🌧 {d.precip_sum_in.toFixed(2)}&quot;</span>}
               <span style={{ fontSize: 13, fontWeight: 700, color: '#f0f0f8' }}>{Math.round(d.temp_max_f)}° <span style={{ color: '#71717a', fontWeight: 400 }}>{Math.round(d.temp_min_f)}°</span></span>
             </div>
           ))}
