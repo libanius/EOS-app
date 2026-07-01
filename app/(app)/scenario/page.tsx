@@ -109,9 +109,11 @@ const SEVERITY_COLOR: Record<Severity, string> = {
 
 function MonitoringPanel({
   lat, lng,
+  locationSource,
   onAnalyze,
 }: {
   lat: number | null; lng: number | null
+  locationSource: 'device' | 'profile' | null
   onAnalyze: (headline: string) => void
 }) {
   const { t } = useLanguage()
@@ -123,7 +125,7 @@ function MonitoringPanel({
     if (!lat || !lng) return
     setLoading(true)
     try {
-      const res = await fetch(`/api/monitor?lat=${lat}&lng=${lng}`)
+      const res = await fetch(`/api/monitor?lat=${lat}&lng=${lng}&t=${Date.now()}`)
       if (res.ok) setData(await res.json())
     } catch { /* silent */ } finally {
       setLoading(false)
@@ -172,11 +174,19 @@ function MonitoringPanel({
         <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: borderColor }}>
           {t('monitoring.title')}
         </span>
-        {activeAlerts.length > 0 && (
-          <span style={{ fontSize: 11, color: borderColor, fontWeight: 600 }}>
-            {activeAlerts.length} {t('monitoring.activeAlerts')}
-          </span>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {activeAlerts.length > 0 && (
+            <span style={{ fontSize: 11, color: borderColor, fontWeight: 600 }}>
+              {activeAlerts.length} {t('monitoring.activeAlerts')}
+            </span>
+          )}
+          {locationSource && (
+            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: locationSource === 'device' ? '#22c55e' : '#71717a', display: 'flex', alignItems: 'center', gap: 3 }}>
+              {locationSource === 'device' ? '◉ GPS' : '◎ Salvo'}
+            </span>
+          )}
+          {loading && <span style={{ fontSize: 10, color: '#71717a' }}>↻</span>}
+        </div>
       </div>
 
       {/* Source status rows */}
@@ -522,8 +532,10 @@ export default function ScenarioPage() {
   const [streamBuffer, setStreamBuffer] = useState('')
   const [response, setResponse] = useState<IntelligenceResponse | null>(null)
   const [toast, setToast] = useState<string | null>(null)
-  const [profileCoords, setProfileCoords] = useState<{ lat: number; lng: number } | null>(null)
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null)
+  const [locationSource, setLocationSource] = useState<'device' | 'profile' | null>(null)
 
+  // Fallback: saved profile coords
   useEffect(() => {
     fetch('/api/profile/ficha')
       .then(r => r.ok ? r.json() : null)
@@ -531,10 +543,25 @@ export default function ScenarioPage() {
         const lat = d?.ficha?.location_lat
         const lng = d?.ficha?.location_lng
         if (typeof lat === 'number' && typeof lng === 'number') {
-          setProfileCoords({ lat, lng })
+          setCoords(prev => prev ?? { lat, lng })
+          setLocationSource(src => src ?? 'profile')
         }
       })
       .catch(() => {})
+  }, [])
+
+  // Primary: device GPS — takes over whenever available
+  useEffect(() => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) return
+    const id = navigator.geolocation.watchPosition(
+      pos => {
+        setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+        setLocationSource('device')
+      },
+      () => { /* silently fall back to profile coords */ },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 },
+    )
+    return () => navigator.geolocation.clearWatch(id)
   }, [])
 
   const abortRef = useRef<AbortController | null>(null)
@@ -814,8 +841,9 @@ export default function ScenarioPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {/* Monitoring Panel */}
             <MonitoringPanel
-              lat={profileCoords?.lat ?? null}
-              lng={profileCoords?.lng ?? null}
+              lat={coords?.lat ?? null}
+              lng={coords?.lng ?? null}
+              locationSource={locationSource}
               onAnalyze={handleAnalyzeFromMonitor}
             />
 
