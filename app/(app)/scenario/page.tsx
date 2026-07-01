@@ -31,9 +31,18 @@ interface MonitorAlert {
   url: string | null
 }
 
+interface WeatherCurrent {
+  temp: number; unit: 'F' | 'C'
+  wind_speed: string; wind_dir: string
+  condition: string; rain_pct: number | null
+  is_daytime: boolean
+  hourly: Array<{ hour: string; temp: number; condition: string; rain_pct: number | null }>
+}
+
 interface MonitorData {
   alerts: MonitorAlert[]
   status: { weather: Severity; earthquake: Severity }
+  current: WeatherCurrent | null
   cached_at: string
 }
 
@@ -188,6 +197,36 @@ function MonitoringPanel({
           {loading && <span style={{ fontSize: 10, color: '#71717a' }}>↻</span>}
         </div>
       </div>
+
+      {/* Current weather card */}
+      {data?.current && (
+        <div style={{ padding: '10px 14px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <div>
+              <span style={{ fontSize: 32, fontWeight: 700, color: '#f0f0f8', lineHeight: 1 }}>
+                {data.current.temp}°{data.current.unit}
+              </span>
+              <p style={{ margin: '2px 0 0', fontSize: 12, color: '#a1a1aa' }}>{data.current.condition}</p>
+            </div>
+            <div style={{ textAlign: 'right', fontSize: 12, color: '#71717a', lineHeight: 1.6 }}>
+              <div>💨 {data.current.wind_speed} {data.current.wind_dir}</div>
+              {data.current.rain_pct != null && <div>🌧 {data.current.rain_pct}% chuva</div>}
+            </div>
+          </div>
+          {/* Hourly strip */}
+          <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 2 }}>
+            {data.current.hourly.map((h, i) => (
+              <div key={i} style={{ minWidth: 52, textAlign: 'center', background: 'rgba(255,255,255,0.04)', borderRadius: 8, padding: '6px 4px', fontSize: 11 }}>
+                <div style={{ color: '#71717a', marginBottom: 3 }}>{h.hour}</div>
+                <div style={{ fontWeight: 700, color: '#f0f0f8' }}>{h.temp}°</div>
+                {h.rain_pct != null && h.rain_pct > 0 && (
+                  <div style={{ color: '#7ec8e3', marginTop: 2 }}>{h.rain_pct}%</div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Source status rows */}
       {data && (
