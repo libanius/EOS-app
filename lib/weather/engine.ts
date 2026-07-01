@@ -68,7 +68,7 @@ function hasSevereAlert(s: WeatherSnapshot): boolean {
 // Find best consecutive window of `minHours` hours in next 24h satisfying predicate
 function bestWindow(
   s: WeatherSnapshot,
-  ok: (h: { precip_prob_pct: number; wind_gust_mph: number; uv_index: number; temp_f: number; weather_code: number }) => boolean,
+  ok: (h: { precip_prob_pct: number; wind_gust_mph: number; uv_index: number; temp_f: number; weather_code: number; wind_mph: number }) => boolean,
   minHours = 2,
 ): string | undefined {
   const hours = s.hourly.slice(0, 24)
@@ -169,7 +169,6 @@ const RULES: Record<ActivityId, RuleFn> = {
   fishing(s) {
     const { temp_f, wind_mph, precip_prob_pct, pressure_hpa } = s.current
     const thunder = hasThunderstorm(s)
-    const pressureRising = s.hourly.length > 3 && (s.hourly[3]?.temp_f ?? 0) > 0 // proxy
     const factors: RecommendationFactor[] = [
       f('Temperature', `${Math.round(temp_f)}°F`, temp_f > 95 || temp_f < 25),
       f('Wind', `${Math.round(wind_mph)} mph`, wind_mph > 20),
@@ -209,7 +208,7 @@ const RULES: Record<ActivityId, RuleFn> = {
   },
 
   running(s) {
-    const { temp_f, feels_like_f, uv_index, air_quality } = s
+    const { feels_like_f, uv_index } = s.current; const { air_quality } = s
     const aqi = air_quality?.us_aqi ?? null
     const thunder = hasThunderstorm(s)
     const factors = [
@@ -312,7 +311,7 @@ const RULES: Record<ActivityId, RuleFn> = {
   },
 
   surfing(s) {
-    const { wind_mph, wind_gust_mph, precip_prob_pct } = s.current
+    const { wind_mph, wind_gust_mph } = s.current
     const thunder = hasThunderstorm(s)
     const factors = [f('Wind', `${Math.round(wind_mph)} mph`, wind_mph > 20), f('Gusts', `${Math.round(wind_gust_mph)} mph`, wind_gust_mph > 25)]
     if (thunder) return risk('critical', '⛈ Exit Water Now', 'Thunderstorm + open ocean = extreme lightning risk.', { factors, checklist: ['Exit immediately', 'Wait 30 min after last thunder'] })
@@ -349,7 +348,7 @@ const RULES: Record<ActivityId, RuleFn> = {
   },
 
   shooting_range(s) {
-    const { visibility_mi, wind_mph, precip_prob_pct } = s.current
+    const { visibility_mi, wind_mph } = s.current
     const thunder = hasThunderstorm(s)
     const factors = [f('Visibility', `${visibility_mi.toFixed(1)} mi`, visibility_mi < 1), f('Wind', `${Math.round(wind_mph)} mph`, wind_mph > 20)]
     if (thunder) return risk('critical', '⛈ Close Range — Thunderstorm', 'Lightning on open range is lethal.', { factors, checklist: ['Cease fire', 'Clear range', 'Shelter in building'] })
@@ -401,7 +400,7 @@ const RULES: Record<ActivityId, RuleFn> = {
     if (humidity_pct > 65 || wind_gust_mph > 12)
       return risk('medium', '🖌 Marginal — Monitor Conditions', `Humidity ${humidity_pct}%, gusts ${Math.round(wind_gust_mph)} mph.`,
         { window: bestWindow(s, h => h.precip_prob_pct < 20 && h.wind_gust_mph < 15), factors, checklist: ['Apply thin coat', 'Dry time extended', 'No second coat until fully cured'] })
-    return risk('low', '✅ Excellent Painting Conditions', `${Math.round(temp_f)}°F, ${humidity_pct}% RH, ${Math.round(wind_gust_mph)} mph gusts.`, { window: bestWindow(s, h => h.temp_f >= 55 && h.temp_f <= 85 && h.humidity_pct < 70 && h.precip_prob_pct < 20 && h.wind_gust_mph < 15), factors, checklist: ['Prime first if bare wood', 'Two coats with full dry time', 'Mask edges'] })
+    return risk('low', '✅ Excellent Painting Conditions', `${Math.round(temp_f)}°F, ${humidity_pct}% RH, ${Math.round(wind_gust_mph)} mph gusts.`, { window: bestWindow(s, h => h.temp_f >= 55 && h.temp_f <= 85 && h.precip_prob_pct < 20 && h.wind_gust_mph < 15), factors, checklist: ['Prime first if bare wood', 'Two coats with full dry time', 'Mask edges'] })
   },
 
   concrete_work(s) {
