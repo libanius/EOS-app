@@ -82,18 +82,19 @@ RULES:
    - EXCELLENT: 30-day resilience, comfort, redundancy
 2. All quantities MUST be calculated for the family size (per-person x ${input.familySize}).
 3. Always use SI units: litros, kg, unidades. Cash in USD.
-4. Water baseline: 1 gallon (3.8 L) per person per day (Red Cross).
-5. Infants require formula, diapers, wipes. Elders/medical: prescriptions + 7-day buffer.
+4. LANGUAGE: All item names MUST be in Brazilian Portuguese (pt-BR). Never use Spanish or English for item names.
+5. Water baseline: 1 gallon (3.8 L) per person per day (Red Cross).
+6. Infants require formula, diapers, wipes. Elders/medical: prescriptions + 7-day buffer.
 
 OUTPUT - respond ONLY with valid JSON, no markdown fences:
 {
   "items": [
-    { "name": "Agua engarrafada", "tier": "ESSENTIAL", "quantity": 45, "unit": "litros" },
-    { "name": "Barra de proteina", "tier": "MODERATE", "quantity": 20, "unit": "unidades" }
+    { "name": "Água engarrafada", "tier": "ESSENTIAL", "quantity": 45, "unit": "litros" },
+    { "name": "Barra de proteína", "tier": "MODERATE", "quantity": 20, "unit": "unidades" }
   ]
 }
 
-Generate 8-14 items per tier. No duplicates. Prioritise by survival impact.`
+Generate 8-14 items per tier. Item names in pt-BR only. No duplicates. Prioritise by survival impact.`
 }
 
 // ─── Readiness autonomy helper ───────────────────────────────────────────────

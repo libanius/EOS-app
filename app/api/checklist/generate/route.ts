@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getOpenAIClient } from '@/lib/openai'
 import { enforceRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
+import { getRelevantChunks } from '@/lib/knowledge'
 import {
   buildChecklistPrompt,
   canonicalKey,
@@ -71,6 +72,13 @@ export async function POST(req: NextRequest) {
     ),
   }
 
+  // Fetch RAG context from verified sources (FEMA, Red Cross, SAS, etc.)
+  const ragQuery = `emergency preparedness checklist ${scenarioType} supplies equipment`
+  const ragChunks = await getRelevantChunks(ragQuery, scenarioType).catch(() => [] as string[])
+  const ragContext = ragChunks.length > 0
+    ? `\n\nREFERENCE MATERIAL (verified sources — FEMA, Red Cross, WHO, SAS):\n${ragChunks.map((c, i) => `[${i+1}] ${c}`).join('\n\n')}`
+    : ''
+
   let items: LLMItem[]
   try {
     const openai = getOpenAIClient()
@@ -81,11 +89,11 @@ export async function POST(req: NextRequest) {
       messages: [
         {
           role: 'system',
-          content: 'You generate tiered emergency preparedness checklists as strict JSON. Never add prose or markdown fences. Respond only with valid JSON.',
+          content: 'You generate tiered emergency preparedness checklists as strict JSON. Never add prose or markdown fences. Respond only with valid JSON. All item names must be in Brazilian Portuguese (pt-BR).',
         },
         {
           role: 'user',
-          content: buildChecklistPrompt(input),
+          content: buildChecklistPrompt(input) + ragContext,
         },
       ],
     })

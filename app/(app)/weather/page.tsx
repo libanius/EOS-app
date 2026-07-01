@@ -141,6 +141,12 @@ export default function WeatherPage() {
   const [openCategories, setOpenCategories] = useState<Set<ActivityCategory>>(new Set(CATEGORIES))
   const [recommendations, setRecommendations] = useState<WeatherRecommendation[]>([])
   const watchRef = useRef<number | null>(null)
+  const [customActivity, setCustomActivity] = useState('')
+  const [customLoading, setCustomLoading] = useState(false)
+  const [customResult, setCustomResult] = useState<{
+    risk: 'low' | 'medium' | 'high' | 'critical'
+    title: string; reason: string; checklist: string[]; best_time: string | null
+  } | null>(null)
 
   // ── Location ──────────────────────────────────────────────────────────────
 
@@ -216,6 +222,24 @@ export default function WeatherPage() {
       ids.forEach(id => next.add(id))
       return next
     })
+  }
+
+  async function handleCustomActivity() {
+    if (!customActivity.trim() || !snapshot) return
+    setCustomLoading(true)
+    setCustomResult(null)
+    try {
+      const res = await fetch('/api/weather-intelligence/custom-activity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          activity: customActivity.trim(),
+          current: snapshot.current,
+          alert_count: snapshot.alerts.length,
+        }),
+      })
+      if (res.ok) setCustomResult(await res.json())
+    } finally { setCustomLoading(false) }
   }
 
   // ── Render states ─────────────────────────────────────────────────────────
@@ -380,6 +404,62 @@ export default function WeatherPage() {
           ))}
         </div>
       )}
+
+      {/* ── Custom Activity ── */}
+      <div style={{ marginBottom: 16 }}>
+        <p style={{ margin: '0 0 8px', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: '#71717a', textTransform: 'uppercase' }}>Custom Activity Analysis</p>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input
+            type="text"
+            value={customActivity}
+            onChange={e => { setCustomActivity(e.target.value); setCustomResult(null) }}
+            onKeyDown={e => e.key === 'Enter' && void handleCustomActivity()}
+            placeholder="Ex: observar as estrelas, pesca noturna, trilha…"
+            style={{
+              flex: 1, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)',
+              borderRadius: 10, padding: '10px 14px', fontSize: 13, color: '#f0f0f8',
+              outline: 'none',
+            }}
+          />
+          <button
+            onClick={() => void handleCustomActivity()}
+            disabled={!customActivity.trim() || !snapshot || customLoading}
+            style={{
+              background: AC, color: '#0a0a0f', border: 'none', borderRadius: 10,
+              padding: '10px 16px', fontWeight: 700, fontSize: 13, cursor: 'pointer',
+              opacity: (!customActivity.trim() || !snapshot || customLoading) ? 0.4 : 1,
+              flexShrink: 0,
+            }}
+          >
+            {customLoading ? '…' : 'Analisar'}
+          </button>
+        </div>
+
+        {customResult && (
+          <div style={{
+            marginTop: 10, border: `1px solid ${RISK_COLOR[customResult.risk]}44`,
+            borderRadius: 12, background: RISK_BG[customResult.risk], padding: 14,
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#f0f0f8' }}>{customActivity}</span>
+              <RiskBadge risk={customResult.risk} />
+            </div>
+            <p style={{ margin: '0 0 6px', fontSize: 13, color: RISK_COLOR[customResult.risk], fontWeight: 600 }}>{customResult.title}</p>
+            <p style={{ margin: '0 0 10px', fontSize: 12, color: '#a1a1aa', lineHeight: 1.5 }}>{customResult.reason}</p>
+            {customResult.best_time && (
+              <div style={{ marginBottom: 10, padding: '5px 10px', background: `${AC}12`, border: `1px solid ${AC}33`, borderRadius: 6 }}>
+                <span style={{ fontSize: 12, color: AC, fontWeight: 700 }}>⏱ {customResult.best_time}</span>
+              </div>
+            )}
+            {customResult.checklist.map((item, i) => (
+              <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 4 }}>
+                <span style={{ color: AC, fontSize: 12, marginTop: 1, flexShrink: 0 }}>✓</span>
+                <span style={{ fontSize: 12, color: '#d4d4d8', lineHeight: 1.4 }}>{item}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* ── Activity Toggles ── */}
       <div style={{ marginBottom: 16 }}>
