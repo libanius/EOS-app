@@ -1,7 +1,7 @@
 # 09 — Build Status
 
 > The single most important file for resuming a session. Read this first after AGENTS.md.
-> Last updated: 2026-06-30
+> Last updated: 2026-07-01
 
 ---
 
@@ -15,7 +15,7 @@
 | | P2-T03: Family plan gate on circles + pooled inventory (2026-06-30)
 | | P2-T04: HouseholdHealthCard — stats + gap detection (2026-06-30)
 | | P2-T03: Per-field inventory sharing + shared_fields migration (2026-06-30) | | | | |
-| **Next Task** | Cross-device sync complete. P3-T04 Monetization gate needed. |
+| **Next Task** | P3-T04 Monetization gate needed. Weather Intelligence shipped. |
 | **Build** | ✅ Passing — `npm run build` clean as of 2026-06-29 |
 | **Vercel** | ✅ Deployed — auto-deploys on push to `main` |
 | **Supabase** | ✅ Healthy — project ref `alxurmgpyxjhvnliivbf` |
@@ -49,6 +49,8 @@
 | P1-T07: Sentry error monitoring | DEFERRED | D-028 |
 | P1-T08: Rate limit validation (Upstash) | DRAFT | — |
 
+| P3-T05: Weather Intelligence — 29 activities, rules engine, Open-Meteo | ✅ COMPLETE | 2026-07-01 |
+
 ---
 
 ## What Was Done — Session 2026-06-23
@@ -67,6 +69,8 @@
 **App Spine installed:**
 - `AGENTS.md` + all 11 `/docs/` files created and committed
 - `progress/index.html` stakeholder dashboard created
+
+| P3-T05: Weather Intelligence — 29 activities, rules engine, Open-Meteo | ✅ COMPLETE | 2026-07-01 |
 
 ---
 
@@ -194,6 +198,8 @@ To add a new knowledge source: drop PDF in `docs/`, re-run both commands.
 
 ---
 
+| P3-T05: Weather Intelligence — 29 activities, rules engine, Open-Meteo | ✅ COMPLETE | 2026-07-01 |
+
 ---
 
 ## What Was Done — Session 2026-06-28 (cont.)
@@ -217,6 +223,8 @@ To add a new knowledge source: drop PDF in `docs/`, re-run both commands.
 **Known env var issue discovered:**
 - `ANTHROPIC_API_KEY` is NOT set in the Vercel project — `/api/analyze` silently falls back to rules-based `buildSurvivalResponse` mode instead of LLM
 - `OPENAI_MODEL` no Vercel está setado como `gpt-5` (inválido) — hardcoded `gpt-4o-mini` nos routes afetados
+
+| P3-T05: Weather Intelligence — 29 activities, rules engine, Open-Meteo | ✅ COMPLETE | 2026-07-01 |
 
 ---
 
@@ -251,6 +259,8 @@ To add a new knowledge source: drop PDF in `docs/`, re-run both commands.
 - Hardcoded `gpt-4o-mini` diretamente nos routes afetados para contornar o env var quebrado
 - **Ação recomendada**: atualizar `OPENAI_MODEL` no Vercel para `gpt-4o-mini` e remover os hardcodes
 
+| P3-T05: Weather Intelligence — 29 activities, rules engine, Open-Meteo | ✅ COMPLETE | 2026-07-01 |
+
 ---
 
 ## What Was Done — Session 2026-06-28 (P1-T03)
@@ -260,6 +270,8 @@ To add a new knowledge source: drop PDF in `docs/`, re-run both commands.
 - Confirmed both files are valid PNGs at the exact dimensions declared in `public/manifest.json`
 - Verified the production build with `npm run build`
 - Next task is P1-T05: resolve language strategy through Gate G-01
+
+| P3-T05: Weather Intelligence — 29 activities, rules engine, Open-Meteo | ✅ COMPLETE | 2026-07-01 |
 
 ---
 
@@ -280,6 +292,8 @@ To add a new knowledge source: drop PDF in `docs/`, re-run both commands.
 - Migrated login, signup, password recovery, password update, email verification, landing, and public Emergency Card
 - P1-T05 completed with a clean production build
 
+| P3-T05: Weather Intelligence — 29 activities, rules engine, Open-Meteo | ✅ COMPLETE | 2026-07-01 |
+
 ---
 
 ## What Was Done — Session 2026-06-29 (P2-T06)
@@ -292,6 +306,8 @@ To add a new knowledge source: drop PDF in `docs/`, re-run both commands.
 - Kept `profiles` as the single source of truth; no duplicate Master Profile table
 - Added PT/EN copy for the new identity and completion interface
 - Verified with a clean production build
+
+| P3-T05: Weather Intelligence — 29 activities, rules engine, Open-Meteo | ✅ COMPLETE | 2026-07-01 |
 
 ---
 
