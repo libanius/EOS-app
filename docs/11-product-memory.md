@@ -118,3 +118,49 @@ Sentry is wired up (`sentry.client.config.ts`, `sentry.server.config.ts`, `sentr
 - Auto-deploys on every push to `main`
 - No staging environment — `main` is production
 - Environment variables must be set in Vercel dashboard (not just `.env.local`)
+
+---
+
+## Círculos
+
+- Roles: `Admin` / `Editor` / `Viewer` (migrado de `LEADER`/`MEMBER` em 2026-06-30)
+- Admin pode: alterar roles, remover membros, enviar push, criar/editar planos de ação
+- Editor pode: criar/editar planos de ação
+- Viewer: só leitura
+- `circle_members.shared_fields: text[]` — campos de inventário compartilhados por campo (`water`, `food`, `medical`, `comms`, `emergency_contact`)
+- `circle_members.share_inventory: bool` — toggle geral de compartilhamento (pré-requisito para shared_fields ter efeito)
+- Criador do círculo é inserido automaticamente com role `Admin`
+- Novos membros (join por código) entram com role `Viewer`
+
+---
+
+## Sync Cross-Device
+
+- Estratégia: 3 camadas (ver D-029)
+- Snapshot cache: `sessionStorage` com prefixo `eos:snap:` — carregado imediatamente ao abrir a página, antes do fetch
+- Fila offline: `localStorage['eos:offline_queue']` — escrita enfileirada quando `navigator.onLine === false`, flush automático no evento `online`
+- Realtime: `useRealtimeSync(tables, cb)` — inscreve em `postgres_changes` para as tabelas especificadas; chama `cb(table)` em qualquer INSERT/UPDATE/DELETE
+- Proteção de formulário: `isDirtyRef` impede Realtime de sobrescrever formulário com mudanças pendentes
+
+---
+
+## Feature Gates
+
+- `lib/feature-gates.ts` — `canAccess(feature, userPlan)` retorna `boolean`
+- `profiles.plan: 'free' | 'family' | 'premium'`
+- Hierarquia: free < family < premium
+- Free: análise IA básica, monitoramento clima+terremoto
+- Família: círculos, monitoramento multi-local, QR emergência, AQI, FEMA, FIRMS
+- Premium: CDC, FDA, push notifications, histórico 30 dias, múltiplos círculos, exportar ficha
+- Ao adicionar feature nova, cadastrar em `FEATURE_GATES` antes de implementar a UI
+
+---
+
+## Migrações Pendentes (aplicar no Supabase antes de usar em produção)
+
+Estas migrações foram geradas mas podem não estar aplicadas:
+- `20260630000100_circle_action_plans.sql` — tabela `circle_action_plans`
+- `20260630000200_push_subscriptions.sql` — tabela `push_subscriptions`
+- `20260630000300_family_member_link.sql` — coluna `family_members.linked_user_id`
+
+Verificar via Supabase Dashboard → SQL Editor: `SELECT name FROM supabase_migrations.schema_migrations ORDER BY name DESC LIMIT 5;`

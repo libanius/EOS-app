@@ -16,31 +16,43 @@ EOS runs as a **Progressive Web App (Next.js 14)** backed by **Supabase** for au
 
 | Field | Value |
 |---|---|
-| **Phase** | Phase 1 — MVP Hardening |
-| **Current Task** | P1-T03: Add PWA icons |
-| **Last Updated** | 2026-06-24 |
+| **Phase** | Phase 3 complete — Cross-device sync + Push notifications |
+| **Current Task** | None pending — awaiting P3-T04 (Monetization) decision |
+| **Last Updated** | 2026-06-30 |
 
 Full details: `docs/09-build-status.md`
 
-### What is working in production (verified 2026-06-24)
+### What is working in production (verified 2026-06-30)
 
 | Feature | Status |
 |---|---|
 | Auth (signup/login/recovery) | ✅ Working |
 | Onboarding (profile + family) | ✅ Working |
-| Resource inventory | ✅ Working |
+| Resource inventory + readiness score | ✅ Working |
 | Decision Engine — CONNECTED mode (Claude + RAG) | ✅ Working |
 | Knowledge base (3887 chunks, 14 sources) | ✅ Ingested |
 | pgvector RAG (`match_documents` RPC) | ✅ Working |
-| Scenarios + action_plans persist | ✅ Working |
+| Scenarios + threat monitoring panel | ✅ Working |
 | Checklist generation | ✅ Working |
-| Circles (family groups) | ✅ Working |
+| Circles — invite, roles (Admin/Editor/Viewer), QR | ✅ Working |
+| Circles — action plans, member monitoring | ✅ Working |
+| Ficha Pessoal + public QR (`/ficha/[id]`) | ✅ Working |
+| Ficha Master — unified identity + completion % | ✅ Working |
+| Household health card — gap detection | ✅ Working |
+| Family member ↔ circle profile link | ✅ Working |
+| Monitoring — NWS weather + USGS earthquakes | ✅ Working |
+| Monitoring — multi-location (circle members) | ✅ Working |
+| Feature gates — free/family/premium tiers | ✅ Working |
+| Cross-device sync — Realtime + offline queue | ✅ Working |
+| Push notifications (VAPID, Web Push) | ✅ Working |
 | PWA / offline SURVIVAL mode | ✅ Working |
+| Safe area insets (iPhone notch + home bar) | ✅ Fixed |
 | Bottom navigation (5 abas) | ✅ Working |
-| PWA icons (192px, 512px) | ❌ Missing — P1-T03 |
+| PWA icons (192px, 512px) | ✅ Working |
+| i18n — PT/EN bilíngue | ✅ Working |
 | Landing page (pitch + CTAs) | ✅ Working |
-| LOCAL_AI mode | ❌ Phase 2 |
-| React Native app | ❌ Phase 2 |
+| LOCAL_AI mode | ❌ Phase 4 |
+| React Native app | ❌ Phase 4 |
 
 ---
 
@@ -73,7 +85,7 @@ Full details: `docs/09-build-status.md`
 | `lib/rate-limit.ts` | Upstash Redis rate limiting (falls back to in-memory) |
 | `middleware.ts` | Auth route protection |
 | `eos_schema.sql` | Supabase database schema (canonical reference) |
-| `supabase/migrations/` | Applied migrations (most recent: 20260624) |
+| `supabase/migrations/` | Applied migrations (most recent: 20260630) |
 | `scripts/pdf_to_text.py` | Step 1 of ingest: PDFs → text files |
 | `scripts/ingest.mjs` | Step 2 of ingest: text files → knowledge_base embeddings |
 | `mobile/` | React Native templates (NOT a runnable RN project yet) |
@@ -89,6 +101,9 @@ Full details: `docs/09-build-status.md`
 - **Offline Storage**: IndexedDB via `idb`
 - **PWA**: `next-pwa` with service worker and runtime caching
 - **Rate Limiting**: Upstash Redis (sliding window, 10 req/60s)
+- **Sync**: Supabase Realtime (`postgres_changes`) + `localStorage` write queue + `sessionStorage` snapshots
+- **Push**: Web Push API (VAPID) via `web-push` + next-pwa `customWorkerSrc`
+- **i18n**: Custom `useLanguage()` hook with PT/EN translations in `lib/i18n.tsx`
 - **Error Monitoring**: Sentry (`@sentry/nextjs`)
 - **Mobile (planned)**: React Native bare workflow + llama.rn local AI
 
