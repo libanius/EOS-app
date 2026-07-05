@@ -152,6 +152,8 @@ Confirm `SENTRY_DSN` is configured in Vercel and verify that a controlled produc
 
 **Resultado da ficha master**: PATCH `/api/profile/ficha` funciona 100% (nome, localização c/ geocode, tipo sanguíneo, alergias, contato, notas médicas, medicamentos, multi-campo, validação de nome vazio → 400). O problema relatado de "vários erros" era a **leitura pública** da ficha (500), agora corrigida.
 
+**Verificação final**: `scripts/full-journey.mjs` → **31/31 ✅** contra produção (`eos-app-fawn.vercel.app`) após deploy com a env var corrigida. Página `/ficha/[id]` e `POST /api/profile/ficha` retornam 200 com dados reais. (Nota: a chave foi gravada com aspas na 1ª tentativa → 404; corrigida removendo aspas — ver D-035.)
+
 ---
 
 ## Ingest Pipeline Reference

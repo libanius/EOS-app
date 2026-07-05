@@ -162,6 +162,7 @@ Sentry is wired up (`sentry.client.config.ts`, `sentry.server.config.ts`, `sentr
 - **Se a chave faltar no ambiente**: página e rota POST agora degradam limpo (notFound / 503) em vez de 500 vazio; RAG retorna `[]` (Motor de Decisão degrada para modo sem base de conhecimento).
 - Esta chave **estava ausente no Vercel** até 2026-07-05 — adicionada em Production + Preview. Ao reconfigurar o projeto Vercel, **sempre confirmar as 3 chaves não-públicas**: `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_API_KEY`, `VAPID_PRIVATE_KEY` (esta última ainda pendente — push notifications não funcionam sem ela).
 - Verificar com `npx vercel env ls production`.
+- **Pegadinha ao setar via CLI**: o valor no `.env.local` está entre aspas duplas e no formato novo `sb_secret_...` (41 chars). Grave SEM as aspas: `grep ... | cut -d= -f2- | tr -d '"' | tr -d '[:space:]'`, senão o Vercel armazena a chave com aspas literais → RLS aplicada → 404. Vars "Sensitive" não são lidas de volta por `vercel env pull` (validar pelo comportamento em produção). Após alterar env var, **é preciso um novo deploy** (`vercel --prod --yes`) — não afeta deploys já existentes.
 
 ---
 
