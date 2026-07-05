@@ -154,6 +154,10 @@ Confirm `SENTRY_DSN` is configured in Vercel and verify that a controlled produc
 
 **Verificação final**: `scripts/full-journey.mjs` → **31/31 ✅** contra produção (`eos-app-fawn.vercel.app`) após deploy com a env var corrigida. Página `/ficha/[id]` e `POST /api/profile/ficha` retornam 200 com dados reais. (Nota: a chave foi gravada com aspas na 1ª tentativa → 404; corrigida removendo aspas — ver D-035.)
 
+**Gestão de conta em Settings (D-037)**: adicionados logout, link para editar ficha e **excluir conta** (`POST /api/account/delete`). O `signOut()` já existia mas não tinha UI. Verificado E2E: exclusão remove usuário + todos os dados.
+
+**Limpeza de contas (2026-07-05)**: a pedido do dono, excluídas 4 contas reais (brightscalegroup, paulolibanionetousa, daniletteriello1001, elgorlanes.23) com todos os dados. Restou apenas `testeos.paulo@yopmail.com`.
+
 ---
 
 ## Ingest Pipeline Reference

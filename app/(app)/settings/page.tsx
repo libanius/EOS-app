@@ -1,8 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useLanguage, type Language, type MessageKey } from '@/lib/i18n'
 import { canAccess, type Plan } from '@/lib/feature-gates'
+import { createClient } from '@/lib/supabase/client'
 
 // ─── Language selector ────────────────────────────────────────────────────────
 
@@ -52,9 +54,12 @@ const PLAN_COLOR: Record<Plan, string> = {
 
 export default function SettingsPage() {
   const { language, setLanguage, t } = useLanguage()
+  const en = language === 'en'
   const [plan, setPlan] = useState<Plan | null>(null)
   const [pushEnabled, setPushEnabled] = useState(false)
   const [pushBusy, setPushBusy] = useState(false)
+  const [email, setEmail] = useState<string | null>(null)
+  const [busy, setBusy] = useState<null | 'logout' | 'delete'>(null)
 
   useEffect(() => {
     fetch('/api/profile/plan')
@@ -62,6 +67,43 @@ export default function SettingsPage() {
       .then(d => d?.plan && setPlan(d.plan as Plan))
       .catch(() => {})
   }, [])
+
+  useEffect(() => {
+    createClient().auth.getUser()
+      .then(({ data }) => setEmail(data.user?.email ?? null))
+      .catch(() => {})
+  }, [])
+
+  const handleLogout = async () => {
+    setBusy('logout')
+    try {
+      await createClient().auth.signOut()
+      window.location.href = '/auth/login'
+    } catch {
+      setBusy(null)
+    }
+  }
+
+  const handleDeleteAccount = async () => {
+    const msg = en
+      ? 'Delete your account permanently? This erases your profile, family, inventory and checklist. This cannot be undone.'
+      : 'Excluir sua conta permanentemente? Isso apaga seu perfil, família, inventário e checklist. Não dá para desfazer.'
+    if (!window.confirm(msg)) return
+    setBusy('delete')
+    try {
+      const res = await fetch('/api/account/delete', { method: 'POST' })
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}))
+        alert((en ? 'Error deleting account: ' : 'Erro ao excluir conta: ') + (d.error ?? res.status))
+        setBusy(null)
+        return
+      }
+      window.location.href = '/auth/login'
+    } catch {
+      alert(en ? 'Network error.' : 'Erro de rede.')
+      setBusy(null)
+    }
+  }
 
   useEffect(() => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
@@ -198,6 +240,50 @@ export default function SettingsPage() {
             </button>
           </div>
         )}
+
+        {/* Account */}
+        <div style={{ ...styles.card, marginTop: 20 }}>
+          <h2 style={styles.sectionTitle}>{en ? 'Account' : 'Conta'}</h2>
+          <p style={styles.help}>{en ? 'Manage your login and personal data.' : 'Gerencie seu login e seus dados pessoais.'}</p>
+
+          {email && (
+            <div style={styles.accountRow}>
+              <span style={styles.accountLabel}>{en ? 'Signed in as' : 'Conectado como'}</span>
+              <span style={styles.accountValue}>{email}</span>
+            </div>
+          )}
+
+          <Link href="/ficha" style={{ ...styles.accountBtn, textDecoration: 'none', display: 'flex' }}>
+            <span>{en ? 'Edit my data (Master Card)' : 'Editar meus dados (Ficha Master)'}</span>
+            <span aria-hidden>→</span>
+          </Link>
+
+          <button
+            onClick={handleLogout}
+            disabled={busy !== null}
+            style={{ ...styles.accountBtn, marginTop: 12 }}
+          >
+            <span>{busy === 'logout' ? (en ? 'Signing out…' : 'Saindo…') : (en ? 'Log out' : 'Sair')}</span>
+            <span aria-hidden>⏻</span>
+          </button>
+        </div>
+
+        {/* Danger zone */}
+        <div style={{ ...styles.card, marginTop: 20, borderColor: 'rgba(239,68,68,0.3)' }}>
+          <h2 style={{ ...styles.sectionTitle, color: '#ef4444' }}>{en ? 'Danger zone' : 'Zona de perigo'}</h2>
+          <p style={styles.help}>
+            {en
+              ? 'Permanently delete your account and all data. This cannot be undone.'
+              : 'Excluir permanentemente sua conta e todos os dados. Não pode ser desfeito.'}
+          </p>
+          <button
+            onClick={handleDeleteAccount}
+            disabled={busy !== null}
+            style={{ ...styles.upgradeBtn, background: 'rgba(239,68,68,0.1)', borderColor: 'rgba(239,68,68,0.4)', color: '#ef4444' }}
+          >
+            {busy === 'delete' ? (en ? 'Deleting…' : 'Excluindo…') : (en ? 'Delete my account' : 'Excluir minha conta')}
+          </button>
+        </div>
       </section>
     </main>
   )
@@ -231,4 +317,8 @@ const styles: Record<string, React.CSSProperties> = {
   featureNameLocked: { color: '#52525b' },
   featurePlan: { fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', flexShrink: 0 },
   upgradeBtn: { width: '100%', padding: '14px 24px', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: 14, color: '#22c55e', fontSize: 15, fontWeight: 650, cursor: 'pointer', letterSpacing: '-0.01em' },
+  accountRow: { display: 'flex', flexDirection: 'column', gap: 4, padding: '12px 16px', background: '#111116', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 14, marginBottom: 16 },
+  accountLabel: { color: '#71717a', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' },
+  accountValue: { color: '#f5f5f5', fontSize: 15, fontWeight: 600, wordBreak: 'break-all' },
+  accountBtn: { width: '100%', minHeight: 52, padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, color: '#f5f5f5', background: '#111116', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 14, cursor: 'pointer', fontSize: 15, fontWeight: 600, fontFamily: 'inherit' },
 }
