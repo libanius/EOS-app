@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server'
 import OpenAI from 'openai'
 import { createClient } from '@/lib/supabase/server'
+import { getOpenAIModel } from '@/lib/openai'
 import { getRelevantChunks } from '@/lib/knowledge'
 import { enforceRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
 
@@ -475,7 +476,7 @@ export async function POST(request: NextRequest) {
           const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
           const llmStream = await openai.chat.completions.stream({
-            model: 'gpt-4o-mini',
+            model: getOpenAIModel(),
             max_tokens: 1500,
             messages: [
               { role: 'system', content: systemPrompt },

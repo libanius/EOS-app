@@ -12,5 +12,8 @@ export function getOpenAIClient() {
 }
 
 export function getOpenAIModel() {
-  return process.env.OPENAI_MODEL || 'gpt-4o-mini'
+  // Trim defensively: a stray quote/newline in the env var (e.g. "gpt-5\n")
+  // would otherwise be sent as an invalid model id. Empty → safe default.
+  const model = (process.env.OPENAI_MODEL || '').trim()
+  return model || 'gpt-4o-mini'
 }

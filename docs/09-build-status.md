@@ -178,6 +178,10 @@ To add a new knowledge source: drop PDF in `docs/`, re-run both commands.
 | `SUPABASE_SERVICE_ROLE_KEY` | Server-side admin access (ficha pública + RAG) | ✅ Set no Vercel em 2026-07-05 (D-035 — estava AUSENTE, quebrava `/ficha/[id]` e RAG) |
 | `NEXT_PUBLIC_SITE_URL` | Auth redirect base URL | ✅ Set |
 | `OPENAI_API_KEY` | Embeddings for RAG | ✅ Set |
+| `OPENAI_MODEL` | Modelo OpenAI (fonte única via `getOpenAIModel()`) | ✅ Corrigido 2026-07-05 (D-036 — estava `"gpt-5\n"` corrompido → `gpt-4o-mini`) |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | Push — chave pública (inlined build-time) | ✅ Set (par novo 2026-07-05, D-036) |
+| `VAPID_PRIVATE_KEY` | Push — chave privada (server) | ✅ Set no Vercel 2026-07-05 (D-036 — estava AUSENTE) |
+| `VAPID_SUBJECT` | Push — mailto do remetente | ✅ Set |
 | `ANTHROPIC_API_KEY` | (removido — todo LLM migrado para OpenAI) | ❌ Não usado |
 | `UPSTASH_REDIS_REST_URL` | Rate limiting (production) | ⚠️ Not confirmed in Vercel |
 | `UPSTASH_REDIS_REST_TOKEN` | Rate limiting (production) | ⚠️ Not confirmed — falls back to in-memory |
@@ -368,5 +372,5 @@ To add a new knowledge source: drop PDF in `docs/`, re-run both commands.
 
 **Pending before ship:**
 - Apply 3 migrations to Supabase: circle_action_plans, push_subscriptions, family_member_link
-- Add VAPID keys to Vercel env vars (NEXT_PUBLIC_VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT)
+- ~~Add VAPID keys to Vercel env vars~~ ✅ FEITO 2026-07-05 (D-036 — par novo em Prod+Preview)
 - P3-T04: Monetization gate — decision needed from owner

@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server'
-import { getOpenAIClient } from '@/lib/openai'
+import { getOpenAIClient, getOpenAIModel } from '@/lib/openai'
 import type { WeatherCurrent } from '@/lib/weather/types'
 
 interface RequestBody {
@@ -44,7 +44,7 @@ Respond ONLY with this JSON (no markdown, no extra text):
   try {
     const openai = getOpenAIClient()
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: getOpenAIModel(),
       max_tokens: 600,
       temperature: 0.3,
       messages: [
