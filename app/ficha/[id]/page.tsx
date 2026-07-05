@@ -5,16 +5,26 @@ import { cookies } from 'next/headers'
 type Props = { params: Promise<{ id: string }> }
 
 async function getFicha(id: string) {
-  const service = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  )
-  const { data } = await service
-    .from('profiles')
-    .select('id, name, blood_type, allergies, emergency_contact_name, emergency_contact_phone, medical_notes, medications')
-    .eq('id', id)
-    .single()
-  return data
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  // Missing service role key must not crash the page with a bare 500 —
+  // degrade to notFound() so the visitor sees a clean 404 instead.
+  if (!url || !key) {
+    console.error('[ficha/[id]] Missing SUPABASE_SERVICE_ROLE_KEY — cannot read public ficha')
+    return null
+  }
+  try {
+    const service = createClient(url, key)
+    const { data } = await service
+      .from('profiles')
+      .select('id, name, blood_type, allergies, emergency_contact_name, emergency_contact_phone, medical_notes, medications')
+      .eq('id', id)
+      .single()
+    return data
+  } catch (err) {
+    console.error('[ficha/[id]] service client error:', err)
+    return null
+  }
 }
 
 export default async function FichaPublicaPage({ params }: Props) {

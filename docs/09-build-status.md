@@ -132,6 +132,25 @@ Confirm `SENTRY_DSN` is configured in Vercel and verify that a controlled produc
 | Sentry DSN not confirmed in Vercel | LOW | Vercel env vars | P1-T07 — confirm `SENTRY_DSN` is set |
 | Upstash Redis not confirmed in Vercel | LOW | Vercel env vars | P1-T08 — rate limit falls back to in-memory without it |
 | SAMHSA_Tips 20 chunks skipped (null bytes) | LOW | knowledge_base | 49/69 chunks stored — non-critical |
+| `SUPABASE_SERVICE_ROLE_KEY` ausente no Vercel → `/ficha/[id]` e RAG quebrados | ✅ FIXED | Vercel env / `app/ficha/[id]`, `app/api/profile/ficha` | 2026-07-05 — D-035: env var adicionada + guardas defensivas |
+
+---
+
+## What Was Done — Session 2026-07-05 (E2E jornada completa + fix crítico)
+
+**Teste E2E de usuário real** (`scripts/full-journey.mjs`): simula onboarding → ficha master (9 PATCHs progressivos) → família → inventário → checklist/tabelas → círculos → weather → ai/readiness → analyze → monitor. Roda contra produção criando/deletando usuário de teste via Supabase Admin API.
+
+**Bug crítico encontrado e corrigido (D-035):**
+- `SUPABASE_SERVICE_ROLE_KEY` **não estava no Vercel** → `/ficha/[id]` (QR de emergência) e `POST /api/profile/ficha` davam **500 vazio**; RAG retornava `[]` silenciosamente (Motor de Decisão nunca usou os 3887 chunks).
+- Fix: `vercel env add SUPABASE_SERVICE_ROLE_KEY` (Production + Preview) + guardas defensivas nas duas rotas de service-client.
+
+**Falsos negativos identificados no e2e-agent antigo** (não são bugs do app, são contratos desatualizados no teste):
+- `checklist/generate` agora retorna `{ok,count}` (não `{items}`)
+- `checklist/toggle` usa `{canonicalKey, acquired}` (não `{id}`)
+- `weather-intelligence`, `ai/readiness` são **GET** (não POST); `monitor` exige `?lat&lng`
+- `full-journey.mjs` usa os contratos corretos.
+
+**Resultado da ficha master**: PATCH `/api/profile/ficha` funciona 100% (nome, localização c/ geocode, tipo sanguíneo, alergias, contato, notas médicas, medicamentos, multi-campo, validação de nome vazio → 400). O problema relatado de "vários erros" era a **leitura pública** da ficha (500), agora corrigida.
 
 ---
 
@@ -154,7 +173,7 @@ To add a new knowledge source: drop PDF in `docs/`, re-run both commands.
 |---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL | ✅ Set |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key | ✅ Set |
-| `SUPABASE_SERVICE_ROLE_KEY` | Server-side admin access | ✅ Set |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server-side admin access (ficha pública + RAG) | ✅ Set no Vercel em 2026-07-05 (D-035 — estava AUSENTE, quebrava `/ficha/[id]` e RAG) |
 | `NEXT_PUBLIC_SITE_URL` | Auth redirect base URL | ✅ Set |
 | `OPENAI_API_KEY` | Embeddings for RAG | ✅ Set |
 | `ANTHROPIC_API_KEY` | (removido — todo LLM migrado para OpenAI) | ❌ Não usado |

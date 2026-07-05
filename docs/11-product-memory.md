@@ -156,6 +156,25 @@ Sentry is wired up (`sentry.client.config.ts`, `sentry.server.config.ts`, `sentr
 
 ---
 
+## Service Role Key & rotas que dependem dela (D-035)
+
+- Três lugares usam `SUPABASE_SERVICE_ROLE_KEY` (bypassa RLS): `app/ficha/[id]/page.tsx` (ficha pública/QR), `app/api/profile/ficha/route.ts` (POST leitura por socorristas), `lib/knowledge.ts` (RAG).
+- **Se a chave faltar no ambiente**: página e rota POST agora degradam limpo (notFound / 503) em vez de 500 vazio; RAG retorna `[]` (Motor de Decisão degrada para modo sem base de conhecimento).
+- Esta chave **estava ausente no Vercel** até 2026-07-05 — adicionada em Production + Preview. Ao reconfigurar o projeto Vercel, **sempre confirmar as 3 chaves não-públicas**: `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_API_KEY`, `VAPID_PRIVATE_KEY` (esta última ainda pendente — push notifications não funcionam sem ela).
+- Verificar com `npx vercel env ls production`.
+
+---
+
+## Contratos de API (fáceis de errar em testes)
+
+- `POST /api/checklist/generate` → `{ok:true, count:N}` (NÃO retorna os items; buscar via `GET /api/checklist`)
+- `POST /api/checklist/toggle` → body `{canonicalKey, acquired}` (NÃO `{id}`)
+- `GET /api/weather-intelligence?lat&lng` e `GET /api/ai/readiness` são **GET**
+- `GET /api/monitor?lat&lng` exige lat/lng
+- Teste E2E de referência: `scripts/full-journey.mjs` (jornada completa) e `scripts/e2e-agent.mjs` (endpoints core)
+
+---
+
 ## Migrações Pendentes (aplicar no Supabase antes de usar em produção)
 
 Estas migrações foram geradas mas podem não estar aplicadas:

@@ -81,10 +81,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Corpo inválido.' }, { status: 400 })
   }
   if (!body.id) return NextResponse.json({ error: 'ID obrigatório.' }, { status: 400 })
-  const service = createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  )
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  // Guard the service role key so a misconfigured environment returns a clean
+  // JSON error instead of crashing the serverless function with a bare 500.
+  if (!url || !key) {
+    console.error('[POST /api/profile/ficha] Missing SUPABASE_SERVICE_ROLE_KEY')
+    return NextResponse.json({ error: 'Serviço indisponível.' }, { status: 503 })
+  }
+  const service = createServiceClient(url, key)
   const { data, error } = await service
     .from('profiles').select(FICHA_FIELDS).eq('id', body.id).single()
   if (error || !data) return NextResponse.json({ error: 'Ficha não encontrada.' }, { status: 404 })
