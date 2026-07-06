@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState, useTransition } from 'react'
 import NumericStepper from '@/components/NumericStepper'
 import HouseholdHealthCard from '@/components/HouseholdHealthCard'
+import QRScanner from '@/components/QRScanner'
+import { parseScannedValue } from '@/lib/qr-parse'
 import { useRealtimeSync } from '@/hooks/useRealtimeSync'
 import { saveSnapshot, loadSnapshot } from '@/lib/sync'
 import { useLanguage } from '@/lib/i18n'
@@ -95,6 +97,7 @@ export default function FamilyPage() {
   const [suggestedTags, setSuggestedTags] = useState<string[]>([])
   const [loadingSuggestions, setLoadingSuggestions] = useState(false)
   const [medicationInput, setMedicationInput] = useState('')
+  const [scanOpen, setScanOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
 
   const loadMembers = useCallback(async () => {
@@ -135,6 +138,41 @@ export default function FamilyPage() {
     setEditingId(null)
     setFormError(null)
     setModalOpen(true)
+  }
+
+  // Scan someone's emergency card (QR) → pre-fill the add-member form with the
+  // public data (name, medical notes, medications). The user reviews and saves.
+  async function onScanFicha(text: string) {
+    setScanOpen(false)
+    const parsed = parseScannedValue(text)
+    if (parsed.type !== 'ficha') {
+      alert('QR não reconhecido. Escaneie a ficha de emergência de alguém.')
+      return
+    }
+    try {
+      const res = await fetch('/api/profile/ficha', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: parsed.id }),
+      })
+      const j = await res.json()
+      if (!res.ok || !j.ficha) { alert('Ficha não encontrada.'); return }
+      const f = j.ficha as { name?: string; blood_type?: string | null; allergies?: string[]; medical_notes?: string | null; medications?: string[] }
+      const notesParts: string[] = []
+      if (f.blood_type) notesParts.push(`Tipo sanguíneo: ${f.blood_type}`)
+      if (f.allergies?.length) notesParts.push(`Alergias: ${f.allergies.join(', ')}`)
+      if (f.medical_notes) notesParts.push(f.medical_notes)
+      setForm({
+        ...EMPTY_FORM,
+        name: f.name ?? '',
+        medical_notes: notesParts.join(' · '),
+        medications: f.medications ?? [],
+      })
+      setEditingId(null)
+      setFormError(null)
+      setModalOpen(true)
+    } catch {
+      alert('Ficha não encontrada.')
+    }
   }
 
   function openEdit(member: FamilyMember) {
@@ -330,9 +368,14 @@ export default function FamilyPage() {
                 <span style={s.metricLabel}>{t('family.securityScore')}</span>
                 <p style={s.metricCaption}>{t('family.scoreCaption')}</p>
               </div>
-              <button type="button" style={s.primaryAction} onClick={openAdd} disabled={isPending}>
-                + {t('family.addMember')}
-              </button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button type="button" style={s.iconFrame} onClick={() => setScanOpen(true)} disabled={isPending} aria-label="Escanear ficha" title="Escanear ficha de alguém">
+                  📷
+                </button>
+                <button type="button" style={s.primaryAction} onClick={openAdd} disabled={isPending}>
+                  + {t('family.addMember')}
+                </button>
+              </div>
             </div>
 
             <div style={s.metricBody}>
@@ -419,8 +462,8 @@ export default function FamilyPage() {
               <p style={s.emptyCopy}>
                 {t('family.emptyCopy')}
               </p>
-              <button type="button" style={s.scanButton} onClick={openAdd} disabled={isPending}>
-                {t('family.scanAdd')}
+              <button type="button" style={s.scanButton} onClick={() => setScanOpen(true)} disabled={isPending}>
+                📷 {t('family.scanAdd')}
               </button>
             </div>
           </section>
@@ -637,6 +680,15 @@ export default function FamilyPage() {
             </button>
           </div>
         </div>
+      )}
+
+      {scanOpen && (
+        <QRScanner
+          title="Escanear ficha de emergência"
+          hint="Aponte para o QR da ficha de emergência da pessoa. Os dados públicos vão pré-preencher o cadastro."
+          onScan={onScanFicha}
+          onClose={() => setScanOpen(false)}
+        />
       )}
     </>
   )

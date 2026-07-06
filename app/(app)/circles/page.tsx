@@ -4,6 +4,12 @@ import { useCallback, useEffect, useState } from 'react'
 import { useLanguage } from '@/lib/i18n'
 import { canAccess, type Plan } from '@/lib/feature-gates'
 import { QRCodeSVG } from 'qrcode.react'
+import QRScanner from '@/components/QRScanner'
+import { parseScannedValue } from '@/lib/qr-parse'
+
+type JoinRequest = { id: string; requester_id: string; name: string; location: string | null; message: string | null }
+type MyRequest = { id: string; circle_id: string; status: string; circle_name: string }
+type SearchResult = { id: string; name: string; member_count: number; is_member: boolean; request_status: string | null }
 
 type CircleRole = 'Admin' | 'Editor' | 'Viewer'
 type Severity = 'CRITICAL' | 'HIGH' | 'WATCH' | 'MODERATE' | 'CLEAR'
@@ -92,6 +98,28 @@ export default function CirclesPage() {
   const [qrCircleId, setQrCircleId] = useState<string | null>(null)
   const [newPlan, setNewPlan] = useState<{ circleId: string; title: string; body: string } | null>(null)
   const [editPlan, setEditPlan] = useState<ActionPlan & { circleId: string } | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+  const [myRequests, setMyRequests] = useState<MyRequest[]>([])
+  const [requests, setRequests] = useState<Record<string, JoinRequest[]>>({})
+  const [searchQ, setSearchQ] = useState('')
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([])
+  const [scanOpen, setScanOpen] = useState(false)
+
+  const loadMyRequests = useCallback(async () => {
+    try {
+      const r = await fetch('/api/circles/my-requests', { cache: 'no-store' })
+      const d = await r.json()
+      if (r.ok) setMyRequests(d.requests ?? [])
+    } catch { /* non-critical */ }
+  }, [])
+
+  const loadRequests = useCallback(async (circleId: string) => {
+    try {
+      const r = await fetch(`/api/circles/${circleId}/requests`, { cache: 'no-store' })
+      const d = await r.json()
+      if (r.ok) setRequests(prev => ({ ...prev, [circleId]: d.requests ?? [] }))
+    } catch { /* non-critical */ }
+  }, [])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -149,12 +177,76 @@ export default function CirclesPage() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ inviteCode: joinCode.trim().toUpperCase() }),
       })
-      if (!res.ok) throw new Error((await res.json()).error)
+      const j = await res.json()
+      if (!res.ok) throw new Error(j.error)
       setJoinCode('')
-      await load()
+      // With the approval flow, joining creates a pending request — the Admin
+      // must approve before membership. Reflect that instead of expecting the
+      // circle to appear immediately.
+      if (j.status === 'pending') {
+        setNotice(`Pedido enviado para "${j.circle?.name ?? ''}". Aguarde a aprovação do administrador.`)
+      }
+      await Promise.all([load(), loadMyRequests()])
     } catch (e) { setError(e instanceof Error ? e.message : t('common.error')) }
     finally { setBusy(false) }
-  }, [joinCode, load, t])
+  }, [joinCode, load, loadMyRequests, t])
+
+  const decide = useCallback(async (circleId: string, reqId: string, action: 'approve' | 'reject') => {
+    setBusy(true)
+    try {
+      const res = await fetch(`/api/circles/${circleId}/requests/${reqId}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      })
+      if (!res.ok) throw new Error((await res.json()).error)
+      await Promise.all([loadRequests(circleId), load()])
+    } catch (e) { setError(e instanceof Error ? e.message : t('common.error')) }
+    finally { setBusy(false) }
+  }, [load, loadRequests, t])
+
+  const searchCircles = useCallback(async () => {
+    const q = searchQ.trim()
+    if (q.length < 2) { setSearchResults([]); return }
+    try {
+      const r = await fetch(`/api/circles/search?q=${encodeURIComponent(q)}`, { cache: 'no-store' })
+      const d = await r.json()
+      if (r.ok) setSearchResults(d.circles ?? [])
+    } catch { /* non-critical */ }
+  }, [searchQ])
+
+  const requestJoin = useCallback(async (circleId: string, name: string) => {
+    setBusy(true)
+    try {
+      const res = await fetch(`/api/circles/${circleId}/requests`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}),
+      })
+      const j = await res.json()
+      if (!res.ok) throw new Error(j.error)
+      setNotice(j.status === 'member'
+        ? `Você já faz parte de "${name}".`
+        : `Pedido enviado para "${name}". Aguarde a aprovação.`)
+      await Promise.all([loadMyRequests(), searchCircles()])
+    } catch (e) { setError(e instanceof Error ? e.message : t('common.error')) }
+    finally { setBusy(false) }
+  }, [loadMyRequests, searchCircles, t])
+
+  const onScan = useCallback((text: string) => {
+    setScanOpen(false)
+    const parsed = parseScannedValue(text)
+    if (parsed.type === 'invite-code') {
+      setJoinCode(parsed.code)
+      setNotice(`Código lido: ${parsed.code}. Toque em "${t('circles.joinAction')}" para enviar o pedido.`)
+    } else if (parsed.type === 'ficha') {
+      window.location.href = `/ficha/${parsed.id}`
+    } else {
+      setError('QR não reconhecido. Escaneie um convite de círculo ou uma ficha EOS.')
+    }
+  }, [t])
+
+  useEffect(() => { void loadMyRequests() }, [loadMyRequests])
+  useEffect(() => {
+    circles.forEach(c => { if (c.is_admin) void loadRequests(c.id) })
+  }, [circles, loadRequests])
 
   const toggleShare = useCallback(async (id: string, next: boolean) => {
     setCircles(prev => prev.map(c => c.id === id ? { ...c, share_inventory: next } : c))
@@ -291,6 +383,23 @@ export default function CirclesPage() {
         </div>
       )}
 
+      {notice && (
+        <div style={{ background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.4)', padding: '10px 14px', borderRadius: 8, marginBottom: 16, color: '#93c5fd', display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+          <span>{notice}</span>
+          <button onClick={() => setNotice(null)} style={{ background: 'transparent', border: 'none', color: '#93c5fd', cursor: 'pointer' }}>✕</button>
+        </div>
+      )}
+
+      {/* My pending join requests */}
+      {myRequests.filter(r => r.status === 'pending').length > 0 && (
+        <div style={{ background: 'rgba(234,179,8,0.10)', border: '1px solid rgba(234,179,8,0.35)', padding: '12px 14px', borderRadius: 10, marginBottom: 16 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#eab308', marginBottom: 6, letterSpacing: 0.5 }}>PEDIDOS AGUARDANDO APROVAÇÃO</div>
+          {myRequests.filter(r => r.status === 'pending').map(r => (
+            <div key={r.id} style={{ fontSize: 14, color: '#e6e6eb' }}>⏳ {r.circle_name}</div>
+          ))}
+        </div>
+      )}
+
       {/* Create / join */}
       <section style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24 }}>
         <div style={{ border: '1px solid #222231', borderRadius: 10, padding: 14 }}>
@@ -316,10 +425,46 @@ export default function CirclesPage() {
             maxLength={6}
             style={{ width: '100%', padding: '8px 10px', background: '#0f0f17', color: '#e6e6eb', border: '1px solid #2a2a3a', borderRadius: 6, marginBottom: 8, fontFamily: 'ui-monospace, Menlo, monospace', letterSpacing: 4, textTransform: 'uppercase', boxSizing: 'border-box' }}
           />
-          <button onClick={join} disabled={busy || joinCode.length !== 6} style={{ padding: '8px 14px', background: busy || joinCode.length !== 6 ? '#2a2a3a' : '#3b82f6', color: busy || joinCode.length !== 6 ? '#8a8a99' : '#0a0a0f', border: 'none', borderRadius: 6, fontWeight: 600, cursor: busy || joinCode.length !== 6 ? 'default' : 'pointer' }}>
-            {t('circles.joinAction')}
-          </button>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <button onClick={join} disabled={busy || joinCode.length !== 6} style={{ padding: '8px 14px', background: busy || joinCode.length !== 6 ? '#2a2a3a' : '#3b82f6', color: busy || joinCode.length !== 6 ? '#8a8a99' : '#0a0a0f', border: 'none', borderRadius: 6, fontWeight: 600, cursor: busy || joinCode.length !== 6 ? 'default' : 'pointer' }}>
+              {t('circles.joinAction')}
+            </button>
+            <button onClick={() => setScanOpen(true)} title="Escanear convite" style={{ padding: '8px 12px', background: 'transparent', color: '#93c5fd', border: '1px solid rgba(59,130,246,0.4)', borderRadius: 6, fontWeight: 600, cursor: 'pointer' }}>
+              📷 Escanear
+            </button>
+          </div>
         </div>
+      </section>
+
+      {/* Search circles by name (request to join without a code) */}
+      <section style={{ border: '1px solid #222231', borderRadius: 10, padding: 14, marginBottom: 24 }}>
+        <div style={{ fontSize: 12, color: '#8a8a99', marginBottom: 8 }}>Encontrar um círculo por nome</div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input
+            placeholder="Nome do círculo"
+            value={searchQ}
+            onChange={e => setSearchQ(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && searchCircles()}
+            style={{ flex: 1, padding: '8px 10px', background: '#0f0f17', color: '#e6e6eb', border: '1px solid #2a2a3a', borderRadius: 6, boxSizing: 'border-box' }}
+          />
+          <button onClick={searchCircles} disabled={searchQ.trim().length < 2} style={{ padding: '8px 14px', background: searchQ.trim().length < 2 ? '#2a2a3a' : '#3b82f6', color: searchQ.trim().length < 2 ? '#8a8a99' : '#0a0a0f', border: 'none', borderRadius: 6, fontWeight: 600, cursor: searchQ.trim().length < 2 ? 'default' : 'pointer' }}>Buscar</button>
+        </div>
+        {searchResults.length > 0 && (
+          <div style={{ marginTop: 10, display: 'grid', gap: 6 }}>
+            {searchResults.map(r => (
+              <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '8px 10px', background: '#0f0f17', border: '1px solid #222231', borderRadius: 8 }}>
+                <span style={{ fontSize: 14 }}>{r.name} <span style={{ color: '#8a8a99', fontSize: 12 }}>· {r.member_count} membro(s)</span></span>
+                {r.is_member ? (
+                  <span style={{ fontSize: 12, color: '#22c55e' }}>Você é membro</span>
+                ) : r.request_status === 'pending' ? (
+                  <span style={{ fontSize: 12, color: '#eab308' }}>Pedido enviado</span>
+                ) : (
+                  <button onClick={() => requestJoin(r.id, r.name)} disabled={busy} style={{ fontSize: 12, padding: '4px 10px', background: '#3b82f6', color: '#0a0a0f', border: 'none', borderRadius: 6, fontWeight: 600, cursor: 'pointer' }}>Pedir para entrar</button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Circles list */}
@@ -401,6 +546,29 @@ export default function CirclesPage() {
                   <span>🍲 {Number(c.pooled.food_days).toFixed(1)} {t('circles.days')}</span>
                   <span>⛑ {c.pooled.medical_kit_count} {t('circles.kits')}</span>
                   <span>📻 {c.pooled.communication_device_count} {t('circles.comms')}</span>
+                </div>
+              )}
+
+              {/* Pending join requests (Admin only) */}
+              {c.is_admin && (requests[c.id]?.length ?? 0) > 0 && (
+                <div style={{ marginTop: 14, background: 'rgba(234,179,8,0.08)', border: '1px solid rgba(234,179,8,0.3)', borderRadius: 10, padding: 12 }}>
+                  <div style={{ fontSize: 11, color: '#eab308', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, fontWeight: 700 }}>
+                    Pedidos de entrada ({requests[c.id].length})
+                  </div>
+                  <div style={{ display: 'grid', gap: 8 }}>
+                    {requests[c.id].map(r => (
+                      <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontSize: 14, color: '#e6e6eb', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</div>
+                          {r.location && <div style={{ fontSize: 12, color: '#8a8a99' }}>{r.location}</div>}
+                        </div>
+                        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                          <button onClick={() => decide(c.id, r.id, 'approve')} disabled={busy} style={{ fontSize: 12, padding: '4px 10px', background: '#22c55e', color: '#0a0a0f', border: 'none', borderRadius: 6, fontWeight: 600, cursor: 'pointer' }}>Aprovar</button>
+                          <button onClick={() => decide(c.id, r.id, 'reject')} disabled={busy} style={{ fontSize: 12, padding: '4px 10px', background: 'transparent', color: '#ef4444', border: '1px solid rgba(239,68,68,0.4)', borderRadius: 6, cursor: 'pointer' }}>Recusar</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 
@@ -536,6 +704,15 @@ export default function CirclesPage() {
             </article>
           ))}
         </div>
+      )}
+
+      {scanOpen && (
+        <QRScanner
+          title="Escanear convite ou ficha"
+          hint="Aponte para o QR de convite de um círculo ou para a ficha de emergência de alguém."
+          onScan={onScan}
+          onClose={() => setScanOpen(false)}
+        />
       )}
     </main>
   )
