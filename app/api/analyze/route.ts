@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server'
 import OpenAI from 'openai'
 import { createClient } from '@/lib/supabase/server'
+import { ensureProfile } from '@/lib/ensure-profile'
 import { getOpenAIModel } from '@/lib/openai'
 import { getRelevantChunks } from '@/lib/knowledge'
 import { enforceRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
@@ -373,6 +374,7 @@ export async function POST(request: NextRequest) {
       headers: { 'Content-Type': 'application/json' },
     })
   }
+  await ensureProfile(supabase, user)
 
   // 1b. Rate limit — 10 req / 60 s / user
   {

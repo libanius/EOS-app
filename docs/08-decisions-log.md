@@ -330,3 +330,23 @@ FEATURE_GATES = {
 
 **Consequence**: Usuário pode sair e excluir a própria conta sem suporte. O CRUD de dados de domínio (ficha, família, inventário, checklist) já existia nas telas próprias; Settings passa a ser o hub de conta. Bilíngue PT/EN inline.
 
+---
+
+## D-038 — Perfil ausente quebrava Ficha e Recursos ("Cannot coerce" / FK constraint)
+
+**Date**: 2026-07-05
+**Status**: DECIDED / CORRIGIDO
+
+**Context**: Usuário real (Paulo, após re-cadastro) viu dois erros que os testes automatizados **não** pegaram:
+- Ficha Master: `Cannot coerce the result to a single JSON object`
+- Recursos: `insert or update on table "resource_inventory" violates foreign key constraint "resource_inventory_profile_id_fkey"`
+
+**Causa raiz**: o usuário **não tinha linha em `profiles`**. A linha só é criada no **onboarding** (`POST /api/profile`). Mas o **login por senha redireciona para `/scenario`** (não onboarding), e a confirmação de e-mail vai para `/onboarding` que pode não ser concluído. Quem chega em Ficha/Recursos sem perfil quebra: `profiles...single()` com 0 linhas → "Cannot coerce"; insert com `profile_id`/`leader_id` FK → violação. **Por que os testes passavam**: `full-journey.mjs` sempre criava o perfil no passo 1 (onboarding). Reproduzido com `scripts/_noprofile.mjs` (usuário sem perfil) → 6/6 erros idênticos aos prints.
+
+**Decision** (defesa em profundidade):
+1. **App self-heal**: `lib/ensure-profile.ts` — `ensureProfile(supabase, user)` faz upsert idempotente (`ON CONFLICT DO NOTHING`) da linha `profiles` usando `full_name` do metadata / prefixo do e-mail / 'Usuário'. Chamado logo após `getUser()` em: ficha (GET+PATCH), inventory (POST), family-members (POST), profile/plan (GET), analyze (POST), checklist/generate (POST). RLS permite o usuário inserir o próprio perfil.
+2. **Backfill imediato** (service role): criado perfil para o usuário existente sem um (Paulo). 21 perfis órfãos de testes antigos identificados (auth user deletado, profile ficou) — inofensivos.
+3. **Trigger no banco** (`supabase/migrations/20260705000000_auto_create_profile.sql`): `handle_new_user` cria `profiles` em todo INSERT em `auth.users` + backfill. Não aplicado via CLI (sem credenciais de DB no ambiente); a self-heal do app cobre o caso em produção. Aplicar no Supabase Dashboard quando possível.
+
+**Consequence**: qualquer usuário autenticado passa a ter perfil garantido on-demand, independente de completar onboarding. Os erros de Ficha/Recursos não ocorrem mais.
+

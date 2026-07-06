@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { ensureProfile } from '@/lib/ensure-profile'
 import type { Plan } from '@/lib/feature-gates'
 
 export async function GET() {
@@ -8,6 +9,7 @@ export async function GET() {
   if (authError || !user) {
     return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 })
   }
+  await ensureProfile(supabase, user)
   const { data, error } = await supabase
     .from('profiles')
     .select('plan')

@@ -158,6 +158,8 @@ Confirm `SENTRY_DSN` is configured in Vercel and verify that a controlled produc
 
 **Limpeza de contas (2026-07-05)**: a pedido do dono, excluídas 4 contas reais (brightscalegroup, paulolibanionetousa, daniletteriello1001, elgorlanes.23) com todos os dados. Restou apenas `testeos.paulo@yopmail.com`.
 
+**Perfil ausente quebrava Ficha/Recursos (D-038)**: usuário sem linha `profiles` (cadastro sem onboarding / login direto p/ `/scenario`) via `Cannot coerce...` (ficha/plan) e FK constraint (inventory/family). Corrigido com `lib/ensure-profile.ts` (self-heal on-demand em ficha, inventory, family-members, plan, analyze, checklist/generate) + backfill + migration de trigger `handle_new_user`. Reproduzido e verificado com `scripts/_noprofile.mjs`. **Testes antigos não pegaram** porque sempre criavam o perfil no passo 1.
+
 ---
 
 ## Ingest Pipeline Reference

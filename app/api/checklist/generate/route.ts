@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { ensureProfile } from '@/lib/ensure-profile'
 import { getOpenAIClient, getOpenAIModel } from '@/lib/openai'
 import { enforceRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
 import { getRelevantChunks } from '@/lib/knowledge'
@@ -33,6 +34,7 @@ export async function POST(req: NextRequest) {
   if (authError || !user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+  await ensureProfile(supabase, user)
 
   const rl = await enforceRateLimit(`checklist:${user.id}`)
   if (!rl.success) {

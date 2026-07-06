@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { ensureProfile } from '@/lib/ensure-profile'
 
 // ─── GET /api/inventory ───────────────────────────────────────────────────────
 // Returns the authenticated user's resource inventory (single row).
@@ -72,6 +73,7 @@ export async function POST(req: NextRequest) {
   if (authError || !user) {
     return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 })
   }
+  await ensureProfile(supabase, user)
 
   let body: {
     water_liters?: number

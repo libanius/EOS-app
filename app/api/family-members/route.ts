@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { ensureProfile } from '@/lib/ensure-profile'
 
 // ─── GET /api/family-members ──────────────────────────────────────────────────
 // Returns all family members for the authenticated user.
@@ -38,6 +39,7 @@ export async function POST(req: NextRequest) {
   if (authError || !user) {
     return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 })
   }
+  await ensureProfile(supabase, user)
 
   let body: {
     name?: string

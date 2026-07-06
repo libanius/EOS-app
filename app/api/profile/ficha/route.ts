@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { geocodeLocation } from '@/lib/geocode'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { ensureProfile } from '@/lib/ensure-profile'
 
 const FICHA_FIELDS = 'id, name, location, location_lat, location_lng, blood_type, allergies, emergency_contact_name, emergency_contact_phone, medical_notes, medications'
 
@@ -13,6 +14,7 @@ export async function GET() {
   if (authError || !user) {
     return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 })
   }
+  await ensureProfile(supabase, user)
   const { data, error } = await supabase
     .from('profiles').select(FICHA_FIELDS).eq('id', user.id).single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -26,6 +28,7 @@ export async function PATCH(req: NextRequest) {
   if (authError || !user) {
     return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 })
   }
+  await ensureProfile(supabase, user)
   let body: {
     name?: string
     location?: string | null
