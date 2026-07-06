@@ -25,14 +25,23 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
 
   const { data: requests, error } = await admin
     .from('circle_join_requests')
-    .select('id, requester_id, message, created_at, status, profiles:requester_id(name, location)')
+    .select('id, requester_id, message, created_at, status')
     .eq('circle_id', params.id)
     .eq('status', 'pending')
     .order('created_at', { ascending: true })
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
+  // requester_id references auth.users, not profiles, so PostgREST can't embed
+  // the profile — fetch the identities in a second query and join in memory.
+  const ids = (requests ?? []).map(r => r.requester_id)
+  const profileById = new Map<string, { name?: string; location?: string | null }>()
+  if (ids.length) {
+    const { data: profiles } = await admin.from('profiles').select('id, name, location').in('id', ids)
+    for (const p of profiles ?? []) profileById.set(p.id, { name: p.name, location: p.location })
+  }
+
   const items = (requests ?? []).map(r => {
-    const p = r.profiles as { name?: string; location?: string | null } | null
+    const p = profileById.get(r.requester_id)
     return {
       id: r.id,
       requester_id: r.requester_id,

@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { ensureProfile } from '@/lib/ensure-profile'
 
 /**
@@ -32,7 +33,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid invite code' }, { status: 400 })
   }
 
-  const { data: circle, error: cErr } = await supabase
+  // A prospective member is not yet in the circle, and the circles SELECT policy
+  // only exposes circles you belong to — so resolve the invite code with the
+  // service-role client.
+  const admin = createAdminClient()
+  if (!admin) return NextResponse.json({ error: 'Serviço indisponível.' }, { status: 503 })
+
+  const { data: circle, error: cErr } = await admin
     .from('circles')
     .select('id, name')
     .eq('invite_code', code)
@@ -41,7 +48,7 @@ export async function POST(req: NextRequest) {
   if (!circle) return NextResponse.json({ error: 'Circle not found' }, { status: 404 })
 
   // Already a member? Nothing to do.
-  const { data: existing } = await supabase
+  const { data: existing } = await admin
     .from('circle_members')
     .select('user_id')
     .eq('circle_id', circle.id)
