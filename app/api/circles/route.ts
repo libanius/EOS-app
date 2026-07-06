@@ -1,6 +1,9 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { generateInviteCode, computeCircleScore } from '@/lib/circles'
+
+type MemberProfile = { name?: string; location_lat?: number; location_lng?: number; emergency_contact_name?: string; emergency_contact_phone?: string }
 
 type CircleRole = 'Admin' | 'Editor' | 'Viewer'
 
@@ -25,14 +28,27 @@ export async function GET() {
     .select('id, name, invite_code, leader_id, created_at')
     .in('id', allIds)
 
+  const admin = createAdminClient()
   const results: unknown[] = []
   for (const c of circles ?? []) {
     const [{ data: pooled }, { data: members }] = await Promise.all([
       supabase.rpc('circle_pooled_inventory', { circle_uuid: c.id }),
       supabase.from('circle_members')
-        .select('user_id, role, share_inventory, shared_fields, profiles(name, location_lat, location_lng, emergency_contact_name, emergency_contact_phone)')
+        .select('user_id, role, share_inventory, shared_fields')
         .eq('circle_id', c.id),
     ])
+    // circle_members.user_id references auth.users, and profiles is owner-only
+    // under RLS — so resolve co-members' identities with the service-role client
+    // (the caller is a member of this circle, which we are iterating).
+    const memberIds = (members ?? []).map(m => m.user_id)
+    const profileById = new Map<string, MemberProfile>()
+    if (admin && memberIds.length) {
+      const { data: profs } = await admin
+        .from('profiles')
+        .select('id, name, location_lat, location_lng, emergency_contact_name, emergency_contact_phone')
+        .in('id', memberIds)
+      for (const p of profs ?? []) profileById.set(p.id, p as MemberProfile)
+    }
     const row = Array.isArray(pooled) ? pooled[0] : pooled
     const score = computeCircleScore({
       water_liters: Number(row?.water_liters ?? 0),
@@ -52,7 +68,7 @@ export async function GET() {
       pooled: row,
       score,
       members: (members ?? []).map(m => {
-        const p = m.profiles as { name?: string; location_lat?: number; location_lng?: number; emergency_contact_name?: string; emergency_contact_phone?: string } | null
+        const p = profileById.get(m.user_id) ?? null
         const sharedFields = (m.shared_fields as string[] | undefined) ?? []
         const sharesContact = m.share_inventory && (sharedFields.length === 0 || sharedFields.includes('emergency_contact'))
         return {
