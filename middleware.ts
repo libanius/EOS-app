@@ -9,7 +9,14 @@ const PROTECTED_ROUTES = [
   '/scenario',
   '/checklist',
   '/circles',
+  '/settings',
+  '/weather',
 ]
+
+// Protected only as an EXACT path. `/ficha` is the private Master Card editor,
+// but `/ficha/[id]` is the PUBLIC emergency card (QR destination) and must stay
+// open to unauthenticated first responders — so we must not protect the prefix.
+const PROTECTED_EXACT = ['/ficha']
 
 
 export async function middleware(request: NextRequest) {
@@ -43,9 +50,10 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
-  const isProtected = PROTECTED_ROUTES.some(
-    (route) => pathname === route || pathname.startsWith(route + '/'),
-  )
+  const isProtected =
+    PROTECTED_ROUTES.some(
+      (route) => pathname === route || pathname.startsWith(route + '/'),
+    ) || PROTECTED_EXACT.includes(pathname)
 
   if (isProtected && !user) {
     const loginUrl = request.nextUrl.clone()

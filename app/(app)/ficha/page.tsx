@@ -61,6 +61,10 @@ export default function FichaPage() {
     if (snap) setFicha(snap)
     try {
       const res = await fetch('/api/profile/ficha')
+      if (res.status === 401) {
+        window.location.href = '/auth/login?redirectTo=/ficha'
+        return
+      }
       if (res.ok) {
         const { ficha: data } = await res.json()
         const f: Ficha = {
@@ -110,8 +114,11 @@ export default function FichaPage() {
         setIsDirty(false)
         setSaved(true)
         setTimeout(() => setSaved(false), 2000)
+      } else if (res.status === 401) {
+        // Session expired while editing — send the user to log in again.
+        window.location.href = '/auth/login?redirectTo=/ficha'
       } else {
-        const b = await res.json()
+        const b = await res.json().catch(() => ({}))
         setSaveError(b.error ?? t('common.saveError'))
       }
     })

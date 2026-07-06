@@ -350,3 +350,19 @@ FEATURE_GATES = {
 
 **Consequence**: qualquer usuário autenticado passa a ter perfil garantido on-demand, independente de completar onboarding. Os erros de Ficha/Recursos não ocorrem mais.
 
+---
+
+## D-039 — "Não autenticado" na Ficha: rotas autenticadas fora do PROTECTED_ROUTES
+
+**Date**: 2026-07-05
+**Status**: DECIDED / CORRIGIDO
+
+**Context**: Usuário com sessão expirada/ausente abria `/ficha` e via o banner **"Não autenticado."** (a API `/api/profile/ficha` retorna 401). Em rotas protegidas (ex: `/scenario`) ele seria redirecionado ao login; mas **`/ficha`, `/settings` e `/weather` não estavam em `PROTECTED_ROUTES`** no `middleware.ts`, então o usuário sem sessão não era redirecionado — ficava preso numa página autenticada quebrada.
+
+**Decision**:
+1. Adicionados `/settings` e `/weather` a `PROTECTED_ROUTES`.
+2. `/ficha` adicionado a uma nova lista **`PROTECTED_EXACT`** (match exato), **não** ao prefixo — porque `/ficha/[id]` é a **ficha de emergência pública** (destino do QR) e precisa continuar acessível a socorristas sem login. Proteger o prefixo `/ficha/` teria quebrado o QR.
+3. `app/(app)/ficha/page.tsx`: em resposta 401 no load ou no save, redireciona para `/auth/login?redirectTo=/ficha` (trata expiração de sessão no meio do uso, em vez de mostrar o erro).
+
+**Consequence**: sessão inválida em página autenticada leva ao login (com retorno), não a uma tela quebrada. A ficha pública permanece aberta. Aplica o mesmo padrão de proteção que as demais telas do app já tinham.
+
