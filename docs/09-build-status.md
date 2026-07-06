@@ -160,6 +160,8 @@ Confirm `SENTRY_DSN` is configured in Vercel and verify that a controlled produc
 
 **Perfil ausente quebrava Ficha/Recursos (D-038)**: usuário sem linha `profiles` (cadastro sem onboarding / login direto p/ `/scenario`) via `Cannot coerce...` (ficha/plan) e FK constraint (inventory/family). Corrigido com `lib/ensure-profile.ts` (self-heal on-demand em ficha, inventory, family-members, plan, analyze, checklist/generate) + backfill + migration de trigger `handle_new_user`. Reproduzido e verificado com `scripts/_noprofile.mjs`. **Testes antigos não pegaram** porque sempre criavam o perfil no passo 1.
 
+**Fluxo completo de membros (D-040)**: as 6 formas do doc 12 implementadas e testadas 19/19 E2E. Aprovação de círculo (`circle_join_requests`, migration `20260705000100` aplicada via SQL Editor), busca por nome, scanner QR (`html5-qrcode` + `lib/qr-parse` 8/8). Corrigidos 2 bugs de RLS/embed de círculo (join member-only → 404; lista de membros vinha vazia por embed `profiles` inválido). Entrar num círculo agora **exige aprovação do Admin** (antes era instantâneo). Migration de trigger `handle_new_user` (D-038) permanece pendente de aplicação no Supabase (a self-heal do app cobre). Câmera do scanner: testar no dispositivo.
+
 ---
 
 ## Ingest Pipeline Reference

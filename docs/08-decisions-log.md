@@ -4,6 +4,30 @@
 
 ---
 
+## D-040 — Fluxo completo de adicionar membros (6 formas) + aprovação
+
+**Date**: 2026-07-05
+**Status**: DECIDED / IMPLEMENTADO E TESTADO (19/19 E2E)
+
+**Context**: O doc `12-circle-model.md` descreve 6 formas de adicionar membro, mas só 1½ estavam implementadas (família manual; join por código era instantâneo, sem a aprovação que o spec pede). Faltava: aprovação, pedido sem código (busca por nome), e scanner de QR (convite e ficha).
+
+**Decision** — implementadas todas as 6 formas:
+1. **Família manual** — já existia (`/api/family-members`).
+2. **Escanear ficha → membro manual** — botão 📷 na Família abre `QRScanner`; ao ler `/ficha/[id]`, lê a ficha pública e pré-preenche o cadastro.
+3. **Convite por código** — `POST /api/circles/join` agora cria **pedido pendente** (não entra direto); Admin aprova.
+4. **Convite por QR** — o QR do círculo embute o código; `QRScanner` na tela Círculos lê e preenche o código.
+5. **Pedido por busca (sem código)** — `GET /api/circles/search?q=` + `POST /api/circles/[id]/requests`.
+6. **Escanear ficha → convidar** — mesmo scanner; ficha reconhecida abre a ficha pública.
+
+**Aprovação** (novo): tabela `circle_join_requests` (pending/approved/rejected, migration `20260705000100`). Rotas: `[id]/requests` (GET Admin lista / POST pedir), `[id]/requests/[reqId]` (aprovar/rejeitar), `my-requests`. Admin verificado em app-code; operações cross-user via **service-role client** (`lib/supabase/admin.ts`) para não recair na recursão de RLS de círculos.
+
+**Bugs corrigidos no caminho** (RLS/embed): (a) join resolvia o círculo pelo código com o client do usuário, mas `circles` é member-only sob RLS → não-membro via 404 → agora resolve via service-role; (b) embeds PostgREST `profiles(...)` em `circle_members` e `circle_join_requests` **não funcionam** porque `user_id`/`requester_id` referenciam `auth.users` (não `profiles`) e `profiles` é owner-only → a lista de membros vinha **vazia até para o criador** → agora busca perfis em query separada via service-role.
+
+**Scanner**: `html5-qrcode` (client-only, import dinâmico) + `lib/qr-parse.ts` (parser puro, distingue código de 6 chars vs URL `/ficha/[id]`, testado 8/8). Câmera testada no dispositivo pelo usuário.
+
+**Consequence**: entrar num círculo agora exige aprovação do Admin (muda o comportamento anterior de join instantâneo — alinhado ao spec). Verificado E2E com `scripts/_members.mjs`: 19/19 (criar → pedir por código/busca → listar com nome → aprovar/rejeitar → virar membro → autorização de não-admin).
+---
+
 ## D-001 — Next.js App Router (not Pages Router)
 **Date**: Project init  
 **Decision**: Use Next.js 14 App Router with TypeScript strict mode.  
