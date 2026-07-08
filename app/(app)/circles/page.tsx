@@ -353,20 +353,10 @@ export default function CirclesPage() {
     finally { setBusy(false) }
   }
 
-  if (!canAccess('circulos', plan)) {
-    return (
-      <main style={{ maxWidth: 640, margin: '0 auto', padding: '80px 20px', color: '#e6e6eb', fontFamily: 'system-ui, -apple-system, sans-serif', textAlign: 'center' }}>
-        <div style={{ fontSize: 48, marginBottom: 16 }}>🔒</div>
-        <h1 style={{ fontSize: 24, marginBottom: 12 }}>{t('circles.title')}</h1>
-        <p style={{ color: '#8a8a99', marginBottom: 24, lineHeight: 1.6 }}>
-          {t('circles.eyebrow')} — disponível no plano Família
-        </p>
-        <button onClick={() => alert('Upgrade de plano em breve!')} style={{ padding: '12px 28px', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: 12, color: '#22c55e', fontSize: 15, fontWeight: 650, cursor: 'pointer' }}>
-          Fazer upgrade para Família →
-        </button>
-      </main>
-    )
-  }
+  // Joining a circle you were invited to (code / QR / search) is available to
+  // everyone — being invited must never require a paid plan. Only CREATING a
+  // circle is gated to the Família tier.
+  const canCreateCircle = canAccess('circulos', plan)
 
   return (
     <main style={{ maxWidth: 920, margin: '0 auto', padding: '32px 20px', color: '#e6e6eb', fontFamily: 'system-ui, -apple-system, "SF Pro Text", "Segoe UI", sans-serif' }}>
@@ -404,16 +394,29 @@ export default function CirclesPage() {
       <section style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24 }}>
         <div style={{ border: '1px solid #222231', borderRadius: 10, padding: 14 }}>
           <div style={{ fontSize: 12, color: '#8a8a99', marginBottom: 8 }}>{t('circles.create')}</div>
-          <input
-            placeholder={t('circles.namePlaceholder')}
-            value={newName}
-            onChange={e => setNewName(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && create()}
-            style={{ width: '100%', padding: '8px 10px', background: '#0f0f17', color: '#e6e6eb', border: '1px solid #2a2a3a', borderRadius: 6, marginBottom: 8, boxSizing: 'border-box' }}
-          />
-          <button onClick={create} disabled={busy || !newName.trim()} style={{ padding: '8px 14px', background: busy ? '#2a2a3a' : '#22c55e', color: '#0a0a0f', border: 'none', borderRadius: 6, fontWeight: 600, cursor: busy ? 'default' : 'pointer' }}>
-            {t('circles.createAction')}
-          </button>
+          {canCreateCircle ? (
+            <>
+              <input
+                placeholder={t('circles.namePlaceholder')}
+                value={newName}
+                onChange={e => setNewName(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && create()}
+                style={{ width: '100%', padding: '8px 10px', background: '#0f0f17', color: '#e6e6eb', border: '1px solid #2a2a3a', borderRadius: 6, marginBottom: 8, boxSizing: 'border-box' }}
+              />
+              <button onClick={create} disabled={busy || !newName.trim()} style={{ padding: '8px 14px', background: busy ? '#2a2a3a' : '#22c55e', color: '#0a0a0f', border: 'none', borderRadius: 6, fontWeight: 600, cursor: busy ? 'default' : 'pointer' }}>
+                {t('circles.createAction')}
+              </button>
+            </>
+          ) : (
+            <div>
+              <p style={{ fontSize: 13, color: '#8a8a99', lineHeight: 1.5, margin: '0 0 10px' }}>
+                🔒 Criar um círculo faz parte do plano <strong style={{ color: '#e6e6eb' }}>Família</strong>. Entrar num círculo por convite é grátis — use o campo ao lado.
+              </p>
+              <button onClick={() => alert('Upgrade de plano em breve!')} style={{ padding: '8px 14px', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: 6, color: '#22c55e', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                Fazer upgrade →
+              </button>
+            </div>
+          )}
         </div>
         <div style={{ border: '1px solid #222231', borderRadius: 10, padding: 14 }}>
           <div style={{ fontSize: 12, color: '#8a8a99', marginBottom: 8 }}>{t('circles.join')}</div>
