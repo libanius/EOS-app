@@ -4,6 +4,18 @@
 
 ---
 
+## D-041 — Entrar num círculo por convite é grátis (só criar é gate Família)
+
+**Date**: 2026-07-08
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: A tela `/circles` inteira era bloqueada para o plano `free` (gate `circulos: 'family'`). Consequência: quem era **convidado** (e está no free) não conseguia nem inserir o código para aceitar o convite — teria que fazer upgrade só para entrar. Isso trava a viralização (o dono paga, mas cada convidado esbarra num paywall).
+
+**Decision**: **Entrar** num círculo (código, QR, busca por nome, pedir para entrar) e **ver** círculos dos quais já é membro passam a ser **grátis para todos**. Apenas **criar** um círculo permanece no plano Família. Na UI, o card "Criar" mostra prompt de upgrade para o free; o card "Entrar" fica sempre funcional. As rotas de API de join/requests nunca checaram plano (o gate era só de UI), então a mudança é só na página.
+
+**Consequence**: o modelo freemium fica: organizar/criar círculo = pago; ser convidado e participar = grátis. `circulos: 'family'` agora significa "criar". `qr_emergencia` e monitoramento multi-local seguem gated normalmente.
+---
+
 ## D-040 — Fluxo completo de adicionar membros (6 formas) + aprovação
 
 **Date**: 2026-07-05

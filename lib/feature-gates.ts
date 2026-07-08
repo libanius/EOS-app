@@ -26,7 +26,7 @@ export const FEATURE_GATES = {
   monitoring_history: 'premium',   // 30-day alert history
 
   // ── Circles ───────────────────────────────────────────────────────────────
-  circulos: 'family',              // Create or join a circle
+  circulos: 'family',              // CREATE a circle (D-041: joining an invite is free)
   circulos_multiplos: 'premium',   // Belong to more than one circle simultaneously
 
   // ── Ficha & identity ──────────────────────────────────────────────────────
