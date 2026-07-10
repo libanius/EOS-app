@@ -133,6 +133,7 @@ Confirm `SENTRY_DSN` is configured in Vercel and verify that a controlled produc
 | Upstash Redis not confirmed in Vercel | LOW | Vercel env vars | P1-T08 — rate limit falls back to in-memory without it |
 | SAMHSA_Tips 20 chunks skipped (null bytes) | LOW | knowledge_base | 49/69 chunks stored — non-critical |
 | `SUPABASE_SERVICE_ROLE_KEY` ausente no Vercel → `/ficha/[id]` e RAG quebrados | ✅ FIXED | Vercel env / `app/ficha/[id]`, `app/api/profile/ficha` | 2026-07-05 — D-035: env var adicionada + guardas defensivas |
+| Tela Círculos: conteúdo final escondido atrás da nav fixa + home indicator (iPhone); layout apertado | ✅ FIXED | `app/(app)/circles/page.tsx` | 2026-07-10 — `<main>` ganhou folga inferior `calc(96px + env(safe-area-inset-bottom))`; grade Criar/Entrar responsiva (`auto-fit`); mais respiro (padding/gaps). Padrão a replicar nas outras telas do app se necessário. |
 
 ---
 

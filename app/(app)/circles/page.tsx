@@ -359,8 +359,8 @@ export default function CirclesPage() {
   const canCreateCircle = canAccess('circulos', plan)
 
   return (
-    <main style={{ maxWidth: 920, margin: '0 auto', padding: '32px 20px', color: '#e6e6eb', fontFamily: 'system-ui, -apple-system, "SF Pro Text", "Segoe UI", sans-serif' }}>
-      <header style={{ marginBottom: 24 }}>
+    <main style={{ maxWidth: 920, margin: '0 auto', padding: 'clamp(20px, 5vw, 32px) clamp(16px, 5vw, 24px) calc(96px + env(safe-area-inset-bottom, 0px))', color: '#e6e6eb', fontFamily: 'system-ui, -apple-system, "SF Pro Text", "Segoe UI", sans-serif' }}>
+      <header style={{ marginBottom: 28 }}>
         <div style={{ fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', color: '#8a8a99' }}>
           {t('circles.eyebrow')}
         </div>
@@ -391,8 +391,8 @@ export default function CirclesPage() {
       )}
 
       {/* Create / join */}
-      <section style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24 }}>
-        <div style={{ border: '1px solid #222231', borderRadius: 10, padding: 14 }}>
+      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14, marginBottom: 28 }}>
+        <div style={{ border: '1px solid #222231', borderRadius: 10, padding: 16 }}>
           <div style={{ fontSize: 12, color: '#8a8a99', marginBottom: 8 }}>{t('circles.create')}</div>
           {canCreateCircle ? (
             <>
@@ -418,7 +418,7 @@ export default function CirclesPage() {
             </div>
           )}
         </div>
-        <div style={{ border: '1px solid #222231', borderRadius: 10, padding: 14 }}>
+        <div style={{ border: '1px solid #222231', borderRadius: 10, padding: 16 }}>
           <div style={{ fontSize: 12, color: '#8a8a99', marginBottom: 8 }}>{t('circles.join')}</div>
           <input
             placeholder="ABCDEF"
@@ -428,7 +428,7 @@ export default function CirclesPage() {
             maxLength={6}
             style={{ width: '100%', padding: '8px 10px', background: '#0f0f17', color: '#e6e6eb', border: '1px solid #2a2a3a', borderRadius: 6, marginBottom: 8, fontFamily: 'ui-monospace, Menlo, monospace', letterSpacing: 4, textTransform: 'uppercase', boxSizing: 'border-box' }}
           />
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <button onClick={join} disabled={busy || joinCode.length !== 6} style={{ padding: '8px 14px', background: busy || joinCode.length !== 6 ? '#2a2a3a' : '#3b82f6', color: busy || joinCode.length !== 6 ? '#8a8a99' : '#0a0a0f', border: 'none', borderRadius: 6, fontWeight: 600, cursor: busy || joinCode.length !== 6 ? 'default' : 'pointer' }}>
               {t('circles.joinAction')}
             </button>
@@ -440,7 +440,7 @@ export default function CirclesPage() {
       </section>
 
       {/* Search circles by name (request to join without a code) */}
-      <section style={{ border: '1px solid #222231', borderRadius: 10, padding: 14, marginBottom: 24 }}>
+      <section style={{ border: '1px solid #222231', borderRadius: 10, padding: 16, marginBottom: 28 }}>
         <div style={{ fontSize: 12, color: '#8a8a99', marginBottom: 8 }}>Encontrar um círculo por nome</div>
         <div style={{ display: 'flex', gap: 8 }}>
           <input
@@ -478,9 +478,9 @@ export default function CirclesPage() {
           {t('circles.empty')}
         </div>
       ) : (
-        <div style={{ display: 'grid', gap: 14 }}>
+        <div style={{ display: 'grid', gap: 18 }}>
           {circles.map(c => (
-            <article key={c.id} style={{ border: '1px solid #222231', borderRadius: 12, padding: 18 }}>
+            <article key={c.id} style={{ border: '1px solid #222231', borderRadius: 12, padding: 'clamp(16px, 4vw, 22px)' }}>
               {/* Header */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 14 }}>
                 <div>
