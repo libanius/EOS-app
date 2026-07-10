@@ -1,7 +1,7 @@
 # 09 — Build Status
 
 > The single most important file for resuming a session. Read this first after AGENTS.md.
-> Last updated: 2026-07-01
+> Last updated: 2026-07-10
 
 ---
 
@@ -15,7 +15,7 @@
 | | P2-T03: Family plan gate on circles + pooled inventory (2026-06-30)
 | | P2-T04: HouseholdHealthCard — stats + gap detection (2026-06-30)
 | | P2-T03: Per-field inventory sharing + shared_fields migration (2026-06-30) | | | | |
-| **Next Task** | P3-T04 Monetization gate needed. Weather Intelligence shipped. |
+| **Next Task** | P3-T04 Monetization gate needed (decisão do dono). Círculos/membros completos (D-040/D-041). |
 | **Build** | ✅ Passing — `npm run build` clean as of 2026-06-29 |
 | **Vercel** | ✅ Deployed — auto-deploys on push to `main` |
 | **Supabase** | ✅ Healthy — project ref `alxurmgpyxjhvnliivbf` |
@@ -379,6 +379,24 @@ To add a new knowledge source: drop PDF in `docs/`, re-run both commands.
 - `app/api/circles/[id]/monitoring` — parallel per-member geo monitoring
 
 **Pending before ship:**
-- Apply 3 migrations to Supabase: circle_action_plans, push_subscriptions, family_member_link
+- ~~Apply 3 migrations to Supabase: circle_action_plans, push_subscriptions, family_member_link~~ ✅ CONFIRMADAS APLICADAS 2026-07-10 (auditoria)
 - ~~Add VAPID keys to Vercel env vars~~ ✅ FEITO 2026-07-05 (D-036 — par novo em Prod+Preview)
 - P3-T04: Monetization gate — decision needed from owner
+
+---
+
+## What Was Done — Session 2026-07-08 (D-040/D-041 — fluxo de membros)
+
+**D-040** — as 6 formas de adicionar membro do doc 12 implementadas + aprovação de Admin (`circle_join_requests`): família manual, escanear ficha → cadastro, convite por código (agora vira pedido pendente), convite por QR, pedido por busca sem código, escanear ficha → convidar. Rotas `[id]/requests`, `[id]/requests/[reqId]`, `my-requests`; operações cross-user via service-role (`lib/supabase/admin.ts`) para evitar recursão de RLS. Scanner `html5-qrcode` + `lib/qr-parse.ts`. Corrigidos 2 bugs de RLS/embed (join member-only → 404; lista de membros vazia por embed `profiles` inválido). Verificado 19/19 E2E (`scripts/e2e-members.mjs`).
+
+**D-041** — entrar em círculo por convite (código/QR/busca) passou a ser **grátis para todos**; só **criar** círculo é gate Família. Mudança só na UI de `/circles` (as rotas de join nunca checaram plano). Desbloqueia viralização (convidado free não esbarra em paywall).
+
+---
+
+## What Was Done — Session 2026-07-10 (regressão + auditoria de migrações)
+
+**E2E de regressão contra produção** (`eos-app-fawn.vercel.app`): `full-journey.mjs` **31/31 ✅** e `e2e-members.mjs` **19/19 ✅**. Nada regrediu após D-040/D-041; provedores de weather (open-meteo/nws/usgs) todos `ok`, RAG/Decision Engine em streaming ok.
+
+**Auditoria de migrações** (via existência de tabela/coluna, service-role REST): `circle_action_plans`, `push_subscriptions`, `family_members.linked_user_id`, `circle_join_requests` → **todas ✅ aplicadas**. Único pendente: trigger `handle_new_user` (`20260705000000`) — **ainda ausente** (criar auth user não gera `profiles` sozinho), mas o self-heal `lib/ensure-profile.ts` (D-038) cobre; aplicar é otimização, não correção. Precisa SQL Editor (sem credencial de DB no ambiente do agente). Detalhes em `docs/11-product-memory.md` → "Migrações — auditoria de produção".
+
+**Próximo item de produto**: P3-T04 Monetização — `GATE NEEDED`, aguarda decisão do dono.

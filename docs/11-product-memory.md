@@ -183,11 +183,16 @@ Sentry is wired up (`sentry.client.config.ts`, `sentry.server.config.ts`, `sentr
 
 ---
 
-## Migrações Pendentes (aplicar no Supabase antes de usar em produção)
+## Migrações — auditoria de produção (2026-07-10)
 
-Estas migrações foram geradas mas podem não estar aplicadas:
-- `20260630000100_circle_action_plans.sql` — tabela `circle_action_plans`
-- `20260630000200_push_subscriptions.sql` — tabela `push_subscriptions`
-- `20260630000300_family_member_link.sql` — coluna `family_members.linked_user_id`
+Verificado por existência de tabela/coluna via service-role REST (`scripts/` ad-hoc):
+- ✅ `20260630000100_circle_action_plans.sql` — tabela `circle_action_plans` **APLICADA**
+- ✅ `20260630000200_push_subscriptions.sql` — tabela `push_subscriptions` **APLICADA**
+- ✅ `20260630000300_family_member_link.sql` — coluna `family_members.linked_user_id` **APLICADA**
+- ✅ `20260705000100` — tabela `circle_join_requests` (D-040) **APLICADA**
+- ❌ `20260705000000_auto_create_profile.sql` — trigger `handle_new_user` **AINDA AUSENTE**.
+  Confirmado: criar auth user sem chamar `/api/profile` NÃO gera linha `profiles` automaticamente.
+  **Não bloqueia produção** — `lib/ensure-profile.ts` (self-heal on-demand, D-038) garante o perfil em ficha/inventory/family/plan/analyze/checklist. Aplicar o trigger é otimização, não correção.
+  **Como aplicar** (precisa SQL Editor / credencial de DB — não há no ambiente do agente): colar o conteúdo de `supabase/migrations/20260705000000_auto_create_profile.sql` no Supabase Dashboard → SQL Editor.
 
 Verificar via Supabase Dashboard → SQL Editor: `SELECT name FROM supabase_migrations.schema_migrations ORDER BY name DESC LIMIT 5;`
