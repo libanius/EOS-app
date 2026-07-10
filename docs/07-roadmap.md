@@ -90,7 +90,7 @@
 | P3-T01 | Circle: share action plan with members | ✅ COMPLETE |
 | P3-T02 | Push notifications (emergency alerts from circle leaders) | ✅ COMPLETE |
 | P3-T03 | Multi-language support (i18n) | ✅ COMPLETE |
-| P3-T04 | Monetization: subscription model decision and implementation | GATE NEEDED |
+| P3-T04 | Monetization: subscription model decision and implementation | ✅ COMPLETE (código) — D-042; ativação depende de checklist do dono |
 | P3-T05 | Emergency contact sharing within circles | ✅ COMPLETE |
 | P3-T06 | Cross-device sync: Realtime + offline queue + snapshot cache | ✅ COMPLETE |
 

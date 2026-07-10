@@ -4,6 +4,34 @@
 
 ---
 
+## D-042 — Monetização (P3-T04): Stripe self-serve, preços via env, downgrade na expiração
+
+**Date**: 2026-07-10
+**Status**: DECIDED / IMPLEMENTADO (código pronto; ativação depende de checklist do dono)
+
+**Context**: Os 3 tiers (D-020) e o mapa completo de features→tier (`lib/feature-gates.ts`, D-021/D-025) já estavam prontos e sendo **lidos** em Settings/Círculos, mas **não existia caminho de escrita** para `profiles.plan` — nenhum código de cobrança. O botão "Fazer upgrade" só dava `alert(...)`. Sem isso, o freemium não gera receita e ninguém consegue subir de plano. Único item aberto do roadmap.
+
+**Decision** (confirmada pelo dono em 2026-07-10):
+1. **Provedor: Stripe.** Checkout hospedado + Billing Portal (usuário gerencia/cancela sozinho) + webhooks como fonte de verdade. Cartão internacional; Pix fica para depois via parceiro.
+2. **Escopo: self-serve completo.** Checkout → webhook escreve `profiles.plan` automaticamente → Portal para gerenciar → **downgrade para `free` quando a assinatura expira/cancela**.
+3. **Preços via env var (Price IDs).** O código referencia `STRIPE_PRICE_FAMILY` e `STRIPE_PRICE_PREMIUM`; o dono cria produtos/preços (valor, moeda, mensal/anual) no Stripe Dashboard. Nenhum valor hardcoded — trocar preço = trocar env var, sem deploy de código.
+
+**Implementação**:
+- **DB** (`supabase/migrations/20260710000000_stripe_billing.sql`): `profiles` ganha `stripe_customer_id`, `stripe_subscription_id`, `plan_status`, `plan_current_period_end`. **Precisa ser aplicada no SQL Editor** (sem credencial de DB no ambiente do agente — mesmo padrão de D-038).
+- **`lib/stripe.ts`**: client server-only (`getStripe()` → null se sem chave, degrada limpo); `planForPriceId()` (reverse map preço→plano) e `priceIdForPlan()`.
+- **Rotas**: `POST /api/billing/checkout` (cria/reusa customer, abre Checkout Session), `POST /api/billing/portal` (abre Billing Portal), `POST /api/billing/webhook` (verifica assinatura com `STRIPE_WEBHOOK_SECRET`, raw body, escreve plano via service-role em `checkout.session.completed` / `customer.subscription.updated` / `.deleted`).
+- **UI**: Settings — botão de upgrade abre Checkout; botão "Gerenciar assinatura" (Portal) quando plano ≠ free; trata retorno `?billing=success|cancelled`.
+
+**Checklist de ativação (dono)** — feature fica inerte (503) até:
+1. Aplicar a migration no Supabase SQL Editor.
+2. Criar 2 produtos/preços recorrentes no Stripe → copiar os Price IDs.
+3. Setar no Vercel (Prod+Preview): `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_FAMILY`, `STRIPE_PRICE_PREMIUM`.
+4. Registrar o endpoint de webhook no Stripe: `https://eos-app-fawn.vercel.app/api/billing/webhook` (eventos: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`).
+5. Redeploy.
+
+**Consequence**: com o checklist feito, qualquer usuário faz upgrade/downgrade sozinho e o plano reflete a assinatura real. `profiles.plan` deixa de ser manual. Enquanto o checklist não roda, as rotas degradam para 503 e a UI mantém o estado atual (nada quebra).
+---
+
 ## D-041 — Entrar num círculo por convite é grátis (só criar é gate Família)
 
 **Date**: 2026-07-08

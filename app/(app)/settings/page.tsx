@@ -60,6 +60,8 @@ export default function SettingsPage() {
   const [pushBusy, setPushBusy] = useState(false)
   const [email, setEmail] = useState<string | null>(null)
   const [busy, setBusy] = useState<null | 'logout' | 'delete'>(null)
+  const [billingBusy, setBillingBusy] = useState<null | Plan | 'portal'>(null)
+  const [billingMsg, setBillingMsg] = useState<'success' | 'cancelled' | null>(null)
 
   useEffect(() => {
     fetch('/api/profile/plan')
@@ -73,6 +75,54 @@ export default function SettingsPage() {
       .then(({ data }) => setEmail(data.user?.email ?? null))
       .catch(() => {})
   }, [])
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const b = params.get('billing')
+    if (b === 'success' || b === 'cancelled') {
+      setBillingMsg(b)
+      // Clean the URL so a refresh doesn't re-show the banner.
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+  }, [])
+
+  const handleCheckout = async (targetPlan: Plan) => {
+    setBillingBusy(targetPlan)
+    try {
+      const res = await fetch('/api/billing/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan: targetPlan }),
+      })
+      const d = await res.json().catch(() => ({}))
+      if (res.ok && d.url) {
+        window.location.href = d.url
+        return
+      }
+      alert((en ? 'Could not start checkout: ' : 'Não foi possível iniciar o pagamento: ') + (d.error ?? res.status))
+    } catch {
+      alert(en ? 'Network error.' : 'Erro de rede.')
+    } finally {
+      setBillingBusy(null)
+    }
+  }
+
+  const handlePortal = async () => {
+    setBillingBusy('portal')
+    try {
+      const res = await fetch('/api/billing/portal', { method: 'POST' })
+      const d = await res.json().catch(() => ({}))
+      if (res.ok && d.url) {
+        window.location.href = d.url
+        return
+      }
+      alert((en ? 'Could not open billing portal: ' : 'Não foi possível abrir o portal: ') + (d.error ?? res.status))
+    } catch {
+      alert(en ? 'Network error.' : 'Erro de rede.')
+    } finally {
+      setBillingBusy(null)
+    }
+  }
 
   const handleLogout = async () => {
     setBusy('logout')
@@ -209,12 +259,37 @@ export default function SettingsPage() {
             })}
           </div>
 
-          {userPlan !== 'premium' && (
-            <button
-              style={styles.upgradeBtn}
-              onClick={() => alert(t('settings.planUpgradeHint'))}
-            >
-              {t('settings.planUpgrade')} →
+          {billingMsg && (
+            <div style={{ ...styles.billingBanner, ...(billingMsg === 'success' ? styles.billingSuccess : styles.billingCancelled) }}>
+              {billingMsg === 'success' ? t('settings.billingSuccess') : t('settings.billingCancelled')}
+            </div>
+          )}
+
+          {userPlan === 'free' && (
+            <div style={{ display: 'grid', gap: 10 }}>
+              <button style={styles.upgradeBtn} disabled={billingBusy !== null} onClick={() => handleCheckout('family')}>
+                {billingBusy === 'family' ? (en ? 'Redirecting…' : 'Redirecionando…') : `${t('settings.planUpgrade')} · ${t('settings.planFamily')} →`}
+              </button>
+              <button style={{ ...styles.upgradeBtn, background: 'rgba(245,158,11,0.1)', borderColor: 'rgba(245,158,11,0.3)', color: '#f59e0b' }} disabled={billingBusy !== null} onClick={() => handleCheckout('premium')}>
+                {billingBusy === 'premium' ? (en ? 'Redirecting…' : 'Redirecionando…') : `${t('settings.planUpgrade')} · ${t('settings.planPremium')} →`}
+              </button>
+            </div>
+          )}
+
+          {userPlan === 'family' && (
+            <div style={{ display: 'grid', gap: 10 }}>
+              <button style={{ ...styles.upgradeBtn, background: 'rgba(245,158,11,0.1)', borderColor: 'rgba(245,158,11,0.3)', color: '#f59e0b' }} disabled={billingBusy !== null} onClick={() => handleCheckout('premium')}>
+                {billingBusy === 'premium' ? (en ? 'Redirecting…' : 'Redirecionando…') : `${t('settings.planUpgrade')} · ${t('settings.planPremium')} →`}
+              </button>
+              <button style={{ ...styles.accountBtn, justifyContent: 'center' }} disabled={billingBusy !== null} onClick={handlePortal}>
+                {billingBusy === 'portal' ? (en ? 'Opening…' : 'Abrindo…') : t('settings.planManage')}
+              </button>
+            </div>
+          )}
+
+          {userPlan === 'premium' && (
+            <button style={{ ...styles.accountBtn, justifyContent: 'center' }} disabled={billingBusy !== null} onClick={handlePortal}>
+              {billingBusy === 'portal' ? (en ? 'Opening…' : 'Abrindo…') : t('settings.planManage')}
             </button>
           )}
         </div>
@@ -317,6 +392,9 @@ const styles: Record<string, React.CSSProperties> = {
   featureNameLocked: { color: '#52525b' },
   featurePlan: { fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', flexShrink: 0 },
   upgradeBtn: { width: '100%', padding: '14px 24px', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: 14, color: '#22c55e', fontSize: 15, fontWeight: 650, cursor: 'pointer', letterSpacing: '-0.01em' },
+  billingBanner: { padding: '12px 16px', borderRadius: 14, fontSize: 14, fontWeight: 600, marginBottom: 16, border: '1px solid' },
+  billingSuccess: { background: 'rgba(34,197,94,0.1)', borderColor: 'rgba(34,197,94,0.35)', color: '#22c55e' },
+  billingCancelled: { background: 'rgba(245,158,11,0.1)', borderColor: 'rgba(245,158,11,0.35)', color: '#f59e0b' },
   accountRow: { display: 'flex', flexDirection: 'column', gap: 4, padding: '12px 16px', background: '#111116', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 14, marginBottom: 16 },
   accountLabel: { color: '#71717a', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' },
   accountValue: { color: '#f5f5f5', fontSize: 15, fontWeight: 600, wordBreak: 'break-all' },

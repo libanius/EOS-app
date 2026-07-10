@@ -173,6 +173,18 @@ Sentry is wired up (`sentry.client.config.ts`, `sentry.server.config.ts`, `sentr
 
 ---
 
+## Billing / Stripe (D-042)
+
+- **Provedor**: Stripe. Self-serve: Checkout hospedado + Billing Portal + webhook como **fonte de verdade** de `profiles.plan`.
+- **Preços NÃO são hardcoded**: `STRIPE_PRICE_FAMILY` / `STRIPE_PRICE_PREMIUM` (Price IDs) em env var. `lib/stripe.ts` faz o mapa preço↔plano nos dois sentidos. Trocar preço = trocar env var, sem deploy de código.
+- **Fluxo**: `/api/billing/checkout` (POST `{plan}`) cria/reusa customer e abre Checkout → usuário paga → Stripe chama `/api/billing/webhook` → webhook escreve `profiles.plan` via service-role. `/api/billing/portal` abre o portal (gerenciar/cancelar). Downgrade → `free` em `customer.subscription.deleted` ou status não-ativo.
+- **Webhook**: usa `req.text()` (raw body) + `stripe.webhooks.constructEvent` com `STRIPE_WEBHOOK_SECRET`. `runtime = 'nodejs'`. Resolve o perfil por `metadata.user_id` (preferido) ou `stripe_customer_id`.
+- **Degrada limpo**: sem `STRIPE_SECRET_KEY`/secret, todas as rotas respondem **503** (não crasham) — a UI mantém o estado atual. Verificado local.
+- **Ativação (dono)** — checklist em D-042: aplicar migration `20260710000000_stripe_billing.sql`, criar 2 produtos/preços no Stripe, setar as 4 env vars no Vercel, registrar o endpoint de webhook, redeploy.
+- **`profiles.plan`** continua sendo o único campo que o resto do app lê (gates via `lib/feature-gates.ts`). As colunas novas (`stripe_customer_id` etc.) são só para reconciliação/portal.
+
+---
+
 ## Contratos de API (fáceis de errar em testes)
 
 - `POST /api/checklist/generate` → `{ok:true, count:N}` (NÃO retorna os items; buscar via `GET /api/checklist`)
@@ -190,6 +202,7 @@ Verificado por existência de tabela/coluna via service-role REST (`scripts/` ad
 - ✅ `20260630000200_push_subscriptions.sql` — tabela `push_subscriptions` **APLICADA**
 - ✅ `20260630000300_family_member_link.sql` — coluna `family_members.linked_user_id` **APLICADA**
 - ✅ `20260705000100` — tabela `circle_join_requests` (D-040) **APLICADA**
+- ❌ `20260710000000_stripe_billing.sql` — colunas Stripe em `profiles` (D-042) **PENDENTE** (aplicar no SQL Editor; até lá o webhook não tem onde gravar e o upgrade não persiste).
 - ❌ `20260705000000_auto_create_profile.sql` — trigger `handle_new_user` **AINDA AUSENTE**.
   Confirmado: criar auth user sem chamar `/api/profile` NÃO gera linha `profiles` automaticamente.
   **Não bloqueia produção** — `lib/ensure-profile.ts` (self-heal on-demand, D-038) garante o perfil em ficha/inventory/family/plan/analyze/checklist. Aplicar o trigger é otimização, não correção.

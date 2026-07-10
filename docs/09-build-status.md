@@ -194,6 +194,10 @@ To add a new knowledge source: drop PDF in `docs/`, re-run both commands.
 | `UPSTASH_REDIS_REST_URL` | Rate limiting (production) | ⚠️ Not confirmed in Vercel |
 | `UPSTASH_REDIS_REST_TOKEN` | Rate limiting (production) | ⚠️ Not confirmed — falls back to in-memory |
 | `SENTRY_DSN` | Error monitoring | ⚠️ Not confirmed — errors silently dropped without it |
+| `STRIPE_SECRET_KEY` | Stripe billing (checkout/portal/webhook) | ⚠️ AUSENTE — rotas de billing degradam para 503 até setar (D-042) |
+| `STRIPE_WEBHOOK_SECRET` | Verificação de assinatura do webhook | ⚠️ AUSENTE — webhook responde 503 sem ela (D-042) |
+| `STRIPE_PRICE_FAMILY` | Price ID do plano Família | ⚠️ AUSENTE — checkout do Família responde 503 (D-042) |
+| `STRIPE_PRICE_PREMIUM` | Price ID do plano Premium | ⚠️ AUSENTE — checkout do Premium responde 503 (D-042) |
 
 ---
 
@@ -399,4 +403,19 @@ To add a new knowledge source: drop PDF in `docs/`, re-run both commands.
 
 **Auditoria de migrações** (via existência de tabela/coluna, service-role REST): `circle_action_plans`, `push_subscriptions`, `family_members.linked_user_id`, `circle_join_requests` → **todas ✅ aplicadas**. Único pendente: trigger `handle_new_user` (`20260705000000`) — **ainda ausente** (criar auth user não gera `profiles` sozinho), mas o self-heal `lib/ensure-profile.ts` (D-038) cobre; aplicar é otimização, não correção. Precisa SQL Editor (sem credencial de DB no ambiente do agente). Detalhes em `docs/11-product-memory.md` → "Migrações — auditoria de produção".
 
-**Próximo item de produto**: P3-T04 Monetização — `GATE NEEDED`, aguarda decisão do dono.
+**Próximo item de produto**: P3-T04 Monetização — decisão tomada nesta sessão (ver abaixo).
+
+---
+
+## What Was Done — Session 2026-07-10 (cont. — P3-T04 Monetização / D-042)
+
+**Stripe self-serve implementado** (código pronto; ativação depende de checklist do dono). Antes: tiers e feature-gates prontos, mas `profiles.plan` sem caminho de escrita (botão de upgrade só dava `alert`). Agora:
+- **Migration** `20260710000000_stripe_billing.sql`: `profiles` ganha `stripe_customer_id`, `stripe_subscription_id`, `plan_status`, `plan_current_period_end` (+ índice). **Aplicar no SQL Editor** (sem credencial de DB no ambiente).
+- **`lib/stripe.ts`**: `getStripe()` (null → 503), `priceIdForPlan()`, `planForPriceId()`, `isActiveStatus()`.
+- **Rotas**: `POST /api/billing/checkout` (Checkout Session, cria/reusa customer), `POST /api/billing/portal` (Billing Portal), `POST /api/billing/webhook` (raw body + verificação de assinatura, escreve plano via service-role em `checkout.session.completed` / `customer.subscription.*`; downgrade → free ao cancelar/expirar).
+- **UI Settings**: botões de upgrade abrem Checkout (Família/Premium); "Gerenciar assinatura" abre Portal p/ quem já paga; banner de retorno `?billing=success|cancelled`. i18n PT/EN.
+- **Dep**: `stripe@^22`.
+
+**Verificação**: `tsc --noEmit` limpo; `npm run build` limpo (3 rotas de billing presentes); teste local confirmou **degrade gracioso**: `/api/billing/webhook` e `/api/billing/checkout` respondem **503** sem chaves (não crasham). Fluxo E2E de pagamento real não testado (precisa das chaves Stripe do dono).
+
+**Checklist de ativação (dono)** — em D-042: (1) aplicar migration no SQL Editor; (2) criar 2 produtos/preços recorrentes no Stripe; (3) setar `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_FAMILY`, `STRIPE_PRICE_PREMIUM` no Vercel; (4) registrar webhook `…/api/billing/webhook` (eventos `checkout.session.completed`, `customer.subscription.updated|deleted`); (5) redeploy.
