@@ -15,7 +15,7 @@
 | | P2-T03: Family plan gate on circles + pooled inventory (2026-06-30)
 | | P2-T04: HouseholdHealthCard — stats + gap detection (2026-06-30)
 | | P2-T03: Per-field inventory sharing + shared_fields migration (2026-06-30) | | | | |
-| **Next Task** | P3-T04 Monetization gate needed (decisão do dono). Círculos/membros completos (D-040/D-041). |
+| **Next Task** | ⚠️ **Ações do dono pendentes em `docs/PENDENCIAS-DONO.md`** — Stripe (migration + 4 env vars + webhook), chaves de hazard (WeatherKit/Xweather/etc.), migrations no SQL Editor. |
 | **Build** | ✅ Passing — `npm run build` clean as of 2026-06-29 |
 | **Vercel** | ✅ Deployed — auto-deploys on push to `main` |
 | **Supabase** | ✅ Healthy — project ref `alxurmgpyxjhvnliivbf` |
@@ -405,6 +405,13 @@ To add a new knowledge source: drop PDF in `docs/`, re-run both commands.
 **Auditoria de migrações** (via existência de tabela/coluna, service-role REST): `circle_action_plans`, `push_subscriptions`, `family_members.linked_user_id`, `circle_join_requests` → **todas ✅ aplicadas**. Único pendente: trigger `handle_new_user` (`20260705000000`) — **ainda ausente** (criar auth user não gera `profiles` sozinho), mas o self-heal `lib/ensure-profile.ts` (D-038) cobre; aplicar é otimização, não correção. Precisa SQL Editor (sem credencial de DB no ambiente do agente). Detalhes em `docs/11-product-memory.md` → "Migrações — auditoria de produção".
 
 **Próximo item de produto**: P3-T04 Monetização — decisão tomada nesta sessão (ver abaixo).
+
+---
+
+## What Was Done — Session 2026-07-10 (cont. — UI Weather adaptada ao hazard subsystem + pendências)
+
+- **Tela Weather Intelligence** (`app/(app)/weather/page.tsx`) agora consome `/api/hazards` além de `/api/weather-intelligence`: mostra o componente **Live Intelligence Network** no topo, um card de **Rain Nowcast** (frase honesta: "prevista para começar em ~X min"), e **eventos classificados** (OFFICIAL WARNING / WATCH / ADVISORY / DETECTED EVENT / FORECAST) substituindo a lista de alertas otimista. O rodapé "Data Sources" deixou de mostrar `providers: ok` otimista e aponta para o estado real da rede. Terremotos antigos viram fallback (agora aparecem como DETECTED EVENT). Build/lint/tsc limpos.
+- **`docs/PENDENCIAS-DONO.md`** criado — checklist consolidado, marcado **PENDENTE**, com tudo que o dono precisa fazer: Stripe (migration + 4 env vars + webhook), chaves dos providers de hazard (WeatherKit, AccuWeather, Xweather, ShakeAlert, FEMA IPAWS) e as 3 migrations a aplicar no SQL Editor.
 
 ---
 

@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { ACTIVITIES, CATEGORY_LABELS, generateRecommendations } from '@/lib/weather/engine'
 import { KITS } from '@/lib/checklist'
 import type { WeatherSnapshot, ActivityId, ActivityCategory, WeatherRecommendation, RiskLevel } from '@/lib/weather/types'
+import LiveIntelligenceNetwork from '@/components/LiveIntelligenceNetwork'
+import type { HazardEvent, HazardClass, UpcomingPrecipitationResult, HazardNetworkSnapshot } from '@/lib/hazards/types'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -22,6 +24,21 @@ const RISK_BG: Record<RiskLevel, string> = {
 }
 const RISK_LABEL: Record<RiskLevel, string> = {
   low: 'LOW', medium: 'MEDIUM', high: 'HIGH', critical: 'CRITICAL',
+}
+
+// Visual classification (D-043) — official warnings must read differently from
+// detected events, forecasts, and EOS analysis.
+const HAZARD_CLASS_META: Record<HazardClass, { label: string; color: string }> = {
+  OFFICIAL_WARNING: { label: 'OFFICIAL WARNING', color: '#ff6b6b' },
+  WATCH:            { label: 'WATCH',            color: '#ffb347' },
+  ADVISORY:         { label: 'ADVISORY',         color: '#7c6bff' },
+  DETECTED_EVENT:   { label: 'DETECTED EVENT',   color: '#56c2e6' },
+  FORECAST:         { label: 'FORECAST',         color: '#8b9dff' },
+  EOS_RISK_ANALYSIS:{ label: 'EOS RISK ANALYSIS',color: '#00e5a0' },
+}
+
+const PRECIP_INTENSITY_LABEL: Record<string, string> = {
+  none: '', light: 'leve', moderate: 'moderada', heavy: 'forte',
 }
 
 const CATEGORIES: ActivityCategory[] = [
@@ -141,8 +158,68 @@ function RecommendationCard({ rec, onSave }: { rec: WeatherRecommendation; onSav
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
+// ─── Rain nowcast card (D-043) ────────────────────────────────────────────────
+
+const CONFIDENCE_LABEL: Record<string, string> = { low: 'baixa', medium: 'média', high: 'alta' }
+
+function RainNowcast({ precip }: { precip: UpcomingPrecipitationResult | null }) {
+  if (!precip || precip.eventType === 'no_precipitation') return null
+  const cyan = '#56c2e6'
+  const prob = Math.round(precip.probability * 100)
+  const intensity = PRECIP_INTENSITY_LABEL[precip.intensity] || ''
+  let title: string
+  if (precip.eventType === 'rain_starting_soon') {
+    title = `Chuva prevista para começar em aproximadamente ${precip.startsInMinutes} minutos.`
+  } else if (precip.eventType === 'rain_ongoing') {
+    title = `Chuva em andamento${precip.expectedDurationMinutes ? ` — deve durar cerca de ${precip.expectedDurationMinutes} min` : ''}.`
+  } else {
+    title = 'Chuva diminuindo nos próximos minutos.'
+  }
+  return (
+    <div style={{ background: 'rgba(86,194,230,0.08)', border: `1px solid ${cyan}44`, borderRadius: 12, padding: '10px 14px', marginBottom: 12 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
+        <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.1em', color: cyan }}>RAIN NOWCAST</span>
+        <span style={{ fontSize: 10, color: '#71717a', fontFamily: "'DM Mono', ui-monospace, monospace" }}>{precip.source}</span>
+      </div>
+      <p style={{ margin: 0, fontSize: 13, color: '#f0f0f8', fontWeight: 600, lineHeight: 1.4 }}>{title}</p>
+      <p style={{ margin: '4px 0 0', fontSize: 11, color: '#a1a1aa' }}>
+        {intensity && `Intensidade ${intensity} · `}{prob}% de probabilidade · confiança {CONFIDENCE_LABEL[precip.confidence] ?? precip.confidence}
+      </p>
+    </div>
+  )
+}
+
+// ─── Classified hazard event card (D-043) ──────────────────────────────────────
+
+function HazardEventCard({ ev }: { ev: HazardEvent }) {
+  const meta = HAZARD_CLASS_META[ev.visualClass] ?? HAZARD_CLASS_META.ADVISORY
+  return (
+    <div style={{ background: `${meta.color}12`, border: `1px solid ${meta.color}44`, borderRadius: 10, padding: '10px 14px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+        <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.08em', color: meta.color }}>
+          {meta.label}
+          <span style={{ color: '#71717a', fontWeight: 600, marginLeft: 6, textTransform: 'uppercase' }}>· {ev.source}</span>
+        </span>
+        <span style={{ fontSize: 10, color: '#71717a', flexShrink: 0 }}>
+          {ev.distanceMiles != null ? `~${Math.round(ev.distanceMiles)} mi` : ev.expiresAt ? `expira ${fmtTime(ev.expiresAt)}` : ''}
+        </span>
+      </div>
+      <p style={{ margin: 0, fontSize: 13, color: '#f0f0f8', fontWeight: 600, lineHeight: 1.4 }}>{ev.title}</p>
+      {ev.summary && ev.summary !== ev.title && (
+        <p style={{ margin: '3px 0 0', fontSize: 11, color: '#a1a1aa', lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{ev.summary}</p>
+      )}
+      {ev.officialUrl && (
+        <a href={ev.officialUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10, color: meta.color, fontWeight: 700, textDecoration: 'none', display: 'inline-block', marginTop: 4 }}>
+          Fonte oficial →
+        </a>
+      )}
+    </div>
+  )
+}
+
 export default function WeatherPage() {
   const [snapshot, setSnapshot] = useState<WeatherSnapshot | null>(null)
+  const [hazards, setHazards] = useState<HazardNetworkSnapshot | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null)
@@ -194,9 +271,14 @@ export default function WeatherPage() {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch(`/api/weather-intelligence?lat=${lat}&lng=${lng}`)
-      if (!res.ok) { setError('Could not load weather data.'); return }
-      setSnapshot(await res.json())
+      // Rich forecast (existing) + unified hazard network (new, D-043) in parallel.
+      const [wRes, hRes] = await Promise.all([
+        fetch(`/api/weather-intelligence?lat=${lat}&lng=${lng}`),
+        fetch(`/api/hazards?lat=${lat}&lng=${lng}`).catch(() => null),
+      ])
+      if (!wRes.ok) { setError('Could not load weather data.'); return }
+      setSnapshot(await wRes.json())
+      if (hRes && hRes.ok) setHazards(await hRes.json())
     } catch { setError('Network error.') } finally { setLoading(false) }
   }, [])
 
@@ -318,19 +400,36 @@ export default function WeatherPage() {
 
       {error && <div style={{ background: 'rgba(255,107,107,0.1)', border: '1px solid rgba(255,107,107,0.3)', borderRadius: 10, padding: '10px 14px', marginBottom: 12, fontSize: 13, color: '#ff8c8c' }}>⚠ {error}</div>}
 
-      {/* ── Active Alerts ── */}
-      {(snapshot?.alerts ?? []).length > 0 && (
-        <div style={{ marginBottom: 12 }}>
-          {snapshot!.alerts.map((alert, i) => (
-            <div key={i} style={{ background: RISK_BG[alert.severity === 'CRITICAL' ? 'critical' : alert.severity === 'HIGH' ? 'high' : 'medium'], border: `1px solid ${RISK_COLOR[alert.severity === 'CRITICAL' ? 'critical' : alert.severity === 'HIGH' ? 'high' : 'medium']}44`, borderRadius: 10, padding: '10px 14px', marginBottom: 6 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
-                <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.1em', color: RISK_COLOR[alert.severity === 'CRITICAL' ? 'critical' : 'high'] }}>{alert.source} ALERT</span>
-                {alert.expires && <span style={{ fontSize: 10, color: '#71717a' }}>Expires {fmtTime(alert.expires)}</span>}
-              </div>
-              <p style={{ margin: 0, fontSize: 13, color: '#f0f0f8', fontWeight: 600, lineHeight: 1.4 }}>{alert.headline}</p>
-            </div>
+      {/* ── Live Intelligence Network (D-043) — real multi-channel status ── */}
+      <div style={{ marginBottom: 12 }}>
+        <LiveIntelligenceNetwork lat={coords?.lat ?? null} lng={coords?.lng ?? null} />
+      </div>
+
+      {/* ── Rain Nowcast (D-043) — honest, never absolute ── */}
+      <RainNowcast precip={hazards?.precipitation ?? null} />
+
+      {/* ── Unified hazard events (classified official vs detected vs forecast) ── */}
+      {hazards && hazards.events.length > 0 ? (
+        <div style={{ marginBottom: 12, display: 'grid', gap: 6 }}>
+          {hazards.events.slice(0, 6).map(ev => (
+            <HazardEventCard key={ev.id} ev={ev} />
           ))}
         </div>
+      ) : (
+        // Fallback to the legacy alert list only if the hazard network is unavailable.
+        (snapshot?.alerts ?? []).length > 0 && (
+          <div style={{ marginBottom: 12 }}>
+            {snapshot!.alerts.map((alert, i) => (
+              <div key={i} style={{ background: RISK_BG[alert.severity === 'CRITICAL' ? 'critical' : alert.severity === 'HIGH' ? 'high' : 'medium'], border: `1px solid ${RISK_COLOR[alert.severity === 'CRITICAL' ? 'critical' : alert.severity === 'HIGH' ? 'high' : 'medium']}44`, borderRadius: 10, padding: '10px 14px', marginBottom: 6 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+                  <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.1em', color: RISK_COLOR[alert.severity === 'CRITICAL' ? 'critical' : 'high'] }}>{alert.source} ALERT</span>
+                  {alert.expires && <span style={{ fontSize: 10, color: '#71717a' }}>Expires {fmtTime(alert.expires)}</span>}
+                </div>
+                <p style={{ margin: 0, fontSize: 13, color: '#f0f0f8', fontWeight: 600, lineHeight: 1.4 }}>{alert.headline}</p>
+              </div>
+            ))}
+          </div>
+        )
       )}
 
       {/* ── Current Conditions Card ── */}
@@ -425,8 +524,8 @@ export default function WeatherPage() {
         </div>
       )}
 
-      {/* ── Earthquakes ── */}
-      {(snapshot?.earthquakes ?? []).length > 0 && (
+      {/* ── Earthquakes (fallback only — otherwise shown as classified hazard events) ── */}
+      {!hazards && (snapshot?.earthquakes ?? []).length > 0 && (
         <div style={{ background: 'rgba(255,107,107,0.06)', border: '1px solid rgba(255,107,107,0.2)', borderRadius: 12, padding: '10px 14px', marginBottom: 12 }}>
           <p style={{ margin: '0 0 6px', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: '#ff8c8c', textTransform: 'uppercase' }}>🌍 Nearby Earthquakes (last 24h)</p>
           {snapshot!.earthquakes.map((eq, i) => (
@@ -600,17 +699,16 @@ export default function WeatherPage() {
         </div>
       )}
 
-      {/* Provider status footer */}
+      {/* Data sources — real per-channel status lives in the Live Intelligence
+          Network at the top of this screen (honest states, not optimistic). */}
       {snapshot && (
         <div style={{ marginTop: 20, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
           <p style={{ margin: '0 0 6px', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: '#4b4b6a', textTransform: 'uppercase' }}>Data Sources</p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {Object.entries(snapshot.providers).map(([name, status]) => (
-              <span key={name} style={{ fontSize: 10, color: status === 'ok' ? '#71717a' : '#ff6b6b', padding: '2px 8px', background: 'rgba(255,255,255,0.04)', borderRadius: 4 }}>
-                {status === 'ok' ? '✓' : '✗'} {name}
-              </span>
-            ))}
-          </div>
+          <p style={{ margin: 0, fontSize: 11, color: '#71717a', lineHeight: 1.5 }}>
+            {hazards
+              ? `${hazards.network.liveCount}/${hazards.network.totalChannels} canais ao vivo · ${hazards.network.headline.toLowerCase()}. Toque em “Live Intelligence Network” acima para ver o estado real de cada fonte.`
+              : 'Estado por canal disponível no “Live Intelligence Network” no topo desta tela.'}
+          </p>
         </div>
       )}
 
