@@ -4,6 +4,26 @@
 
 ---
 
+## D-043 — Rede de inteligência de riscos: subsistema `lib/hazards/` desacoplado + honestidade de estado
+
+**Date**: 2026-07-10
+**Status**: DECIDED / IMPLEMENTADO (fundação); Fase 2 (persistência + push por hazard) deferida e documentada
+
+**Context**: Pedido de auditoria completa das integrações meteorológicas/emergência e implementação das ausentes (WeatherKit, nowcast, NHC, raios, IPAWS, ShakeAlert) + um componente visual "Live Intelligence Network" com estado real. Auditoria (`docs/hazard-data-integrations-audit.md`) confirmou: previsão real é Open-Meteo (não WeatherKit), NWS/USGS parciais, NHC/raios/IPAWS/ShakeAlert/nowcast ausentes, push só manual.
+
+**Decision**:
+1. **Subsistema novo e aditivo** em `lib/hazards/` — não altera `lib/monitor.ts` nem `lib/weather/` (não quebrar o existente).
+2. **Modelo unificado `HazardEvent`** + interfaces desacopladas por provider.
+3. **Providers reais keyless**: NWS (normalização completa + dedup), USGS (distância/tsunami/relevância), NHC (`CurrentStorms.json`), Open-Meteo `minutely_15` (nowcast).
+4. **Adapters `NOT_CONFIGURED`** para WeatherKit/AccuWeather/Xweather/ShakeAlert/FEMA IPAWS — interface + env + flag, **sem chamada falsa, sem chave fake, sem "connected" simulado**.
+5. **Honestidade de estado** (`aggregateNetworkStatus`): "ALL SYSTEMS LIVE" só quando todo canal obrigatório+configurado está `live` e nenhum em fallback. Estado atual real: `USING BACKUP WEATHER SOURCE` (WeatherKit ausente → Open-Meteo).
+6. **Componente `LiveIntelligenceNetwork`** na tela Cenário (rotativo, reduce-motion, expansível), consumindo `GET /api/hazards`.
+7. **Segredos só no servidor** (`lib/hazards/env.ts`); thresholds centralizados (`config.ts`).
+8. **Deferido**: persistência (migration `20260710010000_hazard_tables.sql` com RLS, a aplicar) e automação de push por hazard.
+
+**Consequence**: EOS passa a ter uma central multi-fonte com status verificável e classificação visual que separa alerta oficial de análise do EOS. Ativar um provider comercial = preencher env vars + implementar o branch real do adapter (ver `hazard-provider-setup.md`). 41 testes passam; build/lint/types limpos.
+---
+
 ## D-042 — Monetização (P3-T04): Stripe self-serve, preços via env, downgrade na expiração
 
 **Date**: 2026-07-10

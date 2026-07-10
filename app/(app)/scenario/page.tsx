@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useLanguage, type Language, type MessageKey } from '@/lib/i18n'
 import { useRouter } from 'next/navigation'
+import LiveIntelligenceNetwork from '@/components/LiveIntelligenceNetwork'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -878,6 +879,9 @@ export default function ScenarioPage() {
         >
           {/* ── LEFT: Configuration ── */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* Live Intelligence Network — real-time multi-channel status */}
+            <LiveIntelligenceNetwork lat={coords?.lat ?? null} lng={coords?.lng ?? null} />
+
             {/* Monitoring Panel */}
             <MonitoringPanel
               lat={coords?.lat ?? null}
