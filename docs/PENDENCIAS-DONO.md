@@ -3,6 +3,24 @@
 > Status geral: **PENDENTE**. O código está pronto e no ar (auto-deploy), mas estas ações dependem de credenciais/console que o agente não tem acesso. Enquanto não forem feitas, os recursos abaixo ficam inertes/degradados de forma **honesta** (nada quebra, nada finge estar conectado).
 > Última atualização: 2026-07-10.
 
+> **Por que o agente não aplica isto sozinho** (verificado em 2026-07-10): o projeto Supabase do EOS (`alxurmgpyxjhvnliivbf`) **não pertence à conta autenticada no CLI** deste ambiente (essa conta só enxerga BrightScaleWeb / bolt-native / Abre-USA), e não há connection string, DB password nem access token do Supabase no ambiente. Logo, migrations só via SQL Editor (você). Stripe e chaves de provider dependem das suas contas e/ou de valores secretos que só você possui.
+
+---
+
+## 0. Custo — o que é grátis, pago ou depende de autorização
+
+| Item | Custo | Precisa? |
+| --- | --- | --- |
+| NWS · USGS · NHC · Open-Meteo (forecast + nowcast) | **Grátis, já ativo** | Já cobre previsão, nowcast de chuva, alertas severos, furacão, terremoto |
+| Stripe (chaves) | **Grátis** — só taxa por venda (~2,9% + fixa; BR varia) | Sim, para faturar |
+| Apple WeatherKit | **US$99/ano** (Apple Developer Program) | **Opcional** — Open-Meteo já faz o mesmo de graça; só destrava "ALL SYSTEMS LIVE" |
+| AccuWeather MinuteCast | Free tier bem limitado; MinuteCast ~pago | Opcional |
+| Xweather (raios) | **Pago** (lightning fica fora do free tier) | Opcional. Alternativa comunitária: Blitzortung.org (grátis, só uso não-comercial) |
+| ShakeAlert | Grátis, mas **exige autorização/licenciamento** (parceria) | Opcional / difícil p/ app geral |
+| FEMA IPAWS | Grátis, mas **exige autorização (COG) da FEMA** | Opcional (muitos CAP já chegam via NWS) |
+
+**Resumo:** dá para lançar **sem gastar nada** (fontes grátis já no ar + Stripe, que só cobra por venda). WeatherKit (US$99/ano) e raios (Xweather) são os únicos que custam dinheiro, e são opcionais.
+
 ---
 
 ## 1. Migrations a aplicar no Supabase (SQL Editor) — PENDENTE
