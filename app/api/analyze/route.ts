@@ -5,6 +5,8 @@ import { ensureProfile } from '@/lib/ensure-profile'
 import { getOpenAIModel } from '@/lib/openai'
 import { getRelevantChunks } from '@/lib/knowledge'
 import { enforceRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
+import { fetchOpenMeteoForecast } from '@/lib/weather/providers/open-meteo'
+import { fetchWeather } from '@/lib/monitor'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -28,6 +30,8 @@ interface AnalyzeRequest {
   scenario: string
   scenarioType: string
   agent?: SurvivalAgent
+  lat?: number
+  lng?: number
 }
 
 // ─── Survival agent personas ──────────────────────────────────────────────────
@@ -322,6 +326,104 @@ MID TERM (3 hours):
 Regras: nunca dê conselhos vagos. Cada ação deve ser específica e executável. Quantidades onde relevante. Priorize os membros mais vulneráveis da família primeiro.`
 }
 
+// ─── Weather context (for the companion agent) ────────────────────────────────
+
+async function buildWeatherContext(lat: number, lng: number): Promise<string> {
+  try {
+    const [forecast, alerts] = await Promise.all([
+      fetchOpenMeteoForecast(lat, lng),
+      fetchWeather(lat, lng).catch(() => []),
+    ])
+    if (!forecast) return 'Sem dados de clima disponíveis para a localização.'
+    const c = forecast.current
+    const nextHours = forecast.hourly.slice(0, 6)
+      .map(h => `${new Date(h.time_iso).getHours()}h ${Math.round(h.temp_f)}°F ${h.precip_prob_pct}% chuva`)
+      .join(' · ')
+    const today = forecast.daily[0]
+    const alertLine = alerts.length
+      ? `ALERTAS OFICIAIS ATIVOS: ${alerts.map(a => a.headline).join(' | ')}`
+      : 'Nenhum alerta oficial ativo agora.'
+    return [
+      `AGORA: ${Math.round(c.temp_f)}°F (sensação ${Math.round(c.feels_like_f)}°F), ${c.condition}, vento ${Math.round(c.wind_mph)} mph, umidade ${c.humidity_pct}%, chance de chuva ${c.precip_prob_pct}%, UV ${c.uv_index}, ${c.is_daytime ? 'dia' : 'noite'}.`,
+      `PRÓXIMAS HORAS: ${nextHours}`,
+      today ? `HOJE: máx ${Math.round(today.temp_max_f)}°F / mín ${Math.round(today.temp_min_f)}°F, ${today.precip_sum_in.toFixed(2)}" de chuva prevista.` : '',
+      alertLine,
+    ].filter(Boolean).join('\n')
+  } catch {
+    return 'Sem dados de clima disponíveis para a localização.'
+  }
+}
+
+// ─── Companion agent prompt (open, teaching voice — not the rigid plan) ────────
+
+function buildAgentPrompt(
+  ctx: QueryContext,
+  agent: SurvivalAgent,
+  knowledgeChunks: string[],
+  weatherContext: string
+): string {
+  const { profile, family, inventory, scenario } = ctx
+  const persona = AGENT_PERSONAS[agent]
+
+  const familyText = family.length
+    ? family
+        .map((m) => {
+          const tags = [
+            m.is_infant ? 'bebê' : m.age !== null && m.age < 18 ? 'criança' : m.age !== null && m.age > 65 ? 'idoso' : 'adulto',
+            m.age !== null ? `${m.age} anos` : null,
+            m.medical_conditions.length ? `condições: ${m.medical_conditions.join(', ')}` : null,
+            m.medications.length ? `medicamentos: ${m.medications.join(', ')}` : null,
+            m.medical_notes ? `obs: ${m.medical_notes}` : null,
+            m.mobility_impaired ? 'mobilidade reduzida' : null,
+          ].filter(Boolean).join('; ')
+          return `- ${m.name} (${tags})`
+        })
+        .join('\n')
+    : '- Nenhum familiar cadastrado.'
+
+  const inv = `Água: ${inventory.water_liters} L · Comida: ${inventory.food_days} dias · Combustível: ${inventory.fuel_liters} L · Bateria reserva: ${inventory.battery_percent}% · Kit médico: ${inventory.has_medical_kit ? 'sim' : 'não'} · Comunicação: ${inventory.has_communication_device ? 'sim' : 'não'}`
+
+  const knowledge = knowledgeChunks.length
+    ? knowledgeChunks.slice(0, 4).join('\n\n---\n\n')
+    : 'Sem trechos específicos — use seu próprio conhecimento de campo.'
+
+  return `Você é ${persona.name}, um mentor de sobrevivência que age como um amigo e companheiro que está sempre ao lado de ${profile.name || 'da pessoa'}, olhando por ela e pela família dela.
+
+SUA VOZ E ESTILO DE PENSAR:
+${persona.prompt}
+
+ANTES DE RESPONDER, VOCÊ SEMPRE OLHA TUDO, NESTA ORDEM:
+1. O INVENTÁRIO — o que a pessoa tem e o que está faltando.
+2. CADA MEMBRO DA FAMÍLIA — idade, condições médicas, medicamentos, mobilidade, bebês — e o que cada um precisa de específico.
+3. O CLIMA AGORA e nas próximas horas/dias.
+4. O QUE A PESSOA ESTÁ PLANEJANDO OU PERGUNTANDO — e o contexto de tempo (agora? próximas horas? amanhã?).
+5. Então você SOMA tudo isso e dá sugestões personalizadas para cada perfil.
+
+── INVENTÁRIO ──
+${inv}
+
+── FAMÍLIA (${profile.name || 'usuário'}) ──
+${familyText}
+
+── CLIMA (localização do usuário, agora) ──
+${weatherContext}
+
+── CONHECIMENTO DE CAMPO (use se ajudar) ──
+${knowledge}
+
+── O QUE A PESSOA DISSE / ESTÁ PLANEJANDO ──
+"${scenario}"
+
+COMO RESPONDER:
+- Fale como um companheiro experiente que está junto: caloroso, direto, prático. Pode usar "você" e citar os nomes da família.
+- ENSINE e explique o porquê das coisas — não dê só ordens. A pessoa deve aprender.
+- Conecte de verdade os dados: cite números reais do inventário, adapte ao clima real de agora, e personalize por membro (ex.: o que muda para um bebê, um idoso, alguém com condição médica).
+- Se ela estiver planejando algo para as próximas horas/dias, avalie se é uma boa ideia dado o clima e o que ela tem, e ajuste o plano.
+- Texto corrido e natural, em parágrafos curtos. Use listas só quando ajudar de verdade. SEM formulário rígido, SEM cabeçalhos de seção obrigatórios.
+- NÃO inclua disclaimers, avisos legais nem "procure um profissional". Vá direto, com confiança e cuidado.
+- Responda no mesmo idioma da mensagem da pessoa.`
+}
+
 // ─── Response Parser ──────────────────────────────────────────────────────────
 
 function parseStructuredResponse(
@@ -493,8 +595,21 @@ export async function POST(request: NextRequest) {
   const ragQuery = agent ? `${body.scenario} ${AGENT_PERSONAS[agent].ragHints}` : body.scenario
   const knowledgeChunks = await getRelevantChunks(ragQuery, body.scenarioType)
 
-  // 6. Build system prompt (with optional agent persona)
-  const systemPrompt = buildSystemPrompt(ctx, rulesResult, knowledgeChunks, agent)
+  // 6. Build the prompt.
+  // - No agent → the deterministic structured plan (unchanged).
+  // - Agent → a companion voice that reads inventory + family fichas + live
+  //   weather and gives open, personalized, teaching guidance.
+  let systemPrompt: string
+  if (agent) {
+    const lat = typeof body.lat === 'number' ? body.lat : (profileRes.data?.location_lat as number | undefined)
+    const lng = typeof body.lng === 'number' ? body.lng : (profileRes.data?.location_lng as number | undefined)
+    const weatherContext = typeof lat === 'number' && typeof lng === 'number'
+      ? await buildWeatherContext(lat, lng)
+      : 'Sem localização definida — sem dados de clima. Peça à pessoa para definir a localização na Ficha se o clima for relevante.'
+    systemPrompt = buildAgentPrompt(ctx, agent, knowledgeChunks, weatherContext)
+  } else {
+    systemPrompt = buildSystemPrompt(ctx, rulesResult, knowledgeChunks)
+  }
 
   // 7. Stream response
   const encoder = new TextEncoder()
@@ -527,7 +642,9 @@ export async function POST(request: NextRequest) {
               { role: 'system', content: systemPrompt },
               {
                 role: 'user',
-                content: `Cenário de emergência: ${body.scenario}\nTipo: ${body.scenarioType}\n\nGere o plano de ação agora.`,
+                content: agent
+                  ? `${body.scenario}`
+                  : `Cenário de emergência: ${body.scenario}\nTipo: ${body.scenarioType}\n\nGere o plano de ação agora.`,
               },
             ],
           })
@@ -560,17 +677,29 @@ export async function POST(request: NextRequest) {
 
       clearTimeout(timeout)
 
-      if (success && fullText) {
+      if (success && fullText && agent) {
+        // Companion agent → free-form conversational answer (raw_text). No rigid
+        // sections, not persisted (it's a variation of the base analysis).
+        finalResponse = {
+          mode: 'CONNECTED',
+          priority: rulesResult.priority,
+          risks: [],
+          immediate_actions: [],
+          short_term_actions: [],
+          mid_term_actions: [],
+          rulesApplied: rulesResult.rulesApplied,
+          knowledgeSources: knowledgeChunks.length > 0 ? ['Knowledge Base (pgvector RAG)'] : ['Rules Engine (offline)'],
+          raw_text: fullText,
+          agent,
+        }
+      } else if (success && fullText) {
         finalResponse = parseStructuredResponse(fullText, 'CONNECTED', rulesResult)
-        finalResponse.agent = agent
         finalResponse.knowledgeSources = knowledgeChunks.length > 0
           ? ['Knowledge Base (pgvector RAG)']
           : ['Rules Engine (offline)']
 
-        // 8. Persist scenario + action plan (only the base analysis — agent
-        // consultations are variations and are not stored to avoid clutter).
+        // 8. Persist scenario + action plan (base analysis only).
         try {
-          if (agent) throw new Error('skip-persist-agent-variant')
           const scenarioType = body.scenarioType.toUpperCase() as
             | 'HURRICANE' | 'EARTHQUAKE' | 'FALLOUT' | 'PANDEMIC' | 'FIRE' | 'FLOOD' | 'GENERAL'
 
@@ -598,10 +727,8 @@ export async function POST(request: NextRequest) {
 
             if (plan?.id) finalResponse.action_plan_id = plan.id
           }
-        } catch (e) {
-          if (!(e instanceof Error && e.message === 'skip-persist-agent-variant')) {
-            console.error('[EOS] Failed to persist action_plan')
-          }
+        } catch {
+          console.error('[EOS] Failed to persist action_plan')
         }
       } else {
         finalResponse = buildSurvivalResponse(rulesResult)

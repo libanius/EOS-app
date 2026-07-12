@@ -397,15 +397,19 @@ function StreamOutput({
   streamBuffer,
   response,
   status,
+  agentMode,
 }: {
   streamBuffer: string
   response: IntelligenceResponse | null
   status: Status
+  agentMode: boolean
 }) {
   const { language } = useLanguage()
   const isDone = status === 'done' && !!response
+  // Agent replies are free-form prose (raw_text); the base analysis is the
+  // structured plan. During streaming both just show the raw token buffer.
   const displayText = isDone && response
-    ? formatResponse(response, language)
+    ? (response.agent ? (response.raw_text ?? streamBuffer) : formatResponse(response, language))
     : streamBuffer
 
   // Typewriter only animates while streaming. On "done" we render the full
@@ -431,10 +435,11 @@ function StreamOutput({
   return (
     <div
       style={{
-        fontFamily:
-          "ui-monospace, 'SF Mono', 'Courier New', monospace",
-        fontSize: 13,
-        lineHeight: 1.7,
+        fontFamily: agentMode
+          ? "'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif"
+          : "ui-monospace, 'SF Mono', 'Courier New', monospace",
+        fontSize: agentMode ? 14.5 : 13,
+        lineHeight: agentMode ? 1.65 : 1.7,
         color: 'var(--tx, #f0f0f8)',
         whiteSpace: 'pre-wrap',
         wordBreak: 'break-word',
@@ -687,6 +692,7 @@ export default function ScenarioPage() {
           scenario: description,
           scenarioType: selectedType,
           ...(agent ? { agent } : {}),
+          ...(agent && coords ? { lat: coords.lat, lng: coords.lng } : {}),
         }),
         signal: abortRef.current.signal,
       })
@@ -753,7 +759,7 @@ export default function ScenarioPage() {
         knowledgeSources: ['Rules Engine (offline)'],
       })
     }
-  }, [description, selectedType, status, t])
+  }, [description, selectedType, status, t, coords])
 
   const isLoading = status === 'loading'
   const isStreaming = status === 'streaming'
@@ -1025,6 +1031,7 @@ export default function ScenarioPage() {
                   streamBuffer={streamBuffer}
                   response={response}
                   status={status}
+                  agentMode={activeAgent !== null}
                 />
 
                 {/* Footer badges — shown when done */}
