@@ -8,6 +8,8 @@ import { enforceRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
+export type SurvivalAgent = 'macgyver' | 'seal' | 'sas'
+
 export interface IntelligenceResponse {
   mode: 'CONNECTED' | 'LOCAL_AI' | 'SURVIVAL'
   priority: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW'
@@ -19,11 +21,43 @@ export interface IntelligenceResponse {
   knowledgeSources: string[]
   raw_text?: string
   action_plan_id?: string
+  agent?: SurvivalAgent
 }
 
 interface AnalyzeRequest {
   scenario: string
   scenarioType: string
+  agent?: SurvivalAgent
+}
+
+// ─── Survival agent personas ──────────────────────────────────────────────────
+// Optional persona layer applied AFTER the deterministic Rules Engine. It shapes
+// the LLM's tone, techniques and emphasis — it can never lower the priority or
+// change the output format (both enforced downstream).
+
+const AGENT_PERSONAS: Record<SurvivalAgent, { name: string; ragHints: string; prompt: string }> = {
+  macgyver: {
+    name: 'MacGyver — Improviso',
+    ragHints: 'improvisação ferramentas materiais recicláveis reparos',
+    prompt:
+      'Você incorpora o espírito de MacGyver: improvisação e engenhosidade extrema. Priorize soluções com materiais comuns que a família provavelmente já tem em casa (fita, arame, garrafas, sacos plásticos, ferramentas domésticas, químicos de limpeza). Para cada ação relevante, explique COMO improvisar o recurso a partir do que existe no ambiente, sem depender de equipamento especializado. Criatividade prática e segurança acima de tudo.',
+  },
+  seal: {
+    name: 'Navy SEAL — Operação',
+    ragHints: 'militar tático segurança perímetro evacuação comando equipe',
+    prompt:
+      'Você incorpora a mentalidade de um operador Navy SEAL: disciplina, calma sob pressão e execução decisiva. Estruture o plano com clareza de comando: priorização implacável (o que salva vida primeiro), designação de quem faz o quê, checagens de segurança, redundância e comunicação da equipe. Aplique o princípio "devagar é suave, suave é rápido". Segurança do perímetro e contabilidade de todos os membros são centrais.',
+  },
+  sas: {
+    name: 'SAS — Sobrevivência de campo',
+    ragHints: 'SAS survival abrigo água fogo sinalização navegação selva',
+    prompt:
+      'Você incorpora a expertise de um instrutor do SAS (SAS Survival Handbook). Foque nas prioridades de sobrevivência de campo — proteção/abrigo, água, fogo, sinalização, navegação e comida — na ordem que a ameaça específica exigir. Use técnicas de campo comprovadas, economia de energia e adaptação ao ambiente (urbano ou selvagem). Ensine a improvisar abrigo e a purificar água com o que houver.',
+  },
+}
+
+function isSurvivalAgent(v: unknown): v is SurvivalAgent {
+  return v === 'macgyver' || v === 'seal' || v === 'sas'
 }
 
 interface Profile {
@@ -206,7 +240,8 @@ function escalate(
 function buildSystemPrompt(
   ctx: QueryContext,
   rulesResult: RulesResult,
-  knowledgeChunks: string[]
+  knowledgeChunks: string[],
+  agent?: SurvivalAgent
 ): string {
   const { profile, family, inventory, scenario, scenarioType } = ctx
 
@@ -236,7 +271,12 @@ function buildSystemPrompt(
       ? '\n⚠️ PRIORIDADE CRÍTICA — Rules Engine detectou condições de risco de vida. Seu plano deve endereçar isso PRIMEIRO.\n'
       : ''
 
+  const personaBlock = agent
+    ? `\nPERSONA DO ESPECIALISTA — ${AGENT_PERSONAS[agent].name}:\n${AGENT_PERSONAS[agent].prompt}\nMantenha EXATAMENTE o formato de saída abaixo. Você NÃO pode reduzir a prioridade determinística nem omitir os riscos já identificados.\n`
+    : ''
+
   return `Você é EOS — Emergency Operating System. Você gera planos de ação de sobrevivência estruturados, prescritivose específicos.
+${personaBlock}
 
 REGRAS DETERMINÍSTICAS (não podem ser alteradas pelo LLM):
 Prioridade: ${rulesResult.priority}
@@ -396,6 +436,7 @@ export async function POST(request: NextRequest) {
     body = await request.json()
     if (!body.scenario || typeof body.scenario !== 'string') throw new Error('scenario required')
     if (!body.scenarioType || typeof body.scenarioType !== 'string') throw new Error('scenarioType required')
+    if (body.agent !== undefined && !isSurvivalAgent(body.agent)) throw new Error('invalid agent')
   } catch (e) {
     return new Response(
       JSON.stringify({ error: 'Bad Request', detail: e instanceof Error ? e.message : 'Invalid body' }),
@@ -447,15 +488,17 @@ export async function POST(request: NextRequest) {
   // 4. Rules Engine — ALWAYS before LLM
   const rulesResult = RulesEngine.evaluate(ctx)
 
-  // 5. Knowledge retrieval
-  const knowledgeChunks = await getRelevantChunks(body.scenario, body.scenarioType)
+  // 5. Knowledge retrieval — bias the query toward the chosen agent's craft.
+  const agent = body.agent
+  const ragQuery = agent ? `${body.scenario} ${AGENT_PERSONAS[agent].ragHints}` : body.scenario
+  const knowledgeChunks = await getRelevantChunks(ragQuery, body.scenarioType)
 
-  // 6. Build system prompt
-  const systemPrompt = buildSystemPrompt(ctx, rulesResult, knowledgeChunks)
+  // 6. Build system prompt (with optional agent persona)
+  const systemPrompt = buildSystemPrompt(ctx, rulesResult, knowledgeChunks, agent)
 
   // 7. Stream response
   const encoder = new TextEncoder()
-  const TIMEOUT_MS = 30_000
+  const TIMEOUT_MS = 45_000
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -479,12 +522,12 @@ export async function POST(request: NextRequest) {
 
           const llmStream = await openai.chat.completions.stream({
             model: getOpenAIModel(),
-            max_tokens: 1500,
+            max_tokens: 2400,
             messages: [
               { role: 'system', content: systemPrompt },
               {
                 role: 'user',
-                content: `Cenário de emergência: \${body.scenario}\nTipo: \${body.scenarioType}\n\nGere o plano de ação agora.`,
+                content: `Cenário de emergência: ${body.scenario}\nTipo: ${body.scenarioType}\n\nGere o plano de ação agora.`,
               },
             ],
           })
@@ -519,12 +562,15 @@ export async function POST(request: NextRequest) {
 
       if (success && fullText) {
         finalResponse = parseStructuredResponse(fullText, 'CONNECTED', rulesResult)
+        finalResponse.agent = agent
         finalResponse.knowledgeSources = knowledgeChunks.length > 0
           ? ['Knowledge Base (pgvector RAG)']
           : ['Rules Engine (offline)']
 
-        // 8. Persist scenario + action plan (non-blocking; failure does not propagate)
+        // 8. Persist scenario + action plan (only the base analysis — agent
+        // consultations are variations and are not stored to avoid clutter).
         try {
+          if (agent) throw new Error('skip-persist-agent-variant')
           const scenarioType = body.scenarioType.toUpperCase() as
             | 'HURRICANE' | 'EARTHQUAKE' | 'FALLOUT' | 'PANDEMIC' | 'FIRE' | 'FLOOD' | 'GENERAL'
 
@@ -552,8 +598,10 @@ export async function POST(request: NextRequest) {
 
             if (plan?.id) finalResponse.action_plan_id = plan.id
           }
-        } catch {
-          console.error('[EOS] Failed to persist action_plan')
+        } catch (e) {
+          if (!(e instanceof Error && e.message === 'skip-persist-agent-variant')) {
+            console.error('[EOS] Failed to persist action_plan')
+          }
         }
       } else {
         finalResponse = buildSurvivalResponse(rulesResult)

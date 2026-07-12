@@ -4,6 +4,21 @@
 
 ---
 
+## D-044 — 3 agentes de sobrevivência (MacGyver/SEAL/SAS) + fix de truncagem da análise
+
+**Date**: 2026-07-11
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: Após a análise determinística/base na tela Cenário, o dono quis dar ao usuário a opção de aprofundar com 3 "especialistas de sobrevivência": improviso (MacGyver), operação (Navy SEAL) e sobrevivência de campo (SAS). Além disso, o texto da análise aparecia **cortado no final** (palavras incompletas, raciocínio não conclui).
+
+**Decision**:
+1. **Camada de persona opcional** em `/api/analyze` (`agent?: 'macgyver'|'seal'|'sas'`), aplicada **depois** do Rules Engine determinístico — a persona molda tom/técnicas/ênfase mas **não pode rebaixar a prioridade** nem mudar o formato de saída (ambos já garantidos no parser). RAG enriquecido com termos do agente (o KB tem SAS Survival Handbook, Navy SEAL guide, Military FM). Consultas de agente **não são persistidas** (só a análise base) para não poluir o histórico.
+2. **UI**: na tela Cenário, após o resultado base, um seletor com os 3 agentes (glyphs vetoriais, sem emoji); tocar re-executa a análise com aquela persona e mostra um badge do agente ativo. Bilíngue PT/EN.
+3. **Fix de truncagem (2 causas)**: (a) `useTypewriter` não resetava o índice na transição para "done" — quando o texto formatado era mais curto que o índice já digitado do stream bruto, o `displayed` congelava no stream bruto (cortado pelo `max_tokens`). Agora o typewriter só anima durante o streaming e o texto **completo** é renderizado ao concluir. (b) `max_tokens` 1500 → **2400** e timeout 30s → 45s, para o LLM não parar no meio da última ação. Também corrigido um bug pré-existente: a mensagem do usuário mandava `\${body.scenario}` literal (com `$` escapado) em vez do cenário real.
+
+**Consequence**: o usuário recebe a análise base determinística e pode pedir a visão de cada especialista; o texto nunca mais aparece cortado. O Rules Engine continua sendo a fonte de verdade de prioridade/riscos. Build/lint/tsc limpos; 41 testes passam.
+---
+
 ## D-043 — Rede de inteligência de riscos: subsistema `lib/hazards/` desacoplado + honestidade de estado
 
 **Date**: 2026-07-10

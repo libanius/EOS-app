@@ -47,6 +47,8 @@ interface MonitorData {
   cached_at: string
 }
 
+type AgentId = 'macgyver' | 'seal' | 'sas'
+
 interface IntelligenceResponse {
   mode: 'CONNECTED' | 'LOCAL_AI' | 'SURVIVAL'
   priority: Priority
@@ -58,7 +60,47 @@ interface IntelligenceResponse {
   knowledgeSources: string[]
   raw_text?: string
   action_plan_id?: string
+  agent?: AgentId
 }
+
+interface AgentMeta {
+  id: AgentId
+  name: string
+  tagline: { pt: string; en: string }
+  color: string
+  // Minimal geometric glyph (no emoji) drawn per agent.
+  glyph: React.ReactNode
+}
+
+const AGENTS: AgentMeta[] = [
+  {
+    id: 'macgyver',
+    name: 'MacGyver',
+    tagline: { pt: 'Improviso com o que você tem', en: 'Improvise with what you have' },
+    color: '#ffb347',
+    glyph: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4l-6 6a1.5 1.5 0 0 0 2.1 2.1l6-6a4 4 0 0 0 5.4-5.4l-2.3 2.3-2.1-2.1z"/></svg>
+    ),
+  },
+  {
+    id: 'seal',
+    name: 'Navy SEAL',
+    tagline: { pt: 'Disciplina e execução sob pressão', en: 'Discipline and execution under pressure' },
+    color: '#7c6bff',
+    glyph: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2 4 5v6c0 5 3.4 8.5 8 11 4.6-2.5 8-6 8-11V5l-8-3z"/><path d="m9 12 2 2 4-4"/></svg>
+    ),
+  },
+  {
+    id: 'sas',
+    name: 'SAS',
+    tagline: { pt: 'Sobrevivência de campo prolongada', en: 'Long-duration field survival' },
+    color: '#00e5a0',
+    glyph: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 20h18L12 4 3 20z"/><path d="M12 4v16"/></svg>
+    ),
+  },
+]
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -361,25 +403,30 @@ function StreamOutput({
   status: Status
 }) {
   const { language } = useLanguage()
-  const displayText =
-    status === 'done' && response
-      ? formatResponse(response, language)
-      : streamBuffer
+  const isDone = status === 'done' && !!response
+  const displayText = isDone && response
+    ? formatResponse(response, language)
+    : streamBuffer
 
+  // Typewriter only animates while streaming. On "done" we render the full
+  // formatted response directly — this avoids a bug where the typewriter index,
+  // left mid-stream, would freeze on the (token-truncated) raw buffer and never
+  // reveal the complete parsed text.
   const { displayed, done: twDone } = useTypewriter(
     displayText,
-    status === 'streaming' || status === 'done'
+    status === 'streaming'
   )
+  const shown = isDone ? displayText : displayed
 
   const [showCursor, setShowCursor] = useState(true)
 
   useEffect(() => {
-    if (twDone) {
+    if (twDone || isDone) {
       const t = setTimeout(() => setShowCursor(false), 800)
       return () => clearTimeout(t)
     }
     setShowCursor(true)
-  }, [twDone])
+  }, [twDone, isDone])
 
   return (
     <div
@@ -394,8 +441,8 @@ function StreamOutput({
         minHeight: 200,
       }}
     >
-      {displayed}
-      {showCursor && !twDone && (
+      {shown}
+      {showCursor && !twDone && !isDone && (
         <span
           style={{
             color: 'var(--ac, #00e5a0)',
@@ -565,12 +612,13 @@ function CollapsibleRules({ rules }: { rules: string[] }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function ScenarioPage() {
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
   const [selectedType, setSelectedType] = useState<ScenarioType>('general')
   const [description, setDescription] = useState('')
   const [status, setStatus] = useState<Status>('idle')
   const [streamBuffer, setStreamBuffer] = useState('')
   const [response, setResponse] = useState<IntelligenceResponse | null>(null)
+  const [activeAgent, setActiveAgent] = useState<AgentId | null>(null)
   const [toast, setToast] = useState<string | null>(null)
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [locationSource, setLocationSource] = useState<'device' | 'profile' | null>(null)
@@ -616,7 +664,7 @@ export default function ScenarioPage() {
     setTimeout(() => setToast(null), 3000)
   }
 
-  const handleGenerate = useCallback(async () => {
+  const handleGenerate = useCallback(async (agent?: AgentId) => {
     if (!description.trim() || status === 'loading' || status === 'streaming')
       return
 
@@ -624,6 +672,7 @@ export default function ScenarioPage() {
     abortRef.current?.abort()
     abortRef.current = new AbortController()
 
+    setActiveAgent(agent ?? null)
     setStatus('loading')
     setStreamBuffer('')
     setResponse(null)
@@ -637,6 +686,7 @@ export default function ScenarioPage() {
         body: JSON.stringify({
           scenario: description,
           scenarioType: selectedType,
+          ...(agent ? { agent } : {}),
         }),
         signal: abortRef.current.signal,
       })
@@ -937,7 +987,7 @@ export default function ScenarioPage() {
             {/* Submit */}
             <button
               className="btn bp bfull"
-              onClick={handleGenerate}
+              onClick={() => handleGenerate()}
               disabled={!canSubmit}
             >
               {isLoading
@@ -989,12 +1039,21 @@ export default function ScenarioPage() {
                       gap: 12,
                     }}
                   >
-                    {/* Mode + Priority */}
+                    {/* Mode + Priority + active agent */}
                     <div
-                      style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}
                     >
                       <ModeBadge mode={response.mode} />
                       <PriorityBadge priority={response.priority} />
+                      {response.agent && (() => {
+                        const a = AGENTS.find(x => x.id === response.agent)
+                        return a ? (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: a.color, background: `${a.color}18`, border: `1px solid ${a.color}44`, padding: '4px 10px', borderRadius: 20 }}>
+                            <span style={{ color: a.color, display: 'inline-flex' }}>{a.glyph}</span>
+                            {a.name}
+                          </span>
+                        ) : null
+                      })()}
                     </div>
 
                     {/* Rules */}
@@ -1015,6 +1074,48 @@ export default function ScenarioPage() {
                         {response.knowledgeSources.join(' · ')}
                       </p>
                     )}
+
+                    {/* ── Survival specialists (D-044): deepen the base analysis ── */}
+                    <div style={{ marginTop: 4, paddingTop: 14, borderTop: '1px solid var(--bd, #2a2a38)' }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '1.2px', color: 'var(--mu, #6b6b8a)', textTransform: 'uppercase', marginBottom: 4 }}>
+                        {language === 'en' ? 'Survival specialists' : 'Especialistas de sobrevivência'}
+                      </div>
+                      <p style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--mu, #6b6b8a)', lineHeight: 1.5 }}>
+                        {language === 'en'
+                          ? 'Re-run the plan through a specialist perspective.'
+                          : 'Refaça o plano pela ótica de um especialista.'}
+                      </p>
+                      <div style={{ display: 'grid', gap: 8 }}>
+                        {AGENTS.map(a => {
+                          const on = activeAgent === a.id
+                          return (
+                            <button
+                              key={a.id}
+                              onClick={() => handleGenerate(a.id)}
+                              disabled={isActive}
+                              style={{
+                                display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+                                padding: '10px 12px', borderRadius: 12, cursor: isActive ? 'default' : 'pointer',
+                                textAlign: 'left', fontFamily: 'inherit',
+                                background: on ? `${a.color}14` : 'var(--sf2, #1c1c27)',
+                                border: `1px solid ${on ? a.color : 'var(--bd, #2a2a38)'}`,
+                                opacity: isActive && !on ? 0.55 : 1,
+                                transition: 'all 0.15s',
+                              }}
+                            >
+                              <span style={{ display: 'inline-flex', color: a.color, flexShrink: 0 }}>{a.glyph}</span>
+                              <span style={{ minWidth: 0, flex: 1 }}>
+                                <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: 'var(--tx, #f0f0f8)' }}>{a.name}</span>
+                                <span style={{ display: 'block', fontSize: 11, color: 'var(--mu, #6b6b8a)' }}>{a.tagline[language === 'en' ? 'en' : 'pt']}</span>
+                              </span>
+                              <span style={{ fontSize: 11, fontWeight: 700, color: a.color, flexShrink: 0 }}>
+                                {on ? (language === 'en' ? 'ACTIVE' : 'ATIVO') : '→'}
+                              </span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
                   </div>
                 )}
               </>
