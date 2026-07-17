@@ -1,9 +1,10 @@
 # PENDÊNCIAS DO DONO — ações que só você pode executar
 
 > Status geral: **PENDENTE**. O código está pronto e no ar (auto-deploy), mas estas ações dependem de credenciais/console que o agente não tem acesso. Enquanto não forem feitas, os recursos abaixo ficam inertes/degradados de forma **honesta** (nada quebra, nada finge estar conectado).
-> Última atualização: 2026-07-10.
+> Última atualização: 2026-07-17.
 
-> **Por que o agente não aplica isto sozinho** (verificado em 2026-07-10): o projeto Supabase do EOS (`alxurmgpyxjhvnliivbf`) **não pertence à conta autenticada no CLI** deste ambiente (essa conta só enxerga BrightScaleWeb / bolt-native / Abre-USA), e não há connection string, DB password nem access token do Supabase no ambiente. Logo, migrations só via SQL Editor (você). Stripe e chaves de provider dependem das suas contas e/ou de valores secretos que só você possui.
+> **Migrations agora RESOLVIDAS** (2026-07-17): o dono forneceu um **Personal Access Token do Supabase** (`sbp_...`), o que deu ao agente acesso à Management API do projeto `alxurmgpyxjhvnliivbf` ("eosoffgrid@gmail.com's Project"). As 3 migrations da seção 1 foram aplicadas e verificadas. O token deve ser **revogado/rotacionado** pelo dono após o uso (Dashboard → Account → Tokens). O que ainda depende do dono: Stripe (contas/produtos/env vars), chaves de provider (WeatherKit/Xweather/etc.), e autorizações externas (ShakeAlert/FEMA) — valores secretos que só o dono possui.
+> Histórico: o `supabase` CLI logado neste ambiente pertence a outra conta (só enxerga BrightScaleWeb / bolt-native / Abre-USA); por isso o CLI não alcança o projeto EOS. A via que funcionou foi o PAT + Management API.
 
 ---
 
@@ -23,17 +24,17 @@
 
 ---
 
-## 1. Migrations a aplicar no Supabase (SQL Editor) — PENDENTE
+## 1. Migrations a aplicar no Supabase — ✅ APLICADAS (2026-07-17)
 
-O agente não tem credencial de banco. Cole cada arquivo no **Supabase Dashboard → SQL Editor** e rode.
+Aplicadas pelo agente via **Management API** (`/v1/projects/{ref}/database/query`), usando um Personal Access Token fornecido pelo dono. Verificadas no schema real.
 
-| Migration | O que faz | Bloqueia o quê se não aplicar |
+| Migration | O que faz | Status |
 | --- | --- | --- |
-| `supabase/migrations/20260710000000_stripe_billing.sql` | Colunas Stripe em `profiles` | **Upgrade de plano não persiste** (webhook não tem onde gravar) — ver seção 2 |
-| `supabase/migrations/20260710010000_hazard_tables.sql` | 5 tabelas de hazard (RLS) | Histórico de hazards + automação de push por hazard (Fase 2). O monitoramento ao vivo funciona sem isto. |
-| `supabase/migrations/20260705000000_auto_create_profile.sql` | Trigger `handle_new_user` | Nada crítico — o self-heal do app cobre. Otimização. |
+| `supabase/migrations/20260710000000_stripe_billing.sql` | Colunas Stripe em `profiles` | ✅ Aplicada — 4 colunas confirmadas |
+| `supabase/migrations/20260710010000_hazard_tables.sql` | 5 tabelas de hazard (RLS) | ✅ Aplicada — 5 tabelas + policies confirmadas |
+| `supabase/migrations/20260705000000_auto_create_profile.sql` | Trigger `handle_new_user` + backfill | ✅ Aplicada — trigger existe; 0 usuários sem perfil |
 
-Verificar depois: `SELECT name FROM supabase_migrations.schema_migrations ORDER BY name DESC LIMIT 5;`
+> Nota: as colunas Stripe existem, mas o **fluxo de faturamento ainda depende da seção 2** (produtos + env vars + webhook). A migration só criou onde gravar.
 
 ---
 
@@ -41,8 +42,11 @@ Verificar depois: `SELECT name FROM supabase_migrations.schema_migrations ORDER 
 
 Sem isto, os botões de upgrade e o portal respondem **503** (a UI mantém o estado atual, nada quebra).
 
+> **Decisão 2026-07-17 (Rota A):** o EOS terá **conta Stripe própria**, sob a mesma empresa/Organização do site existente do dono, para não misturar marca, statement descriptor, payouts e relatórios. Verificado no código: o webhook resolve o perfil por `user_id`/`stripe_customer_id`, então mesmo numa conta compartilhada um site não corromperia os dados do outro — o motivo de separar é brand/dinheiro/contabilidade, não integridade de dados.
+> **Runbook copy-paste passo-a-passo: `docs/stripe-setup-eos.md`.** O checklist abaixo é o resumo; o runbook tem os detalhes (Test mode primeiro, statement descriptor, cartão 4242, etc.).
+
 **Checklist:**
-1. [ ] Aplicar a migration `20260710000000_stripe_billing.sql` (seção 1).
+1. [x] ~~Aplicar a migration `20260710000000_stripe_billing.sql`~~ — ✅ feito 2026-07-17 (seção 1).
 2. [ ] No **Stripe Dashboard**, criar **2 produtos com preço recorrente**:
        - Plano **Família** (mensal) → copiar o **Price ID** (`price_...`).
        - Plano **Premium** (mensal) → copiar o **Price ID**.
