@@ -8,12 +8,15 @@ import type { Plan } from '@/lib/feature-gates'
 export const runtime = 'nodejs'
 
 function siteUrl() {
-  return (
+  const raw =
     process.env.NEXT_PUBLIC_SITE_URL ||
     (process.env.VERCEL_PROJECT_PRODUCTION_URL
       ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-      : 'http://localhost:3000')
-  )
+      : 'https://eos-app-fawn.vercel.app')
+  // Env values can carry stray whitespace/newlines (D-035/036) or lack a scheme,
+  // which would produce an invalid success_url and make Stripe reject the session.
+  const cleaned = raw.replace(/\s+/g, '').replace(/\/+$/, '')
+  return /^https?:\/\//.test(cleaned) ? cleaned : `https://${cleaned}`
 }
 
 export async function POST(req: Request) {
@@ -40,39 +43,58 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: `Preço do plano ${plan} não configurado.` }, { status: 503 })
   }
 
-  // Reuse an existing Stripe customer if we already created one for this user.
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('stripe_customer_id, name')
-    .eq('id', user.id)
-    .single()
+  try {
+    // Reuse an existing Stripe customer if we already created one for this user.
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('stripe_customer_id, name')
+      .eq('id', user.id)
+      .single()
 
-  let customerId = profile?.stripe_customer_id as string | null | undefined
-  if (!customerId) {
-    const customer = await stripe.customers.create({
-      email: user.email ?? undefined,
-      name: profile?.name ?? undefined,
-      metadata: { user_id: user.id },
-    })
-    customerId = customer.id
-    // Persist immediately (service role — column is not user-writable via RLS forms).
-    const admin = createAdminClient()
-    if (admin) {
-      await admin.from('profiles').update({ stripe_customer_id: customerId }).eq('id', user.id)
+    let customerId = profile?.stripe_customer_id as string | null | undefined
+
+    // Guard against a stale customer id left over from a different Stripe account
+    // (e.g. after switching keys): if it no longer exists, drop it and recreate.
+    if (customerId) {
+      try {
+        const existing = await stripe.customers.retrieve(customerId)
+        if ((existing as { deleted?: boolean }).deleted) customerId = null
+      } catch {
+        customerId = null
+      }
     }
+
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: user.email ?? undefined,
+        name: profile?.name ?? undefined,
+        metadata: { user_id: user.id },
+      })
+      customerId = customer.id
+      // Persist immediately (service role — column is not user-writable via RLS forms).
+      const admin = createAdminClient()
+      if (admin) {
+        await admin.from('profiles').update({ stripe_customer_id: customerId }).eq('id', user.id)
+      }
+    }
+
+    const base = siteUrl()
+    const session = await stripe.checkout.sessions.create({
+      mode: 'subscription',
+      customer: customerId,
+      client_reference_id: user.id,
+      line_items: [{ price: priceId, quantity: 1 }],
+      subscription_data: { metadata: { user_id: user.id } },
+      allow_promotion_codes: true,
+      success_url: `${base}/settings?billing=success`,
+      cancel_url: `${base}/settings?billing=cancelled`,
+    })
+
+    return NextResponse.json({ url: session.url })
+  } catch (err) {
+    // Surface the real reason instead of a bare 500 (the UI shows d.error).
+    const msg = err instanceof Error ? err.message : 'checkout failed'
+    console.error('[billing/checkout]', msg)
+    return NextResponse.json({ error: msg }, { status: 500 })
   }
-
-  const base = siteUrl()
-  const session = await stripe.checkout.sessions.create({
-    mode: 'subscription',
-    customer: customerId,
-    client_reference_id: user.id,
-    line_items: [{ price: priceId, quantity: 1 }],
-    subscription_data: { metadata: { user_id: user.id } },
-    allow_promotion_codes: true,
-    success_url: `${base}/settings?billing=success`,
-    cancel_url: `${base}/settings?billing=cancelled`,
-  })
-
-  return NextResponse.json({ url: session.url })
 }
