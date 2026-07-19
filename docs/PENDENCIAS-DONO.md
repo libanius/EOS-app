@@ -40,7 +40,7 @@ Aplicadas pelo agente via **Management API** (`/v1/projects/{ref}/database/query
 
 ## 2. Stripe — Monetização (D-042) — ⚙️ TEST MODE ATIVO (2026-07-19)
 
-> **Test mode configurado e no ar** (agente, via API Stripe + API Vercel): produtos/preços ($9.90/$19.90), webhook e as 4 env vars em Production estão setados; deploy fresco carregou tudo. Endpoints saíram do 503 (`webhook`→400, `checkout`→401) e eventos assinados reais foram entregues e ACKados 2xx pelo endpoint de produção. Em 2026-07-19, corrigido o 500 do Checkout causado por `success_url` inválida. **Falta**: (a) um pagamento de teste real logado para ver `profiles.plan` virar, e (b) trocar as chaves **test → Live** antes do lançamento pago. Detalhes: `docs/stripe-setup-eos.md`.
+> **Test mode configurado e no ar** (agente, via API Stripe + API Vercel): produtos/preços ($9.90/$19.90), webhook e as 4 env vars em Production estão setados; deploy fresco carregou tudo. Endpoints saíram do 503 (`webhook`→400, `checkout`→401) e eventos assinados reais foram entregues e ACKados 2xx pelo endpoint de produção. Em 2026-07-19, corrigido o 500 do Checkout causado por `success_url` inválida; chamada autenticada em produção já retorna URL `checkout.stripe.com`. **Falta**: (a) um pagamento de teste real logado para ver `profiles.plan` virar, e (b) trocar as chaves **test → Live** antes do lançamento pago. Detalhes: `docs/stripe-setup-eos.md`.
 
 Sem isto, os botões de upgrade e o portal respondem **503** (a UI mantém o estado atual, nada quebra).
 

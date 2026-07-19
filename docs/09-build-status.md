@@ -442,4 +442,4 @@ To add a new knowledge source: drop PDF in `docs/`, re-run both commands.
 - `lib/auth/utils.ts` reexporta o mesmo helper para manter redirects de auth consistentes.
 - `/dashboard` voltou a buildar: `RiskProvider` agora é montado localmente nessa página, já que o v2 shell global está propositalmente desligado por D-045.
 
-**Verificação:** `npm test` → 45/45; `npm run type-check` limpo; `npm run build` limpo. Próximo passo operacional: testar upgrade logado em produção com cartão Stripe test `4242`.
+**Verificação:** `npm test` → 45/45; `npm run type-check` limpo; `npm run build` limpo. Após deploy (`13fee78`), chamada autenticada em produção para `POST /api/billing/checkout` retornou `200` com URL `checkout.stripe.com` (sem 500). Próximo passo operacional: concluir pagamento com cartão Stripe test `4242` e validar `profiles.plan`.
