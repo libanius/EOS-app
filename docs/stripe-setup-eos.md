@@ -97,9 +97,12 @@ Repita **Passos 1–4 em Live mode** (produtos, `sk_live_...`, webhook live com 
 
 ## Checklist rápido
 
-- [ ] Conta EOS criada sob a mesma empresa + statement descriptor `EOS APP`
-- [ ] 2 produtos (Família, Premium) mensais → 2 Price IDs
-- [ ] `sk_test` / webhook `whsec` (test)
-- [ ] 4 env vars na Vercel (Preview) + redeploy
+- [x] Conta EOS criada (`acct_1TuL49I7bawhx445` — "EOS sandbox", US) — falta statement descriptor `EOS APP` (definir no dashboard antes do Live)
+- [x] 2 produtos mensais criados (2026-07-19, via API): **EOS Family** `price_1TuwePI7bawhx4452M8uV7HN` ($9.90) · **EOS Premium** `price_1TuwePI7bawhx4452FUobZFI` ($19.90)
+- [x] Webhook (test) criado: `we_1TuwePI7bawhx445hxklasE5` → `/api/billing/webhook`, 4 eventos; `whsec` guardado só na Vercel
+- [x] 4 env vars na Vercel **Production** (`sk_test`, `whsec`, 2 price IDs) + redeploy — 2026-07-19
 - [ ] Pagamento de teste 4242 grava `profiles.plan` ✔ (agente valida)
-- [ ] Repetir em Live → env vars em Production → redeploy
+- [ ] **Live mode**: refazer produtos/keys/webhook em Live, trocar as env vars da Vercel para `sk_live`/price live, definir statement descriptor, redeploy
+
+> Segredos (`sk_test`, `whsec`) vivem só na Vercel — **não** neste repo. Os IDs acima não são sensíveis.
+> As chaves de **teste** atuais devem ser trocadas por chaves **Live** antes do lançamento real (test mode não cobra de verdade).
