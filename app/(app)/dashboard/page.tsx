@@ -11,7 +11,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useLanguage } from '@/lib/i18n'
-import { useRisk } from '@/components/v2/RiskProvider'
+import RiskProvider, { useRisk } from '@/components/v2/RiskProvider'
 import TacticalCard from '@/components/v2/TacticalCard'
 import ParticleField from '@/components/v2/ParticleField'
 import LivingTimeline from '@/components/v2/LivingTimeline'
@@ -106,6 +106,14 @@ function readiness(inv: Inventory | null, members: Member[], items: ChecklistIte
 // ─── page ─────────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
+  return (
+    <RiskProvider>
+      <DashboardContent />
+    </RiskProvider>
+  )
+}
+
+function DashboardContent() {
   const { language } = useLanguage()
   const c = COPY[language]
   const { snapshot, score, state, escalation, escFlash, loading: riskLoading, error, hasCoords, requestGps, refresh } = useRisk()

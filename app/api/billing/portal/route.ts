@@ -2,18 +2,9 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { ensureProfile } from '@/lib/ensure-profile'
 import { getStripe } from '@/lib/stripe'
+import { getSiteUrl } from '@/lib/site-url'
 
 export const runtime = 'nodejs'
-
-function siteUrl() {
-  const raw =
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    (process.env.VERCEL_PROJECT_PRODUCTION_URL
-      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-      : 'https://eos-app-fawn.vercel.app')
-  const cleaned = raw.replace(/\s+/g, '').replace(/\/+$/, '')
-  return /^https?:\/\//.test(cleaned) ? cleaned : `https://${cleaned}`
-}
 
 export async function POST() {
   const stripe = getStripe()
@@ -41,7 +32,7 @@ export async function POST() {
 
   const session = await stripe.billingPortal.sessions.create({
     customer: customerId,
-    return_url: `${siteUrl()}/settings`,
+    return_url: `${getSiteUrl()}/settings`,
   })
 
   return NextResponse.json({ url: session.url })

@@ -1,7 +1,7 @@
 # PENDÊNCIAS DO DONO — ações que só você pode executar
 
-> Status geral: **PENDENTE**. O código está pronto e no ar (auto-deploy), mas estas ações dependem de credenciais/console que o agente não tem acesso. Enquanto não forem feitas, os recursos abaixo ficam inertes/degradados de forma **honesta** (nada quebra, nada finge estar conectado).
-> Última atualização: 2026-07-17.
+> Status geral: **PENDENTE**. O código está pronto e no ar (auto-deploy), mas algumas ações dependem de credenciais/console que o agente não tem acesso. Enquanto não forem feitas, os recursos abaixo ficam inertes/degradados de forma **honesta** (nada quebra, nada finge estar conectado).
+> Última atualização: 2026-07-19.
 
 > **Migrations agora RESOLVIDAS** (2026-07-17): o dono forneceu um **Personal Access Token do Supabase** (`sbp_...`), o que deu ao agente acesso à Management API do projeto `alxurmgpyxjhvnliivbf` ("eosoffgrid@gmail.com's Project"). As 3 migrations da seção 1 foram aplicadas e verificadas. O token deve ser **revogado/rotacionado** pelo dono após o uso (Dashboard → Account → Tokens). O que ainda depende do dono: Stripe (contas/produtos/env vars), chaves de provider (WeatherKit/Xweather/etc.), e autorizações externas (ShakeAlert/FEMA) — valores secretos que só o dono possui.
 > Histórico: o `supabase` CLI logado neste ambiente pertence a outra conta (só enxerga BrightScaleWeb / bolt-native / Abre-USA); por isso o CLI não alcança o projeto EOS. A via que funcionou foi o PAT + Management API.
@@ -40,7 +40,7 @@ Aplicadas pelo agente via **Management API** (`/v1/projects/{ref}/database/query
 
 ## 2. Stripe — Monetização (D-042) — ⚙️ TEST MODE ATIVO (2026-07-19)
 
-> **Test mode configurado e no ar** (agente, via API Stripe + API Vercel): produtos/preços ($9.90/$19.90), webhook e as 4 env vars em Production estão setados; deploy fresco carregou tudo. Endpoints saíram do 503 (`webhook`→400, `checkout`→401) e eventos assinados reais foram entregues e ACKados 2xx pelo endpoint de produção. **Falta**: (a) um pagamento de teste real logado para ver `profiles.plan` virar, e (b) trocar as chaves **test → Live** antes do lançamento pago. Detalhes: `docs/stripe-setup-eos.md`.
+> **Test mode configurado e no ar** (agente, via API Stripe + API Vercel): produtos/preços ($9.90/$19.90), webhook e as 4 env vars em Production estão setados; deploy fresco carregou tudo. Endpoints saíram do 503 (`webhook`→400, `checkout`→401) e eventos assinados reais foram entregues e ACKados 2xx pelo endpoint de produção. Em 2026-07-19, corrigido o 500 do Checkout causado por `success_url` inválida. **Falta**: (a) um pagamento de teste real logado para ver `profiles.plan` virar, e (b) trocar as chaves **test → Live** antes do lançamento pago. Detalhes: `docs/stripe-setup-eos.md`.
 
 Sem isto, os botões de upgrade e o portal respondem **503** (a UI mantém o estado atual, nada quebra).
 
@@ -49,19 +49,21 @@ Sem isto, os botões de upgrade e o portal respondem **503** (a UI mantém o est
 
 **Checklist:**
 1. [x] ~~Aplicar a migration `20260710000000_stripe_billing.sql`~~ — ✅ feito 2026-07-17 (seção 1).
-2. [ ] No **Stripe Dashboard**, criar **2 produtos com preço recorrente**:
+2. [x] ~~No **Stripe Dashboard**, criar **2 produtos com preço recorrente**~~ — ✅ feito em Test mode 2026-07-19:
        - Plano **Família** (mensal) → copiar o **Price ID** (`price_...`).
        - Plano **Premium** (mensal) → copiar o **Price ID**.
-3. [ ] No **Vercel** (Production + Preview), setar as 4 env vars:
+3. [x] ~~No **Vercel** (Production + Preview), setar as 4 env vars~~ — ✅ feito em Production/Test mode 2026-07-19:
        - `STRIPE_SECRET_KEY` (`sk_live_...` ou `sk_test_...`)
        - `STRIPE_WEBHOOK_SECRET` (`whsec_...` — vem do passo 4)
        - `STRIPE_PRICE_FAMILY` (o Price ID do Família)
        - `STRIPE_PRICE_PREMIUM` (o Price ID do Premium)
-4. [ ] No Stripe, registrar o **endpoint de webhook**:
+4. [x] ~~No Stripe, registrar o **endpoint de webhook**~~ — ✅ feito em Test mode 2026-07-19:
        `https://eos-app-fawn.vercel.app/api/billing/webhook`
        eventos: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`.
        Copiar o **Signing secret** (`whsec_...`) para `STRIPE_WEBHOOK_SECRET`.
-5. [ ] **Redeploy** (`vercel --prod --yes`) — env var novo não afeta deploy existente.
+5. [x] ~~**Redeploy** (`vercel --prod --yes`)~~ — ✅ deploy fresco carregou as env vars; novo deploy do bugfix de URL pendente via push desta sessão.
+6. [ ] Pagamento de teste logado com cartão `4242 4242 4242 4242` e validação de `profiles.plan`.
+7. [ ] Antes do lançamento pago: refazer produtos/keys/webhook em **Live mode**, trocar env vars test → live e redeploy.
 
 > Pegadinha (D-035/D-036): grave valores **sem aspas e sem espaços/newline**. Vars "Sensitive" não são lidas de volta — valide pelo comportamento em produção.
 

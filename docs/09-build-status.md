@@ -1,7 +1,7 @@
 # 09 — Build Status
 
 > The single most important file for resuming a session. Read this first after AGENTS.md.
-> Last updated: 2026-07-10
+> Last updated: 2026-07-19
 
 ---
 
@@ -15,8 +15,8 @@
 | | P2-T03: Family plan gate on circles + pooled inventory (2026-06-30)
 | | P2-T04: HouseholdHealthCard — stats + gap detection (2026-06-30)
 | | P2-T03: Per-field inventory sharing + shared_fields migration (2026-06-30) | | | | |
-| **Next Task** | ⚠️ **Ações do dono pendentes em `docs/PENDENCIAS-DONO.md`** — Stripe (migration + 4 env vars + webhook), chaves de hazard (WeatherKit/Xweather/etc.), migrations no SQL Editor. |
-| **Build** | ✅ Passing — `npm run build` clean as of 2026-06-29 |
+| **Next Task** | ⚠️ **Ações do dono pendentes em `docs/PENDENCIAS-DONO.md`** — concluir pagamento de teste Stripe logado e trocar test → Live antes do lançamento pago; chaves opcionais de hazard (WeatherKit/Xweather/etc.). |
+| **Build** | ✅ Passing — `npm run build` clean as of 2026-07-19 |
 | **Vercel** | ✅ Deployed — auto-deploys on push to `main` |
 | **Supabase** | ✅ Healthy — project ref `alxurmgpyxjhvnliivbf` |
 
@@ -427,3 +427,19 @@ To add a new knowledge source: drop PDF in `docs/`, re-run both commands.
 **Verificação**: `tsc --noEmit` limpo; `npm run build` limpo (3 rotas de billing presentes); teste local confirmou **degrade gracioso**: `/api/billing/webhook` e `/api/billing/checkout` respondem **503** sem chaves (não crasham). Fluxo E2E de pagamento real não testado (precisa das chaves Stripe do dono).
 
 **Checklist de ativação (dono)** — em D-042: (1) aplicar migration no SQL Editor; (2) criar 2 produtos/preços recorrentes no Stripe; (3) setar `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_FAMILY`, `STRIPE_PRICE_PREMIUM` no Vercel; (4) registrar webhook `…/api/billing/webhook` (eventos `checkout.session.completed`, `customer.subscription.updated|deleted`); (5) redeploy.
+
+---
+
+## What Was Done — Session 2026-07-19 (Stripe checkout 500)
+
+**Bug relatado:** botão de upgrade em Settings falhava com `Não foi possível iniciar o pagamento: 500`.
+
+**Causa confirmada nos logs da Vercel:** Stripe rejeitava `success_url` com `url_invalid / Not a valid URL`. O deploy estava montando URLs de retorno a partir de env var manual com formatação inválida (classe D-035/D-036: aspas/whitespace/`\n` em env var).
+
+**Correção:**
+- `lib/site-url.ts` criado: normaliza URL canônica removendo aspas, whitespace, `\n` literal e barras finais; adiciona `https://` quando necessário; prioriza `VERCEL_PROJECT_PRODUCTION_URL`.
+- Rotas `/api/billing/checkout` e `/api/billing/portal` passam a usar o helper compartilhado.
+- `lib/auth/utils.ts` reexporta o mesmo helper para manter redirects de auth consistentes.
+- `/dashboard` voltou a buildar: `RiskProvider` agora é montado localmente nessa página, já que o v2 shell global está propositalmente desligado por D-045.
+
+**Verificação:** `npm test` → 45/45; `npm run type-check` limpo; `npm run build` limpo. Próximo passo operacional: testar upgrade logado em produção com cartão Stripe test `4242`.

@@ -180,7 +180,8 @@ Sentry is wired up (`sentry.client.config.ts`, `sentry.server.config.ts`, `sentr
 - **Fluxo**: `/api/billing/checkout` (POST `{plan}`) cria/reusa customer e abre Checkout → usuário paga → Stripe chama `/api/billing/webhook` → webhook escreve `profiles.plan` via service-role. `/api/billing/portal` abre o portal (gerenciar/cancelar). Downgrade → `free` em `customer.subscription.deleted` ou status não-ativo.
 - **Webhook**: usa `req.text()` (raw body) + `stripe.webhooks.constructEvent` com `STRIPE_WEBHOOK_SECRET`. `runtime = 'nodejs'`. Resolve o perfil por `metadata.user_id` (preferido) ou `stripe_customer_id`.
 - **Degrada limpo**: sem `STRIPE_SECRET_KEY`/secret, todas as rotas respondem **503** (não crasham) — a UI mantém o estado atual. Verificado local.
-- **Ativação (dono)** — checklist em D-042: aplicar migration `20260710000000_stripe_billing.sql`, criar 2 produtos/preços no Stripe, setar as 4 env vars no Vercel, registrar o endpoint de webhook, redeploy.
+- **Ativação test mode (2026-07-19)**: migration Stripe aplicada; produtos/preços test criados; 4 env vars Stripe Production setadas; webhook test registrado e ACKando eventos reais. Ainda falta pagamento de teste logado para validar `profiles.plan`, e antes do lançamento pago trocar test → Live.
+- **Env URL pegadinha (2026-07-19)**: o Checkout falhou com 500 porque Stripe recebeu `success_url` inválida (`url_invalid / Not a valid URL`) por formatação ruim de env URL. `lib/site-url.ts` agora normaliza aspas simples/duplas, whitespace, `\n` literal, barras finais e domínios sem protocolo; checkout/portal/auth usam esse helper. Ainda assim, grave env vars sem aspas/newline sempre que possível.
 - **`profiles.plan`** continua sendo o único campo que o resto do app lê (gates via `lib/feature-gates.ts`). As colunas novas (`stripe_customer_id` etc.) são só para reconciliação/portal.
 
 ---
@@ -195,17 +196,15 @@ Sentry is wired up (`sentry.client.config.ts`, `sentry.server.config.ts`, `sentr
 
 ---
 
-## Migrações — auditoria de produção (2026-07-10)
+## Migrações — auditoria de produção (atualizada 2026-07-19)
 
 Verificado por existência de tabela/coluna via service-role REST (`scripts/` ad-hoc):
 - ✅ `20260630000100_circle_action_plans.sql` — tabela `circle_action_plans` **APLICADA**
 - ✅ `20260630000200_push_subscriptions.sql` — tabela `push_subscriptions` **APLICADA**
 - ✅ `20260630000300_family_member_link.sql` — coluna `family_members.linked_user_id` **APLICADA**
 - ✅ `20260705000100` — tabela `circle_join_requests` (D-040) **APLICADA**
-- ❌ `20260710000000_stripe_billing.sql` — colunas Stripe em `profiles` (D-042) **PENDENTE** (aplicar no SQL Editor; até lá o webhook não tem onde gravar e o upgrade não persiste).
-- ❌ `20260705000000_auto_create_profile.sql` — trigger `handle_new_user` **AINDA AUSENTE**.
-  Confirmado: criar auth user sem chamar `/api/profile` NÃO gera linha `profiles` automaticamente.
-  **Não bloqueia produção** — `lib/ensure-profile.ts` (self-heal on-demand, D-038) garante o perfil em ficha/inventory/family/plan/analyze/checklist. Aplicar o trigger é otimização, não correção.
-  **Como aplicar** (precisa SQL Editor / credencial de DB — não há no ambiente do agente): colar o conteúdo de `supabase/migrations/20260705000000_auto_create_profile.sql` no Supabase Dashboard → SQL Editor.
+- ✅ `20260710000000_stripe_billing.sql` — colunas Stripe em `profiles` **APLICADA** (2026-07-17)
+- ✅ `20260710010000_hazard_tables.sql` — tabelas de hazard **APLICADAS** (2026-07-17)
+- ✅ `20260705000000_auto_create_profile.sql` — trigger `handle_new_user` **APLICADO** (2026-07-17; 0 usuários sem perfil)
 
 Verificar via Supabase Dashboard → SQL Editor: `SELECT name FROM supabase_migrations.schema_migrations ORDER BY name DESC LIMIT 5;`

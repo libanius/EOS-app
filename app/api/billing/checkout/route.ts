@@ -3,21 +3,10 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ensureProfile } from '@/lib/ensure-profile'
 import { getStripe, priceIdForPlan } from '@/lib/stripe'
+import { getSiteUrl } from '@/lib/site-url'
 import type { Plan } from '@/lib/feature-gates'
 
 export const runtime = 'nodejs'
-
-function siteUrl() {
-  const raw =
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    (process.env.VERCEL_PROJECT_PRODUCTION_URL
-      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-      : 'https://eos-app-fawn.vercel.app')
-  // Env values can carry stray whitespace/newlines (D-035/036) or lack a scheme,
-  // which would produce an invalid success_url and make Stripe reject the session.
-  const cleaned = raw.replace(/\s+/g, '').replace(/\/+$/, '')
-  return /^https?:\/\//.test(cleaned) ? cleaned : `https://${cleaned}`
-}
 
 export async function POST(req: Request) {
   const stripe = getStripe()
@@ -78,7 +67,7 @@ export async function POST(req: Request) {
       }
     }
 
-    const base = siteUrl()
+    const base = getSiteUrl()
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       customer: customerId,
