@@ -93,6 +93,7 @@
 | P3-T04 | Monetization: subscription model decision and implementation | ✅ COMPLETE (código) — D-042; ativação depende de checklist do dono |
 | P3-T05 | Emergency contact sharing within circles | ✅ COMPLETE |
 | P3-T06 | Cross-device sync: Realtime + offline queue + snapshot cache | ✅ COMPLETE |
+| P3-T07 | Landing de conversão v3 ("Prévia Viva" — máquina de estados de risco) — spec em `EOS documents/Landing EOS/eos-landing-v3-interactive-spec.md` | DEFERRED — D-045; retomar após Stripe ativo |
 
 ---
 

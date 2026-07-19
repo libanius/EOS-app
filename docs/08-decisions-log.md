@@ -4,6 +4,19 @@
 
 ---
 
+## D-045 — Landing de conversão v3 ("Prévia Viva") adiada até depois do Stripe no ar
+
+**Date**: 2026-07-19
+**Status**: DECIDED / DEFERRED
+
+**Context**: Existe uma landing muito mais ambiciosa documentada em `EOS documents/Landing EOS/` — `eos-landing-v3-interactive-spec.md` (spec da "Prévia Viva": a página inteira é uma máquina de estados de risco SAFE/WATCH/WARNING/CRITICAL, com protótipo navegável) e `eos-landing-v2-preview.jsx` (preview React). A landing **em produção** (`app/page.tsx`) é minimalista e foi estendida em 2026-07-17 com preços públicos + rodapé legal + `/terms`, `/privacy`, `/refund` para a revisão do Stripe.
+
+**Decision**: Priorizar **pôr no ar + ativar o Stripe** com a landing minimalista atual (que já é suficiente para a revisão do processador). A landing de conversão v3 é um projeto de produto à parte, de esforço bem maior, e fica **adiada** para depois do lançamento pago. Registrada no roadmap como tarefa futura (ver P3-T07).
+
+**Consequence**: Não implementar a v3 agora. A landing atual serve tanto ao usuário quanto ao revisor do Stripe. Quando o faturamento estiver ativo, retomar a v3 a partir da spec já escrita.
+
+---
+
 ## D-044 — 3 agentes de sobrevivência (MacGyver/SEAL/SAS) + fix de truncagem da análise
 
 **Date**: 2026-07-11
