@@ -11,6 +11,7 @@
 |---|---|
 | **Current Phase** | Launch Activation — Stripe & Production Readiness |
 | **Last Completed Task** | LA-T01: Stripe test payment verified webhook → `profiles.plan=family` (2026-07-20) |
+| | PILOT-T00: EOS Pilot concept/spec inserted into App Spine (2026-07-20) |
 | | P3-T04: Monetization code + Stripe Test mode checkout verified (2026-07-19) |
 | | P2-T12: Circles role upgrade + multi-location monitoring (2026-06-30) |
 | | P3-T06: Cross-device sync (Realtime + offline queue + snapshot cache) |
@@ -116,6 +117,10 @@
 **LA-T02: Stripe Live cutover**
 
 Criar produtos/keys/webhook em Live mode, trocar env vars test → live na Vercel e redeploy.
+
+**Depois de LA-T02: EOS Pilot**
+
+Implementar o protótipo do Pilot como complication integrada ao Dashboard, conforme `docs/15-eos-pilot.md` e D-046. Não criar nova aba no primeiro teste.
 
 ---
 

@@ -16,9 +16,9 @@ EOS runs as a **Progressive Web App (Next.js 14)** backed by **Supabase** for au
 
 | Field | Value |
 |---|---|
-| **Phase** | Phase 3 complete — Cross-device sync + Push notifications |
-| **Current Task** | None pending — awaiting P3-T04 (Monetization) decision |
-| **Last Updated** | 2026-06-30 |
+| **Phase** | Launch Activation — Stripe & Production Readiness |
+| **Current Task** | LA-T02 — Stripe Live cutover |
+| **Last Updated** | 2026-07-20 |
 
 Full details: `docs/09-build-status.md`
 
@@ -45,6 +45,8 @@ Full details: `docs/09-build-status.md`
 | Feature gates — free/family/premium tiers | ✅ Working |
 | Cross-device sync — Realtime + offline queue | ✅ Working |
 | Push notifications (VAPID, Web Push) | ✅ Working |
+| Stripe Test mode checkout + webhook | ✅ Working |
+| EOS Pilot concept/spec | ✅ Documented (`docs/15-eos-pilot.md`) |
 | PWA / offline SURVIVAL mode | ✅ Working |
 | Safe area insets (iPhone notch + home bar) | ✅ Fixed |
 | Bottom navigation (5 abas) | ✅ Working |
@@ -89,6 +91,7 @@ Full details: `docs/09-build-status.md`
 | `scripts/pdf_to_text.py` | Step 1 of ingest: PDFs → text files |
 | `scripts/ingest.mjs` | Step 2 of ingest: text files → knowledge_base embeddings |
 | `mobile/` | React Native templates (NOT a runnable RN project yet) |
+| `docs/15-eos-pilot.md` | EOS Pilot product concept/spec |
 
 ---
 

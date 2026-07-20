@@ -4,6 +4,25 @@
 
 ---
 
+## D-046 — EOS Pilot como camada contextual integrada ao Dashboard
+
+**Date**: 2026-07-20
+**Status**: DECIDED / SPEC
+
+**Context**: O EOS resolve preparação, monitoramento e resposta, mas emergências graves são esporádicas. O dono identificou uma oportunidade de uso diário: os mesmos dados que ajudam a decidir evacuação, preparação e risco também podem ajudar a decidir se a família deve pescar, navegar, acampar, viajar ou voltar antes de o contexto piorar. A pergunta central foi: como usar os dados do EOS no dia a dia antes de uma emergência séria?
+
+**Decision**:
+1. Criar **EOS Pilot** como a camada contextual de decisão do EOS, não como nova identidade principal do produto.
+2. O Pilot começa perguntando **"What's the plan?"** / **"Qual e o plano?"**, aprende por opções progressivas e cruza intenção, ambiente, família, recursos e regras de segurança.
+3. No primeiro teste, o Pilot entra como **complication/módulo integrado ao Dashboard**, não como nova aba permanente e não como chatbot genérico.
+4. As respostas usam estados objetivos: `GO`, `LIMITED`, `WAIT`, `AVOID` e `PRIORITY OVERRIDE`.
+5. Regras críticas e alertas oficiais sempre vencem preferências aprendidas ou interpretação por IA.
+6. O Pilot é uma etapa de experiência de produção após a ativação Stripe Live, salvo decisão explícita do dono para prototipar antes.
+
+**Consequence**: A spec fica em `docs/15-eos-pilot.md`; o roadmap ganha a etapa **Production Experience — EOS Pilot**. O próximo item operacional continua sendo LA-T02 (Stripe Live cutover). O Pilot não muda código agora.
+
+---
+
 ## D-045 — Landing de conversão v3 ("Prévia Viva") adiada até depois do Stripe no ar
 
 **Date**: 2026-07-19
@@ -477,4 +496,3 @@ FEATURE_GATES = {
 3. `app/(app)/ficha/page.tsx`: em resposta 401 no load ou no save, redireciona para `/auth/login?redirectTo=/ficha` (trata expiração de sessão no meio do uso, em vez de mostrar o erro).
 
 **Consequence**: sessão inválida em página autenticada leva ao login (com retorno), não a uma tela quebrada. A ficha pública permanece aberta. Aplica o mesmo padrão de proteção que as demais telas do app já tinham.
-

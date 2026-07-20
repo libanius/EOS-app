@@ -192,6 +192,15 @@ Sentry is wired up (`sentry.client.config.ts`, `sentry.server.config.ts`, `sentr
 - **G-02 Landing Page** and **G-04 Monetization** are cleared. Landing v3 remains deferred (D-045); monetization business model is decided (D-042).
 - **G-03 Mobile Readiness** and **G-05 LoRa Mesh Priority** remain open and block their respective phases.
 
+## EOS Pilot (D-046)
+
+- EOS Pilot is the daily-use contextual decision layer of EOS, documented in `docs/15-eos-pilot.md`.
+- It starts with **"What's the plan?"** and learns through progressive options, not generic chat.
+- First implementation should be a Dashboard complication/module, not a new permanent tab.
+- Pilot recommendation states: `GO`, `LIMITED`, `WAIT`, `AVOID`, `PRIORITY OVERRIDE`.
+- Critical rules and official alerts always override recreation and learned preferences.
+- Sequencing: Pilot prototype starts after **LA-T02 Stripe Live cutover**, unless the owner explicitly reprioritizes.
+
 ---
 
 ## Contratos de API (fáceis de errar em testes)
