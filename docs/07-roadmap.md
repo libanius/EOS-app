@@ -1,6 +1,6 @@
 # 07 — Roadmap
 
-> Last updated: 2026-06-29
+> Last updated: 2026-07-20
 
 ---
 
@@ -60,22 +60,35 @@
 
 ---
 
+## Launch Activation — Stripe & Production Readiness
+
+*Goal: finish the operational launch checklist without adding new product surface.*
+
+| Task ID | Task | Status | Notes |
+|---|---|---|---|
+| LA-T01 | Stripe test payment: complete Checkout with test card and verify webhook updates `profiles.plan` | PENDING | Checkout returns `checkout.stripe.com` URL in production; needs real test payment |
+| LA-T02 | Stripe Live cutover: create Live products/keys/webhook, swap env vars test → live, redeploy | BLOCKED | Starts after LA-T01 passes |
+| LA-T03 | Optional hazard provider keys (WeatherKit/Xweather/etc.) | DRAFT | Not required for launch; keyless providers already live |
+| LA-T04 | Upstash Redis rate-limit validation | DRAFT | App currently falls back to in-memory limiter |
+
+---
+
 ## Phase 3 — Mobile App (React Native)
 
 *Goal: Initialize the React Native project, integrate the intelligence layer, and ship LOCAL_AI mode.*
 
-> Blocked until Phase 1 is complete and Gate G-03 is cleared.
+> Blocked until Gate G-03 is cleared.
 
 | Task ID | Task | Status |
 |---|---|---|
-| P2-T01 | Initialize React Native project (npx react-native@latest init EOSMobile) | BLOCKED |
-| P2-T02 | Install mobile dependencies (llama.rn, RNFS, Zustand, NetInfo, etc.) | BLOCKED |
-| P2-T03 | Integrate `/mobile/eos-intelligence-layer.ts` | BLOCKED |
-| P2-T04 | Implement LOCAL_AI mode with llama.rn | BLOCKED |
-| P2-T05 | Wire up SURVIVAL mode (same Rules Engine, no server) | BLOCKED |
-| P2-T06 | Auth with Supabase JWT in SecureStore | BLOCKED |
-| P2-T07 | Implement LoRa BLE bridge screen (`mobile/screens/LoRaMeshScreen.tsx`) | BLOCKED |
-| P2-T08 | Submit to App Store and Google Play | BLOCKED |
+| M-T01 | Initialize React Native project (npx react-native@latest init EOSMobile) | BLOCKED |
+| M-T02 | Install mobile dependencies (llama.rn, RNFS, Zustand, NetInfo, etc.) | BLOCKED |
+| M-T03 | Integrate `/mobile/eos-intelligence-layer.ts` | BLOCKED |
+| M-T04 | Implement LOCAL_AI mode with llama.rn | BLOCKED |
+| M-T05 | Wire up SURVIVAL mode (same Rules Engine, no server) | BLOCKED |
+| M-T06 | Auth with Supabase JWT in SecureStore | BLOCKED |
+| M-T07 | Implement LoRa BLE bridge screen (`mobile/screens/LoRaMeshScreen.tsx`) | BLOCKED |
+| M-T08 | Submit to App Store and Google Play | BLOCKED |
 
 ---
 
@@ -83,7 +96,7 @@
 
 *Goal: Expand Circles feature, add notifications, and prepare for user growth.*
 
-> Not yet sequenced. Dependent on Phase 2 and confirmed monetization decision.
+> Code complete except deferred landing v3. Monetization is in Test mode; launch activation tracked above.
 
 | Task ID | Task | Status |
 |---|---|---|

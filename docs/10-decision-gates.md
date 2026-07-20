@@ -22,7 +22,7 @@
 
 **Question**: What should `/` show to unauthenticated users?
 
-**Current state**: Placeholder text ("Foundation ready. Auth and database next.") — not suitable for real users.
+**Current state**: Minimal production landing is live with pricing/legal links. The more ambitious "Prévia Viva" landing v3 is deferred by D-045.
 
 **Options**:
 - Minimal: just a tagline + "Get Started" button
@@ -31,7 +31,7 @@
 
 **Blocks**: P1-T04.
 
-**Status**: OPEN
+**Status**: CLEARED — minimal landing shipped in P1-T04; v3 is a deferred roadmap task (P3-T07 / D-045)
 
 ---
 
@@ -41,9 +41,9 @@
 
 **Why it matters**: Once initialized, the mobile app needs active maintenance. Starting too early creates dead weight.
 
-**Blocks**: Phase 2.
+**Blocks**: Mobile App phase.
 
-**Status**: OPEN — waiting for Phase 1 completion.
+**Status**: OPEN — Phase 1 and Phase 2 are complete, but mobile still needs an explicit owner decision before initialization.
 
 ---
 
@@ -55,7 +55,7 @@
 
 **Blocks**: Phase 3 planning.
 
-**Status**: OPEN
+**Status**: CLEARED — subscription model selected and implemented through Stripe self-serve (D-042). Current remaining work is launch activation, not business-model decision.
 
 ---
 

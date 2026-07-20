@@ -184,6 +184,14 @@ Sentry is wired up (`sentry.client.config.ts`, `sentry.server.config.ts`, `sentr
 - **Env URL pegadinha (2026-07-19)**: o Checkout falhou com 500 porque Stripe recebeu `success_url` inválida (`url_invalid / Not a valid URL`) por formatação ruim de env URL. `lib/site-url.ts` agora normaliza aspas simples/duplas, whitespace, `\n` literal, barras finais e domínios sem protocolo; checkout/portal/auth usam esse helper. Ainda assim, grave env vars sem aspas/newline sempre que possível.
 - **`profiles.plan`** continua sendo o único campo que o resto do app lê (gates via `lib/feature-gates.ts`). As colunas novas (`stripe_customer_id` etc.) são só para reconciliação/portal.
 
+## App Spine status alignment (2026-07-20)
+
+- Roadmap/build-status/gates were realigned after Stripe Checkout reached Test mode.
+- Current phase is **Launch Activation — Stripe & Production Readiness**, not Phase 2. Phase 2 is complete.
+- Current actionable task is **LA-T01**: complete a logged-in Stripe test payment and verify webhook → `profiles.plan`.
+- **G-02 Landing Page** and **G-04 Monetization** are cleared. Landing v3 remains deferred (D-045); monetization business model is decided (D-042).
+- **G-03 Mobile Readiness** and **G-05 LoRa Mesh Priority** remain open and block their respective phases.
+
 ---
 
 ## Contratos de API (fáceis de errar em testes)

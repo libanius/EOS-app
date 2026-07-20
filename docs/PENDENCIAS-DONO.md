@@ -1,9 +1,9 @@
 # PENDÊNCIAS DO DONO — ações que só você pode executar
 
 > Status geral: **PENDENTE**. O código está pronto e no ar (auto-deploy), mas algumas ações dependem de credenciais/console que o agente não tem acesso. Enquanto não forem feitas, os recursos abaixo ficam inertes/degradados de forma **honesta** (nada quebra, nada finge estar conectado).
-> Última atualização: 2026-07-19.
+> Última atualização: 2026-07-20.
 
-> **Migrations agora RESOLVIDAS** (2026-07-17): o dono forneceu um **Personal Access Token do Supabase** (`sbp_...`), o que deu ao agente acesso à Management API do projeto `alxurmgpyxjhvnliivbf` ("eosoffgrid@gmail.com's Project"). As 3 migrations da seção 1 foram aplicadas e verificadas. O token deve ser **revogado/rotacionado** pelo dono após o uso (Dashboard → Account → Tokens). O que ainda depende do dono: Stripe (contas/produtos/env vars), chaves de provider (WeatherKit/Xweather/etc.), e autorizações externas (ShakeAlert/FEMA) — valores secretos que só o dono possui.
+> **Migrations resolvidas** (2026-07-17) e **Stripe Test mode ativo** (2026-07-19). O que ainda depende do dono: completar pagamento de teste logado, fazer cutover Stripe test → Live antes do lançamento pago, chaves opcionais de provider (WeatherKit/Xweather/etc.) e autorizações externas (ShakeAlert/FEMA). O Personal Access Token Supabase usado em 2026-07-17 deve ser **revogado/rotacionado** pelo dono após o uso (Dashboard → Account → Tokens).
 > Histórico: o `supabase` CLI logado neste ambiente pertence a outra conta (só enxerga BrightScaleWeb / bolt-native / Abre-USA); por isso o CLI não alcança o projeto EOS. A via que funcionou foi o PAT + Management API.
 
 ---
@@ -42,7 +42,7 @@ Aplicadas pelo agente via **Management API** (`/v1/projects/{ref}/database/query
 
 > **Test mode configurado e no ar** (agente, via API Stripe + API Vercel): produtos/preços ($9.90/$19.90), webhook e as 4 env vars em Production estão setados; deploy fresco carregou tudo. Endpoints saíram do 503 (`webhook`→400, `checkout`→401) e eventos assinados reais foram entregues e ACKados 2xx pelo endpoint de produção. Em 2026-07-19, corrigido o 500 do Checkout causado por `success_url` inválida; chamada autenticada em produção já retorna URL `checkout.stripe.com`. **Falta**: (a) um pagamento de teste real logado para ver `profiles.plan` virar, e (b) trocar as chaves **test → Live** antes do lançamento pago. Detalhes: `docs/stripe-setup-eos.md`.
 
-Sem isto, os botões de upgrade e o portal respondem **503** (a UI mantém o estado atual, nada quebra).
+Estado atual: os botões de upgrade já conseguem abrir Checkout em Test mode. O plano só muda depois do pagamento teste passar pelo webhook.
 
 > **Decisão 2026-07-17 (Rota A):** o EOS terá **conta Stripe própria**, sob a mesma empresa/Organização do site existente do dono, para não misturar marca, statement descriptor, payouts e relatórios. Verificado no código: o webhook resolve o perfil por `user_id`/`stripe_customer_id`, então mesmo numa conta compartilhada um site não corromperia os dados do outro — o motivo de separar é brand/dinheiro/contabilidade, não integridade de dados.
 > **Runbook copy-paste passo-a-passo: `docs/stripe-setup-eos.md`.** O checklist abaixo é o resumo; o runbook tem os detalhes (Test mode primeiro, statement descriptor, cartão 4242, etc.).
@@ -131,8 +131,8 @@ FEMA_IPAWS_PIN=
 
 ## 5. Ordem sugerida
 
-1. Migration Stripe + chaves Stripe → **começa a faturar**.
-2. WeatherKit → previsão principal + nowcast premium; destrava "ALL SYSTEMS LIVE".
-3. Xweather (raios) → canal de raios.
-4. Migration hazard_tables → histórico + push automático (Fase 2).
+1. Pagamento de teste Stripe logado → valida webhook e `profiles.plan`.
+2. Stripe Live cutover → começa a faturar de verdade.
+3. WeatherKit → previsão principal + nowcast premium; destrava "ALL SYSTEMS LIVE".
+4. Xweather (raios) → canal de raios.
 5. ShakeAlert / FEMA IPAWS → quando as autorizações saírem.

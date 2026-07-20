@@ -1,7 +1,7 @@
 # 09 — Build Status
 
 > The single most important file for resuming a session. Read this first after AGENTS.md.
-> Last updated: 2026-07-19
+> Last updated: 2026-07-20
 
 ---
 
@@ -9,13 +9,11 @@
 
 | Field | Value |
 |---|---|
-| **Current Phase** | Phase 2 — Círculos, Fichas & Household |
-| **Last Completed Task** | P2-T11: Feature gates + monitoring integration complete (2026-06-29)
-| | P2-T12: Circles role upgrade + multi-location monitoring (2026-06-30)
-| | P2-T03: Family plan gate on circles + pooled inventory (2026-06-30)
-| | P2-T04: HouseholdHealthCard — stats + gap detection (2026-06-30)
-| | P2-T03: Per-field inventory sharing + shared_fields migration (2026-06-30) | | | | |
-| **Next Task** | ⚠️ **Ações do dono pendentes em `docs/PENDENCIAS-DONO.md`** — concluir pagamento de teste Stripe logado e trocar test → Live antes do lançamento pago; chaves opcionais de hazard (WeatherKit/Xweather/etc.). |
+| **Current Phase** | Launch Activation — Stripe & Production Readiness |
+| **Last Completed Task** | P3-T04: Monetization code + Stripe Test mode checkout verified (2026-07-19) |
+| | P2-T12: Circles role upgrade + multi-location monitoring (2026-06-30) |
+| | P3-T06: Cross-device sync (Realtime + offline queue + snapshot cache) |
+| **Next Task** | LA-T01 — concluir pagamento de teste Stripe logado e validar webhook atualizando `profiles.plan`; depois LA-T02 test → Live. |
 | **Build** | ✅ Passing — `npm run build` clean as of 2026-07-19 |
 | **Vercel** | ✅ Deployed — auto-deploys on push to `main` |
 | **Supabase** | ✅ Healthy — project ref `alxurmgpyxjhvnliivbf` |
@@ -103,10 +101,10 @@
 | P2-T00: Circle model spec + decisions documented | ✅ COMPLETE | 2026-06-28 |
 | P2-T01: Ficha Pessoal + QR público | ✅ COMPLETE | 2026-06-28 |
 | P2-T06: Ficha Master — identidade central unificada + onboarding | ✅ COMPLETE | 2026-06-29 |
-| P2-T07: Subscription tiers — feature gates + UI upgrade | PENDING | — |
-| P2-T02: Circle invitations + approval + roles | PENDING | — |
-| P2-T03: Inventory sharing toggle per field | PENDING | — |
-| P2-T04: Household view in Círculos screen | PENDING | — |
+| P2-T07: Subscription tiers — feature gates + UI upgrade | ✅ COMPLETE | 2026-07-10 |
+| P2-T02: Circle invitations + approval + roles | ✅ COMPLETE | 2026-07-05 |
+| P2-T03: Inventory sharing toggle per field | ✅ COMPLETE | 2026-06-30 |
+| P2-T04: Household view in Círculos screen | ✅ COMPLETE | 2026-06-30 |
 
 **Spec**: ver `docs/12-circle-model.md` antes de implementar qualquer tarefa P2.
 
@@ -114,9 +112,13 @@
 
 ## What Is Next
 
-**P1-T07: Verify Sentry in production**
+**LA-T01: Stripe test payment**
 
-Confirm `SENTRY_DSN` is configured in Vercel and verify that a controlled production error reaches the Sentry project.
+Fazer checkout logado com cartão de teste `4242 4242 4242 4242`, confirmar que o webhook recebe o evento e que `profiles.plan` muda para `family`/`premium`.
+
+**LA-T02: Stripe Live cutover**
+
+Depois do teste passar, criar produtos/keys/webhook em Live mode, trocar env vars test → live na Vercel e redeploy.
 
 ---
 
@@ -195,10 +197,10 @@ To add a new knowledge source: drop PDF in `docs/`, re-run both commands.
 | `UPSTASH_REDIS_REST_URL` | Rate limiting (production) | ⚠️ Not confirmed in Vercel |
 | `UPSTASH_REDIS_REST_TOKEN` | Rate limiting (production) | ⚠️ Not confirmed — falls back to in-memory |
 | `SENTRY_DSN` | Error monitoring | ⚠️ Not confirmed — errors silently dropped without it |
-| `STRIPE_SECRET_KEY` | Stripe billing (checkout/portal/webhook) | ⚠️ AUSENTE — rotas de billing degradam para 503 até setar (D-042) |
-| `STRIPE_WEBHOOK_SECRET` | Verificação de assinatura do webhook | ⚠️ AUSENTE — webhook responde 503 sem ela (D-042) |
-| `STRIPE_PRICE_FAMILY` | Price ID do plano Família | ⚠️ AUSENTE — checkout do Família responde 503 (D-042) |
-| `STRIPE_PRICE_PREMIUM` | Price ID do plano Premium | ⚠️ AUSENTE — checkout do Premium responde 503 (D-042) |
+| `STRIPE_SECRET_KEY` | Stripe billing (checkout/portal/webhook) | ✅ Set em Production/Test mode (2026-07-19); trocar para Live antes do lançamento pago |
+| `STRIPE_WEBHOOK_SECRET` | Verificação de assinatura do webhook | ✅ Set em Production/Test mode (2026-07-19); webhook ACKa eventos reais 2xx |
+| `STRIPE_PRICE_FAMILY` | Price ID do plano Família | ✅ Set em Production/Test mode (`price_...`, $9.90) |
+| `STRIPE_PRICE_PREMIUM` | Price ID do plano Premium | ✅ Set em Production/Test mode (`price_...`, $19.90) |
 
 ---
 
@@ -206,7 +208,7 @@ To add a new knowledge source: drop PDF in `docs/`, re-run both commands.
 
 - **Hosting**: Vercel — project linked via `.vercel/project.json`
 - **Branch**: `main` → production (no staging environment)
-- **Build**: `next build` — verified clean as of 2026-06-24, commit `e4f4998`
+- **Build**: `next build` — verified clean as of 2026-07-19, commit `13fee78`
 - **Deploy**: automatic on push to `main`
 
 ---
