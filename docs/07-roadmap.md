@@ -66,8 +66,8 @@
 
 | Task ID | Task | Status | Notes |
 |---|---|---|---|
-| LA-T01 | Stripe test payment: complete Checkout with test card and verify webhook updates `profiles.plan` | PENDING | Checkout returns `checkout.stripe.com` URL in production; needs real test payment |
-| LA-T02 | Stripe Live cutover: create Live products/keys/webhook, swap env vars test → live, redeploy | BLOCKED | Starts after LA-T01 passes |
+| LA-T01 | Stripe test payment: complete Checkout with test card and verify webhook updates `profiles.plan` | ✅ COMPLETE | 2026-07-20 — `BrightScale Group` updated to `plan=family`, `plan_status=active`, `stripe_subscription_id=sub_...` |
+| LA-T02 | Stripe Live cutover: create Live products/keys/webhook, swap env vars test → live, redeploy | PENDING | Next launch activation task |
 | LA-T03 | Optional hazard provider keys (WeatherKit/Xweather/etc.) | DRAFT | Not required for launch; keyless providers already live |
 | LA-T04 | Upstash Redis rate-limit validation | DRAFT | App currently falls back to in-memory limiter |
 

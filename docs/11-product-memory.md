@@ -180,7 +180,7 @@ Sentry is wired up (`sentry.client.config.ts`, `sentry.server.config.ts`, `sentr
 - **Fluxo**: `/api/billing/checkout` (POST `{plan}`) cria/reusa customer e abre Checkout → usuário paga → Stripe chama `/api/billing/webhook` → webhook escreve `profiles.plan` via service-role. `/api/billing/portal` abre o portal (gerenciar/cancelar). Downgrade → `free` em `customer.subscription.deleted` ou status não-ativo.
 - **Webhook**: usa `req.text()` (raw body) + `stripe.webhooks.constructEvent` com `STRIPE_WEBHOOK_SECRET`. `runtime = 'nodejs'`. Resolve o perfil por `metadata.user_id` (preferido) ou `stripe_customer_id`.
 - **Degrada limpo**: sem `STRIPE_SECRET_KEY`/secret, todas as rotas respondem **503** (não crasham) — a UI mantém o estado atual. Verificado local.
-- **Ativação test mode (2026-07-19)**: migration Stripe aplicada; produtos/preços test criados; 4 env vars Stripe Production setadas; webhook test registrado e ACKando eventos reais. Ainda falta pagamento de teste logado para validar `profiles.plan`, e antes do lançamento pago trocar test → Live.
+- **Ativação test mode (2026-07-20)**: migration Stripe aplicada; produtos/preços test criados; 4 env vars Stripe Production setadas; webhook test registrado e ACKando eventos reais. Pagamento teste logado validado: `BrightScale Group` ficou `plan=family`, `plan_status=active`, `stripe_subscription_id=sub_...`. Antes do lançamento pago, trocar test → Live.
 - **Env URL pegadinha (2026-07-19)**: o Checkout falhou com 500 porque Stripe recebeu `success_url` inválida (`url_invalid / Not a valid URL`) por formatação ruim de env URL. `lib/site-url.ts` agora normaliza aspas simples/duplas, whitespace, `\n` literal, barras finais e domínios sem protocolo; checkout/portal/auth usam esse helper. Ainda assim, grave env vars sem aspas/newline sempre que possível.
 - **`profiles.plan`** continua sendo o único campo que o resto do app lê (gates via `lib/feature-gates.ts`). As colunas novas (`stripe_customer_id` etc.) são só para reconciliação/portal.
 
@@ -188,7 +188,7 @@ Sentry is wired up (`sentry.client.config.ts`, `sentry.server.config.ts`, `sentr
 
 - Roadmap/build-status/gates were realigned after Stripe Checkout reached Test mode.
 - Current phase is **Launch Activation — Stripe & Production Readiness**, not Phase 2. Phase 2 is complete.
-- Current actionable task is **LA-T01**: complete a logged-in Stripe test payment and verify webhook → `profiles.plan`.
+- Current actionable task is **LA-T02**: Stripe Live cutover (Live products/keys/webhook, env vars test → live, redeploy).
 - **G-02 Landing Page** and **G-04 Monetization** are cleared. Landing v3 remains deferred (D-045); monetization business model is decided (D-042).
 - **G-03 Mobile Readiness** and **G-05 LoRa Mesh Priority** remain open and block their respective phases.
 

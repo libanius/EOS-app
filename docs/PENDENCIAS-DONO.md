@@ -3,7 +3,7 @@
 > Status geral: **PENDENTE**. O código está pronto e no ar (auto-deploy), mas algumas ações dependem de credenciais/console que o agente não tem acesso. Enquanto não forem feitas, os recursos abaixo ficam inertes/degradados de forma **honesta** (nada quebra, nada finge estar conectado).
 > Última atualização: 2026-07-20.
 
-> **Migrations resolvidas** (2026-07-17) e **Stripe Test mode ativo** (2026-07-19). O que ainda depende do dono: completar pagamento de teste logado, fazer cutover Stripe test → Live antes do lançamento pago, chaves opcionais de provider (WeatherKit/Xweather/etc.) e autorizações externas (ShakeAlert/FEMA). O Personal Access Token Supabase usado em 2026-07-17 deve ser **revogado/rotacionado** pelo dono após o uso (Dashboard → Account → Tokens).
+> **Migrations resolvidas** (2026-07-17) e **Stripe Test mode validado ponta-a-ponta** (2026-07-20). O que ainda depende do dono: fazer cutover Stripe test → Live antes do lançamento pago, chaves opcionais de provider (WeatherKit/Xweather/etc.) e autorizações externas (ShakeAlert/FEMA). O Personal Access Token Supabase usado em 2026-07-17 deve ser **revogado/rotacionado** pelo dono após o uso (Dashboard → Account → Tokens).
 > Histórico: o `supabase` CLI logado neste ambiente pertence a outra conta (só enxerga BrightScaleWeb / bolt-native / Abre-USA); por isso o CLI não alcança o projeto EOS. A via que funcionou foi o PAT + Management API.
 
 ---
@@ -40,9 +40,9 @@ Aplicadas pelo agente via **Management API** (`/v1/projects/{ref}/database/query
 
 ## 2. Stripe — Monetização (D-042) — ⚙️ TEST MODE ATIVO (2026-07-19)
 
-> **Test mode configurado e no ar** (agente, via API Stripe + API Vercel): produtos/preços ($9.90/$19.90), webhook e as 4 env vars em Production estão setados; deploy fresco carregou tudo. Endpoints saíram do 503 (`webhook`→400, `checkout`→401) e eventos assinados reais foram entregues e ACKados 2xx pelo endpoint de produção. Em 2026-07-19, corrigido o 500 do Checkout causado por `success_url` inválida; chamada autenticada em produção já retorna URL `checkout.stripe.com`. **Falta**: (a) um pagamento de teste real logado para ver `profiles.plan` virar, e (b) trocar as chaves **test → Live** antes do lançamento pago. Detalhes: `docs/stripe-setup-eos.md`.
+> **Test mode configurado e validado** (agente, via API Stripe + API Vercel): produtos/preços ($9.90/$19.90), webhook e as 4 env vars em Production estão setados; deploy fresco carregou tudo. Endpoints saíram do 503 (`webhook`→400, `checkout`→401) e eventos assinados reais foram entregues e ACKados 2xx pelo endpoint de produção. Em 2026-07-19, corrigido o 500 do Checkout causado por `success_url` inválida; em 2026-07-20, pagamento teste logado atualizou `BrightScale Group` para `plan=family`, `plan_status=active`, `stripe_subscription_id=sub_...`. **Falta** trocar as chaves **test → Live** antes do lançamento pago. Detalhes: `docs/stripe-setup-eos.md`.
 
-Estado atual: os botões de upgrade já conseguem abrir Checkout em Test mode. O plano só muda depois do pagamento teste passar pelo webhook.
+Estado atual: os botões de upgrade abrem Checkout em Test mode e o webhook já provou que atualiza o plano.
 
 > **Decisão 2026-07-17 (Rota A):** o EOS terá **conta Stripe própria**, sob a mesma empresa/Organização do site existente do dono, para não misturar marca, statement descriptor, payouts e relatórios. Verificado no código: o webhook resolve o perfil por `user_id`/`stripe_customer_id`, então mesmo numa conta compartilhada um site não corromperia os dados do outro — o motivo de separar é brand/dinheiro/contabilidade, não integridade de dados.
 > **Runbook copy-paste passo-a-passo: `docs/stripe-setup-eos.md`.** O checklist abaixo é o resumo; o runbook tem os detalhes (Test mode primeiro, statement descriptor, cartão 4242, etc.).
@@ -62,7 +62,7 @@ Estado atual: os botões de upgrade já conseguem abrir Checkout em Test mode. O
        eventos: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`.
        Copiar o **Signing secret** (`whsec_...`) para `STRIPE_WEBHOOK_SECRET`.
 5. [x] ~~**Redeploy** (`vercel --prod --yes`)~~ — ✅ deploy fresco carregou as env vars; novo deploy do bugfix de URL pendente via push desta sessão.
-6. [ ] Pagamento de teste logado com cartão `4242 4242 4242 4242` e validação de `profiles.plan`.
+6. [x] ~~Pagamento de teste logado com cartão `4242 4242 4242 4242` e validação de `profiles.plan`~~ — ✅ feito 2026-07-20 (`plan=family`, `plan_status=active`).
 7. [ ] Antes do lançamento pago: refazer produtos/keys/webhook em **Live mode**, trocar env vars test → live e redeploy.
 
 > Pegadinha (D-035/D-036): grave valores **sem aspas e sem espaços/newline**. Vars "Sensitive" não são lidas de volta — valide pelo comportamento em produção.
@@ -131,8 +131,7 @@ FEMA_IPAWS_PIN=
 
 ## 5. Ordem sugerida
 
-1. Pagamento de teste Stripe logado → valida webhook e `profiles.plan`.
-2. Stripe Live cutover → começa a faturar de verdade.
-3. WeatherKit → previsão principal + nowcast premium; destrava "ALL SYSTEMS LIVE".
-4. Xweather (raios) → canal de raios.
-5. ShakeAlert / FEMA IPAWS → quando as autorizações saírem.
+1. Stripe Live cutover → começa a faturar de verdade.
+2. WeatherKit → previsão principal + nowcast premium; destrava "ALL SYSTEMS LIVE".
+3. Xweather (raios) → canal de raios.
+4. ShakeAlert / FEMA IPAWS → quando as autorizações saírem.

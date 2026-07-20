@@ -10,10 +10,11 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Launch Activation — Stripe & Production Readiness |
-| **Last Completed Task** | P3-T04: Monetization code + Stripe Test mode checkout verified (2026-07-19) |
+| **Last Completed Task** | LA-T01: Stripe test payment verified webhook → `profiles.plan=family` (2026-07-20) |
+| | P3-T04: Monetization code + Stripe Test mode checkout verified (2026-07-19) |
 | | P2-T12: Circles role upgrade + multi-location monitoring (2026-06-30) |
 | | P3-T06: Cross-device sync (Realtime + offline queue + snapshot cache) |
-| **Next Task** | LA-T01 — concluir pagamento de teste Stripe logado e validar webhook atualizando `profiles.plan`; depois LA-T02 test → Live. |
+| **Next Task** | LA-T02 — Stripe Live cutover: criar produtos/keys/webhook em Live mode, trocar env vars test → live e redeploy. |
 | **Build** | ✅ Passing — `npm run build` clean as of 2026-07-19 |
 | **Vercel** | ✅ Deployed — auto-deploys on push to `main` |
 | **Supabase** | ✅ Healthy — project ref `alxurmgpyxjhvnliivbf` |
@@ -112,13 +113,9 @@
 
 ## What Is Next
 
-**LA-T01: Stripe test payment**
-
-Fazer checkout logado com cartão de teste `4242 4242 4242 4242`, confirmar que o webhook recebe o evento e que `profiles.plan` muda para `family`/`premium`.
-
 **LA-T02: Stripe Live cutover**
 
-Depois do teste passar, criar produtos/keys/webhook em Live mode, trocar env vars test → live na Vercel e redeploy.
+Criar produtos/keys/webhook em Live mode, trocar env vars test → live na Vercel e redeploy.
 
 ---
 
