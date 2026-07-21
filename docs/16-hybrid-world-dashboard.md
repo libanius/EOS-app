@@ -1241,7 +1241,7 @@ Implementation status as of 2026-07-21: complete for prototype scope (D-053). Th
 - E2E tests;
 - staged rollout decision.
 
-Implementation note as of 2026-07-21 (D-054): HWD-06 starts with the responsive HUD pass because usability is currently blocking mobile and smaller desktop testing. Scope: mobile bottom sheet with `peek`/`half`/`full` states, desktop HUD collapse, and map-interaction-driven panel collapse. HWD-06 remains open for the rest of the production exit criteria.
+Implementation note as of 2026-07-21 (D-054/D-055): HWD-06 starts with the responsive HUD pass because usability is currently blocking mobile and smaller desktop testing. Scope delivered so far: mobile bottom sheet with `peek`/`half`/`full` states, desktop HUD collapse, map-interaction-driven panel collapse, and Status Rail redesign into the approved household readiness card: large Risk Index, house model, resource autonomy, family and comms. HWD-06 remains open for the rest of the production exit criteria.
 
 ---
 

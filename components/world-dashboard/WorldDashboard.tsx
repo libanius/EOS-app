@@ -73,8 +73,16 @@ const STATE_LABEL = {
   en: { safe: 'Safe', watch: 'Watch', warning: 'Warning', critical: 'Critical' },
 } as const
 
-type Inv = { water_liters: number; food_days: number; has_medical_kit: boolean; has_communication_device: boolean }
+type Inv = {
+  water_liters: number
+  food_days: number
+  fuel_liters: number
+  battery_percent: number
+  has_medical_kit: boolean
+  has_communication_device: boolean
+}
 type RadarStatus = { ok?: boolean; provider?: string; frameTime?: number }
+type FamilyRosterPerson = { id: string; name: string }
 type CircleMember = { user_id: string; name: string; is_me: boolean; location_lat: number | null; location_lng: number | null }
 type CircleRow = { id: string; name: string; is_admin?: boolean; members?: CircleMember[] }
 type PilotState = 'GO' | 'LIMITED' | 'WAIT' | 'AVOID' | 'PRIORITY OVERRIDE'
@@ -98,6 +106,7 @@ export default function WorldDashboard() {
 
   const [inv, setInv] = useState<Inv | null>(null)
   const [people, setPeople] = useState(1)
+  const [familyRoster, setFamilyRoster] = useState<FamilyRosterPerson[]>([])
   const [items, setItems] = useState<{ acquired: boolean }[]>([])
   const [online, setOnline] = useState(true)
   const [radar, setRadar] = useState<RadarStatus | null>(null)
@@ -118,7 +127,11 @@ export default function WorldDashboard() {
         fetch('/api/checklist').catch(() => null),
       ])
       if (i?.ok) setInv((await i.json()).inventory ?? null)
-      if (f?.ok) setPeople(Math.max(1, ((await f.json()).members ?? []).length))
+      if (f?.ok) {
+        const members = ((await f.json()).members ?? []) as Array<{ id?: string; name?: string }>
+        setPeople(Math.max(1, members.length))
+        setFamilyRoster(members.map((m, i) => ({ id: m.id ?? `member-${i}`, name: m.name || '—' })))
+      }
       if (k?.ok) setItems((await k.json()).items ?? [])
     } catch { /* offline-tolerant */ }
   }, [])
@@ -222,6 +235,10 @@ export default function WorldDashboard() {
   const cur = snapshot?.current
   const metric = language === 'pt'
   const waterDays = inv ? inv.water_liters / (3 * people) : 0
+  const foodDays = inv?.food_days ?? 0
+  const powerDays = inv ? (inv.battery_percent / 100) * 3 : 0
+  const fuelDays = inv ? inv.fuel_liters / 10 : 0
+  const autonomyDays = Math.max(0, Math.min(waterDays || 0, foodDays || 0, powerDays || 0, fuelDays || 0))
   const checklistPct = items.length ? Math.round((items.filter(i => i.acquired).length / items.length) * 100) : 0
   const alertCount = (snapshot?.alerts.length ?? 0) + (snapshot?.earthquakes.length ?? 0)
   const topAlert = snapshot?.alerts[0]
@@ -281,36 +298,24 @@ export default function WorldDashboard() {
           </div>
         )}
 
-        {/* ── Status Rail ── */}
-        <aside className="w-rail" aria-label="Household status">
-          <div className="rail-eyebrow">{c.eyebrow}</div>
-          <div>
-            <div className="rail-eyebrow" style={{ marginBottom: 6 }}>{c.risk}</div>
-            <div className="rail-score">{score ?? '--'}</div>
-            <div className="rail-state" style={{ color: 'var(--w-state)', marginTop: 4 }}>
-              <span className="w-dot" />{STATE_LABEL[language][state]}
-            </div>
-          </div>
-
-          <div className="rail-div" />
-          <div className="rail-row"><span className="k">{c.connectivity}</span><span className="v">{online ? c.online : c.offline}</span></div>
-          <div className="rail-row"><span className="k">{c.autonomy}</span><span className="v">~{waterDays.toFixed(1)} {c.days}</span></div>
-
-          <div className="rail-div" />
-          <RailBar k={c.water} v={`${waterDays.toFixed(1)} ${c.days}`} pct={Math.min(1, waterDays / 3)} />
-          <RailBar k={c.food} v={`${inv?.food_days ?? 0} ${c.days}`} pct={Math.min(1, (inv?.food_days ?? 0) / 3)} />
-          <RailBar k={c.checklist} v={`${checklistPct}%`} pct={checklistPct / 100} />
-          <div className="rail-row"><span className="k">{c.medical}</span><span className="v">{inv?.has_medical_kit ? c.ok : c.none}</span></div>
-          <div className="rail-row"><span className="k">{c.comms}</span><span className="v">{inv?.has_communication_device ? c.ok : c.none}</span></div>
-
-          <div className="rail-div" />
-          <div className="w-cwr" role="group" aria-label="Operating mode">
-            {(['C', 'W', 'R'] as const).map(letter => (
-              <span key={letter} className={mode === letter ? 'on' : ''}>{letter}</span>
-            ))}
-          </div>
-          <div className="rail-eyebrow" style={{ textAlign: 'center' }}>{modeLabel}</div>
-        </aside>
+        <StatusRail
+          c={c}
+          language={language}
+          score={score}
+          state={state}
+          online={online}
+          mode={mode}
+          modeLabel={modeLabel}
+          inv={inv}
+          waterDays={waterDays}
+          foodDays={foodDays}
+          powerDays={powerDays}
+          fuelDays={fuelDays}
+          autonomyDays={autonomyDays}
+          checklistPct={checklistPct}
+          people={people}
+          family={mapFamily.length ? mapFamily.map(m => ({ id: m.id, name: m.name })) : familyRoster}
+        />
 
         {/* ── Pilot Capsule ── */}
         <PilotCapsule
@@ -424,6 +429,10 @@ export default function WorldDashboard() {
           state={state}
           online={online}
           waterDays={waterDays}
+          foodDays={foodDays}
+          powerDays={powerDays}
+          fuelDays={fuelDays}
+          autonomyDays={autonomyDays}
           inv={inv}
           checklistPct={checklistPct}
           alertCount={alertCount}
@@ -448,6 +457,174 @@ export default function WorldDashboard() {
   )
 }
 
+function StatusRail({
+  c,
+  language,
+  score,
+  state,
+  online,
+  mode,
+  modeLabel,
+  inv,
+  waterDays,
+  foodDays,
+  powerDays,
+  fuelDays,
+  autonomyDays,
+  checklistPct,
+  people,
+  family,
+}: {
+  c: (typeof COPY)[keyof typeof COPY]
+  language: keyof typeof COPY
+  score: number | null
+  state: keyof (typeof STATE_LABEL)['pt']
+  online: boolean
+  mode: 'C' | 'W' | 'R'
+  modeLabel: string
+  inv: Inv | null
+  waterDays: number
+  foodDays: number
+  powerDays: number
+  fuelDays: number
+  autonomyDays: number
+  checklistPct: number
+  people: number
+  family: FamilyRosterPerson[]
+}) {
+  const pt = language === 'pt'
+  const readiness = readinessLabel(state, language)
+  const shuttersReady = checklistPct >= 60
+  const waterReady = waterDays >= 3
+  const looseItemsReady = checklistPct >= 80 && state !== 'critical'
+  const fuelPct = Math.max(0, Math.min(100, inv ? Math.round((inv.fuel_liters / 50) * 100) : 0))
+  const commsReady = Boolean(inv?.has_communication_device)
+  const visibleFamily = family.slice(0, 4)
+  const familyCount = Math.max(people, family.length)
+  const fallbackFamily = Array.from({ length: Math.min(Math.max(people, 1), 4) }, (_, i) => ({
+    id: `fallback-${i}`,
+    name: pt ? `Pessoa ${i + 1}` : `Person ${i + 1}`,
+  }))
+  const familyAvatars = visibleFamily.length ? visibleFamily : fallbackFamily
+
+  return (
+    <aside className="w-rail" aria-label={pt ? 'Prontidão da casa' : 'Household readiness'}>
+      <div className="rail-topline">
+        <span>{online ? (pt ? 'Online' : 'Online') : c.offline}</span>
+        <span className="rail-watch"><i />{STATE_LABEL[language][state]}</span>
+      </div>
+
+      <div className="rail-risk-block">
+        <div className="rail-score">{score ?? '--'}</div>
+        <div className="rail-risk-label">
+          <span>{pt ? 'Índice de risco' : 'Risk index'}</span>
+          <b>{readiness}</b>
+        </div>
+      </div>
+
+      <div className="rail-div" />
+
+      <div className="house-stage" aria-label={pt ? 'Modelo de prontidão da casa' : 'House readiness model'}>
+        <HouseModel />
+        <Callout className="callout-shutters" tone={shuttersReady ? 'ok' : 'warn'} label={pt ? 'Venezianas' : 'Shutters'} value={shuttersReady ? '✓' : `${checklistPct}%`} />
+        <Callout className="callout-loose" tone={looseItemsReady ? 'ok' : 'danger'} label={pt ? 'Itens soltos' : 'Loose items'} />
+        <Callout className="callout-water" tone={waterReady ? 'ok' : 'warn'} label={c.water} value={waterReady ? '✓' : `${formatDays(waterDays)}d`} />
+        <Callout className="callout-fuel" tone={fuelPct >= 50 ? 'ok' : fuelPct > 0 ? 'warn' : 'danger'} label={pt ? 'Comb.' : 'Fuel'} value={inv ? `${fuelPct}%` : '--'} />
+      </div>
+
+      <div className="rail-autonomy">
+        <strong>{formatDays(autonomyDays)} {c.days}</strong>
+        <span>{pt ? 'Autonomia familiar' : 'Family autonomy'}</span>
+      </div>
+
+      <div className="rail-resource-stack">
+        <ReadinessBar k={c.water} v={`${formatDays(waterDays)}d`} pct={Math.min(1, waterDays / 7)} tone={waterDays >= 3 ? 'ok' : 'warn'} />
+        <ReadinessBar k={c.food} v={`${formatDays(foodDays)}d`} pct={Math.min(1, foodDays / 8)} tone={foodDays >= 3 ? 'ok' : 'warn'} />
+        <ReadinessBar k={pt ? 'Energia' : 'Power'} v={`${formatDays(powerDays)}d`} pct={Math.min(1, powerDays / 3)} tone={powerDays >= 2 ? 'ok' : 'warn'} />
+        <ReadinessBar k={pt ? 'Comb.' : 'Fuel'} v={`${formatDays(fuelDays)}d`} pct={Math.min(1, fuelDays / 3)} tone={fuelDays >= 2 ? 'ok' : 'warn'} />
+      </div>
+
+      <div className="rail-div" />
+
+      <div className="family-strip">
+        <div className="family-faces" aria-hidden="true">
+          {familyAvatars.map(person => (
+            <span key={person.id} className="family-face">
+              {initials(person.name)}
+              <i />
+            </span>
+          ))}
+        </div>
+        <div className="family-safe">{pt ? 'Família EOS' : 'EOS family'} · {familyCount}</div>
+      </div>
+
+      <div className="rail-comms">
+        <span>{pt ? 'Comms' : 'Comms'}</span>
+        <b>LTE <i className={online ? 'on' : ''} /></b>
+        <b>HAM VHF <i className={commsReady ? 'on' : ''} /></b>
+      </div>
+
+      <div className="w-cwr" role="group" aria-label={modeLabel}>
+        {(['C', 'W', 'R'] as const).map(letter => (
+          <span key={letter} className={mode === letter ? 'on' : ''}>{letter}</span>
+        ))}
+      </div>
+    </aside>
+  )
+}
+
+function HouseModel() {
+  return (
+    <svg className="house-model" viewBox="0 0 260 160" role="img" aria-label="House readiness model">
+      <defs>
+        <linearGradient id="houseWall" x1="0" x2="1" y1="0" y2="1">
+          <stop offset="0" stopColor="#eef1f4" />
+          <stop offset="1" stopColor="#c8cdd4" />
+        </linearGradient>
+        <linearGradient id="houseRoof" x1="0" x2="1" y1="0" y2="1">
+          <stop offset="0" stopColor="#e2e6eb" />
+          <stop offset="1" stopColor="#aeb6c1" />
+        </linearGradient>
+      </defs>
+      <ellipse cx="132" cy="134" rx="96" ry="13" fill="rgba(20,22,28,.08)" />
+      <path d="M62 72 L132 28 L210 82 L139 122 Z" fill="url(#houseRoof)" stroke="#a8b0bb" strokeWidth="2" />
+      <path d="M72 74 L139 122 L139 78 L72 42 Z" fill="#d5dae1" opacity=".9" />
+      <path d="M72 74 L139 122 L139 145 L72 102 Z" fill="url(#houseWall)" stroke="#b8c0ca" strokeWidth="2" />
+      <path d="M139 122 L210 82 L210 115 L139 145 Z" fill="#c4cbd4" stroke="#aab2bd" strokeWidth="2" />
+      <path d="M94 94 h24 v34 h-24z" fill="#bfc7d0" stroke="#9aa3af" strokeWidth="2" />
+      <path d="M79 84 h25 v22 h-25zM151 101 h30 v22 h-30z" fill="#eef7f4" stroke="#97a1ad" strokeWidth="2" />
+      <path d="M91 84 v22M79 95 h25M166 101 v22M151 112 h30" stroke="#9aa3af" strokeWidth="1.5" />
+      <path d="M190 88 h28 v31 h-28z" fill="#b5bdc8" opacity=".72" />
+      <path d="M189 78 h30 v13 h-30z" fill="#aeb6c1" />
+      <path d="M177 113 h24 v24 h-24z" fill="#d8dde4" stroke="#adb5bf" strokeWidth="2" />
+      <path d="M184 91 h11 v38 h-11z" fill="#b6c0c9" />
+      <circle cx="189" cy="86" r="9" fill="#cfd5dc" stroke="#aab2bd" strokeWidth="2" />
+      <rect x="125" y="119" width="34" height="22" rx="4" fill="#d7dce3" stroke="#abb4bf" strokeWidth="2" />
+      <circle cx="134" cy="142" r="4" fill="#7b8490" />
+      <circle cx="151" cy="142" r="4" fill="#7b8490" />
+    </svg>
+  )
+}
+
+function Callout({ className, tone, label, value }: { className: string; tone: 'ok' | 'warn' | 'danger'; label: string; value?: string }) {
+  return (
+    <div className={`house-callout ${className} ${tone}`}>
+      <i />
+      <span>{label}{value ? ` ${value}` : ''}</span>
+    </div>
+  )
+}
+
+function ReadinessBar({ k, v, pct, tone }: { k: string; v: string; pct: number; tone: 'ok' | 'warn' }) {
+  return (
+    <div className="readiness-row">
+      <span>{k}</span>
+      <b>{v}</b>
+      <i><em className={tone} style={{ width: `${Math.round(Math.max(0, Math.min(1, pct)) * 100)}%` }} /></i>
+    </div>
+  )
+}
+
 function MobileWorldSheet({
   c,
   language,
@@ -455,6 +632,10 @@ function MobileWorldSheet({
   state,
   online,
   waterDays,
+  foodDays,
+  powerDays,
+  fuelDays,
+  autonomyDays,
   inv,
   checklistPct,
   alertCount,
@@ -480,6 +661,10 @@ function MobileWorldSheet({
   state: keyof (typeof STATE_LABEL)['pt']
   online: boolean
   waterDays: number
+  foodDays: number
+  powerDays: number
+  fuelDays: number
+  autonomyDays: number
   inv: Inv | null
   checklistPct: number
   alertCount: number
@@ -535,9 +720,11 @@ function MobileWorldSheet({
           <div className="sheet-title">{pt ? 'Status da família' : 'Family status'}</div>
           <div className="sheet-grid">
             <SheetMetric k={c.connectivity} v={online ? c.online : c.offline} />
-            <SheetMetric k={c.autonomy} v={`~${waterDays.toFixed(1)} ${c.days}`} />
+            <SheetMetric k={c.autonomy} v={`~${formatDays(autonomyDays)} ${c.days}`} />
             <SheetMetric k={c.water} v={`${waterDays.toFixed(1)} ${c.days}`} />
-            <SheetMetric k={c.food} v={`${inv?.food_days ?? 0} ${c.days}`} />
+            <SheetMetric k={c.food} v={`${formatDays(foodDays)} ${c.days}`} />
+            <SheetMetric k={pt ? 'Energia' : 'Power'} v={`${formatDays(powerDays)} ${c.days}`} />
+            <SheetMetric k={pt ? 'Combustível' : 'Fuel'} v={`${formatDays(fuelDays)} ${c.days}`} />
             <SheetMetric k={c.checklist} v={`${checklistPct}%`} />
             <SheetMetric k={c.medical} v={inv?.has_medical_kit ? c.ok : c.none} />
             <SheetMetric k={c.comms} v={inv?.has_communication_device ? c.ok : c.none} />
@@ -832,15 +1019,6 @@ function bestPilotWindow(snapshot: WeatherSnapshot | null, pt: boolean, state: P
   return pt ? `Melhor a partir de ${hh}` : `Best from ${hh}`
 }
 
-function RailBar({ k, v, pct }: { k: string; v: string; pct: number }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-      <div className="rail-row"><span className="k">{k}</span><span className="v">{v}</span></div>
-      <div className="w-bar"><i style={{ width: `${Math.round(Math.max(0, Math.min(1, pct)) * 100)}%` }} /></div>
-    </div>
-  )
-}
-
 function Tick({ k, v }: { k: string; v: string }) {
   return <div className="t"><span className="tk">{k}</span><span className="tv">{v}</span></div>
 }
@@ -851,3 +1029,21 @@ const toKmh = (mph: number) => Math.round(mph * 1.609)
 const toKmTxt = (mi: number) => (mi * 1.609).toFixed(1)
 const formatUtcTime = (epochSeconds: number) => `${new Date(epochSeconds * 1000).toISOString().slice(11, 16)}Z`
 const shorten = (s: string, n: number) => (s.length > n ? s.slice(0, n) + '…' : s)
+const formatDays = (days: number) => {
+  if (!Number.isFinite(days) || days <= 0) return '0'
+  return days >= 10 ? String(Math.round(days)) : days.toFixed(days >= 3 ? 0 : 1)
+}
+const initials = (name: string) => name
+  .split(/\s+/)
+  .filter(Boolean)
+  .map(part => part[0])
+  .join('')
+  .slice(0, 2)
+  .toUpperCase() || 'FM'
+function readinessLabel(state: keyof (typeof STATE_LABEL)['pt'], language: keyof typeof COPY) {
+  const pt = language === 'pt'
+  if (state === 'safe') return pt ? 'Estável' : 'Stable'
+  if (state === 'watch') return pt ? 'Elevado' : 'Elevated'
+  if (state === 'warning') return pt ? 'Alto' : 'High'
+  return pt ? 'Crítico' : 'Critical'
+}

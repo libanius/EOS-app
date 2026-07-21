@@ -40,6 +40,23 @@
 
 ---
 
+## D-055 — World Dashboard Status Rail becomes the household readiness card
+
+**Date**: 2026-07-21
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: O card esquerdo do `/dashboard-world` deveria se parecer com o mock aprovado: painel branco vertical com score central, estado operacional, modelo visual da casa, callouts de prontidão, autonomia familiar, barras de recursos, família e comunicação. A versão atual estava correta funcionalmente, mas visualmente simples demais e não comunicava a "casa pronta" como instrumento principal.
+
+**Decision**:
+1. O Status Rail será redesenhado como **household readiness card**, mantendo dados reais já disponíveis no EOS.
+2. A hierarquia visual passa a ser: conexão/estado no topo, Risk Index grande centralizado, diagrama de casa com callouts, autonomia familiar, barras de água/comida/energia/combustível, família e comunicações.
+3. O diagrama da casa será implementado como SVG/CSS local, não como imagem gerada fixa, para continuar sendo componente React real e permitir estados dinâmicos.
+4. Campos sem fonte perfeita no MVP podem ser inferidos conservadoramente a partir do inventário existente: `battery_percent` para energia e `fuel_liters` para combustível. Dados indisponíveis devem degradar para `--`, não para números fictícios.
+
+**Consequence**: O card principal passa a cumprir a direção visual aprovada sem criar nova dependência nem alterar schema. Métricas mais avançadas de energia/combustível continuam pendentes para refinamento de modelo.
+
+---
+
 ## D-052 — World Dashboard runtime map base toggle
 
 **Date**: 2026-07-21
