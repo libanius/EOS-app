@@ -87,7 +87,20 @@ Quando um novo membro vinculado entra e já tem dados locais:
 
 - Inventário pessoal → **mantido**, ele escolhe o que compartilha
 - Membros manuais que ele já tinha → badge "possível duplicata" se existir entrada parecida no círculo
-- Nenhum merge automático no MVP — usuário decide
+- Nenhum merge automático (nada é **escrito** em `family_members` do outro) — usuário decide
+
+### Aba Família = vista unificada (D-047, 2026-07-21)
+
+A aba Família é uma **vista calculada**, não só o roster pessoal:
+
+```
+Família (exibido) = family_members (meu roster) ∪ co-membros do círculo (somente-leitura)
+```
+
+- Co-membros do círculo aparecem **automaticamente** como cards read-only com selo "Do círculo · <nome>". Assim, "entrar no círculo = aparecer na Família" — cumpre a promessa central da spec sem re-cadastro.
+- **Dedup**: o co-membro não vira card separado se já houver um `family_members` com `linked_user_id` igual, ou com nome igual (nesse caso o card pessoal já o representa e oferece [Vincular]).
+- **Sem duplicação de dado**: nada novo é escrito em `family_members`; é merge em tempo de render, igual ao Household de inventário.
+- **Info exibida (1ª entrega)**: nome, role, localização e contato de emergência (quando compartilhado) — o que `/api/circles` já expõe. **Ficha médica** dos co-membros é follow-up (decisão de privacidade + ampliar a API).
 
 ### Isadora entra no círculo do Paulo
 

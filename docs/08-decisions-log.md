@@ -4,6 +4,23 @@
 
 ---
 
+## D-047 — Aba Família vira vista unificada (roster pessoal + membros do círculo)
+
+**Date**: 2026-07-21
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: O dono relatou que, quando familiares entraram no seu círculo, a aba Família **não preencheu automaticamente** com esses membros. Revisão do código confirmou a causa: são dois conceitos separados no banco — a aba Família lê `family_members` (roster pessoal que o usuário cria), enquanto entrar no círculo insere em `circle_members` (aparece na aba Círculos). O fluxo de join/approve (`/api/circles/join`, `/api/circles/[id]/requests/[reqId]`) **não escreve em `family_members`**, e a única ponte era uma sugestão de vínculo por nome (P2-T05) que só surgia se o membro já tivesse sido cadastrado manualmente. Isso é o comportamento MVP documentado ("Nenhum merge automático — usuário decide", `docs/12-circle-model.md`), mas **contradiz a promessa-título da própria spec**: "Entrar num círculo = acesso imediato a tudo que o grupo já configurou; ninguém re-cadastra".
+
+**Decision**:
+1. A aba Família passa a ser uma **vista unificada**: mostra o roster pessoal (`family_members`) **mais** os co-membros do círculo, exibidos como cards **somente-leitura** com selo "Do círculo · <nome>". Mesmo padrão do Household de inventário — uma **vista calculada, sem duplicar dado** (nenhuma escrita nova em `family_members`).
+2. **Dedup**: um co-membro do círculo não é exibido como card separado se já estiver vinculado a um `family_members` (`linked_user_id`) ou se o nome bater com um membro pessoal existente — nesses casos o card pessoal já o representa (e oferece o vínculo P2-T05).
+3. **Escopo das informações nesta 1ª entrega**: usa apenas o que o círculo já expõe via `/api/circles` (nome, role, localização, contato de emergência quando compartilhado). **Ficha médica** dos co-membros (tipo sanguíneo, alergias, medicações) fica como follow-up, pois exige uma decisão de privacidade + ampliação da API (hoje `/api/circles` não expõe campos médicos).
+4. Sem mudança de schema. Implementação client-side na tela Família consumindo `/api/circles`.
+
+**Consequence**: entrar/aprovar alguém no círculo passa a refletir na aba Família automaticamente, cumprindo a promessa da spec, sem merge destrutivo nem duplicação. `docs/12-circle-model.md` atualizado. Follow-up registrado: compartilhamento de ficha médica no círculo (privacy-gated).
+
+---
+
 ## D-046 — EOS Pilot como camada contextual integrada ao Dashboard
 
 **Date**: 2026-07-20

@@ -23,6 +23,18 @@ type FamilyMember = {
   created_at: string
 }
 
+// A co-member of one of my circles, shown read-only in the unified Família view (D-047).
+type CircleMember = {
+  user_id: string
+  name: string
+  role: string
+  circleName: string
+  location_lat: number | null
+  location_lng: number | null
+  emergency_contact_name: string | null
+  emergency_contact_phone: string | null
+}
+
 type MemberForm = {
   name: string
   age: number | null
@@ -87,6 +99,8 @@ export default function FamilyPage() {
 
   // Circle members for link suggestions (P2-T05)
   const [circlePossibleMatches, setCirclePossibleMatches] = useState<Record<string, { user_id: string; name: string }>>({})
+  // Co-members across my circles, for the unified Família view (D-047)
+  const [circleMembers, setCircleMembers] = useState<CircleMember[]>([])
   const [members, setMembers] = useState<FamilyMember[]>([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
@@ -122,14 +136,35 @@ export default function FamilyPage() {
 
   useEffect(() => {
     loadMembers()
-    // Fetch circle members to suggest links for manually-added family members (P2-T05)
+    // Fetch circle co-members for (a) the P2-T05 link suggestion and (b) the
+    // unified Família view (D-047) — they show up automatically as read-only cards.
+    type ApiMember = { user_id: string; name: string; is_me: boolean; role?: string; location_lat?: number | null; location_lng?: number | null; emergency_contact_name?: string | null; emergency_contact_phone?: string | null }
     fetch('/api/circles').then(r => r.ok ? r.json() : null)
-      .then((d: { circles?: Array<{ members: Array<{ user_id: string; name: string; is_me: boolean }> }> } | null) => {
+      .then((d: { circles?: Array<{ name: string; members: ApiMember[] }> } | null) => {
         if (!d?.circles) return
-        const allMembers = d.circles.flatMap(c => (c.members ?? []).filter(m => !m.is_me))
-        const uniq: Record<string, { user_id: string; name: string }> = {}
-        allMembers.forEach(m => { uniq[m.user_id] = m })
-        setCirclePossibleMatches(uniq)
+        const uniqMatch: Record<string, { user_id: string; name: string }> = {}
+        const uniqFull: Record<string, CircleMember> = {}
+        for (const c of d.circles) {
+          for (const m of (c.members ?? [])) {
+            if (m.is_me) continue
+            uniqMatch[m.user_id] = { user_id: m.user_id, name: m.name }
+            // Keep the first circle a co-member appears in for the badge label.
+            if (!uniqFull[m.user_id]) {
+              uniqFull[m.user_id] = {
+                user_id: m.user_id,
+                name: m.name,
+                role: m.role ?? 'Viewer',
+                circleName: c.name,
+                location_lat: m.location_lat ?? null,
+                location_lng: m.location_lng ?? null,
+                emergency_contact_name: m.emergency_contact_name ?? null,
+                emergency_contact_phone: m.emergency_contact_phone ?? null,
+              }
+            }
+          }
+        }
+        setCirclePossibleMatches(uniqMatch)
+        setCircleMembers(Object.values(uniqFull))
       }).catch(() => {})
   }, [loadMembers])
 
@@ -318,6 +353,14 @@ export default function FamilyPage() {
   }
 
   const totalMembers = members.length
+
+  // Unified view (D-047): show circle co-members that my personal roster does not
+  // already represent — dedup by explicit link (linked_user_id) or by matching name.
+  const linkedIds = new Set(members.map(m => m.linked_user_id).filter(Boolean) as string[])
+  const myNames = new Set(members.map(m => m.name.trim().toLowerCase()))
+  const visibleCircleMembers = circleMembers.filter(
+    cm => !linkedIds.has(cm.user_id) && !myNames.has(cm.name.trim().toLowerCase()),
+  )
   const vulnerableMembers = members.filter(
     (member) => member.mobility_impaired || member.is_infant || (member.medical_conditions ?? []).length > 0 || (member.medications ?? []).length > 0,
   ).length
@@ -451,7 +494,7 @@ export default function FamilyPage() {
           </section>
         )}
 
-        {!loading && totalMembers === 0 && (
+        {!loading && totalMembers === 0 && visibleCircleMembers.length === 0 && (
           <section style={s.emptyState}>
             <div style={s.emptyCore}>
               <div style={s.emptyRing}>
@@ -490,6 +533,18 @@ export default function FamilyPage() {
                 onLink={(uid) => linkMember(member.id, uid)}
                 onUnlink={() => unlinkMember(member.id)}
               />
+            ))}
+          </section>
+        )}
+
+        {/* Unified view (D-047): circle co-members appear automatically, read-only */}
+        {!loading && visibleCircleMembers.length > 0 && (
+          <section style={{ ...s.cardGrid, marginTop: totalMembers > 0 ? 20 : 0 }}>
+            <p style={{ ...s.panelLabel, gridColumn: '1 / -1', margin: '4px 0 0' }}>
+              {t('family.fromCircle')}
+            </p>
+            {visibleCircleMembers.map((cm) => (
+              <CircleMemberCard key={cm.user_id} member={cm} />
             ))}
           </section>
         )}
@@ -813,6 +868,52 @@ function MemberCard({
           </>
         )}
       </div>
+    </article>
+  )
+}
+
+// Read-only card for a co-member of one of my circles (unified Família view, D-047).
+function CircleMemberCard({ member }: { member: CircleMember }) {
+  const { language } = useLanguage()
+  const pt = language === 'pt'
+  const hasContact = Boolean(member.emergency_contact_name || member.emergency_contact_phone)
+  const hasLocation = member.location_lat != null && member.location_lng != null
+  return (
+    <article style={s.memberCard}>
+      <div style={s.memberCardGlow} />
+      <div style={s.memberHead}>
+        <div>
+          <span style={s.memberLabel}>{pt ? 'Do círculo' : 'From circle'}</span>
+          <h3 style={s.memberName}>{member.name}</h3>
+        </div>
+        <span style={{ ...s.levelPill, color: TOKENS.mutedGreen, borderColor: `${TOKENS.mutedGreen}44` }}>
+          {(member.role ?? 'MEMBER').toUpperCase()}
+        </span>
+      </div>
+
+      <div style={{ marginBottom: 12, padding: '6px 12px', background: 'rgba(104,195,142,0.06)', border: '1px solid rgba(104,195,142,0.2)', borderRadius: 8 }}>
+        <span style={{ fontSize: 12, color: TOKENS.mutedGreen }}>
+          {(pt ? 'Círculo' : 'Circle')}: <strong>{member.circleName}</strong> — {pt ? 'somente leitura' : 'read-only'}
+        </span>
+      </div>
+
+      {hasContact && (
+        <p style={s.cardNotes}>
+          {(pt ? 'Contato de emergência: ' : 'Emergency contact: ')}
+          {member.emergency_contact_name ?? ''}
+          {member.emergency_contact_phone ? ` · ${member.emergency_contact_phone}` : ''}
+        </p>
+      )}
+      {hasLocation && (
+        <p style={s.cardNotes}>
+          📍 {member.location_lat!.toFixed(2)}, {member.location_lng!.toFixed(2)}
+        </p>
+      )}
+      {!hasContact && !hasLocation && (
+        <div style={s.tagWrap}>
+          <span style={s.safeTag}>{pt ? 'Perfil no círculo' : 'In your circle'}</span>
+        </div>
+      )}
     </article>
   )
 }
