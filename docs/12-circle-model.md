@@ -89,7 +89,7 @@ Quando um novo membro vinculado entra e já tem dados locais:
 - Membros manuais que ele já tinha → badge "possível duplicata" se existir entrada parecida no círculo
 - Nenhum merge automático (nada é **escrito** em `family_members` do outro) — usuário decide
 
-### Aba Família = vista unificada (D-047, 2026-07-21)
+### Aba Família = vista unificada (D-049, 2026-07-21)
 
 A aba Família é uma **vista calculada**, não só o roster pessoal:
 

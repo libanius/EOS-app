@@ -23,7 +23,7 @@ type FamilyMember = {
   created_at: string
 }
 
-// A co-member of one of my circles, shown read-only in the unified Família view (D-047).
+// A co-member of one of my circles, shown read-only in the unified Família view (D-049).
 type CircleMember = {
   user_id: string
   name: string
@@ -99,7 +99,7 @@ export default function FamilyPage() {
 
   // Circle members for link suggestions (P2-T05)
   const [circlePossibleMatches, setCirclePossibleMatches] = useState<Record<string, { user_id: string; name: string }>>({})
-  // Co-members across my circles, for the unified Família view (D-047)
+  // Co-members across my circles, for the unified Família view (D-049)
   const [circleMembers, setCircleMembers] = useState<CircleMember[]>([])
   const [members, setMembers] = useState<FamilyMember[]>([])
   const [loading, setLoading] = useState(true)
@@ -137,7 +137,7 @@ export default function FamilyPage() {
   useEffect(() => {
     loadMembers()
     // Fetch circle co-members for (a) the P2-T05 link suggestion and (b) the
-    // unified Família view (D-047) — they show up automatically as read-only cards.
+    // unified Família view (D-049) — they show up automatically as read-only cards.
     type ApiMember = { user_id: string; name: string; is_me: boolean; role?: string; location_lat?: number | null; location_lng?: number | null; emergency_contact_name?: string | null; emergency_contact_phone?: string | null }
     fetch('/api/circles').then(r => r.ok ? r.json() : null)
       .then((d: { circles?: Array<{ name: string; members: ApiMember[] }> } | null) => {
@@ -354,7 +354,7 @@ export default function FamilyPage() {
 
   const totalMembers = members.length
 
-  // Unified view (D-047): show circle co-members that my personal roster does not
+  // Unified view (D-049): show circle co-members that my personal roster does not
   // already represent — dedup by explicit link (linked_user_id) or by matching name.
   const linkedIds = new Set(members.map(m => m.linked_user_id).filter(Boolean) as string[])
   const myNames = new Set(members.map(m => m.name.trim().toLowerCase()))
@@ -537,7 +537,7 @@ export default function FamilyPage() {
           </section>
         )}
 
-        {/* Unified view (D-047): circle co-members appear automatically, read-only */}
+        {/* Unified view (D-049): circle co-members appear automatically, read-only */}
         {!loading && visibleCircleMembers.length > 0 && (
           <section style={{ ...s.cardGrid, marginTop: totalMembers > 0 ? 20 : 0 }}>
             <p style={{ ...s.panelLabel, gridColumn: '1 / -1', margin: '4px 0 0' }}>
@@ -872,7 +872,7 @@ function MemberCard({
   )
 }
 
-// Read-only card for a co-member of one of my circles (unified Família view, D-047).
+// Read-only card for a co-member of one of my circles (unified Família view, D-049).
 function CircleMemberCard({ member }: { member: CircleMember }) {
   const { language } = useLanguage()
   const pt = language === 'pt'

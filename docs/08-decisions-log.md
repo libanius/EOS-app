@@ -4,6 +4,22 @@
 
 ---
 
+## D-050 — Dono autoriza a implementação do Hybrid World Dashboard (gate liberado)
+
+**Date**: 2026-07-21
+**Status**: DECIDED / AUTORIZADO
+
+**Context**: `docs/16-hybrid-world-dashboard.md` (D-047) definiu a arquitetura do World Dashboard mas com gate explícito: *"NO IMPLEMENTATION AUTHORIZED until the owner explicitly approves"*. Ao revisar por que o dashboard no código (Living Dashboard v2 — mostrador + tactical cards) não batia com a imagem que o dono criou no Higgsfield, ficou claro que a imagem **é** o World Dashboard. O dono então **autorizou iniciar a implementação**.
+
+**Decision**:
+1. Gate do doc 16 **liberado**. Começar por **HWD-01** (protótipo visual estático): rota isolada `/dashboard-world`, imagem do Higgsfield como fundo temporário, HUD em componentes React reais (Status Rail, Pilot Capsule, Location Brief, Environmental Ticker, Alert Counter), marcadores de família/rota **mock rotulados**, dados reais do `RiskProvider` onde seguro, responsivo, reduced-motion. **Sem MapLibre ainda** (isso é HWD-02).
+2. **Não** substituir `/dashboard` — o World Dashboard fica isolado e reversível até os critérios de saída (doc 16 §33).
+3. O EOS Pilot (D-046) passa a ter como casa alvo a **Pilot Capsule** do World Dashboard; o protótipo de complication no v2 (PILOT-T01) fica em espera.
+
+**Consequence**: roadmap ganha a seção **Hybrid World Dashboard (HWD)** — HWD-00 completo, HWD-01 em andamento. O Pilot entra via HWD-05.
+
+---
+
 ## D-048 — Stripe Live cutover concluído
 
 **Date**: 2026-07-21
@@ -22,10 +38,11 @@
 
 ---
 
-## D-047 — Aba Família vira vista unificada (roster pessoal + membros do círculo)
+## D-049 — Aba Família vira vista unificada (roster pessoal + membros do círculo)
 
 **Date**: 2026-07-21
 **Status**: DECIDED / IMPLEMENTADO
+> Renumerada de D-047 → D-049 em 2026-07-21 para resolver colisão: **D-047 pertence ao Hybrid World Dashboard** (`docs/16-hybrid-world-dashboard.md`).
 
 **Context**: O dono relatou que, quando familiares entraram no seu círculo, a aba Família **não preencheu automaticamente** com esses membros. Revisão do código confirmou a causa: são dois conceitos separados no banco — a aba Família lê `family_members` (roster pessoal que o usuário cria), enquanto entrar no círculo insere em `circle_members` (aparece na aba Círculos). O fluxo de join/approve (`/api/circles/join`, `/api/circles/[id]/requests/[reqId]`) **não escreve em `family_members`**, e a única ponte era uma sugestão de vínculo por nome (P2-T05) que só surgia se o membro já tivesse sido cadastrado manualmente. Isso é o comportamento MVP documentado ("Nenhum merge automático — usuário decide", `docs/12-circle-model.md`), mas **contradiz a promessa-título da própria spec**: "Entrar num círculo = acesso imediato a tudo que o grupo já configurou; ninguém re-cadastra".
 
@@ -36,6 +53,17 @@
 4. Sem mudança de schema. Implementação client-side na tela Família consumindo `/api/circles`.
 
 **Consequence**: entrar/aprovar alguém no círculo passa a refletir na aba Família automaticamente, cumprindo a promessa da spec, sem merge destrutivo nem duplicação. `docs/12-circle-model.md` atualizado. Follow-up registrado: compartilhamento de ficha médica no círculo (privacy-gated).
+
+---
+
+## D-047 — Hybrid World Dashboard (arquitetura híbrida: mundo como interface)
+
+**Date**: 2026-07-21
+**Status**: DECIDED / SPEC (implementação autorizada em D-050)
+
+**Decision**: EOS prototipa um Dashboard "mundo como interface" com **MapLibre GL JS** como engine de render, providers de mapa/terreno/imagem substituíveis como base, fontes oficiais de hazard normalizadas, e overlays proprietários do EOS (Risk Index, família, rotas, abrigos, recursos, cenários, Pilot). Meta visual: interface situacional automotive-grade, independente de provider. Primeira implementação **isolada e reversível**, dados mock rotulados, sem persistência de localização de família sem decisão de privacidade separada. Spec completa: `docs/16-hybrid-world-dashboard.md`.
+
+**Consequence**: registra a direção de produto/arquitetura do próximo Dashboard. Gate de implementação estava fechado no doc 16; liberado por D-050.
 
 ---
 

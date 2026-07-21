@@ -1,11 +1,11 @@
 # 16 — Hybrid World Dashboard
 
-> **Status:** SPEC / PRODUCT-ARCHITECTURE DECIDED — NO IMPLEMENTATION AUTHORIZED
-> **Decision:** D-047
+> **Status:** SPEC / PRODUCT-ARCHITECTURE DECIDED — **IMPLEMENTATION AUTHORIZED 2026-07-21 (D-050)**; starting at HWD-01 (static prototype, no MapLibre yet)
+> **Decision:** D-047 (architecture) · D-050 (implementation authorization)
 > **Date:** 2026-07-21
 > **Owner:** Paulo Libânio Neto
 > **Product:** EOS
-> **Implementation gate:** explicit owner authorization after review of this document
+> **Implementation gate:** ✅ cleared by owner on 2026-07-21 (D-050). First surface: isolated `/dashboard-world` route; production `/dashboard` untouched.
 > **Related decisions/specs:** D-029, D-043, D-046, `docs/14-monitoring.md`, `docs/15-eos-pilot.md`
 
 ---

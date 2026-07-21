@@ -73,16 +73,34 @@
 
 ---
 
+## Hybrid World Dashboard (HWD)
+
+*Goal: build the world-as-interface Dashboard from `docs/16-hybrid-world-dashboard.md` (D-047), authorized by the owner (D-050). Isolated & reversible; production `/dashboard` untouched.*
+
+> Spec: `docs/16-hybrid-world-dashboard.md`. The EOS Pilot (D-046) lives here as the Pilot Capsule (HWD-05) — so PILOT-T01 on the v2 dashboard is superseded/on hold.
+
+| Task ID | Task | Status | Notes |
+|---|---|---|---|
+| HWD-00 | Architecture + visual direction spec | ✅ COMPLETE | 2026-07-21 — D-047 / doc 16 |
+| HWD-01 | Static visual prototype: isolated `/dashboard-world`, Higgsfield image bg, real HUD components, mock family/route labeled, real RiskProvider data, responsive, reduced-motion — no map SDK | IN PROGRESS | 2026-07-21 — D-050 |
+| HWD-02 | Live hybrid map prototype: MapLibre + tile/terrain provider, Parkland camera, GeoJSON mock overlays | BLOCKED | after HWD-01; needs provider decision (doc 16 §34) |
+| HWD-03 | Real EOS data on map: location, weather/hazard layers, alert tags, Risk Index, inventory/readiness + textual a11y | BLOCKED | after HWD-02 |
+| HWD-04 | Family + routing foundation (separate privacy/data decisions) | BLOCKED | consent, freshness, shelter source, routing provider |
+| HWD-05 | Pilot action integration (Pilot Capsule states + actions) — absorbs EOS Pilot | BLOCKED | after HWD-03 |
+| HWD-06 | Production validation (perf, a11y, responsive, cost, privacy, E2E, rollout) | BLOCKED | exit criteria doc 16 §33 |
+
+---
+
 ## Production Experience — EOS Pilot
 
 *Goal: add a daily-use decision layer that increases EOS usefulness before emergencies while preserving safety priority.*
 
-> Spec: `docs/15-eos-pilot.md`. LA-T02 is complete; Pilot prototype is now the next product-surface task.
+> Spec: `docs/15-eos-pilot.md`. **Superseded home:** with D-050, Pilot's target surface is the World Dashboard Pilot Capsule (HWD-05). The v2-dashboard complication (PILOT-T01) is ON HOLD.
 
 | Task ID | Task | Status | Notes |
 |---|---|---|---|
 | PILOT-T00 | EOS Pilot concept/spec inserted into App Spine | ✅ COMPLETE | 2026-07-20 — D-046 / `docs/15-eos-pilot.md` |
-| PILOT-T01 | Dashboard complication prototype: "What's the plan?" entry point | PENDING | Next task; integrated module, not new tab |
+| PILOT-T01 | Dashboard complication prototype: "What's the plan?" entry point | ON HOLD | superseded by HWD-05 (D-050); component `PilotComplication` drafted, not shipped |
 | PILOT-T02 | MVP activity flow: Fishing, Boating, Camping, Family Outdoor, Road Trip | BLOCKED | Progressive choices, not generic chat |
 | PILOT-T03 | Rule-backed recommendation states: GO, LIMITED, WAIT, AVOID, PRIORITY OVERRIDE | BLOCKED | Critical rules must override AI |
 | PILOT-T04 | Metrics instrumentation for discovery, trust, retention, personalization, safety | BLOCKED | Needed before production rollout |
