@@ -4,6 +4,24 @@
 
 ---
 
+## D-048 — Stripe Live cutover concluído
+
+**Date**: 2026-07-21
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: O Stripe Test mode já estava validado ponta-a-ponta em LA-T01, mas o app ainda não podia cobrar de verdade. LA-T02 exigia repetir a configuração em Live mode, trocar as env vars da Vercel e fazer um deploy fresco.
+
+**Decision**:
+1. Ativar o faturamento real do EOS em Stripe Live mode na conta `acct_1TuL40IaCSStSVaq` (EOS, US, ativada).
+2. Manter o mesmo modelo de monetização de D-042: Stripe Checkout hospedado, Billing Portal e webhook como fonte de verdade de `profiles.plan`.
+3. Usar produtos/preços Live mensais para Family ($9.90) e Premium ($19.90), referenciados apenas via `STRIPE_PRICE_FAMILY` e `STRIPE_PRICE_PREMIUM`.
+4. Trocar as env vars Production da Vercel para `sk_live`, `whsec` Live e Price IDs Live, seguido de redeploy.
+5. Limpar IDs sandbox obsoletos dos profiles para que checkout/portal recriem customer/subscription no ambiente Live.
+
+**Consequence**: LA-T02 fica completa; o próximo trabalho de produto pode avançar para o protótipo EOS Pilot (`PILOT-T01`). As chaves expostas durante a operação devem ser rotacionadas pelo dono.
+
+---
+
 ## D-047 — Aba Família vira vista unificada (roster pessoal + membros do círculo)
 
 **Date**: 2026-07-21

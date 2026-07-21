@@ -1,7 +1,7 @@
 # 09 — Build Status
 
 > The single most important file for resuming a session. Read this first after AGENTS.md.
-> Last updated: 2026-07-20
+> Last updated: 2026-07-21
 
 ---
 
@@ -9,15 +9,16 @@
 
 | Field | Value |
 |---|---|
-| **Current Phase** | Launch Activation — Stripe & Production Readiness |
-| **Last Completed Task** | LA-T01: Stripe test payment verified webhook → `profiles.plan=family` (2026-07-20) |
+| **Current Phase** | Production Experience — EOS Pilot |
+| **Last Completed Task** | LA-T02: Stripe Live cutover completed (2026-07-21) |
+| | LA-T01: Stripe test payment verified webhook → `profiles.plan=family` (2026-07-20) |
 | | PILOT-T00: EOS Pilot concept/spec inserted into App Spine (2026-07-20) |
 | | P3-T04: Monetization code + Stripe Test mode checkout verified (2026-07-19) |
 | | P2-T12: Circles role upgrade + multi-location monitoring (2026-06-30) |
 | | P3-T06: Cross-device sync (Realtime + offline queue + snapshot cache) |
-| **Next Task** | LA-T02 — Stripe Live cutover: criar produtos/keys/webhook em Live mode, trocar env vars test → live e redeploy. |
-| **Build** | ✅ Passing — `npm run build` clean as of 2026-07-19 |
-| **Vercel** | ✅ Deployed — auto-deploys on push to `main` |
+| **Next Task** | PILOT-T01 — Dashboard complication prototype: "What's the plan?" entry point. |
+| **Build** | ✅ Passing — production deploy ready as of 2026-07-21 (`0981f15`) |
+| **Vercel** | ✅ Deployed — production deploy ready after Stripe Live env cutover |
 | **Supabase** | ✅ Healthy — project ref `alxurmgpyxjhvnliivbf` |
 
 ---
@@ -114,11 +115,7 @@
 
 ## What Is Next
 
-**LA-T02: Stripe Live cutover**
-
-Criar produtos/keys/webhook em Live mode, trocar env vars test → live na Vercel e redeploy.
-
-**Depois de LA-T02: EOS Pilot**
+**PILOT-T01: EOS Pilot dashboard complication**
 
 Implementar o protótipo do Pilot como complication integrada ao Dashboard, conforme `docs/15-eos-pilot.md` e D-046. Não criar nova aba no primeiro teste.
 
@@ -199,10 +196,10 @@ To add a new knowledge source: drop PDF in `docs/`, re-run both commands.
 | `UPSTASH_REDIS_REST_URL` | Rate limiting (production) | ⚠️ Not confirmed in Vercel |
 | `UPSTASH_REDIS_REST_TOKEN` | Rate limiting (production) | ⚠️ Not confirmed — falls back to in-memory |
 | `SENTRY_DSN` | Error monitoring | ⚠️ Not confirmed — errors silently dropped without it |
-| `STRIPE_SECRET_KEY` | Stripe billing (checkout/portal/webhook) | ✅ Set em Production/Test mode (2026-07-19); trocar para Live antes do lançamento pago |
-| `STRIPE_WEBHOOK_SECRET` | Verificação de assinatura do webhook | ✅ Set em Production/Test mode (2026-07-19); webhook ACKa eventos reais 2xx |
-| `STRIPE_PRICE_FAMILY` | Price ID do plano Família | ✅ Set em Production/Test mode (`price_...`, $9.90) |
-| `STRIPE_PRICE_PREMIUM` | Price ID do plano Premium | ✅ Set em Production/Test mode (`price_...`, $19.90) |
+| `STRIPE_SECRET_KEY` | Stripe billing (checkout/portal/webhook) | ✅ Set em Production/Live mode (2026-07-21) |
+| `STRIPE_WEBHOOK_SECRET` | Verificação de assinatura do webhook | ✅ Set em Production/Live mode (2026-07-21) |
+| `STRIPE_PRICE_FAMILY` | Price ID do plano Família | ✅ Set em Production/Live mode (`price_...`, $9.90) |
+| `STRIPE_PRICE_PREMIUM` | Price ID do plano Premium | ✅ Set em Production/Live mode (`price_...`, $19.90) |
 
 ---
 
@@ -210,7 +207,7 @@ To add a new knowledge source: drop PDF in `docs/`, re-run both commands.
 
 - **Hosting**: Vercel — project linked via `.vercel/project.json`
 - **Branch**: `main` → production (no staging environment)
-- **Build**: `next build` — verified clean as of 2026-07-19, commit `13fee78`
+- **Build**: production deploy ready as of 2026-07-21, commit `0981f15`
 - **Deploy**: automatic on push to `main`
 
 ---

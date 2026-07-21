@@ -180,15 +180,17 @@ Sentry is wired up (`sentry.client.config.ts`, `sentry.server.config.ts`, `sentr
 - **Fluxo**: `/api/billing/checkout` (POST `{plan}`) cria/reusa customer e abre Checkout → usuário paga → Stripe chama `/api/billing/webhook` → webhook escreve `profiles.plan` via service-role. `/api/billing/portal` abre o portal (gerenciar/cancelar). Downgrade → `free` em `customer.subscription.deleted` ou status não-ativo.
 - **Webhook**: usa `req.text()` (raw body) + `stripe.webhooks.constructEvent` com `STRIPE_WEBHOOK_SECRET`. `runtime = 'nodejs'`. Resolve o perfil por `metadata.user_id` (preferido) ou `stripe_customer_id`.
 - **Degrada limpo**: sem `STRIPE_SECRET_KEY`/secret, todas as rotas respondem **503** (não crasham) — a UI mantém o estado atual. Verificado local.
-- **Ativação test mode (2026-07-20)**: migration Stripe aplicada; produtos/preços test criados; 4 env vars Stripe Production setadas; webhook test registrado e ACKando eventos reais. Pagamento teste logado validado: `BrightScale Group` ficou `plan=family`, `plan_status=active`, `stripe_subscription_id=sub_...`. Antes do lançamento pago, trocar test → Live.
+- **Ativação test mode (2026-07-20)**: migration Stripe aplicada; produtos/preços test criados; 4 env vars Stripe Production setadas; webhook test registrado e ACKando eventos reais. Pagamento teste logado validado: `BrightScale Group` ficou `plan=family`, `plan_status=active`, `stripe_subscription_id=sub_...`.
+- **Live cutover (LA-T02, 2026-07-21)**: conta Live `acct_1TuL40IaCSStSVaq` (EOS, US, ativada); produtos/preços Live ($9.90/$19.90), webhook Live e 4 env vars Vercel Production trocadas para Live; deploy fresco em `0981f15`. IDs sandbox obsoletos limpos dos profiles para checkout/portal recriarem customer/subscription em Live. Statement descriptor: `EOS BRIGHTSCALE`. Dono deve rotacionar chaves expostas durante a operação.
+- **Pegadinha de conta Stripe (2026-07-21)**: o Stripe CLI local pode ficar autenticado em outra conta Live (`acct_1SajtUIM02ulsUHv`, BrightScale Group LLC) e mostrar 0 produtos EOS ou webhook Supabase antigo. Antes de qualquer verificação/alteração Stripe, confirmar que a conta é `acct_1TuL40IaCSStSVaq` (EOS).
 - **Env URL pegadinha (2026-07-19)**: o Checkout falhou com 500 porque Stripe recebeu `success_url` inválida (`url_invalid / Not a valid URL`) por formatação ruim de env URL. `lib/site-url.ts` agora normaliza aspas simples/duplas, whitespace, `\n` literal, barras finais e domínios sem protocolo; checkout/portal/auth usam esse helper. Ainda assim, grave env vars sem aspas/newline sempre que possível.
 - **`profiles.plan`** continua sendo o único campo que o resto do app lê (gates via `lib/feature-gates.ts`). As colunas novas (`stripe_customer_id` etc.) são só para reconciliação/portal.
 
 ## App Spine status alignment (2026-07-20)
 
-- Roadmap/build-status/gates were realigned after Stripe Checkout reached Test mode.
-- Current phase is **Launch Activation — Stripe & Production Readiness**, not Phase 2. Phase 2 is complete.
-- Current actionable task is **LA-T02**: Stripe Live cutover (Live products/keys/webhook, env vars test → live, redeploy).
+- Roadmap/build-status/gates were realigned after Stripe Checkout reached Live mode.
+- Current phase is **Production Experience — EOS Pilot**, not Launch Activation. Phase 2 and LA-T02 are complete.
+- Current actionable task is **PILOT-T01**: Dashboard complication prototype ("What's the plan?").
 - **G-02 Landing Page** and **G-04 Monetization** are cleared. Landing v3 remains deferred (D-045); monetization business model is decided (D-042).
 - **G-03 Mobile Readiness** and **G-05 LoRa Mesh Priority** remain open and block their respective phases.
 
@@ -199,7 +201,7 @@ Sentry is wired up (`sentry.client.config.ts`, `sentry.server.config.ts`, `sentr
 - First implementation should be a Dashboard complication/module, not a new permanent tab.
 - Pilot recommendation states: `GO`, `LIMITED`, `WAIT`, `AVOID`, `PRIORITY OVERRIDE`.
 - Critical rules and official alerts always override recreation and learned preferences.
-- Sequencing: Pilot prototype starts after **LA-T02 Stripe Live cutover**, unless the owner explicitly reprioritizes.
+- Sequencing: Pilot prototype is now unblocked because **LA-T02 Stripe Live cutover is complete**.
 
 ---
 

@@ -98,11 +98,12 @@ Repita **Passos 1–4 em Live mode** (produtos, `sk_live_...`, webhook live com 
 ## Checklist rápido
 
 - [x] Conta EOS criada (`acct_1TuL49I7bawhx445` — "EOS sandbox", US) — falta statement descriptor `EOS APP` (definir no dashboard antes do Live)
+- [x] Conta Live EOS ativada (`acct_1TuL40IaCSStSVaq`, US) — statement descriptor `EOS BRIGHTSCALE`
 - [x] 2 produtos mensais criados (2026-07-19, via API): **EOS Family** `price_1TuwePI7bawhx4452M8uV7HN` ($9.90) · **EOS Premium** `price_1TuwePI7bawhx4452FUobZFI` ($19.90)
 - [x] Webhook (test) criado: `we_1TuwePI7bawhx445hxklasE5` → `/api/billing/webhook`, 4 eventos; `whsec` guardado só na Vercel
 - [x] 4 env vars na Vercel **Production** (`sk_test`, `whsec`, 2 price IDs) + redeploy — 2026-07-19
-- [ ] Pagamento de teste 4242 grava `profiles.plan` ✔ (agente valida)
-- [ ] **Live mode**: refazer produtos/keys/webhook em Live, trocar as env vars da Vercel para `sk_live`/price live, definir statement descriptor, redeploy
+- [x] Pagamento de teste 4242 grava `profiles.plan` ✔ — validado 2026-07-20
+- [x] **Live mode**: refazer produtos/keys/webhook em Live, trocar as env vars da Vercel para `sk_live`/price live, definir statement descriptor, redeploy — concluído 2026-07-21 (`acct_1TuL40IaCSStSVaq`, statement descriptor `EOS BRIGHTSCALE`)
 
-> Segredos (`sk_test`, `whsec`) vivem só na Vercel — **não** neste repo. Os IDs acima não são sensíveis.
-> As chaves de **teste** atuais devem ser trocadas por chaves **Live** antes do lançamento real (test mode não cobra de verdade).
+> Segredos (`sk_*`, `whsec`) vivem só na Vercel — **não** neste repo. Os IDs acima não são sensíveis.
+> Produção usa Stripe Live desde LA-T02. Rotacionar qualquer chave exposta em chat/logs antes de escalar tráfego pago.

@@ -77,12 +77,12 @@
 
 *Goal: add a daily-use decision layer that increases EOS usefulness before emergencies while preserving safety priority.*
 
-> Spec: `docs/15-eos-pilot.md`. Blocked until LA-T02 is complete unless the owner explicitly chooses to prototype before Stripe Live.
+> Spec: `docs/15-eos-pilot.md`. LA-T02 is complete; Pilot prototype is now the next product-surface task.
 
 | Task ID | Task | Status | Notes |
 |---|---|---|---|
 | PILOT-T00 | EOS Pilot concept/spec inserted into App Spine | ✅ COMPLETE | 2026-07-20 — D-046 / `docs/15-eos-pilot.md` |
-| PILOT-T01 | Dashboard complication prototype: "What's the plan?" entry point | BLOCKED | Start after LA-T02; integrated module, not new tab |
+| PILOT-T01 | Dashboard complication prototype: "What's the plan?" entry point | PENDING | Next task; integrated module, not new tab |
 | PILOT-T02 | MVP activity flow: Fishing, Boating, Camping, Family Outdoor, Road Trip | BLOCKED | Progressive choices, not generic chat |
 | PILOT-T03 | Rule-backed recommendation states: GO, LIMITED, WAIT, AVOID, PRIORITY OVERRIDE | BLOCKED | Critical rules must override AI |
 | PILOT-T04 | Metrics instrumentation for discovery, trust, retention, personalization, safety | BLOCKED | Needed before production rollout |

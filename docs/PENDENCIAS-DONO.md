@@ -1,9 +1,9 @@
 # PENDÊNCIAS DO DONO — ações que só você pode executar
 
-> Status geral: **PENDENTE**. O código está pronto e no ar (auto-deploy), mas algumas ações dependem de credenciais/console que o agente não tem acesso. Enquanto não forem feitas, os recursos abaixo ficam inertes/degradados de forma **honesta** (nada quebra, nada finge estar conectado).
-> Última atualização: 2026-07-20.
+> Status geral: **Stripe Live ativo; providers opcionais pendentes**. O código está pronto e no ar (auto-deploy). As pendências restantes são rotação de segredos expostos e providers opcionais de hazard.
+> Última atualização: 2026-07-21.
 
-> **Migrations resolvidas** (2026-07-17) e **Stripe Test mode validado ponta-a-ponta** (2026-07-20). O que ainda depende do dono: fazer cutover Stripe test → Live antes do lançamento pago, chaves opcionais de provider (WeatherKit/Xweather/etc.) e autorizações externas (ShakeAlert/FEMA). O Personal Access Token Supabase usado em 2026-07-17 deve ser **revogado/rotacionado** pelo dono após o uso (Dashboard → Account → Tokens).
+> **Migrations resolvidas** (2026-07-17), **Stripe Test mode validado ponta-a-ponta** (2026-07-20) e **Stripe Live cutover concluído** (2026-07-21). O que ainda depende do dono: rotacionar segredos expostos durante a operação, chaves opcionais de provider (WeatherKit/Xweather/etc.) e autorizações externas (ShakeAlert/FEMA). O Personal Access Token Supabase usado em 2026-07-17 deve ser **revogado/rotacionado** pelo dono após o uso (Dashboard → Account → Tokens).
 > Histórico: o `supabase` CLI logado neste ambiente pertence a outra conta (só enxerga BrightScaleWeb / bolt-native / Abre-USA); por isso o CLI não alcança o projeto EOS. A via que funcionou foi o PAT + Management API.
 
 ---
@@ -34,7 +34,7 @@ Aplicadas pelo agente via **Management API** (`/v1/projects/{ref}/database/query
 | `supabase/migrations/20260710010000_hazard_tables.sql` | 5 tabelas de hazard (RLS) | ✅ Aplicada — 5 tabelas + policies confirmadas |
 | `supabase/migrations/20260705000000_auto_create_profile.sql` | Trigger `handle_new_user` + backfill | ✅ Aplicada — trigger existe; 0 usuários sem perfil |
 
-> Nota: as colunas Stripe existem, mas o **fluxo de faturamento ainda depende da seção 2** (produtos + env vars + webhook). A migration só criou onde gravar.
+> Nota: as colunas Stripe existem e o fluxo de faturamento Live está ativo; a migration só criou onde gravar.
 
 ---
 
@@ -42,31 +42,30 @@ Aplicadas pelo agente via **Management API** (`/v1/projects/{ref}/database/query
 
 > **LIVE cutover feito (LA-T02).** Conta real `acct_1TuL40IaCSStSVaq` (EOS, US, ativada). Produtos/preços Live ($9.90/$19.90), webhook Live e as 4 env vars da Vercel Production trocadas para `sk_live`/whsec live/price IDs live; deploy fresco. IDs de customer/subscription do sandbox foram limpos dos profiles (o guard do checkout recria em live se preciso). Statement descriptor = "EOS BRIGHTSCALE". **Falta só**: o dono rotacionar as chaves expostas no chat (sk_live, Vercel token, Supabase PAT) e, se quiser, um teste com cartão real + reembolso.
 
+> **Test mode também foi validado** (2026-07-20): pagamento logado com cartão 4242 atualizou `profiles.plan`. Test e Live são ambientes separados; a produção agora usa Live.
 
-> **Test mode configurado e validado** (agente, via API Stripe + API Vercel): produtos/preços ($9.90/$19.90), webhook e as 4 env vars em Production estão setados; deploy fresco carregou tudo. Endpoints saíram do 503 (`webhook`→400, `checkout`→401) e eventos assinados reais foram entregues e ACKados 2xx pelo endpoint de produção. Em 2026-07-19, corrigido o 500 do Checkout causado por `success_url` inválida; em 2026-07-20, pagamento teste logado atualizou `BrightScale Group` para `plan=family`, `plan_status=active`, `stripe_subscription_id=sub_...`. **Falta** trocar as chaves **test → Live** antes do lançamento pago. Detalhes: `docs/stripe-setup-eos.md`.
-
-Estado atual: os botões de upgrade abrem Checkout em Test mode e o webhook já provou que atualiza o plano.
+Estado atual: os botões de upgrade abrem Checkout em Live mode. Próxima validação opcional: pagamento real pequeno + reembolso.
 
 > **Decisão 2026-07-17 (Rota A):** o EOS terá **conta Stripe própria**, sob a mesma empresa/Organização do site existente do dono, para não misturar marca, statement descriptor, payouts e relatórios. Verificado no código: o webhook resolve o perfil por `user_id`/`stripe_customer_id`, então mesmo numa conta compartilhada um site não corromperia os dados do outro — o motivo de separar é brand/dinheiro/contabilidade, não integridade de dados.
 > **Runbook copy-paste passo-a-passo: `docs/stripe-setup-eos.md`.** O checklist abaixo é o resumo; o runbook tem os detalhes (Test mode primeiro, statement descriptor, cartão 4242, etc.).
 
 **Checklist:**
 1. [x] ~~Aplicar a migration `20260710000000_stripe_billing.sql`~~ — ✅ feito 2026-07-17 (seção 1).
-2. [x] ~~No **Stripe Dashboard**, criar **2 produtos com preço recorrente**~~ — ✅ feito em Test mode 2026-07-19:
+2. [x] ~~No **Stripe Dashboard**, criar **2 produtos com preço recorrente**~~ — ✅ Test mode 2026-07-19; Live mode 2026-07-21:
        - Plano **Família** (mensal) → copiar o **Price ID** (`price_...`).
        - Plano **Premium** (mensal) → copiar o **Price ID**.
-3. [x] ~~No **Vercel** (Production + Preview), setar as 4 env vars~~ — ✅ feito em Production/Test mode 2026-07-19:
-       - `STRIPE_SECRET_KEY` (`sk_live_...` ou `sk_test_...`)
+3. [x] ~~No **Vercel** (Production), setar as 4 env vars Live~~ — ✅ feito 2026-07-21:
+       - `STRIPE_SECRET_KEY` (`sk_live_...`)
        - `STRIPE_WEBHOOK_SECRET` (`whsec_...` — vem do passo 4)
        - `STRIPE_PRICE_FAMILY` (o Price ID do Família)
        - `STRIPE_PRICE_PREMIUM` (o Price ID do Premium)
-4. [x] ~~No Stripe, registrar o **endpoint de webhook**~~ — ✅ feito em Test mode 2026-07-19:
+4. [x] ~~No Stripe, registrar o **endpoint de webhook**~~ — ✅ Test mode 2026-07-19; Live mode 2026-07-21:
        `https://eos-app-fawn.vercel.app/api/billing/webhook`
-       eventos: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`.
+       eventos: `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`.
        Copiar o **Signing secret** (`whsec_...`) para `STRIPE_WEBHOOK_SECRET`.
-5. [x] ~~**Redeploy** (`vercel --prod --yes`)~~ — ✅ deploy fresco carregou as env vars; novo deploy do bugfix de URL pendente via push desta sessão.
+5. [x] ~~**Redeploy** (`vercel --prod --yes`)~~ — ✅ deploy fresco carregou as env vars Live em 2026-07-21.
 6. [x] ~~Pagamento de teste logado com cartão `4242 4242 4242 4242` e validação de `profiles.plan`~~ — ✅ feito 2026-07-20 (`plan=family`, `plan_status=active`).
-7. [ ] Antes do lançamento pago: refazer produtos/keys/webhook em **Live mode**, trocar env vars test → live e redeploy.
+7. [x] ~~Antes do lançamento pago: refazer produtos/keys/webhook em **Live mode**, trocar env vars test → live e redeploy~~ — ✅ LA-T02 completo 2026-07-21.
 
 > Pegadinha (D-035/D-036): grave valores **sem aspas e sem espaços/newline**. Vars "Sensitive" não são lidas de volta — valide pelo comportamento em produção.
 
