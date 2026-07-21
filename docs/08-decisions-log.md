@@ -4,6 +4,24 @@
 
 ---
 
+## D-051 — HWD-04 privacy baseline + OpenAI inferred route/shelter prototype
+
+**Date**: 2026-07-21
+**Status**: DECIDED / PROTOTYPE AUTHORIZED
+
+**Context**: HWD-04 was blocked on privacy/data choices for family location, routing, and shelter source. The owner explicitly chose: family location requires consent, exact point is acceptable, freshness must be visible, and MVP retention is only the latest point. For routes and shelters, the owner asked to use the OpenAI API for now and accepts the risk.
+
+**Decision**:
+1. **Family location**: HWD may show exact points for circle/family members whose location is already exposed through EOS circle/profile data. The UI must show freshness/availability state; MVP does not implement location history.
+2. **Retention**: MVP stores/uses only the latest known profile/current location. No trail, replay, or historical route.
+3. **Routes/shelters**: OpenAI API may be used temporarily as an **inference layer** for candidate shelter/route guidance in the isolated `/dashboard-world` prototype.
+4. **Important limitation**: OpenAI is **not** an official geospatial, routing, emergency management, or shelter-status source. Any route/shelter generated this way must be labeled as AI/inferred/candidate, not official or guaranteed safe.
+5. **Review debt**: before production replacement of `/dashboard`, shelters and routing must be reviewed and moved to appropriate official/geospatial providers or curated/admin-verified data.
+
+**Consequence**: HWD-04 is unblocked for a prototype implementation only. Production rollout remains blocked until HWD-06 validation and the route/shelter source review.
+
+---
+
 ## D-050 — Dono autoriza a implementação do Hybrid World Dashboard (gate liberado)
 
 **Date**: 2026-07-21

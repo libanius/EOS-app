@@ -65,6 +65,9 @@
 .w-mapmarker .pin { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-size: 10px; font-weight: 700; color: #06070b; border: 2px solid rgba(255,255,255,0.85); box-shadow: 0 6px 16px rgba(0,0,0,0.55); }
 .w-mapmarker .lab { font-size: 9px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--w-ink); background: rgba(6,7,11,0.65); padding: 2px 6px; border-radius: 5px; backdrop-filter: blur(6px); white-space: nowrap; }
 .w-mapmarker.shelter .lab { color: #06070b; background: var(--w-state); }
+.w-mapmarker.real .pin { box-shadow: 0 0 0 5px rgba(var(--w-state-rgb), 0.16), 0 8px 20px rgba(0,0,0,0.55); }
+.w-mapmarker.real .lab { background: rgba(6,7,11,0.78); border: 1px solid rgba(var(--w-state-rgb), 0.35); }
+.w-mapmarker.shelter.ai .lab { max-width: 210px; overflow: hidden; text-overflow: ellipsis; background: #ffb347; color: #06070b; }
 .w-hazardtag {
   max-width: 230px;
   color: var(--w-ink);

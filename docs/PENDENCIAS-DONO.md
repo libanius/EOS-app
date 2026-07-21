@@ -131,9 +131,19 @@ FEMA_IPAWS_PIN=
 - Monitoramento multi-fonte ao vivo (NWS/USGS/NHC/Open-Meteo) + componente **Live Intelligence Network** nas telas Cenário e Weather.
 - Push manual de Admin de círculo (VAPID já configurado).
 
+## 4b. World Dashboard — revisão obrigatória de rotas/shelters (D-051)
+
+O protótipo HWD-04 usa OpenAI para inferir **shelter/rota candidata** na rota isolada `/dashboard-world`. Isso foi autorizado pelo dono com risco assumido para teste visual/produto, mas **OpenAI não é fonte oficial de rota, mapa, abrigo aberto, shelter status ou segurança de trajeto**.
+
+- [ ] Antes de substituir `/dashboard` pelo World Dashboard, escolher fonte geoespacial/oficial para rotas.
+- [ ] Escolher fonte oficial/curada/admin para shelters e status de abertura.
+- [ ] Definir como o app mostra confiança, fonte, última verificação e fallback quando rota/shelter não é confiável.
+- [ ] Revisar termos/privacidade para localização exata de família no mapa.
+
 ## 5. Ordem sugerida
 
 1. Stripe Live cutover → começa a faturar de verdade.
-2. WeatherKit → previsão principal + nowcast premium; destrava "ALL SYSTEMS LIVE".
-3. Xweather (raios) → canal de raios.
-4. ShakeAlert / FEMA IPAWS → quando as autorizações saírem.
+2. Revisão World Dashboard rotas/shelters antes de produção.
+3. WeatherKit → previsão principal + nowcast premium; destrava "ALL SYSTEMS LIVE".
+4. Xweather (raios) → canal de raios.
+5. ShakeAlert / FEMA IPAWS → quando as autorizações saírem.

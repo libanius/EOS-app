@@ -10,14 +10,15 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Hybrid World Dashboard (HWD) — D-047/D-050 |
-| **Last Completed Task** | HWD-03: real EOS map data — location, RainViewer radar, hazard layers/tags, textual a11y (2026-07-21) |
+| **Last Completed Task** | HWD-04: family/routing foundation prototype — EOS family points + OpenAI-inferred candidate route/shelter (2026-07-21) |
+| | HWD-03: real EOS map data — location, RainViewer radar, hazard layers/tags, textual a11y (2026-07-21) |
 | | HWD-02: live MapLibre map (MapTiler satellite + 3D terrain via env) (2026-07-21) |
 | | HWD-01: static World Dashboard prototype at `/dashboard-world` (2026-07-21) |
 | | D-049: aba Família vira vista unificada (roster + membros do círculo) (2026-07-21) |
 | | LA-T02: Stripe **Live** cutover — faturamento real ativo (2026-07-21) |
 | | LA-T01: Stripe test payment → webhook → `profiles.plan=family` (2026-07-20) |
-| **In Progress** | None — HWD-04 is blocked pending privacy/data decisions. |
-| **Next Task** | HWD-04 — Family + routing foundation, blocked until owner decides consent, precision/freshness, shelter source, routing provider, retention/fallback rules. |
+| **In Progress** | None |
+| **Next Task** | HWD-05 — Pilot action integration in the World Dashboard capsule. |
 | **Build** | ✅ Passing — produção como de 2026-07-21 (`f1acc9b`) |
 | **Vercel** | ✅ Deployed — Stripe **Live** + `NEXT_PUBLIC_MAPTILER_KEY` (protegida por origem) |
 | **Supabase** | ✅ Healthy — project ref `alxurmgpyxjhvnliivbf` |
@@ -34,6 +35,7 @@
   - **HWD-02**: MapLibre GL 5.24 (lazy-load). Config provider-neutra `lib/world/providers.ts`: keyless CARTO dark por padrão; **MapTiler hybrid (satélite) + terreno 3D** quando `NEXT_PUBLIC_MAPTILER_KEY` está setado. Câmera Parkland pitch 56°. Degrada para a placa estática se WebGL/tiles falharem.
   - **HWD-03**: mapa centraliza na **localização real** (RiskProvider expõe `coords`; flyTo; fallback Parkland); overlays mock relativos ao centro; **equivalente textual** do mapa (§22); camada server-normalized de radar RainViewer keyless em `/api/world/radar`; hazards reais de `/api/hazards` renderizados como polígonos/pontos e tags geo-ancoradas. Radar/hazards degradam sem derrubar o mapa.
   - **HWD-03 polish**: adicionada faixa visível de "Camadas ao vivo" (Radar RainViewer + contagem de hazards + frame UTC + preview de alertas) para evitar que o radar pareça ausente quando não há precipitação local; ticker inferior e badge mock reposicionados acima da bottom nav.
+  - **HWD-04**: pontos exatos de família vindos de dados EOS/círculo substituem os mocks quando disponíveis; freshness visível (`agora` para usuário atual, `perfil` para co-membros); `/api/world/guidance` usa OpenAI para shelter/rota candidata e rotula como inferência não oficial. Fallback mantém mock/rota direta sem quebrar o mapa.
 - Colisão de numeração resolvida: D-047 = World Dashboard; a vista unificada de Família passou a **D-049**.
 
 ---
@@ -130,9 +132,9 @@
 
 ## What Is Next
 
-**HWD-04: Family + routing foundation**
+**HWD-05: Pilot action integration**
 
-Bloqueado por decisão de privacidade/dados: consentimento familiar, precisão e freshness de localização, retenção, fonte de shelters, provedor de rota e comportamento de fallback. Enquanto isso, `/dashboard-world` permanece isolado; `/dashboard` de produção não foi substituído.
+Integrar ações reais na Pilot Capsule do World Dashboard: estados GO/LIMITED/WAIT/AVOID/PRIORITY OVERRIDE, abrir cenário, checklist, notify-family e foco na rota candidata. Seguir `docs/15-eos-pilot.md` e doc 16 §25.
 
 ---
 

@@ -1202,7 +1202,7 @@ Implementation status as of 2026-07-21: complete for the isolated `/dashboard-wo
 
 ### Phase HWD-04 — Family and routing foundation
 
-Requires separate privacy/data decisions.
+Privacy/data baseline decided in D-051 for prototype scope.
 
 - family location consent;
 - freshness and precision;
@@ -1210,6 +1210,8 @@ Requires separate privacy/data decisions.
 - routing provider;
 - route safety model;
 - route confidence and fallback behavior.
+
+Implementation status as of 2026-07-21: complete for prototype scope. Exact family points from existing EOS circle/profile data replace mock family markers when available; current user freshness is live/now and co-member profile coordinates are labeled as profile/stored freshness. `/api/world/guidance` produces a candidate shelter/route through OpenAI with fallback and explicit non-official labeling. Route/shelter provider review remains required before production rollout.
 
 ### Phase HWD-05 — Pilot action integration
 

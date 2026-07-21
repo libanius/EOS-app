@@ -12,6 +12,7 @@ import Link from 'next/link'
 import { useLanguage } from '@/lib/i18n'
 import { useRisk } from '@/components/v2/RiskProvider'
 import WorldMap from './WorldMap'
+import type { WorldFamilyMember, WorldGuidance } from './WorldMap'
 import './world-dashboard.css'
 
 // World plates by risk state — clean Parkland aerials generated in Higgsfield
@@ -66,17 +67,21 @@ const STATE_LABEL = {
 
 type Inv = { water_liters: number; food_days: number; has_medical_kit: boolean; has_communication_device: boolean }
 type RadarStatus = { ok?: boolean; provider?: string; frameTime?: number }
+type CircleMember = { user_id: string; name: string; is_me: boolean; location_lat: number | null; location_lng: number | null }
+type CircleRow = { members?: CircleMember[] }
 
 export default function WorldDashboard() {
   const { language } = useLanguage()
   const c = COPY[language]
-  const { snapshot, score, state, hasCoords, requestGps, error, refresh } = useRisk()
+  const { snapshot, score, state, hasCoords, coords, requestGps, error, refresh } = useRisk()
 
   const [inv, setInv] = useState<Inv | null>(null)
   const [people, setPeople] = useState(1)
   const [items, setItems] = useState<{ acquired: boolean }[]>([])
   const [online, setOnline] = useState(true)
   const [radar, setRadar] = useState<RadarStatus | null>(null)
+  const [mapFamily, setMapFamily] = useState<WorldFamilyMember[]>([])
+  const [guidance, setGuidance] = useState<WorldGuidance | null>(null)
 
   const fetchLocal = useCallback(async () => {
     try {
@@ -100,6 +105,59 @@ export default function WorldDashboard() {
       .catch(() => { if (!cancelled) setRadar({ ok: false }) })
     return () => { cancelled = true }
   }, [])
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/circles')
+      .then(r => (r.ok ? r.json() : null))
+      .then((data: { circles?: CircleRow[] } | null) => {
+        if (cancelled) return
+        const byId = new Map<string, WorldFamilyMember>()
+        for (const circle of data?.circles ?? []) {
+          for (const m of circle.members ?? []) {
+            if (typeof m.location_lat !== 'number' || typeof m.location_lng !== 'number') continue
+            byId.set(m.user_id, {
+              id: m.user_id,
+              name: m.is_me ? (language === 'pt' ? 'Você' : 'You') : (m.name || '—'),
+              lat: m.location_lat,
+              lng: m.location_lng,
+              isMe: m.is_me,
+              freshness: m.is_me ? (language === 'pt' ? 'agora' : 'now') : (language === 'pt' ? 'perfil' : 'profile'),
+            })
+          }
+        }
+        if (coords && !Array.from(byId.values()).some(m => m.isMe)) {
+          byId.set('me-live', {
+            id: 'me-live',
+            name: language === 'pt' ? 'Você' : 'You',
+            lat: coords.lat,
+            lng: coords.lng,
+            isMe: true,
+            freshness: language === 'pt' ? 'agora' : 'now',
+          })
+        }
+        setMapFamily(Array.from(byId.values()))
+      })
+      .catch(() => {
+        if (coords && !cancelled) setMapFamily([{
+          id: 'me-live',
+          name: language === 'pt' ? 'Você' : 'You',
+          lat: coords.lat,
+          lng: coords.lng,
+          isMe: true,
+          freshness: language === 'pt' ? 'agora' : 'now',
+        }])
+      })
+    return () => { cancelled = true }
+  }, [coords, language])
+  useEffect(() => {
+    if (!coords) return
+    let cancelled = false
+    fetch(`/api/world/guidance?lat=${coords.lat}&lng=${coords.lng}`)
+      .then(r => (r.ok ? r.json() : null))
+      .then((data: WorldGuidance | null) => { if (!cancelled && data?.shelter) setGuidance(data) })
+      .catch(() => { if (!cancelled) setGuidance(null) })
+    return () => { cancelled = true }
+  }, [coords])
   useEffect(() => {
     const on = () => setOnline(true), off = () => setOnline(false)
     setOnline(typeof navigator !== 'undefined' ? navigator.onLine : true)
@@ -125,7 +183,7 @@ export default function WorldDashboard() {
 
   return (
     <main className="world" data-risk={state}>
-      <WorldMap state={state} plateUrl={worldImage} />
+      <WorldMap state={state} plateUrl={worldImage} family={mapFamily} guidance={guidance} />
       <div className="world-vignette" aria-hidden="true" />
 
       <div className="world-hud">
@@ -211,6 +269,14 @@ export default function WorldDashboard() {
               <span>Hazards</span>
               <strong>{alertCount}</strong>
             </div>
+            <div className="sensor-row">
+              <span>{language === 'pt' ? 'Família' : 'Family'}</span>
+              <strong>{mapFamily.length || '...'}</strong>
+            </div>
+            <div className="sensor-row">
+              <span>{language === 'pt' ? 'Rota' : 'Route'}</span>
+              <strong>{guidance ? 'AI' : 'mock'}</strong>
+            </div>
           </div>
           {radar?.frameTime && (
             <div className="sensor-note">
@@ -223,6 +289,11 @@ export default function WorldDashboard() {
             </div>
           ) : (
             <div className="sensor-note">{language === 'pt' ? 'Sem alerta oficial no centro atual' : 'No official alert at current center'}</div>
+          )}
+          {guidance && (
+            <div className="sensor-note">
+              {language === 'pt' ? 'Shelter candidato' : 'Candidate shelter'}: {shorten(guidance.shelter.name, 34)} · {guidance.shelter.confidence}
+            </div>
           )}
         </div>
 
@@ -239,7 +310,11 @@ export default function WorldDashboard() {
         )}
 
         {/* honesty label */}
-        <div className="w-badge-mock">{c.mockData}</div>
+        <div className="w-badge-mock">
+          {mapFamily.length || guidance
+            ? (language === 'pt' ? 'FAMÍLIA: EOS · ROTA/SHELTER: IA CANDIDATA' : 'FAMILY: EOS · ROUTE/SHELTER: AI CANDIDATE')
+            : c.mockData}
+        </div>
       </div>
     </main>
   )

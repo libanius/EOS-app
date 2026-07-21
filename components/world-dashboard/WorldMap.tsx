@@ -44,6 +44,12 @@ type HazardEvent = {
 }
 type HazardSnapshot = { events?: HazardEvent[]; fetchedAt?: string }
 type RadarSnapshot = { ok?: boolean; tileUrl?: string; attribution?: string; frameTime?: number }
+export type WorldFamilyMember = { id: string; name: string; lat: number; lng: number; isMe?: boolean; freshness: string }
+export type WorldGuidance = {
+  shelter: { name: string; lat: number; lng: number; confidence: string; source: string }
+  route: { label: string; confidence: string; points: Array<[number, number]> }
+  caveat: string
+}
 
 const HAZARD_COLOR: Record<HazardSeverity, string> = {
   info: '#35d7f2',
@@ -111,7 +117,29 @@ function short(text: string, max = 38) {
   return text.length <= max ? text : `${text.slice(0, max - 1).trim()}…`
 }
 
-export default function WorldMap({ plateUrl }: { state: string; plateUrl: string }) {
+function markerEl(className: string, pin: string, label: string, color?: string) {
+  const el = document.createElement('div')
+  el.className = className
+  if (pin) {
+    const p = document.createElement('span')
+    p.className = 'pin'
+    if (color) p.style.background = color
+    p.textContent = pin
+    el.appendChild(p)
+  }
+  const lab = document.createElement('span')
+  lab.className = 'lab'
+  lab.textContent = label
+  el.appendChild(lab)
+  return el
+}
+
+export default function WorldMap({ plateUrl, family = [], guidance = null }: {
+  state: string
+  plateUrl: string
+  family?: WorldFamilyMember[]
+  guidance?: WorldGuidance | null
+}) {
   const { coords } = useRisk()
   const ref = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MLMap | null>(null)
@@ -121,19 +149,44 @@ export default function WorldMap({ plateUrl }: { state: string; plateUrl: string
   const centerRef = useRef<[number, number] | null>(null)
   const plateRef = useRef<HTMLDivElement>(null)
 
-  // Place / reposition the mock overlays around a given center.
-  const placeOverlays = (center: [number, number]) => {
+  // Place / reposition family + route overlays. Real HWD-04 data wins; mock
+  // overlays remain only as a labeled fallback when no family/guidance exists.
+  const placeOverlays = async (center: [number, number]) => {
     const map = mapRef.current
     if (!map) return
+    const routeCoords = guidance?.route?.points?.length
+      ? guidance.route.points
+      : ROUTE_OFF.map(d => off(center, d))
     const src = map.getSource('eos-route') as { setData?: (d: unknown) => void } | undefined
     src?.setData?.({
       type: 'Feature', properties: {},
-      geometry: { type: 'LineString', coordinates: ROUTE_OFF.map(d => off(center, d)) },
+      geometry: { type: 'LineString', coordinates: routeCoords },
     })
-    markersRef.current.forEach((mk, i) => {
-      const d = i < FAMILY_OFF.length ? FAMILY_OFF[i].d : SHELTER_OFF
-      mk.setLngLat(off(center, d))
-    })
+    markersRef.current.forEach(m => m.remove())
+    markersRef.current = []
+    const maplibregl = (await import('maplibre-gl')).default
+    if (family.length) {
+      family.slice(0, 8).forEach((m, i) => {
+        const initials = m.name.split(/\s+/).map(p => p[0]).join('').slice(0, 2).toUpperCase() || 'FM'
+        const color = m.isMe ? '#00e5a0' : ['#ffb347', '#9aa0ad', '#7c6bff', '#35d7f2'][i % 4]
+        const el = markerEl('w-mapmarker real', initials, `${short(m.name, 18)} · ${m.freshness}`, color)
+        markersRef.current.push(new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([m.lng, m.lat]).addTo(map))
+      })
+    } else {
+      for (const f of FAMILY_OFF) {
+        const el = markerEl('w-mapmarker', f.name.slice(0, 2).toUpperCase(), f.label, f.color)
+        markersRef.current.push(new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat(off(center, f.d)).addTo(map))
+      }
+    }
+    const shelter = guidance?.shelter
+    const sh = markerEl(
+      `w-mapmarker shelter ${shelter ? 'ai' : ''}`,
+      '',
+      shelter ? `AI SHELTER · ${short(shelter.name, 24)}` : '▶ SHELTER (mock)',
+    )
+    markersRef.current.push(new maplibregl.Marker({ element: sh, anchor: 'bottom' }).setLngLat(
+      shelter ? [shelter.lng, shelter.lat] : off(center, SHELTER_OFF),
+    ).addTo(map))
   }
 
   const loadRadar = async () => {
@@ -285,19 +338,8 @@ export default function WorldMap({ plateUrl }: { state: string; plateUrl: string
           map.addLayer({ id: 'eos-route-glow', type: 'line', source: 'eos-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#00e5a0', 'line-width': 9, 'line-opacity': 0.18, 'line-blur': 6 } })
           map.addLayer({ id: 'eos-route', type: 'line', source: 'eos-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#00e5a0', 'line-width': 3.5, 'line-opacity': 0.95 } })
 
-          markersRef.current = []
-          for (const f of FAMILY_OFF) {
-            const el = document.createElement('div')
-            el.className = 'w-mapmarker'
-            el.innerHTML = `<span class="pin" style="background:${f.color}">${f.name.slice(0, 2).toUpperCase()}</span><span class="lab">${f.label}</span>`
-            markersRef.current.push(new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat(off(cur, f.d)).addTo(map))
-          }
-          const sh = document.createElement('div')
-          sh.className = 'w-mapmarker shelter'
-          sh.innerHTML = `<span class="lab">▶ SHELTER (mock)</span>`
-          markersRef.current.push(new maplibregl.Marker({ element: sh, anchor: 'bottom' }).setLngLat(off(cur, SHELTER_OFF)).addTo(map))
-
           readyRef.current = true
+          void placeOverlays(cur)
           if (plateRef.current) plateRef.current.style.opacity = '0'
           loadRadar()
           renderHazards(cur)
@@ -326,11 +368,17 @@ export default function WorldMap({ plateUrl }: { state: string; plateUrl: string
     if (reduce) map.jumpTo({ center })
     else map.flyTo({ center, duration: 1400, essential: true })
     if (readyRef.current) {
-      placeOverlays(center)
+      void placeOverlays(center)
       renderHazards(center)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [coords?.lat, coords?.lng])
+
+  useEffect(() => {
+    const center = centerRef.current
+    if (readyRef.current && center) void placeOverlays(center)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [family, guidance])
 
   return (
     <div className="world-map-wrap" aria-hidden="true">
