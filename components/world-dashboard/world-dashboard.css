@@ -1,0 +1,168 @@
+/* Hybrid World Dashboard — HWD-01 static prototype styling (doc 16 §19).
+   Premium, calm, instrument-grade. Frosted glass HUD over a world plate.
+   Risk colors REUSE the existing v2 tokens (safe/watch/warning/critical) per §19.3. */
+
+.world {
+  --w-state: #00e5a0;
+  --w-state-rgb: 0, 229, 160;
+  --w-ink: #eef0f4;        /* bone white */
+  --w-ink-2: #9aa0ad;
+  --w-glass: rgba(14, 16, 22, 0.55);
+  --w-glass-2: rgba(20, 22, 30, 0.7);
+  --w-line: rgba(255, 255, 255, 0.12);
+  --w-rail: rgba(244, 246, 250, 0.92);   /* clean light status rail (§8.2/§19.2) */
+  --w-rail-ink: #14161c;
+  --w-rail-ink-2: #565b66;
+
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  color: var(--w-ink);
+  font-family: 'DM Sans', 'Geist Sans', system-ui, sans-serif;
+  background: #06070b;
+}
+.world[data-risk='safe']     { --w-state: #00e5a0; --w-state-rgb: 0, 229, 160; }
+.world[data-risk='watch']    { --w-state: #7c6bff; --w-state-rgb: 124, 107, 255; }
+.world[data-risk='warning']  { --w-state: #ffb347; --w-state-rgb: 255, 179, 71; }
+.world[data-risk='critical'] { --w-state: #ff6b6b; --w-state-rgb: 255, 107, 107; }
+
+/* ── world plate: Higgsfield image (drop into public/world/) with atmospheric fallback ── */
+.world-plate {
+  position: absolute; inset: 0; z-index: 0;
+  background-color: #06070b;
+  background-image:
+    radial-gradient(120% 80% at 50% -10%, rgba(var(--w-state-rgb), 0.10), transparent 60%),
+    radial-gradient(90% 70% at 20% 110%, rgba(10, 30, 40, 0.9), transparent 70%),
+    linear-gradient(180deg, #0a1018 0%, #06080d 55%, #04050a 100%);
+  background-size: cover;
+  background-position: center;
+  transition: filter 600ms ease;
+}
+/* when a real image is present it is set via inline style --world-image */
+.world-plate.has-image { background-image: var(--world-image); }
+.world[data-risk='warning'] .world-plate,
+.world[data-risk='critical'] .world-plate { filter: saturate(0.85) brightness(0.82); }
+
+/* subtle vignette so HUD reads over any plate */
+.world-vignette {
+  position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(4,5,10,0.72) 0%, transparent 34%, transparent 70%, rgba(4,5,10,0.5) 100%),
+    linear-gradient(180deg, rgba(4,5,10,0.55) 0%, transparent 26%, transparent 62%, rgba(4,5,10,0.85) 100%);
+}
+
+.world-hud { position: absolute; inset: 0; z-index: 2; }
+
+/* generic frosted panel */
+.w-glass {
+  background: var(--w-glass);
+  border: 1px solid var(--w-line);
+  border-radius: 16px;
+  backdrop-filter: blur(16px) saturate(1.1);
+  -webkit-backdrop-filter: blur(16px) saturate(1.1);
+  box-shadow: 0 10px 40px -12px rgba(0, 0, 0, 0.6);
+}
+
+.w-eyebrow {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--w-ink-2);
+}
+.w-mock {
+  font-size: 9px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+  color: #0a0a0f; background: var(--w-ink-2); border-radius: 4px; padding: 1px 5px;
+}
+
+/* ── Status Rail (left, clean light instrument) ── */
+.w-rail {
+  position: absolute; top: 18px; left: 18px; bottom: 18px; width: 268px;
+  background: var(--w-rail); color: var(--w-rail-ink);
+  border-radius: 22px; padding: 20px 18px;
+  backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+  box-shadow: 0 20px 60px -20px rgba(0, 0, 0, 0.65);
+  display: flex; flex-direction: column; gap: 16px; overflow: auto;
+}
+.w-rail .rail-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--w-rail-ink-2); }
+.w-rail .rail-score { font-family: 'DM Mono', 'Geist Mono', monospace; font-size: 72px; line-height: 0.95; font-weight: 500; color: var(--w-rail-ink); font-variant-numeric: tabular-nums; }
+.w-rail .rail-state { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.w-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--w-state); box-shadow: 0 0 0 4px rgba(var(--w-state-rgb), 0.18); }
+.w-rail .rail-div { height: 1px; background: rgba(0,0,0,0.08); margin: 2px 0; }
+.w-rail .rail-row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
+.w-rail .rail-row .k { color: var(--w-rail-ink-2); }
+.w-rail .rail-row .v { font-family: 'DM Mono', monospace; font-weight: 600; color: var(--w-rail-ink); font-variant-numeric: tabular-nums; }
+.w-bar { height: 6px; border-radius: 999px; background: rgba(0,0,0,0.08); overflow: hidden; }
+.w-bar > i { display: block; height: 100%; border-radius: 999px; background: var(--w-state); transition: width 500ms cubic-bezier(.2,.8,.2,1); }
+.w-legend { display: flex; gap: 6px; flex-wrap: wrap; }
+.w-legend span { font-size: 9px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 7px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.1); color: var(--w-rail-ink-2); }
+.w-legend span.on { color: #fff; }
+
+/* ── Pilot Capsule (top center) ── */
+.w-pilot {
+  position: absolute; top: 18px; left: 50%; transform: translateX(-50%);
+  width: min(520px, calc(100vw - 620px)); padding: 14px 18px;
+}
+.w-pilot .cap-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.w-pilot .cap-body { font-size: 14px; line-height: 1.5; color: var(--w-ink); }
+.w-pilot .cap-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+
+.w-chip {
+  display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
+  font-size: 12px; font-weight: 600; color: var(--w-ink);
+  background: rgba(255,255,255,0.05); border: 1px solid var(--w-line);
+  border-radius: 999px; padding: 8px 13px; font-family: inherit;
+}
+.w-chip:hover { border-color: rgba(var(--w-state-rgb), 0.5); }
+.w-chip.solid { background: var(--w-state); color: #06070b; border-color: var(--w-state); }
+
+/* ── Central Location Brief ── */
+.w-brief {
+  position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%);
+  text-align: center; pointer-events: none; max-width: 60vw;
+}
+.w-brief .loc { font-size: clamp(30px, 6vw, 54px); font-weight: 700; letter-spacing: -0.03em; color: var(--w-ink); text-shadow: 0 2px 24px rgba(0,0,0,0.55); }
+.w-brief .cond { margin-top: 6px; font-size: 13px; color: var(--w-ink); display: inline-flex; align-items: center; gap: 8px; pointer-events: auto; }
+
+/* ── Alert Counter (top right) ── */
+.w-alerts { position: absolute; top: 18px; right: 18px; padding: 12px 14px; min-width: 132px; }
+.w-alerts .n { font-family: 'DM Mono', monospace; font-size: 30px; font-weight: 500; color: var(--w-state); line-height: 1; font-variant-numeric: tabular-nums; }
+
+/* ── Environmental Ticker (bottom center, dark dock) ── */
+.w-ticker {
+  position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 4px; padding: 8px; background: var(--w-glass-2);
+  border: 1px solid var(--w-line); border-radius: 14px;
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  max-width: calc(100vw - 320px); overflow-x: auto;
+}
+.w-ticker .t { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 4px 14px; border-right: 1px solid var(--w-line); white-space: nowrap; }
+.w-ticker .t:last-child { border-right: none; }
+.w-ticker .t .tk { font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--w-ink-2); }
+.w-ticker .t .tv { font-family: 'DM Mono', monospace; font-size: 15px; color: var(--w-ink); font-variant-numeric: tabular-nums; }
+
+/* ── mock overlays: family markers + route ── */
+.w-marker { position: absolute; transform: translate(-50%, -100%); display: flex; flex-direction: column; align-items: center; gap: 4px; pointer-events: auto; }
+.w-marker .pin { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 700; color: #06070b; border: 2px solid rgba(255,255,255,0.85); box-shadow: 0 6px 18px rgba(0,0,0,0.5); }
+.w-marker .lab { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--w-ink); background: rgba(6,7,11,0.6); padding: 2px 7px; border-radius: 6px; backdrop-filter: blur(6px); }
+.fam-green { background: #00e5a0; } .fam-amber { background: #ffb347; } .fam-red { background: #ff6b6b; } .fam-gray { background: #9aa0ad; }
+.w-route { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.w-route path { fill: none; stroke: var(--w-state); stroke-width: 3; stroke-linecap: round; stroke-dasharray: 2 9; opacity: 0.9; }
+.w-route .dest { fill: var(--w-state); }
+
+.w-badge-mock {
+  position: absolute; bottom: 64px; left: 50%; transform: translateX(-50%);
+  font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--w-ink-2); background: rgba(6,7,11,0.6); border: 1px solid var(--w-line);
+  padding: 4px 10px; border-radius: 999px; backdrop-filter: blur(6px);
+}
+
+/* ── mobile transformation (§21.3): world + top island + bottom sheet ── */
+@media (max-width: 860px) {
+  .w-rail { position: absolute; inset: auto 12px 12px 12px; top: auto; width: auto; max-height: 42vh; flex-direction: column; border-radius: 20px; }
+  .w-pilot { width: calc(100vw - 24px); top: 12px; }
+  .w-alerts { top: auto; bottom: calc(42vh + 24px); right: 12px; }
+  .w-ticker { bottom: calc(42vh + 24px); left: 12px; transform: none; max-width: calc(100vw - 170px); }
+  .w-brief { top: 30%; max-width: 84vw; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .world *, .world *::before, .world *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+}
