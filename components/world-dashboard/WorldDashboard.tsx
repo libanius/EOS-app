@@ -14,9 +14,15 @@ import { useRisk } from '@/components/v2/RiskProvider'
 import type { WorldFamilyMarker, WorldRoute } from '@/lib/world/types'
 import './world-dashboard.css'
 
-// World plate: clean Parkland aerial generated in Higgsfield (no baked HUD),
-// so the real React HUD sits over an honest world. Swap freely under /public/world.
-const WORLD_IMAGE: string | null = '/world/parkland.webp'
+// World plates by risk state — clean Parkland aerials generated in Higgsfield
+// (no baked HUD), so the real React HUD sits over an honest world. The plate
+// changes with the live risk state (calm morning → pre-storm → severe storm).
+const WORLD_PLATES: Record<string, string> = {
+  safe: '/world/parkland-safe.webp',
+  watch: '/world/parkland.webp',
+  warning: '/world/parkland-storm.webp',
+  critical: '/world/parkland-storm.webp',
+}
 
 // Demo location label for the static prototype. Real geocoding lands in HWD-03;
 // the condition line below it is already live data.
@@ -114,14 +120,15 @@ export default function WorldDashboard() {
     ? { C: 'Modo claro', W: 'Modo atenção', R: 'Modo resposta' }
     : { C: 'Clear state', W: 'Watch state', R: 'Respond state' })[mode]
 
+  const worldImage = WORLD_PLATES[state] ?? WORLD_PLATES.watch
   const plateStyle = useMemo<React.CSSProperties>(
-    () => (WORLD_IMAGE ? ({ ['--world-image' as string]: `url(${WORLD_IMAGE})` }) : {}),
-    [],
+    () => ({ ['--world-image' as string]: `url(${worldImage})` }),
+    [worldImage],
   )
 
   return (
     <main className="world" data-risk={state}>
-      <div className={`world-plate${WORLD_IMAGE ? ' has-image' : ''}`} style={plateStyle} aria-hidden="true" />
+      <div className="world-plate has-image" style={plateStyle} aria-hidden="true" />
       <div className="world-vignette" aria-hidden="true" />
 
       {/* ── mock route (behind HUD, above plate) ── */}
@@ -216,9 +223,6 @@ export default function WorldDashboard() {
 
         {/* honesty labels */}
         <div className="w-badge-mock">{c.mockData}</div>
-        {!WORLD_IMAGE && (
-          <div className="w-badge-mock" style={{ bottom: 88 }}>{c.placeholderBg}</div>
-        )}
       </div>
     </main>
   )
