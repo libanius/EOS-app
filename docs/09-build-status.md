@@ -36,6 +36,7 @@
   - **HWD-03**: mapa centraliza na **localização real** (RiskProvider expõe `coords`; flyTo; fallback Parkland); overlays mock relativos ao centro; **equivalente textual** do mapa (§22); camada server-normalized de radar RainViewer keyless em `/api/world/radar`; hazards reais de `/api/hazards` renderizados como polígonos/pontos e tags geo-ancoradas. Radar/hazards degradam sem derrubar o mapa.
   - **HWD-03 polish**: adicionada faixa visível de "Camadas ao vivo" (Radar RainViewer + contagem de hazards + frame UTC + preview de alertas) para evitar que o radar pareça ausente quando não há precipitação local; ticker inferior e badge mock reposicionados acima da bottom nav.
   - **HWD-04**: pontos exatos de família vindos de dados EOS/círculo substituem os mocks quando disponíveis; freshness visível (`agora` para usuário atual, `perfil` para co-membros); `/api/world/guidance` usa OpenAI para shelter/rota candidata e rotula como inferência não oficial. Fallback mantém mock/rota direta sem quebrar o mapa.
+  - **HWD map interaction fix**: `.world-hud` não captura mais drag global; o MapLibre volta a aceitar clicar/arrastar como Google Maps, mantendo botões/painéis com pointer events próprios.
 - Colisão de numeração resolvida: D-047 = World Dashboard; a vista unificada de Família passou a **D-049**.
 
 ---
