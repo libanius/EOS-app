@@ -7,11 +7,11 @@
  * No map SDK (MapLibre is HWD-02). Reversible: isolated /dashboard-world route.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useLanguage } from '@/lib/i18n'
 import { useRisk } from '@/components/v2/RiskProvider'
-import type { WorldFamilyMarker, WorldRoute } from '@/lib/world/types'
+import WorldMap from './WorldMap'
 import './world-dashboard.css'
 
 // World plates by risk state — clean Parkland aerials generated in Higgsfield
@@ -27,18 +27,6 @@ const WORLD_PLATES: Record<string, string> = {
 // Demo location label for the static prototype. Real geocoding lands in HWD-03;
 // the condition line below it is already live data.
 const DEMO_LOCATION = 'Parkland'
-
-// ── mock overlays (HWD-01 only, clearly labeled in the UI) ──
-const MOCK_FAMILY: WorldFamilyMarker[] = [
-  { id: 'm1', name: 'Paulo', semanticLocation: 'HOME', status: 'green', updatedLabel: '2m', mock: true, plate: { x: 0.52, y: 0.6 } },
-  { id: 'm2', name: 'Isadora', semanticLocation: 'SCHOOL', status: 'amber', updatedLabel: '18m', mock: true, plate: { x: 0.7, y: 0.42 } },
-  { id: 'm3', name: 'Ana', semanticLocation: 'WORK', status: 'gray', updatedLabel: '1h', mock: true, plate: { x: 0.38, y: 0.36 } },
-]
-const MOCK_ROUTE: WorldRoute = {
-  id: 'r1', status: 'mock', destinationLabel: 'Shelter A', distanceMi: 4.2, durationMin: 11,
-  reasons: ['mock route — not live evacuation guidance'],
-  plate: [{ x: 0.52, y: 0.6 }, { x: 0.58, y: 0.5 }, { x: 0.55, y: 0.4 }, { x: 0.64, y: 0.3 }],
-}
 
 const COPY = {
   pt: {
@@ -121,21 +109,11 @@ export default function WorldDashboard() {
     : { C: 'Clear state', W: 'Watch state', R: 'Respond state' })[mode]
 
   const worldImage = WORLD_PLATES[state] ?? WORLD_PLATES.watch
-  const plateStyle = useMemo<React.CSSProperties>(
-    () => ({ ['--world-image' as string]: `url(${worldImage})` }),
-    [worldImage],
-  )
 
   return (
     <main className="world" data-risk={state}>
-      <div className="world-plate has-image" style={plateStyle} aria-hidden="true" />
+      <WorldMap state={state} plateUrl={worldImage} />
       <div className="world-vignette" aria-hidden="true" />
-
-      {/* ── mock route (behind HUD, above plate) ── */}
-      <svg className="w-route" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-        <path d={routePath(MOCK_ROUTE)} />
-        {(() => { const d = MOCK_ROUTE.plate[MOCK_ROUTE.plate.length - 1]; return <circle className="dest" cx={d.x * 100} cy={d.y * 100} r="1.4" /> })()}
-      </svg>
 
       <div className="world-hud">
         {/* location / error gates */}
@@ -213,15 +191,7 @@ export default function WorldDashboard() {
           </div>
         )}
 
-        {/* ── mock family markers ── */}
-        {MOCK_FAMILY.map(m => (
-          <div key={m.id} className="w-marker" style={{ left: `${m.plate.x * 100}%`, top: `${m.plate.y * 100}%` }}>
-            <span className={`pin fam-${m.status}`}>{m.name.slice(0, 2).toUpperCase()}</span>
-            <span className="lab">{m.semanticLocation}</span>
-          </div>
-        ))}
-
-        {/* honesty labels */}
+        {/* honesty label */}
         <div className="w-badge-mock">{c.mockData}</div>
       </div>
     </main>
@@ -322,6 +292,3 @@ const toC = (f: number) => Math.round(((f - 32) * 5) / 9)
 const toKmh = (mph: number) => Math.round(mph * 1.609)
 const toKmTxt = (mi: number) => (mi * 1.609).toFixed(1)
 const shorten = (s: string, n: number) => (s.length > n ? s.slice(0, n) + '…' : s)
-function routePath(r: WorldRoute) {
-  return r.plate.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x * 100} ${p.y * 100}`).join(' ')
-}

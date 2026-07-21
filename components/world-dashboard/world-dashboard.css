@@ -51,6 +51,17 @@
     linear-gradient(180deg, rgba(4,5,10,0.55) 0%, transparent 26%, transparent 62%, rgba(4,5,10,0.85) 100%);
 }
 
+/* ── live map (HWD-02): MapLibre canvas behind the HUD, plate fallback under it ── */
+.world-map-wrap { position: absolute; inset: 0; z-index: 0; }
+.world-map { position: absolute; inset: 0; }
+.world-map canvas { outline: none; }
+.world-map .maplibregl-ctrl-attrib { font-size: 9px; background: rgba(6,7,11,0.5); color: var(--w-ink-2); }
+.world-map .maplibregl-ctrl-attrib a { color: var(--w-ink-2); }
+.w-mapmarker { display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; }
+.w-mapmarker .pin { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-size: 10px; font-weight: 700; color: #06070b; border: 2px solid rgba(255,255,255,0.85); box-shadow: 0 6px 16px rgba(0,0,0,0.55); }
+.w-mapmarker .lab { font-size: 9px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--w-ink); background: rgba(6,7,11,0.65); padding: 2px 6px; border-radius: 5px; backdrop-filter: blur(6px); white-space: nowrap; }
+.w-mapmarker.shelter .lab { color: #06070b; background: var(--w-state); }
+
 .world-hud { position: absolute; inset: 0; z-index: 2; }
 
 /* generic frosted panel */
