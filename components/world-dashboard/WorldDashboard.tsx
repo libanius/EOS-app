@@ -35,6 +35,7 @@ const COPY = {
     water: 'Água', food: 'Comida', checklist: 'Checklist', medical: 'Kit médico', comms: 'Comunicação',
     ok: 'OK', none: '—',
     alerts: 'Alertas ativos', clearBrief: 'Setor limpo — sem alertas', openScenario: 'Abrir cenário',
+    yourArea: 'Sua área', mapSummary: 'Mapa da situação',
     temp: 'Temp', wind: 'Vento', aqi: 'AQI', uv: 'UV', hum: 'Umidade', vis: 'Visão',
     needLocation: 'Preciso da sua localização para compor o mundo.', useGps: 'Usar GPS',
     loadErr: 'Não foi possível carregar.', retry: 'Tentar de novo',
@@ -48,6 +49,7 @@ const COPY = {
     water: 'Water', food: 'Food', checklist: 'Checklist', medical: 'Medical kit', comms: 'Comms',
     ok: 'OK', none: '—',
     alerts: 'Active alerts', clearBrief: 'Sector clear — no alerts', openScenario: 'Open scenario',
+    yourArea: 'Your area', mapSummary: 'Situation map',
     temp: 'Temp', wind: 'Wind', aqi: 'AQI', uv: 'UV', hum: 'Humidity', vis: 'Visibility',
     needLocation: 'EOS needs your location to compose the world.', useGps: 'Use GPS',
     loadErr: 'Could not load.', retry: 'Retry',
@@ -116,6 +118,11 @@ export default function WorldDashboard() {
       <div className="world-vignette" aria-hidden="true" />
 
       <div className="world-hud">
+        {/* accessibility: textual equivalent of the map's meaning (doc 16 §22) */}
+        <p className="w-sr" role="status">
+          {`${c.mapSummary}: ${STATE_LABEL[language][state]}, ${hasCoords ? c.yourArea : DEMO_LOCATION}. ${topAlert ? topAlert.headline : c.clearBrief}. ${alertCount} ${c.alerts}. ${c.mockData}.`}
+        </p>
+
         {/* location / error gates */}
         {!hasCoords && (
           <div className="w-glass" style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', padding: 24, textAlign: 'center', maxWidth: 340 }}>
@@ -171,7 +178,7 @@ export default function WorldDashboard() {
 
         {/* ── Central Location Brief ── */}
         <div className="w-brief">
-          <div className="loc">{DEMO_LOCATION}</div>
+          <div className="loc">{hasCoords ? c.yourArea : DEMO_LOCATION}</div>
           <div className="sub">{topAlert ? shorten(topAlert.headline, 60) : c.clearBrief}</div>
           <Link href="/scenario" className="cond">
             <span className="w-dot" />

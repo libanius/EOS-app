@@ -36,6 +36,7 @@ type RiskCtx = {
   loading: boolean
   error: boolean
   hasCoords: boolean
+  coords: { lat: number; lng: number } | null
   requestGps: () => void
   refresh: () => void
 }
@@ -242,6 +243,7 @@ export default function RiskProvider({ children }: { children: ReactNode }) {
         loading,
         error,
         hasCoords: coords !== null,
+        coords,
         requestGps,
         refresh,
       }}

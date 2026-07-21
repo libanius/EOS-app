@@ -1,116 +1,135 @@
 'use client'
 
 /**
- * WorldMap — HWD-02 live hybrid map (doc 16 §6, §25).
- * MapLibre GL renderer over a provider-neutral base (keyless CARTO dark by
- * default; MapTiler + 3D terrain via env). Lazy-loaded so it never blocks the
- * HUD or critical text. Degrades to the static world plate on load/WebGL
- * failure (§28). Family markers + shelter route are MOCK GeoJSON, labeled.
+ * WorldMap — HWD-02/03 live hybrid map (doc 16 §6, §25).
+ * MapLibre GL over a provider-neutral base (keyless CARTO dark; MapTiler
+ * satellite + 3D terrain via env). Lazy-loaded; never blocks the HUD or
+ * critical text. Degrades to the static world plate on load/WebGL failure (§28).
+ *
+ * HWD-03: the map centers on the user's REAL location (RiskProvider coords),
+ * falling back to Parkland. Family markers + shelter route are MOCK (labeled),
+ * placed as offsets from the current center so they stay near the user until
+ * real family/routing lands in HWD-04 (privacy-gated).
  */
 
-import { useEffect, useRef, useState } from 'react'
-import type { Map as MLMap } from 'maplibre-gl'
+import { useEffect, useRef } from 'react'
+import type { Map as MLMap, Marker as MLMarker } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
+import { useRisk } from '@/components/v2/RiskProvider'
 import { getMapConfig } from '@/lib/world/providers'
 
-// Mock geographic overlays (Parkland-area coords), clearly labeled in the HUD.
-const FAMILY: Array<{ name: string; label: string; color: string; lngLat: [number, number] }> = [
-  { name: 'Paulo', label: 'HOME', color: '#00e5a0', lngLat: [-80.2455, 26.3055] },
-  { name: 'Isadora', label: 'SCHOOL', color: '#ffb347', lngLat: [-80.2255, 26.3205] },
-  { name: 'Ana', label: 'WORK', color: '#9aa0ad', lngLat: [-80.2555, 26.3155] },
+// Mock overlays as [lng, lat] offsets from the map center (labeled in the HUD).
+const FAMILY_OFF: Array<{ name: string; label: string; color: string; d: [number, number] }> = [
+  { name: 'Paulo', label: 'HOME', color: '#00e5a0', d: [-0.006, -0.004] },
+  { name: 'Isadora', label: 'SCHOOL', color: '#ffb347', d: [0.008, 0.006] },
+  { name: 'Ana', label: 'WORK', color: '#9aa0ad', d: [-0.010, 0.004] },
 ]
-const ROUTE: Array<[number, number]> = [
-  [-80.2455, 26.3055], [-80.2385, 26.3035], [-80.2305, 26.3015], [-80.2215, 26.3005],
+const ROUTE_OFF: Array<[number, number]> = [
+  [-0.006, -0.004], [-0.001, -0.006], [0.005, -0.008], [0.011, -0.010],
 ]
-const SHELTER: [number, number] = [-80.2215, 26.3005]
+const SHELTER_OFF: [number, number] = [0.011, -0.010]
+
+const off = (c: [number, number], d: [number, number]): [number, number] => [c[0] + d[0], c[1] + d[1]]
 
 export default function WorldMap({ plateUrl }: { state: string; plateUrl: string }) {
+  const { coords } = useRisk()
   const ref = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MLMap | null>(null)
-  const [ready, setReady] = useState(false)
-  const [failed, setFailed] = useState(false)
+  const markersRef = useRef<MLMarker[]>([])
+  const readyRef = useRef(false)
+  const centerRef = useRef<[number, number] | null>(null)
+  const plateRef = useRef<HTMLDivElement>(null)
 
+  // Place / reposition the mock overlays around a given center.
+  const placeOverlays = (center: [number, number]) => {
+    const map = mapRef.current
+    if (!map) return
+    const src = map.getSource('eos-route') as { setData?: (d: unknown) => void } | undefined
+    src?.setData?.({
+      type: 'Feature', properties: {},
+      geometry: { type: 'LineString', coordinates: ROUTE_OFF.map(d => off(center, d)) },
+    })
+    markersRef.current.forEach((mk, i) => {
+      const d = i < FAMILY_OFF.length ? FAMILY_OFF[i].d : SHELTER_OFF
+      mk.setLngLat(off(center, d))
+    })
+  }
+
+  // init once
   useEffect(() => {
     let cancelled = false
     let map: MLMap | undefined
-
     ;(async () => {
       try {
         const maplibregl = (await import('maplibre-gl')).default
         if (cancelled || !ref.current) return
         const cfg = getMapConfig()
+        const center: [number, number] = coords ? [coords.lng, coords.lat] : cfg.center
+        centerRef.current = center
 
         map = new maplibregl.Map({
           container: ref.current,
           style: cfg.styleUrl,
-          center: cfg.center,
-          zoom: cfg.zoom,
-          pitch: cfg.pitch,
-          bearing: cfg.bearing,
-          attributionControl: false,
-          interactive: true,
-          maxPitch: 75,
+          center, zoom: cfg.zoom, pitch: cfg.pitch, bearing: cfg.bearing,
+          attributionControl: false, interactive: true, maxPitch: 75,
         })
         mapRef.current = map
         map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right')
-        // Tile errors must not blank the app — the static plate stays behind.
-        map.on('error', () => { /* swallow provider/tile errors */ })
+        map.on('error', () => { /* tiles/provider errors must not blank the app */ })
 
         map.on('load', () => {
           if (cancelled || !map) return
+          const cur = centerRef.current ?? center
 
-          // 3D terrain + atmospheric sky when a keyed provider supplies a DEM (§6.2).
           if (cfg.hasTerrain && cfg.terrainSource) {
-            if (!map.getSource('eos-dem')) {
-              map.addSource('eos-dem', { type: 'raster-dem', url: cfg.terrainSource })
-            }
+            if (!map.getSource('eos-dem')) map.addSource('eos-dem', { type: 'raster-dem', url: cfg.terrainSource })
             map.setTerrain({ source: 'eos-dem', exaggeration: 1.2 })
           }
 
-          map.addSource('eos-route', {
-            type: 'geojson',
-            data: { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: ROUTE } },
-          })
-          map.addLayer({
-            id: 'eos-route-glow', type: 'line', source: 'eos-route',
-            layout: { 'line-cap': 'round', 'line-join': 'round' },
-            paint: { 'line-color': '#00e5a0', 'line-width': 9, 'line-opacity': 0.18, 'line-blur': 6 },
-          })
-          map.addLayer({
-            id: 'eos-route', type: 'line', source: 'eos-route',
-            layout: { 'line-cap': 'round', 'line-join': 'round' },
-            paint: { 'line-color': '#00e5a0', 'line-width': 3.5, 'line-opacity': 0.95 },
-          })
+          map.addSource('eos-route', { type: 'geojson', data: { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: ROUTE_OFF.map(d => off(cur, d)) } } })
+          map.addLayer({ id: 'eos-route-glow', type: 'line', source: 'eos-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#00e5a0', 'line-width': 9, 'line-opacity': 0.18, 'line-blur': 6 } })
+          map.addLayer({ id: 'eos-route', type: 'line', source: 'eos-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#00e5a0', 'line-width': 3.5, 'line-opacity': 0.95 } })
 
-          for (const f of FAMILY) {
+          markersRef.current = []
+          for (const f of FAMILY_OFF) {
             const el = document.createElement('div')
             el.className = 'w-mapmarker'
             el.innerHTML = `<span class="pin" style="background:${f.color}">${f.name.slice(0, 2).toUpperCase()}</span><span class="lab">${f.label}</span>`
-            new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat(f.lngLat).addTo(map)
+            markersRef.current.push(new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat(off(cur, f.d)).addTo(map))
           }
           const sh = document.createElement('div')
           sh.className = 'w-mapmarker shelter'
-          sh.innerHTML = `<span class="lab">▶ SHELTER 4.2 MI</span>`
-          new maplibregl.Marker({ element: sh, anchor: 'bottom' }).setLngLat(SHELTER).addTo(map)
+          sh.innerHTML = `<span class="lab">▶ SHELTER (mock)</span>`
+          markersRef.current.push(new maplibregl.Marker({ element: sh, anchor: 'bottom' }).setLngLat(off(cur, SHELTER_OFF)).addTo(map))
 
-          setReady(true)
+          readyRef.current = true
+          if (plateRef.current) plateRef.current.style.opacity = '0'
         })
       } catch {
-        if (!cancelled) setFailed(true)
+        // WebGL/init failure → keep the static plate visible (§28)
       }
     })()
-
-    return () => { cancelled = true; if (map) map.remove() }
+    return () => { cancelled = true; markersRef.current = []; if (map) map.remove() }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // recenter when the real location resolves/changes
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !coords) return
+    const center: [number, number] = [coords.lng, coords.lat]
+    centerRef.current = center
+    const reduce = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reduce) map.jumpTo({ center })
+    else map.flyTo({ center, duration: 1400, essential: true })
+    if (readyRef.current) placeOverlays(center)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [coords?.lat, coords?.lng])
 
   return (
     <div className="world-map-wrap" aria-hidden="true">
-      {/* static plate fallback: shows during load and if WebGL/tiles fail (§28) */}
-      <div
-        className="world-plate has-image"
-        style={{ ['--world-image' as string]: `url(${plateUrl})`, opacity: ready ? 0 : 1, transition: 'opacity 800ms ease' }}
-      />
-      <div ref={ref} className="world-map" style={{ opacity: failed ? 0 : 1 }} />
+      <div ref={plateRef} className="world-plate has-image" style={{ ['--world-image' as string]: `url(${plateUrl})`, transition: 'opacity 800ms ease' }} />
+      <div ref={ref} className="world-map" />
     </div>
   )
 }
