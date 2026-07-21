@@ -38,7 +38,10 @@ Aplicadas pelo agente via **Management API** (`/v1/projects/{ref}/database/query
 
 ---
 
-## 2. Stripe — Monetização (D-042) — ⚙️ TEST MODE ATIVO (2026-07-19)
+## 2. Stripe — Monetização (D-042) — 🟢 LIVE ATIVO (2026-07-21)
+
+> **LIVE cutover feito (LA-T02).** Conta real `acct_1TuL40IaCSStSVaq` (EOS, US, ativada). Produtos/preços Live ($9.90/$19.90), webhook Live e as 4 env vars da Vercel Production trocadas para `sk_live`/whsec live/price IDs live; deploy fresco. IDs de customer/subscription do sandbox foram limpos dos profiles (o guard do checkout recria em live se preciso). Statement descriptor = "EOS BRIGHTSCALE". **Falta só**: o dono rotacionar as chaves expostas no chat (sk_live, Vercel token, Supabase PAT) e, se quiser, um teste com cartão real + reembolso.
+
 
 > **Test mode configurado e validado** (agente, via API Stripe + API Vercel): produtos/preços ($9.90/$19.90), webhook e as 4 env vars em Production estão setados; deploy fresco carregou tudo. Endpoints saíram do 503 (`webhook`→400, `checkout`→401) e eventos assinados reais foram entregues e ACKados 2xx pelo endpoint de produção. Em 2026-07-19, corrigido o 500 do Checkout causado por `success_url` inválida; em 2026-07-20, pagamento teste logado atualizou `BrightScale Group` para `plan=family`, `plan_status=active`, `stripe_subscription_id=sub_...`. **Falta** trocar as chaves **test → Live** antes do lançamento pago. Detalhes: `docs/stripe-setup-eos.md`.
 
