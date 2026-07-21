@@ -9,8 +9,9 @@
 
 | Field | Value |
 |---|---|
-| **Current Phase** | Hybrid World Dashboard (HWD) — D-047/D-050/D-054/D-055 |
-| **Last Completed Task** | D-055 / HWD-06 Status Rail redesign — household readiness card (2026-07-21) |
+| **Current Phase** | Hybrid World Dashboard (HWD) — D-047/D-050/D-054/D-055/D-056 |
+| **Last Completed Task** | D-056 / HWD-06 center map title removed (2026-07-21) |
+| | D-055 / HWD-06 Status Rail redesign — household readiness card (2026-07-21) |
 | | D-054 / HWD-06 responsive HUD pass — mobile bottom sheet + desktop collapse (2026-07-21) |
 | | HWD-05: Pilot action integration prototype — deterministic states + actions (2026-07-21) |
 | | D-052: World Dashboard runtime map base toggle — Híbrido/Dark (2026-07-21) |
@@ -45,6 +46,7 @@
   - **HWD-05**: Pilot Capsule agora calcula estados determinísticos `GO/LIMITED/WAIT/AVOID/PRIORITY OVERRIDE` após seleção de atividade; critical override vence sempre. Ações reais: abrir cenário, abrir checklist, notificar família via push de círculo admin quando permitido, e focar rota/shelter candidata no MapLibre.
   - **D-054 / HWD-06 responsive pass**: HUD mobile reorganizado em bottom sheet com snap states `peek`/`half`/`full`, alça visível, scroll interno, ações rápidas e controles de base Híbrido/Dark. Interação no mapa recolhe o sheet. Desktop ganhou colapso dos painéis auxiliares por scroll/gesto de mapa, com reabertura por hover/foco.
   - **D-055 / HWD-06 Status Rail redesign**: card esquerdo virou household readiness card conforme mock aprovado: topo conexão/estado, Risk Index central grande, diagrama SVG de casa com callouts, autonomia familiar, barras água/comida/energia/combustível, família e comunicações.
+  - **D-056 / HWD-06 center cleanup**: removido o título visual central "Your Area/Sua área"; centro do mapa fica limpo, mantendo equivalente textual para acessibilidade.
 - Colisão de numeração resolvida: D-047 = World Dashboard; a vista unificada de Família passou a **D-049**.
 
 ---

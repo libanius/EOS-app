@@ -335,16 +335,6 @@ export default function WorldDashboard() {
           <div className="n">{alertCount}</div>
         </div>
 
-        {/* ── Central Location Brief ── */}
-        <div className="w-brief">
-          <div className="loc">{hasCoords ? c.yourArea : DEMO_LOCATION}</div>
-          <div className="sub">{topAlert ? shorten(topAlert.headline, 60) : c.clearBrief}</div>
-          <Link href="/scenario" className="cond">
-            <span className="w-dot" />
-            {c.openScenario}
-          </Link>
-        </div>
-
         <div className="w-sensors" aria-label="World data layers">
           <div className="sensor-head">
             <span className="w-eyebrow">{language === 'pt' ? 'Camadas ao vivo' : 'Live layers'}</span>

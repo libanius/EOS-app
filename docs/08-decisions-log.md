@@ -57,6 +57,19 @@
 
 ---
 
+## D-056 — World Dashboard removes central location title
+
+**Date**: 2026-07-21
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: Depois do redesign do readiness card, o título central "Your Area/Sua área" passou a competir visualmente com o mapa e com o card principal. O dono pediu remover esse elemento e deixar o centro sem texto.
+
+**Decision**: Remover o Location Brief visual do centro do `/dashboard-world`. O equivalente textual de acessibilidade permanece no `role=status`; a ação de abrir cenário continua disponível no Pilot e no mobile sheet.
+
+**Consequence**: O mapa fica mais limpo e o readiness card vira o instrumento principal. Nenhuma API, dado ou rota muda.
+
+---
+
 ## D-052 — World Dashboard runtime map base toggle
 
 **Date**: 2026-07-21

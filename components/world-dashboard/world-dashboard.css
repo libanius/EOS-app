@@ -446,15 +446,6 @@
 .w-chip:disabled { cursor: not-allowed; opacity: 0.45; }
 .w-chip.solid { background: var(--w-state); color: #06070b; border-color: var(--w-state); }
 
-/* ── Central Location Brief ── */
-.w-brief {
-  position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%);
-  text-align: center; pointer-events: none; max-width: 60vw;
-}
-.w-brief .loc { font-family: Georgia, 'Times New Roman', serif; font-size: clamp(38px, 7vw, 68px); font-weight: 600; letter-spacing: -0.02em; color: var(--w-ink); text-shadow: 0 2px 30px rgba(0,0,0,0.6); line-height: 1; }
-.w-brief .sub { margin-top: 8px; font-size: 15px; color: var(--w-ink); text-shadow: 0 1px 12px rgba(0,0,0,0.6); }
-.w-brief .cond { margin-top: 12px; font-size: 13px; color: var(--w-ink); display: inline-flex; align-items: center; gap: 8px; pointer-events: auto; background: rgba(6,7,11,0.5); border: 1px solid var(--w-line); border-radius: 999px; padding: 7px 14px; text-decoration: none; backdrop-filter: blur(6px); }
-
 /* rail C/W/R mode selector (Clear / Watch / Respond) */
 .w-cwr { display: flex; justify-content: center; gap: 22px; }
 .w-cwr span { position: relative; font-family: 'DM Mono', monospace; font-size: 22px; font-weight: 700; color: #8d929b; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 9px; }
@@ -673,21 +664,6 @@
     opacity: 0;
     transform: translate(-50%, -18px);
     pointer-events: none;
-  }
-
-  .w-brief {
-    top: 42%;
-    max-width: 86vw;
-    transition: opacity 200ms ease, transform 240ms ease;
-  }
-
-  .w-brief .loc { font-size: clamp(42px, 15vw, 62px); }
-  .w-brief .sub { font-size: 14px; }
-
-  .world[data-hud='half'] .w-brief,
-  .world[data-hud='full'] .w-brief {
-    opacity: 0;
-    transform: translate(-50%, -42%);
   }
 
   .w-mobile-sheet {
