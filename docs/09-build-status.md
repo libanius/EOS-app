@@ -9,17 +9,30 @@
 
 | Field | Value |
 |---|---|
-| **Current Phase** | Production Experience — EOS Pilot |
-| **Last Completed Task** | LA-T02: Stripe Live cutover completed (2026-07-21) |
-| | LA-T01: Stripe test payment verified webhook → `profiles.plan=family` (2026-07-20) |
-| | PILOT-T00: EOS Pilot concept/spec inserted into App Spine (2026-07-20) |
-| | P3-T04: Monetization code + Stripe Test mode checkout verified (2026-07-19) |
-| | P2-T12: Circles role upgrade + multi-location monitoring (2026-06-30) |
-| | P3-T06: Cross-device sync (Realtime + offline queue + snapshot cache) |
-| **Next Task** | PILOT-T01 — Dashboard complication prototype: "What's the plan?" entry point. |
-| **Build** | ✅ Passing — production deploy ready as of 2026-07-21 (`0981f15`) |
-| **Vercel** | ✅ Deployed — production deploy ready after Stripe Live env cutover |
+| **Current Phase** | Hybrid World Dashboard (HWD) — D-047/D-050 |
+| **Last Completed Task** | HWD-02: live MapLibre map (MapTiler satellite + 3D terrain via env) (2026-07-21) |
+| | HWD-01: static World Dashboard prototype at `/dashboard-world` (2026-07-21) |
+| | D-049: aba Família vira vista unificada (roster + membros do círculo) (2026-07-21) |
+| | LA-T02: Stripe **Live** cutover — faturamento real ativo (2026-07-21) |
+| | LA-T01: Stripe test payment → webhook → `profiles.plan=family` (2026-07-20) |
+| **In Progress** | HWD-03 — dados reais no mapa: ✅ localização real + a11y textual; falta radar/hazard + tags de alerta geo-ancoradas. |
+| **Next Task** | HWD-03 (continuar): camada de radar (RainViewer keyless) + tags de alerta geo-ancoradas. Depois HWD-04 (família/rotas — exige decisão de privacidade). |
+| **Build** | ✅ Passing — produção como de 2026-07-21 (`f1acc9b`) |
+| **Vercel** | ✅ Deployed — Stripe **Live** + `NEXT_PUBLIC_MAPTILER_KEY` (protegida por origem) |
 | **Supabase** | ✅ Healthy — project ref `alxurmgpyxjhvnliivbf` |
+| **⚠️ Segurança** | Rotacionar segredos expostos em chat: Vercel token (`vcp_…`), Supabase PAT (`sbp_…`), Stripe test key. Stripe **Live** key foi trocada no Vercel; rotacionar também. |
+
+---
+
+## Sessão 2026-07-21 — Stripe Live, Família unificada, World Dashboard (HWD 01→03)
+
+- **Stripe Live (LA-T02, D-048)**: conta Live `acct_1TuL40IaCSStSVaq` (EOS, US). Produtos/preços Live ($9.90/$19.90), webhook Live, 4 env vars da Vercel Production trocadas test→live, deploy fresco. IDs sandbox limpos dos profiles. Faturamento real **ativo**. (Test mode validado ponta-a-ponta em LA-T01.)
+- **Aba Família = vista unificada (D-049)**: co-membros do círculo aparecem automaticamente como cards read-only (vista calculada, sem duplicar dado). Corrigiu o relato "família não preencheu ao entrar no círculo". Ficha médica no círculo = follow-up privacy-gated.
+- **Hybrid World Dashboard (D-047 arquitetura, D-050 autorização)** — rota isolada `/dashboard-world`, produção `/dashboard` intocada:
+  - **HWD-01**: HUD real (Status Rail, Pilot Capsule com PRIORITY OVERRIDE determinístico, Location Brief, Alert Counter, Environmental Ticker) sobre placas aéreas de Parkland **geradas via Higgsfield MCP** (safe/watch/storm), que trocam por estado de risco. Mock rotulado, responsivo, reduced-motion.
+  - **HWD-02**: MapLibre GL 5.24 (lazy-load). Config provider-neutra `lib/world/providers.ts`: keyless CARTO dark por padrão; **MapTiler hybrid (satélite) + terreno 3D** quando `NEXT_PUBLIC_MAPTILER_KEY` está setado. Câmera Parkland pitch 56°. Degrada para a placa estática se WebGL/tiles falharem.
+  - **HWD-03 (parcial)**: mapa centraliza na **localização real** (RiskProvider expõe `coords`; flyTo; fallback Parkland); overlays mock relativos ao centro; **equivalente textual** do mapa (§22). Falta radar/hazard + tags de alerta geo-ancoradas.
+- Colisão de numeração resolvida: D-047 = World Dashboard; a vista unificada de Família passou a **D-049**.
 
 ---
 

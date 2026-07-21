@@ -1,7 +1,7 @@
 # 11 — Product Memory
 
 > Non-obvious facts that don't belong in code comments but must survive across sessions.
-> Last updated: 2026-06-23
+> Last updated: 2026-07-21
 
 ---
 
@@ -172,6 +172,17 @@ Sentry is wired up (`sentry.client.config.ts`, `sentry.server.config.ts`, `sentr
 - Rotas: `app/api/push/subscribe` (salva subscription), `app/api/circles/[id]/push` (admin do círculo envia via `web-push`), toggle em `/settings`.
 
 ---
+
+## Hybrid World Dashboard (D-047 / D-050)
+
+- **Rota isolada** `app/(app)/dashboard-world/page.tsx` (protegida no `middleware.ts`). **Não** substitui `/dashboard` (produção); reversível (doc 16 §26). Spec: `docs/16-hybrid-world-dashboard.md`.
+- **Renderer = MapLibre GL** (`maplibre-gl`, lazy-loaded via `await import` para não pesar o bundle inicial). Config **provider-neutra** em `lib/world/providers.ts`: sem chave → **CARTO dark** (keyless, `basemaps.cartocdn.com`); com `NEXT_PUBLIC_MAPTILER_KEY` → **MapTiler hybrid (satélite) + terreno 3D** (raster-dem). Trocar de provider = mexer só nesse arquivo.
+- **MapTiler key**: env var **pública** `NEXT_PUBLIC_MAPTILER_KEY` (inlined em build-time → mudar exige **redeploy fresco**, não só env var). A key em produção é **protegida por origem** (`eos-app-fawn.vercel.app`) no painel MapTiler → **não funciona em localhost nem em preview** (origem diferente) e **não dá para curl-testar** server-side (sem header `Origin`). Formato de origin no MapTiler é **só domínio** (sem `https://`, sem porta).
+- **Placas de fundo** em `public/world/parkland{,-safe,-storm}.webp` foram **geradas via Higgsfield MCP** (aerials limpos de Parkland, sem HUD embutido) e trocam por estado de risco. Servem de fallback quando o MapLibre/WebGL falha (§28). Nota: o modelo `nano_banana_2` às vezes é coagido para `nano_banana_flash` pelo servidor e a 1ª tentativa pode falhar — repetir.
+- **HUD = componentes React reais** (`components/world-dashboard/`), nunca dados assados na imagem (§8.2). Cores de risco **reusam os tokens v2** (safe verde / watch violeta / warning âmbar / critical vermelho), não a prosa do §19.3.
+- **RiskProvider** (`components/v2/RiskProvider.tsx`) agora expõe `coords` (além de `hasCoords`) — o World Dashboard centraliza o mapa na localização real. Suporta forçar estado via URL: `?risk=safe|watch|warning|critical` e `?esc=3:warning`.
+- **Pilot Capsule** implementa PRIORITY OVERRIDE **determinístico** (quando `state==='critical'` ou alerta CRITICAL) — regra crítica sempre vence a IA (doc 15 §9). A engine de recomendação (GO/LIMITED/WAIT/AVOID) é HWD-05, ainda não feita.
+- **Família/rota no mapa são MOCK rotulado** (offsets do centro). Localização real de família + rotas = **HWD-04**, bloqueado por decisão de privacidade (consentimento, precisão, retenção).
 
 ## Billing / Stripe (D-042)
 
