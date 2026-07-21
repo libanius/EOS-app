@@ -174,12 +174,72 @@
 .w-cwr span.on { color: #06070b; background: var(--w-state); box-shadow: 0 4px 14px rgba(var(--w-state-rgb), 0.4); }
 
 /* ── Alert Counter (top right) ── */
-.w-alerts { position: absolute; top: 18px; right: 18px; padding: 12px 14px; min-width: 132px; }
+.w-alerts { position: absolute; top: 18px; right: 18px; padding: 12px 14px; min-width: 132px; max-width: 220px; }
 .w-alerts .n { font-family: 'DM Mono', monospace; font-size: 30px; font-weight: 500; color: var(--w-state); line-height: 1; font-variant-numeric: tabular-nums; }
+
+/* ── Live layer status: makes invisible overlays explicit when local radar is clear ── */
+.w-sensors {
+  position: absolute;
+  top: 124px;
+  right: 18px;
+  width: 220px;
+  padding: 12px;
+  background: rgba(6, 7, 11, 0.62);
+  border: 1px solid var(--w-line);
+  border-radius: 14px;
+  box-shadow: 0 10px 34px -16px rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(14px) saturate(1.08);
+  -webkit-backdrop-filter: blur(14px) saturate(1.08);
+}
+.sensor-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; }
+.sensor-pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--w-state);
+  box-shadow: 0 0 0 5px rgba(var(--w-state-rgb), 0.14);
+}
+.sensor-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.sensor-row {
+  min-width: 0;
+  border: 1px solid var(--w-line);
+  border-radius: 8px;
+  padding: 7px 8px;
+  background: rgba(255, 255, 255, 0.04);
+}
+.sensor-row span,
+.sensor-note {
+  display: block;
+  color: var(--w-ink-2);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.sensor-row strong {
+  display: block;
+  margin-top: 3px;
+  color: var(--w-ink);
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sensor-note { margin-top: 9px; line-height: 1.35; }
+.sensor-alerts { display: flex; flex-direction: column; gap: 5px; margin-top: 9px; }
+.sensor-alerts span {
+  color: var(--w-ink);
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.25;
+  padding-left: 8px;
+  border-left: 3px solid var(--w-state);
+}
 
 /* ── Environmental Ticker (bottom center, dark dock) ── */
 .w-ticker {
-  position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%);
+  position: absolute; bottom: calc(88px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%);
   display: flex; gap: 4px; padding: 8px; background: var(--w-glass-2);
   border: 1px solid var(--w-line); border-radius: 14px;
   backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
@@ -200,7 +260,7 @@
 .w-route .dest { fill: var(--w-state); }
 
 .w-badge-mock {
-  position: absolute; bottom: 64px; left: 50%; transform: translateX(-50%);
+  position: absolute; bottom: calc(140px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%);
   font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
   color: var(--w-ink-2); background: rgba(6,7,11,0.6); border: 1px solid var(--w-line);
   padding: 4px 10px; border-radius: 999px; backdrop-filter: blur(6px);
@@ -211,6 +271,7 @@
   .w-rail { position: absolute; inset: auto 12px 12px 12px; top: auto; width: auto; max-height: 42vh; flex-direction: column; border-radius: 20px; }
   .w-pilot { width: calc(100vw - 24px); top: 12px; }
   .w-alerts { top: auto; bottom: calc(42vh + 24px); right: 12px; }
+  .w-sensors { top: auto; bottom: calc(42vh + 92px); right: 12px; width: min(220px, calc(100vw - 24px)); }
   .w-ticker { bottom: calc(42vh + 24px); left: 12px; transform: none; max-width: calc(100vw - 170px); }
   .w-brief { top: 30%; max-width: 84vw; }
 }

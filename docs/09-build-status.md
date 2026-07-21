@@ -33,6 +33,7 @@
   - **HWD-01**: HUD real (Status Rail, Pilot Capsule com PRIORITY OVERRIDE determinístico, Location Brief, Alert Counter, Environmental Ticker) sobre placas aéreas de Parkland **geradas via Higgsfield MCP** (safe/watch/storm), que trocam por estado de risco. Mock rotulado, responsivo, reduced-motion.
   - **HWD-02**: MapLibre GL 5.24 (lazy-load). Config provider-neutra `lib/world/providers.ts`: keyless CARTO dark por padrão; **MapTiler hybrid (satélite) + terreno 3D** quando `NEXT_PUBLIC_MAPTILER_KEY` está setado. Câmera Parkland pitch 56°. Degrada para a placa estática se WebGL/tiles falharem.
   - **HWD-03**: mapa centraliza na **localização real** (RiskProvider expõe `coords`; flyTo; fallback Parkland); overlays mock relativos ao centro; **equivalente textual** do mapa (§22); camada server-normalized de radar RainViewer keyless em `/api/world/radar`; hazards reais de `/api/hazards` renderizados como polígonos/pontos e tags geo-ancoradas. Radar/hazards degradam sem derrubar o mapa.
+  - **HWD-03 polish**: adicionada faixa visível de "Camadas ao vivo" (Radar RainViewer + contagem de hazards + frame UTC + preview de alertas) para evitar que o radar pareça ausente quando não há precipitação local; ticker inferior e badge mock reposicionados acima da bottom nav.
 - Colisão de numeração resolvida: D-047 = World Dashboard; a vista unificada de Família passou a **D-049**.
 
 ---

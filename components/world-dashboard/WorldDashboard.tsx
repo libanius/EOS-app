@@ -65,6 +65,7 @@ const STATE_LABEL = {
 } as const
 
 type Inv = { water_liters: number; food_days: number; has_medical_kit: boolean; has_communication_device: boolean }
+type RadarStatus = { ok?: boolean; provider?: string; frameTime?: number }
 
 export default function WorldDashboard() {
   const { language } = useLanguage()
@@ -75,6 +76,7 @@ export default function WorldDashboard() {
   const [people, setPeople] = useState(1)
   const [items, setItems] = useState<{ acquired: boolean }[]>([])
   const [online, setOnline] = useState(true)
+  const [radar, setRadar] = useState<RadarStatus | null>(null)
 
   const fetchLocal = useCallback(async () => {
     try {
@@ -91,6 +93,14 @@ export default function WorldDashboard() {
 
   useEffect(() => { fetchLocal() }, [fetchLocal])
   useEffect(() => {
+    let cancelled = false
+    fetch('/api/world/radar')
+      .then(r => (r.ok ? r.json() : null))
+      .then((data: RadarStatus | null) => { if (!cancelled) setRadar(data) })
+      .catch(() => { if (!cancelled) setRadar({ ok: false }) })
+    return () => { cancelled = true }
+  }, [])
+  useEffect(() => {
     const on = () => setOnline(true), off = () => setOnline(false)
     setOnline(typeof navigator !== 'undefined' ? navigator.onLine : true)
     window.addEventListener('online', on); window.addEventListener('offline', off)
@@ -103,6 +113,7 @@ export default function WorldDashboard() {
   const checklistPct = items.length ? Math.round((items.filter(i => i.acquired).length / items.length) * 100) : 0
   const alertCount = (snapshot?.alerts.length ?? 0) + (snapshot?.earthquakes.length ?? 0)
   const topAlert = snapshot?.alerts[0]
+  const hazardPreview = (snapshot?.alerts ?? []).slice(0, 2)
 
   // Rail mode selector (like the reference "C W R"): Clear / Watch / Respond.
   const mode: 'C' | 'W' | 'R' = state === 'safe' ? 'C' : state === 'watch' ? 'W' : 'R'
@@ -184,6 +195,35 @@ export default function WorldDashboard() {
             <span className="w-dot" />
             {c.openScenario}
           </Link>
+        </div>
+
+        <div className="w-sensors" aria-label="World data layers">
+          <div className="sensor-head">
+            <span className="w-eyebrow">{language === 'pt' ? 'Camadas ao vivo' : 'Live layers'}</span>
+            <span className="sensor-pulse" aria-hidden="true" />
+          </div>
+          <div className="sensor-grid">
+            <div className="sensor-row">
+              <span>Radar</span>
+              <strong>{radar?.ok ? 'RainViewer' : radar ? (language === 'pt' ? 'indisp.' : 'unavail.') : '...'}</strong>
+            </div>
+            <div className="sensor-row">
+              <span>Hazards</span>
+              <strong>{alertCount}</strong>
+            </div>
+          </div>
+          {radar?.frameTime && (
+            <div className="sensor-note">
+              {language === 'pt' ? 'Frame radar' : 'Radar frame'} {formatUtcTime(radar.frameTime)}
+            </div>
+          )}
+          {hazardPreview.length > 0 ? (
+            <div className="sensor-alerts">
+              {hazardPreview.map(a => <span key={a.id}>{shorten(a.headline, 42)}</span>)}
+            </div>
+          ) : (
+            <div className="sensor-note">{language === 'pt' ? 'Sem alerta oficial no centro atual' : 'No official alert at current center'}</div>
+          )}
         </div>
 
         {/* ── Environmental Ticker ── */}
@@ -298,4 +338,5 @@ function Tick({ k, v }: { k: string; v: string }) {
 const toC = (f: number) => Math.round(((f - 32) * 5) / 9)
 const toKmh = (mph: number) => Math.round(mph * 1.609)
 const toKmTxt = (mi: number) => (mi * 1.609).toFixed(1)
+const formatUtcTime = (epochSeconds: number) => `${new Date(epochSeconds * 1000).toISOString().slice(11, 16)}Z`
 const shorten = (s: string, n: number) => (s.length > n ? s.slice(0, n) + '…' : s)
