@@ -1225,6 +1225,8 @@ Implementation status as of 2026-07-21: complete for prototype scope. Exact fami
 - route focus;
 - priority override.
 
+Implementation status as of 2026-07-21: complete for prototype scope (D-053). The Pilot Capsule computes deterministic `GO`, `LIMITED`, `WAIT`, `AVOID`, and `PRIORITY OVERRIDE` states from existing World Dashboard context. Critical risk/critical official alerts always override recreational guidance. Actions reuse existing surfaces/routes: `/scenario`, `/checklist`, circle push notifications for eligible admin users, and MapLibre route/shelter focus.
+
 ### Phase HWD-06 — Production validation
 
 - performance;

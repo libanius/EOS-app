@@ -161,6 +161,42 @@
 .w-pilot .cap-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
 .w-pilot .cap-body { font-size: 14px; line-height: 1.5; color: var(--w-ink); }
 .w-pilot .cap-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.pilot-reco-title {
+  color: var(--w-ink);
+  font-size: 19px;
+  font-weight: 800;
+  line-height: 1.12;
+}
+.pilot-reco-detail {
+  margin-top: 5px;
+  color: var(--w-ink-2);
+  font-size: 13px;
+  line-height: 1.35;
+}
+.pilot-reco-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  margin-top: 10px;
+}
+.pilot-reco-grid span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border: 1px solid var(--w-line);
+  border-radius: 8px;
+  padding: 6px 8px;
+  color: var(--w-ink);
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 10px;
+  font-weight: 700;
+}
+.pilot-state-go { border-color: rgba(0, 229, 160, 0.34); }
+.pilot-state-limited { border-color: rgba(255, 179, 71, 0.38); }
+.pilot-state-wait { border-color: rgba(124, 107, 255, 0.42); }
+.pilot-state-avoid,
+.pilot-state-priority-override { border-color: rgba(255, 107, 107, 0.55); }
 
 .w-chip {
   display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
@@ -169,6 +205,7 @@
   border-radius: 999px; padding: 8px 13px; font-family: inherit;
 }
 .w-chip:hover { border-color: rgba(var(--w-state-rgb), 0.5); }
+.w-chip:disabled { cursor: not-allowed; opacity: 0.45; }
 .w-chip.solid { background: var(--w-state); color: #06070b; border-color: var(--w-state); }
 
 /* ── Central Location Brief ── */

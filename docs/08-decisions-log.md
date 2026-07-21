@@ -4,6 +4,24 @@
 
 ---
 
+## D-053 — HWD-05 Pilot action integration prototype scope
+
+**Date**: 2026-07-21
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: HWD-05 pede que a Pilot Capsule deixe de ser apenas seletor visual e passe a integrar estados e ações reais no `/dashboard-world`: GO/LIMITED/WAIT/AVOID/PRIORITY OVERRIDE, abrir cenário, checklist, notificar família e focar rota candidata.
+
+**Decision**:
+1. A primeira entrega de HWD-05 será **determinística e client-side**, usando `RiskProvider`, alertas, clima atual, checklist, família/círculos e guidance já carregados pelo World Dashboard.
+2. Não será criado novo schema de persistência de preferências/histórico do Pilot nesta etapa. Aprendizado avançado continua fora do MVP.
+3. `PRIORITY OVERRIDE` vence sempre quando `state=critical` ou alerta oficial crítico existe.
+4. Estados `GO`, `LIMITED`, `WAIT` e `AVOID` serão calculados por regras conservadoras de clima/risco/readiness para o activity intent selecionado.
+5. Ações reais nesta etapa: abrir `/scenario`, abrir `/checklist`, enviar push para círculo administrado quando permitido pela rota existente, e focar a rota/shelter candidata no mapa.
+
+**Consequence**: HWD-05 entrega comportamento útil e testável sem acoplar o Pilot a um novo backend prematuro. Métricas, preferências aprendidas e payload persistente do Pilot permanecem pendências para evolução posterior.
+
+---
+
 ## D-052 — World Dashboard runtime map base toggle
 
 **Date**: 2026-07-21

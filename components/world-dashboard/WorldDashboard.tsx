@@ -14,6 +14,7 @@ import { useRisk } from '@/components/v2/RiskProvider'
 import WorldMap from './WorldMap'
 import type { WorldFamilyMember, WorldGuidance } from './WorldMap'
 import type { MapBaseMode } from '@/lib/world/providers'
+import type { WeatherSnapshot } from '@/lib/weather/types'
 import './world-dashboard.css'
 
 // World plates by risk state — clean Parkland aerials generated in Higgsfield
@@ -40,6 +41,8 @@ const COPY = {
     yourArea: 'Sua área', mapSummary: 'Mapa da situação',
     temp: 'Temp', wind: 'Vento', aqi: 'AQI', uv: 'UV', hum: 'Umidade', vis: 'Visão',
     mapBase: 'Base do mapa', hybrid: 'Híbrido', dark: 'Dark',
+    focusRoute: 'Focar rota', notifyFamily: 'Notificar família', notified: 'Família notificada',
+    notifyUnavailable: 'Notificação indisponível', openChecklist: 'Checklist',
     needLocation: 'Preciso da sua localização para compor o mundo.', useGps: 'Usar GPS',
     loadErr: 'Não foi possível carregar.', retry: 'Tentar de novo',
     placeholderBg: 'Fundo provisório — troque pela imagem do Higgsfield',
@@ -55,6 +58,8 @@ const COPY = {
     yourArea: 'Your area', mapSummary: 'Situation map',
     temp: 'Temp', wind: 'Wind', aqi: 'AQI', uv: 'UV', hum: 'Humidity', vis: 'Visibility',
     mapBase: 'Map base', hybrid: 'Hybrid', dark: 'Dark',
+    focusRoute: 'Focus route', notifyFamily: 'Notify family', notified: 'Family notified',
+    notifyUnavailable: 'Notify unavailable', openChecklist: 'Checklist',
     needLocation: 'EOS needs your location to compose the world.', useGps: 'Use GPS',
     loadErr: 'Could not load.', retry: 'Retry',
     placeholderBg: 'Placeholder background — swap for the Higgsfield image',
@@ -71,7 +76,19 @@ const STATE_LABEL = {
 type Inv = { water_liters: number; food_days: number; has_medical_kit: boolean; has_communication_device: boolean }
 type RadarStatus = { ok?: boolean; provider?: string; frameTime?: number }
 type CircleMember = { user_id: string; name: string; is_me: boolean; location_lat: number | null; location_lng: number | null }
-type CircleRow = { members?: CircleMember[] }
+type CircleRow = { id: string; name: string; is_admin?: boolean; members?: CircleMember[] }
+type PilotState = 'GO' | 'LIMITED' | 'WAIT' | 'AVOID' | 'PRIORITY OVERRIDE'
+type PilotActivityId = 'fishing' | 'boating' | 'camping' | 'family_outdoor' | 'road_trip'
+type PilotActivity = { id: PilotActivityId; pt: string; en: string }
+type PilotRecommendation = { state: PilotState; title: string; detail: string; factors: string[]; window: string }
+
+const PILOT_ACTIVITIES: PilotActivity[] = [
+  { id: 'fishing', pt: 'Pescaria', en: 'Fishing' },
+  { id: 'boating', pt: 'Barco', en: 'Boating' },
+  { id: 'camping', pt: 'Acampar', en: 'Camping' },
+  { id: 'family_outdoor', pt: 'Família ar livre', en: 'Family outdoor' },
+  { id: 'road_trip', pt: 'Viagem', en: 'Road trip' },
+]
 
 export default function WorldDashboard() {
   const { language } = useLanguage()
@@ -86,6 +103,8 @@ export default function WorldDashboard() {
   const [mapFamily, setMapFamily] = useState<WorldFamilyMember[]>([])
   const [guidance, setGuidance] = useState<WorldGuidance | null>(null)
   const [mapBase, setMapBase] = useState<MapBaseMode>('hybrid')
+  const [adminCircles, setAdminCircles] = useState<Array<{ id: string; name: string }>>([])
+  const [routeFocusNonce, setRouteFocusNonce] = useState(0)
 
   const fetchLocal = useCallback(async () => {
     try {
@@ -120,6 +139,9 @@ export default function WorldDashboard() {
       .then((data: { circles?: CircleRow[] } | null) => {
         if (cancelled) return
         const byId = new Map<string, WorldFamilyMember>()
+        setAdminCircles((data?.circles ?? [])
+          .filter(circle => circle.is_admin)
+          .map(circle => ({ id: circle.id, name: circle.name })))
         for (const circle of data?.circles ?? []) {
           for (const m of circle.members ?? []) {
             if (typeof m.location_lat !== 'number' || typeof m.location_lng !== 'number') continue
@@ -146,6 +168,7 @@ export default function WorldDashboard() {
         setMapFamily(Array.from(byId.values()))
       })
       .catch(() => {
+        if (!cancelled) setAdminCircles([])
         if (coords && !cancelled) setMapFamily([{
           id: 'me-live',
           name: language === 'pt' ? 'Você' : 'You',
@@ -195,7 +218,15 @@ export default function WorldDashboard() {
 
   return (
     <main className="world" data-risk={state}>
-      <WorldMap key={mapBase} state={state} plateUrl={worldImage} family={mapFamily} guidance={guidance} mapBase={mapBase} />
+      <WorldMap
+        key={mapBase}
+        state={state}
+        plateUrl={worldImage}
+        family={mapFamily}
+        guidance={guidance}
+        mapBase={mapBase}
+        routeFocusNonce={routeFocusNonce}
+      />
       <div className="world-vignette" aria-hidden="true" />
 
       <div className="world-hud">
@@ -249,7 +280,16 @@ export default function WorldDashboard() {
         </aside>
 
         {/* ── Pilot Capsule ── */}
-        <PilotCapsule />
+        <PilotCapsule
+          snapshot={snapshot}
+          riskState={state}
+          checklistPct={checklistPct}
+          waterDays={waterDays}
+          guidance={guidance}
+          canFocusRoute={Boolean(guidance?.route?.points?.length || guidance?.shelter)}
+          onFocusRoute={() => setRouteFocusNonce(n => n + 1)}
+          adminCircleId={adminCircles[0]?.id}
+        />
 
         {/* ── Alert Counter ── */}
         <div className="w-glass w-alerts" aria-label={c.alerts}>
@@ -348,35 +388,89 @@ export default function WorldDashboard() {
   )
 }
 
-// ── Pilot Capsule: "What's the plan?" + activity chooser + deterministic override ──
-function PilotCapsule() {
+// ── Pilot Capsule: "What's the plan?" + deterministic HWD-05 actions ──
+function PilotCapsule({
+  snapshot,
+  riskState,
+  checklistPct,
+  waterDays,
+  guidance,
+  canFocusRoute,
+  onFocusRoute,
+  adminCircleId,
+}: {
+  snapshot: WeatherSnapshot | null
+  riskState: string
+  checklistPct: number
+  waterDays: number
+  guidance: WorldGuidance | null
+  canFocusRoute: boolean
+  onFocusRoute: () => void
+  adminCircleId?: string
+}) {
   const { language } = useLanguage()
-  const { state, snapshot } = useRisk()
   const [open, setOpen] = useState(false)
-  const [sel, setSel] = useState<string | null>(null)
+  const [sel, setSel] = useState<PilotActivityId | null>(null)
+  const [notifyState, setNotifyState] = useState<'idle' | 'sending' | 'sent' | 'failed'>('idle')
   const criticalAlert = (snapshot?.alerts ?? []).find(a => a.severity === 'CRITICAL')
-  const override = state === 'critical' || Boolean(criticalAlert)
   const pt = language === 'pt'
+  const c = COPY[language]
+  const activity = PILOT_ACTIVITIES.find(a => a.id === sel) ?? null
+  const recommendation = buildPilotRecommendation({
+    snapshot,
+    riskState,
+    activity,
+    checklistPct,
+    waterDays,
+    guidance,
+    pt,
+    criticalAlert: criticalAlert?.headline,
+  })
+  const override = recommendation.state === 'PRIORITY OVERRIDE'
 
-  const ACT = pt
-    ? ['Pescaria', 'Barco', 'Acampar', 'Família ar livre', 'Viagem']
-    : ['Fishing', 'Boating', 'Camping', 'Family outdoor', 'Road trip']
+  const notifyFamily = async () => {
+    if (!adminCircleId) { setNotifyState('failed'); return }
+    setNotifyState('sending')
+    try {
+      const res = await fetch(`/api/circles/${adminCircleId}/push`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: `EOS Pilot · ${recommendation.state}`,
+          message: `${recommendation.title}. ${recommendation.detail}`,
+        }),
+      })
+      setNotifyState(res.ok ? 'sent' : 'failed')
+    } catch {
+      setNotifyState('failed')
+    }
+  }
 
-  if (override) {
+  if (override || sel) {
     return (
-      <div className="w-glass w-pilot" style={{ borderColor: 'rgba(var(--w-state-rgb), 0.55)' }}>
+      <div className={`w-glass w-pilot pilot-state-${recommendation.state.toLowerCase().replace(/\s+/g, '-')}`} style={override ? { borderColor: 'rgba(var(--w-state-rgb), 0.55)' } : undefined}>
         <div className="cap-head">
           <span className="w-eyebrow">PILOT</span>
-          <span className="w-eyebrow" style={{ color: 'var(--w-state)' }}>PRIORITY OVERRIDE</span>
+          <span className="w-eyebrow" style={{ color: override ? 'var(--w-state)' : 'var(--w-ink-2)' }}>{recommendation.state}</span>
         </div>
-        <div className="cap-body" style={{ color: 'var(--w-state)', fontWeight: 700 }}>
-          {pt ? 'Orientação recreativa suspensa' : 'Recreational guidance suspended'}
+        <div className="pilot-reco-title">
+          {recommendation.title}
         </div>
-        <div className="cap-body" style={{ color: 'var(--w-ink-2)', fontSize: 13, marginTop: 4 }}>
-          {criticalAlert ? shorten(criticalAlert.headline, 80) : (pt ? 'Uma ameaça ativa exige atenção.' : 'An active threat requires attention.')}
+        <div className="pilot-reco-detail">
+          {recommendation.detail}
+        </div>
+        <div className="pilot-reco-grid" aria-label={pt ? 'Fatores do Pilot' : 'Pilot factors'}>
+          <span>{recommendation.window}</span>
+          {recommendation.factors.slice(0, 3).map(f => <span key={f}>{f}</span>)}
         </div>
         <div className="cap-actions">
-          <Link href="/scenario" className="w-chip solid">{pt ? 'Abrir resposta' : 'Open response'}</Link>
+          <Link href="/scenario" className="w-chip solid">{override ? (pt ? 'Abrir resposta' : 'Open response') : c.openScenario}</Link>
+          <Link href="/checklist" className="w-chip">{c.openChecklist}</Link>
+          <button className="w-chip" disabled={!canFocusRoute} onClick={onFocusRoute}>{c.focusRoute}</button>
+          <button className="w-chip" disabled={notifyState === 'sending'} onClick={notifyFamily}>
+            {notifyState === 'sent' ? c.notified : notifyState === 'failed' ? c.notifyUnavailable : c.notifyFamily}
+          </button>
+          {!override && <button className="w-chip" onClick={() => { setSel(null); setOpen(true); setNotifyState('idle') }}>{pt ? 'trocar' : 'change'}</button>}
         </div>
       </div>
     )
@@ -388,40 +482,128 @@ function PilotCapsule() {
         <span className="w-eyebrow">PILOT</span>
         <span className="w-eyebrow">{pt ? 'copiloto de decisão' : 'decision copilot'}</span>
       </div>
-      {sel ? (
-        <>
-          <div className="cap-body" style={{ fontWeight: 700 }}>{sel}</div>
-          <div className="cap-body" style={{ color: 'var(--w-ink-2)', fontSize: 13, marginTop: 4 }}>
-            {pt
-              ? 'Pilot vai cruzar clima, família e recursos. Recomendações guiadas (janela, GO/LIMITED, fatores) chegam em HWD-05.'
-              : 'Pilot will cross weather, family and resources. Guided recommendations (window, GO/LIMITED, factors) land in HWD-05.'}
+      <>
+        <button onClick={() => setOpen(v => !v)} aria-expanded={open}
+          style={{ display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: 'inherit', fontFamily: 'inherit' }}>
+          <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--w-ink)' }}>
+            {pt ? 'Qual é o plano?' : "What's the plan?"}
           </div>
+          <div style={{ color: 'var(--w-ink-2)', fontSize: 12, marginTop: 2 }}>
+            {pt ? 'Toque para escolher sua atividade' : 'Tap to choose your activity'}
+          </div>
+        </button>
+        {open && (
           <div className="cap-actions">
-            <button className="w-chip" onClick={() => { setSel(null); setOpen(true) }}>{pt ? 'trocar' : 'change'}</button>
+            {PILOT_ACTIVITIES.map(a => (
+              <button key={a.id} className="w-chip" onClick={() => { setSel(a.id); setOpen(false); setNotifyState('idle') }}>
+                {pt ? a.pt : a.en}
+              </button>
+            ))}
           </div>
-        </>
-      ) : (
-        <>
-          <button onClick={() => setOpen(v => !v)} aria-expanded={open}
-            style={{ display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: 'inherit', fontFamily: 'inherit' }}>
-            <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--w-ink)' }}>
-              {pt ? 'Qual é o plano?' : "What's the plan?"}
-            </div>
-            <div style={{ color: 'var(--w-ink-2)', fontSize: 12, marginTop: 2 }}>
-              {pt ? 'Toque para escolher sua atividade' : 'Tap to choose your activity'}
-            </div>
-          </button>
-          {open && (
-            <div className="cap-actions">
-              {ACT.map(a => (
-                <button key={a} className="w-chip" onClick={() => { setSel(a); setOpen(false) }}>{a}</button>
-              ))}
-            </div>
-          )}
-        </>
-      )}
+        )}
+      </>
     </div>
   )
+}
+
+function buildPilotRecommendation({
+  snapshot,
+  riskState,
+  activity,
+  checklistPct,
+  waterDays,
+  guidance,
+  pt,
+  criticalAlert,
+}: {
+  snapshot: WeatherSnapshot | null
+  riskState: string
+  activity: PilotActivity | null
+  checklistPct: number
+  waterDays: number
+  guidance: WorldGuidance | null
+  pt: boolean
+  criticalAlert?: string
+}): PilotRecommendation {
+  if (riskState === 'critical' || criticalAlert) {
+    return {
+      state: 'PRIORITY OVERRIDE',
+      title: pt ? 'Orientação recreativa suspensa' : 'Recreational guidance suspended',
+      detail: criticalAlert ? shorten(criticalAlert, 92) : (pt ? 'Uma ameaça ativa exige atenção.' : 'An active threat requires attention.'),
+      factors: [
+        pt ? 'Regra crítica ativa' : 'Critical rule active',
+        guidance?.shelter ? (pt ? 'Rota candidata disponível' : 'Candidate route available') : (pt ? 'Sem rota validada' : 'No validated route'),
+        `${pt ? 'Checklist' : 'Checklist'} ${checklistPct}%`,
+      ],
+      window: pt ? 'Ação imediata' : 'Immediate action',
+    }
+  }
+
+  const cur = snapshot?.current
+  const alerts = snapshot?.alerts ?? []
+  const highAlert = alerts.some(a => a.severity === 'HIGH')
+  const thunder = alerts.some(a => /THUNDERSTORM|TORNADO/i.test(a.type)) || (cur?.weather_code ?? 0) >= 95
+  const gust = cur?.wind_gust_mph ?? 0
+  const wind = cur?.wind_mph ?? 0
+  const precip = Math.max(cur?.precip_prob_pct ?? 0, ...(snapshot?.hourly.slice(0, 6).map(h => h.precip_prob_pct) ?? [0]))
+  const vis = cur?.visibility_mi ?? 10
+  const uv = cur?.uv_index ?? 0
+  const aqi = snapshot?.air_quality?.us_aqi ?? null
+  const isBoating = activity?.id === 'boating'
+  const isFamily = activity?.id === 'family_outdoor'
+  const isRoadTrip = activity?.id === 'road_trip'
+
+  let state: PilotState = 'GO'
+  if (riskState === 'warning' || highAlert || thunder || gust > 40 || precip > 82 || vis < 1 || (isBoating && gust > 30)) {
+    state = 'AVOID'
+  } else if (riskState === 'watch' || gust > 30 || precip > 60 || (aqi ?? 0) > 150 || (isFamily && uv >= 9)) {
+    state = 'WAIT'
+  } else if (gust > 20 || wind > 16 || precip > 35 || uv >= 8 || (aqi ?? 0) > 100 || checklistPct < 60 || waterDays < 1) {
+    state = 'LIMITED'
+  }
+
+  const label = activity ? (pt ? activity.pt : activity.en) : (pt ? 'Atividade' : 'Activity')
+  const titleByState: Record<PilotState, string> = {
+    GO: pt ? `${label}: GO` : `${label}: GO`,
+    LIMITED: pt ? `${label}: LIMITED` : `${label}: LIMITED`,
+    WAIT: pt ? `${label}: WAIT` : `${label}: WAIT`,
+    AVOID: pt ? `${label}: AVOID` : `${label}: AVOID`,
+    'PRIORITY OVERRIDE': 'PRIORITY OVERRIDE',
+  }
+  const detailByState: Record<PilotState, string> = {
+    GO: pt ? 'Condições favoráveis. Mantenha monitoramento e plano de retorno.' : 'Conditions are favorable. Keep monitoring and a return plan.',
+    LIMITED: pt ? 'Possível, mas com limites claros de clima, recursos ou prontidão.' : 'Possible, with clear limits from weather, resources, or readiness.',
+    WAIT: pt ? 'A janela não está boa agora. Reavaliar antes de sair.' : 'The window is not good now. Re-evaluate before leaving.',
+    AVOID: pt ? 'Não recomendado nas condições atuais.' : 'Not recommended under current conditions.',
+    'PRIORITY OVERRIDE': '',
+  }
+
+  const factors = [
+    `${pt ? 'Rajada' : 'Gust'} ${pt ? toKmh(gust) + ' km/h' : Math.round(gust) + ' mph'}`,
+    `${pt ? 'Chuva' : 'Rain'} ${Math.round(precip)}%`,
+    `${pt ? 'Checklist' : 'Checklist'} ${checklistPct}%`,
+    isRoadTrip && guidance?.shelter ? (pt ? 'Rota candidata no mapa' : 'Candidate route on map') : null,
+    aqi ? `AQI ${aqi}` : null,
+    vis < 6 ? `${pt ? 'Visão' : 'Visibility'} ${pt ? toKmTxt(vis) + ' km' : vis.toFixed(1) + ' mi'}` : null,
+  ].filter(Boolean) as string[]
+
+  return {
+    state,
+    title: titleByState[state],
+    detail: detailByState[state],
+    factors,
+    window: bestPilotWindow(snapshot, pt, state),
+  }
+}
+
+function bestPilotWindow(snapshot: WeatherSnapshot | null, pt: boolean, state: PilotState) {
+  if (state === 'AVOID') return pt ? 'Sem janela segura agora' : 'No safe window now'
+  if (state === 'WAIT') return pt ? 'Reavaliar em 60-90 min' : 'Recheck in 60-90 min'
+  const hours = snapshot?.hourly.slice(0, 8) ?? []
+  const good = hours.find(h => h.precip_prob_pct < 35 && h.wind_gust_mph < 22 && h.visibility_mi >= 3 && h.weather_code < 95)
+  if (!good) return pt ? 'Janela curta/instável' : 'Short/unstable window'
+  const hh = new Date(good.time_iso).toLocaleTimeString(pt ? 'pt-BR' : 'en-US', { hour: '2-digit', minute: '2-digit' })
+  return pt ? `Melhor a partir de ${hh}` : `Best from ${hh}`
 }
 
 function RailBar({ k, v, pct }: { k: string; v: string; pct: number }) {

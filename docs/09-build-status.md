@@ -10,7 +10,8 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Hybrid World Dashboard (HWD) — D-047/D-050 |
-| **Last Completed Task** | D-052: World Dashboard runtime map base toggle — Híbrido/Dark (2026-07-21) |
+| **Last Completed Task** | HWD-05: Pilot action integration prototype — deterministic states + actions (2026-07-21) |
+| | D-052: World Dashboard runtime map base toggle — Híbrido/Dark (2026-07-21) |
 | | HWD-04: family/routing foundation prototype — EOS family points + OpenAI-inferred candidate route/shelter (2026-07-21) |
 | | HWD-03: real EOS map data — location, RainViewer radar, hazard layers/tags, textual a11y (2026-07-21) |
 | | HWD-02: live MapLibre map (MapTiler satellite + 3D terrain via env) (2026-07-21) |
@@ -19,8 +20,8 @@
 | | LA-T02: Stripe **Live** cutover — faturamento real ativo (2026-07-21) |
 | | LA-T01: Stripe test payment → webhook → `profiles.plan=family` (2026-07-20) |
 | **In Progress** | None |
-| **Next Task** | HWD-05 — Pilot action integration in the World Dashboard capsule. |
-| **Build** | ✅ Passing — produção como de 2026-07-21 (`f1acc9b`) |
+| **Next Task** | HWD-06 — production validation for `/dashboard-world` (perf, a11y, responsive, cost, privacy, E2E, rollout). |
+| **Build** | ✅ Passing — type-check, tests, production build clean (2026-07-21) |
 | **Vercel** | ✅ Deployed — Stripe **Live** + `NEXT_PUBLIC_MAPTILER_KEY` (protegida por origem) |
 | **Supabase** | ✅ Healthy — project ref `alxurmgpyxjhvnliivbf` |
 | **⚠️ Segurança** | Rotacionar segredos expostos em chat: Vercel token (`vcp_…`), Supabase PAT (`sbp_…`), Stripe test key. Stripe **Live** key foi trocada no Vercel; rotacionar também. |
@@ -39,6 +40,7 @@
   - **HWD-04**: pontos exatos de família vindos de dados EOS/círculo substituem os mocks quando disponíveis; freshness visível (`agora` para usuário atual, `perfil` para co-membros); `/api/world/guidance` usa OpenAI para shelter/rota candidata e rotula como inferência não oficial. Fallback mantém mock/rota direta sem quebrar o mapa.
   - **HWD map interaction fix**: `.world-hud` não captura mais drag global; o MapLibre volta a aceitar clicar/arrastar como Google Maps, mantendo botões/painéis com pointer events próprios.
   - **D-052 map base toggle**: painel "Camadas ao vivo" ganhou seletor **Híbrido/Dark**. Híbrido mantém MapTiler hybrid + terreno quando a key existe; Dark força CARTO dark keyless para restaurar o visual operacional anterior. Preferência persiste localmente no browser.
+  - **HWD-05**: Pilot Capsule agora calcula estados determinísticos `GO/LIMITED/WAIT/AVOID/PRIORITY OVERRIDE` após seleção de atividade; critical override vence sempre. Ações reais: abrir cenário, abrir checklist, notificar família via push de círculo admin quando permitido, e focar rota/shelter candidata no MapLibre.
 - Colisão de numeração resolvida: D-047 = World Dashboard; a vista unificada de Família passou a **D-049**.
 
 ---
@@ -135,9 +137,9 @@
 
 ## What Is Next
 
-**HWD-05: Pilot action integration**
+**HWD-06: Production validation**
 
-Integrar ações reais na Pilot Capsule do World Dashboard: estados GO/LIMITED/WAIT/AVOID/PRIORITY OVERRIDE, abrir cenário, checklist, notify-family e foco na rota candidata. Seguir `docs/15-eos-pilot.md` e doc 16 §25.
+Validar `/dashboard-world` antes de qualquer rollout para substituir `/dashboard`: performance, a11y, responsive, custos/providers, privacidade, E2E e critérios de saída do doc 16 §33.
 
 ---
 

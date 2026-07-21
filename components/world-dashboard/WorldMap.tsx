@@ -135,12 +135,13 @@ function markerEl(className: string, pin: string, label: string, color?: string)
   return el
 }
 
-export default function WorldMap({ plateUrl, family = [], guidance = null, mapBase = 'hybrid' }: {
+export default function WorldMap({ plateUrl, family = [], guidance = null, mapBase = 'hybrid', routeFocusNonce = 0 }: {
   state: string
   plateUrl: string
   family?: WorldFamilyMember[]
   guidance?: WorldGuidance | null
   mapBase?: MapBaseMode
+  routeFocusNonce?: number
 }) {
   const { coords } = useRisk()
   const ref = useRef<HTMLDivElement>(null)
@@ -381,6 +382,33 @@ export default function WorldMap({ plateUrl, family = [], guidance = null, mapBa
     if (readyRef.current && center) void placeOverlays(center)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [family, guidance])
+
+  useEffect(() => {
+    const map = mapRef.current
+    const center = centerRef.current
+    if (!map || !readyRef.current || !center || !routeFocusNonce) return
+    const routeCoords = guidance?.route?.points?.length
+      ? guidance.route.points
+      : ROUTE_OFF.map(d => off(center, d))
+    if (!routeCoords.length) return
+    const points = guidance?.shelter
+      ? [...routeCoords, [guidance.shelter.lng, guidance.shelter.lat] as [number, number]]
+      : routeCoords
+    const lngs = points.map(p => p[0])
+    const lats = points.map(p => p[1])
+    const bounds: [[number, number], [number, number]] = [
+      [Math.min(...lngs), Math.min(...lats)],
+      [Math.max(...lngs), Math.max(...lats)],
+    ]
+    const reduce = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    map.fitBounds(bounds, {
+      padding: { top: 150, right: 280, bottom: 180, left: 320 },
+      duration: reduce ? 0 : 900,
+      maxZoom: 15,
+      pitch: map.getPitch(),
+      bearing: map.getBearing(),
+    })
+  }, [guidance, routeFocusNonce])
 
   return (
     <div className="world-map-wrap" aria-hidden="true">
