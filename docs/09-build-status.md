@@ -10,13 +10,14 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Hybrid World Dashboard (HWD) — D-047/D-050 |
-| **Last Completed Task** | HWD-02: live MapLibre map (MapTiler satellite + 3D terrain via env) (2026-07-21) |
+| **Last Completed Task** | HWD-03: real EOS map data — location, RainViewer radar, hazard layers/tags, textual a11y (2026-07-21) |
+| | HWD-02: live MapLibre map (MapTiler satellite + 3D terrain via env) (2026-07-21) |
 | | HWD-01: static World Dashboard prototype at `/dashboard-world` (2026-07-21) |
 | | D-049: aba Família vira vista unificada (roster + membros do círculo) (2026-07-21) |
 | | LA-T02: Stripe **Live** cutover — faturamento real ativo (2026-07-21) |
 | | LA-T01: Stripe test payment → webhook → `profiles.plan=family` (2026-07-20) |
-| **In Progress** | HWD-03 — dados reais no mapa: ✅ localização real + a11y textual; falta radar/hazard + tags de alerta geo-ancoradas. |
-| **Next Task** | HWD-03 (continuar): camada de radar (RainViewer keyless) + tags de alerta geo-ancoradas. Depois HWD-04 (família/rotas — exige decisão de privacidade). |
+| **In Progress** | None — HWD-04 is blocked pending privacy/data decisions. |
+| **Next Task** | HWD-04 — Family + routing foundation, blocked until owner decides consent, precision/freshness, shelter source, routing provider, retention/fallback rules. |
 | **Build** | ✅ Passing — produção como de 2026-07-21 (`f1acc9b`) |
 | **Vercel** | ✅ Deployed — Stripe **Live** + `NEXT_PUBLIC_MAPTILER_KEY` (protegida por origem) |
 | **Supabase** | ✅ Healthy — project ref `alxurmgpyxjhvnliivbf` |
@@ -31,7 +32,7 @@
 - **Hybrid World Dashboard (D-047 arquitetura, D-050 autorização)** — rota isolada `/dashboard-world`, produção `/dashboard` intocada:
   - **HWD-01**: HUD real (Status Rail, Pilot Capsule com PRIORITY OVERRIDE determinístico, Location Brief, Alert Counter, Environmental Ticker) sobre placas aéreas de Parkland **geradas via Higgsfield MCP** (safe/watch/storm), que trocam por estado de risco. Mock rotulado, responsivo, reduced-motion.
   - **HWD-02**: MapLibre GL 5.24 (lazy-load). Config provider-neutra `lib/world/providers.ts`: keyless CARTO dark por padrão; **MapTiler hybrid (satélite) + terreno 3D** quando `NEXT_PUBLIC_MAPTILER_KEY` está setado. Câmera Parkland pitch 56°. Degrada para a placa estática se WebGL/tiles falharem.
-  - **HWD-03 (parcial)**: mapa centraliza na **localização real** (RiskProvider expõe `coords`; flyTo; fallback Parkland); overlays mock relativos ao centro; **equivalente textual** do mapa (§22). Falta radar/hazard + tags de alerta geo-ancoradas.
+  - **HWD-03**: mapa centraliza na **localização real** (RiskProvider expõe `coords`; flyTo; fallback Parkland); overlays mock relativos ao centro; **equivalente textual** do mapa (§22); camada server-normalized de radar RainViewer keyless em `/api/world/radar`; hazards reais de `/api/hazards` renderizados como polígonos/pontos e tags geo-ancoradas. Radar/hazards degradam sem derrubar o mapa.
 - Colisão de numeração resolvida: D-047 = World Dashboard; a vista unificada de Família passou a **D-049**.
 
 ---
@@ -128,9 +129,9 @@
 
 ## What Is Next
 
-**PILOT-T01: EOS Pilot dashboard complication**
+**HWD-04: Family + routing foundation**
 
-Implementar o protótipo do Pilot como complication integrada ao Dashboard, conforme `docs/15-eos-pilot.md` e D-046. Não criar nova aba no primeiro teste.
+Bloqueado por decisão de privacidade/dados: consentimento familiar, precisão e freshness de localização, retenção, fonte de shelters, provedor de rota e comportamento de fallback. Enquanto isso, `/dashboard-world` permanece isolado; `/dashboard` de produção não foi substituído.
 
 ---
 

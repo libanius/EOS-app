@@ -65,6 +65,35 @@
 .w-mapmarker .pin { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-size: 10px; font-weight: 700; color: #06070b; border: 2px solid rgba(255,255,255,0.85); box-shadow: 0 6px 16px rgba(0,0,0,0.55); }
 .w-mapmarker .lab { font-size: 9px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--w-ink); background: rgba(6,7,11,0.65); padding: 2px 6px; border-radius: 5px; backdrop-filter: blur(6px); white-space: nowrap; }
 .w-mapmarker.shelter .lab { color: #06070b; background: var(--w-state); }
+.w-hazardtag {
+  max-width: 230px;
+  color: var(--w-ink);
+  background: rgba(6, 7, 11, 0.72);
+  border: 1px solid rgba(255, 179, 71, 0.55);
+  border-left: 4px solid #ffb347;
+  border-radius: 8px;
+  padding: 6px 9px 7px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  pointer-events: none;
+}
+.w-hazardtag span {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--w-ink-2);
+  font-size: 8px;
+  letter-spacing: 0.16em;
+}
+.w-hazardtag.sev-info { border-color: rgba(53, 215, 242, 0.45); border-left-color: #35d7f2; }
+.w-hazardtag.sev-minor { border-color: rgba(124, 107, 255, 0.45); border-left-color: #7c6bff; }
+.w-hazardtag.sev-severe { border-color: rgba(255, 138, 61, 0.55); border-left-color: #ff8a3d; }
+.w-hazardtag.sev-extreme { border-color: rgba(255, 107, 107, 0.65); border-left-color: #ff6b6b; }
 
 .world-hud { position: absolute; inset: 0; z-index: 2; }
 /* screen-reader-only textual map equivalent (§22) */

@@ -1,6 +1,6 @@
 # 07 — Roadmap
 
-> Last updated: 2026-07-20
+> Last updated: 2026-07-21
 
 ---
 
@@ -84,7 +84,7 @@
 | HWD-00 | Architecture + visual direction spec | ✅ COMPLETE | 2026-07-21 — D-047 / doc 16 |
 | HWD-01 | Static visual prototype: isolated `/dashboard-world`, Higgsfield image bg, real HUD components, mock family/route labeled, real RiskProvider data, responsive, reduced-motion — no map SDK | ✅ COMPLETE | 2026-07-21 — plates por estado (safe/watch/storm) geradas via Higgsfield MCP |
 | HWD-02 | Live hybrid map prototype: MapLibre + tile/terrain provider, Parkland camera, GeoJSON mock overlays | ✅ COMPLETE (prototype) | 2026-07-21 — MapLibre GL 5.24, provider keyless CARTO dark (config provider-neutra `lib/world/providers.ts`), câmera Parkland pitch 56°, rota+família mock em GeoJSON, fallback para a placa estática. **Terreno 3D** = plugar `NEXT_PUBLIC_MAPTILER_KEY` (opcional). |
-| HWD-03 | Real EOS data on map: location, weather/hazard layers, alert tags, Risk Index, inventory/readiness + textual a11y | IN PROGRESS | 2026-07-21 — mapa centraliza na **localização real** (RiskProvider coords, flyTo, fallback Parkland); overlays mock agora relativos ao centro; **equivalente textual** do mapa (§22). Falta: camadas de radar/hazard e tags de alerta geo-ancoradas. |
+| HWD-03 | Real EOS data on map: location, weather/hazard layers, alert tags, Risk Index, inventory/readiness + textual a11y | ✅ COMPLETE | 2026-07-21 — mapa centraliza na **localização real** (RiskProvider coords, flyTo, fallback Parkland); RainViewer keyless via `/api/world/radar`; hazards reais de `/api/hazards` como polígonos/pontos + tags geo-ancoradas; equivalente textual (§22). |
 | HWD-04 | Family + routing foundation (separate privacy/data decisions) | BLOCKED | consent, freshness, shelter source, routing provider |
 | HWD-05 | Pilot action integration (Pilot Capsule states + actions) — absorbs EOS Pilot | BLOCKED | after HWD-03 |
 | HWD-06 | Production validation (perf, a11y, responsive, cost, privacy, E2E, rollout) | BLOCKED | exit criteria doc 16 §33 |

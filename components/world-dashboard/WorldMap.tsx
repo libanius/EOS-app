@@ -31,11 +31,92 @@ const SHELTER_OFF: [number, number] = [0.011, -0.010]
 
 const off = (c: [number, number], d: [number, number]): [number, number] => [c[0] + d[0], c[1] + d[1]]
 
+type HazardSeverity = 'info' | 'minor' | 'moderate' | 'severe' | 'extreme'
+type HazardEvent = {
+  id: string
+  source: string
+  visualClass: string
+  title: string
+  severity: HazardSeverity
+  location?: { lat: number; lng: number }
+  geometry?: unknown
+  updatedAt: string
+}
+type HazardSnapshot = { events?: HazardEvent[]; fetchedAt?: string }
+type RadarSnapshot = { ok?: boolean; tileUrl?: string; attribution?: string; frameTime?: number }
+
+const HAZARD_COLOR: Record<HazardSeverity, string> = {
+  info: '#35d7f2',
+  minor: '#7c6bff',
+  moderate: '#ffb347',
+  severe: '#ff8a3d',
+  extreme: '#ff6b6b',
+}
+
+function isFiniteCoord(lng: number, lat: number) {
+  return Number.isFinite(lng) && Number.isFinite(lat) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180
+}
+
+function pointFeature(e: HazardEvent): unknown | null {
+  if (!e.location || !isFiniteCoord(e.location.lng, e.location.lat)) return null
+  return {
+    type: 'Feature',
+    properties: {
+      id: e.id,
+      title: e.title,
+      severity: e.severity,
+      color: HAZARD_COLOR[e.severity] ?? HAZARD_COLOR.info,
+    },
+    geometry: { type: 'Point', coordinates: [e.location.lng, e.location.lat] },
+  }
+}
+
+function geometryFeature(e: HazardEvent): unknown | null {
+  const g = e.geometry as { type?: string; coordinates?: unknown } | null
+  if (!g?.type || !g.coordinates) return null
+  return {
+    type: 'Feature',
+    properties: {
+      id: e.id,
+      title: e.title,
+      severity: e.severity,
+      visualClass: e.visualClass,
+      color: HAZARD_COLOR[e.severity] ?? HAZARD_COLOR.info,
+    },
+    geometry: g,
+  }
+}
+
+function collectCoords(coords: unknown, out: Array<[number, number]>) {
+  if (!Array.isArray(coords)) return
+  if (typeof coords[0] === 'number' && typeof coords[1] === 'number') {
+    const lng = coords[0], lat = coords[1]
+    if (isFiniteCoord(lng, lat)) out.push([lng, lat])
+    return
+  }
+  for (const child of coords) collectCoords(child, out)
+}
+
+function hazardTagLngLat(e: HazardEvent): [number, number] | null {
+  if (e.location && isFiniteCoord(e.location.lng, e.location.lat)) return [e.location.lng, e.location.lat]
+  const g = e.geometry as { coordinates?: unknown } | null
+  const coords: Array<[number, number]> = []
+  collectCoords(g?.coordinates, coords)
+  if (!coords.length) return null
+  const mid = coords.reduce((acc, p) => [acc[0] + p[0], acc[1] + p[1]] as [number, number], [0, 0])
+  return [mid[0] / coords.length, mid[1] / coords.length]
+}
+
+function short(text: string, max = 38) {
+  return text.length <= max ? text : `${text.slice(0, max - 1).trim()}…`
+}
+
 export default function WorldMap({ plateUrl }: { state: string; plateUrl: string }) {
   const { coords } = useRisk()
   const ref = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MLMap | null>(null)
   const markersRef = useRef<MLMarker[]>([])
+  const hazardMarkersRef = useRef<MLMarker[]>([])
   const readyRef = useRef(false)
   const centerRef = useRef<[number, number] | null>(null)
   const plateRef = useRef<HTMLDivElement>(null)
@@ -53,6 +134,120 @@ export default function WorldMap({ plateUrl }: { state: string; plateUrl: string
       const d = i < FAMILY_OFF.length ? FAMILY_OFF[i].d : SHELTER_OFF
       mk.setLngLat(off(center, d))
     })
+  }
+
+  const loadRadar = async () => {
+    const map = mapRef.current
+    if (!map || map.getSource('eos-radar')) return
+    try {
+      const radar = (await fetch('/api/world/radar').then(r => (r.ok ? r.json() : null))) as RadarSnapshot | null
+      if (!radar?.ok || !radar.tileUrl) return
+      map.addSource('eos-radar', {
+        type: 'raster',
+        tiles: [radar.tileUrl],
+        tileSize: 256,
+        maxzoom: 7,
+        attribution: radar.attribution ?? 'RainViewer',
+      })
+      const before = map.getLayer('eos-route-glow') ? 'eos-route-glow' : undefined
+      map.addLayer({
+        id: 'eos-radar',
+        type: 'raster',
+        source: 'eos-radar',
+        paint: {
+          'raster-opacity': 0.38,
+          'raster-fade-duration': 350,
+          'raster-brightness-min': 0.02,
+          'raster-brightness-max': 0.86,
+        },
+      }, before)
+    } catch {
+      // Radar is additive. Never blank the world if RainViewer is unavailable.
+    }
+  }
+
+  const renderHazards = async (center: [number, number]) => {
+    const map = mapRef.current
+    if (!map) return
+    try {
+      const snap = (await fetch(`/api/hazards?lat=${center[1]}&lng=${center[0]}`).then(r => (r.ok ? r.json() : null))) as HazardSnapshot | null
+      const events = (snap?.events ?? []).slice(0, 12)
+      const polygons = events.map(geometryFeature).filter(Boolean)
+      const points = events.map(pointFeature).filter(Boolean)
+      const polyData = { type: 'FeatureCollection' as const, features: polygons } as never
+      const pointData = { type: 'FeatureCollection' as const, features: points } as never
+
+      const polySrc = map.getSource('eos-hazard-polygons') as { setData?: (d: unknown) => void } | undefined
+      if (polySrc) polySrc.setData?.(polyData)
+      else {
+        map.addSource('eos-hazard-polygons', { type: 'geojson', data: polyData })
+        const before = map.getLayer('eos-route-glow') ? 'eos-route-glow' : undefined
+        map.addLayer({
+          id: 'eos-hazard-fill',
+          type: 'fill',
+          source: 'eos-hazard-polygons',
+          paint: {
+            'fill-color': ['coalesce', ['get', 'color'], '#ffb347'],
+            'fill-opacity': 0.16,
+          },
+        }, before)
+        map.addLayer({
+          id: 'eos-hazard-outline',
+          type: 'line',
+          source: 'eos-hazard-polygons',
+          paint: {
+            'line-color': ['coalesce', ['get', 'color'], '#ffb347'],
+            'line-width': 1.4,
+            'line-opacity': 0.75,
+          },
+        }, before)
+      }
+
+      const pointSrc = map.getSource('eos-hazard-points') as { setData?: (d: unknown) => void } | undefined
+      if (pointSrc) pointSrc.setData?.(pointData)
+      else {
+        map.addSource('eos-hazard-points', { type: 'geojson', data: pointData })
+        map.addLayer({
+          id: 'eos-hazard-point-halo',
+          type: 'circle',
+          source: 'eos-hazard-points',
+          paint: {
+            'circle-radius': 16,
+            'circle-color': ['coalesce', ['get', 'color'], '#ffb347'],
+            'circle-opacity': 0.12,
+            'circle-blur': 0.35,
+          },
+        })
+        map.addLayer({
+          id: 'eos-hazard-point',
+          type: 'circle',
+          source: 'eos-hazard-points',
+          paint: {
+            'circle-radius': 5,
+            'circle-color': ['coalesce', ['get', 'color'], '#ffb347'],
+            'circle-stroke-color': '#f4f6fa',
+            'circle-stroke-width': 1,
+            'circle-opacity': 0.94,
+          },
+        })
+      }
+
+      hazardMarkersRef.current.forEach(m => m.remove())
+      hazardMarkersRef.current = []
+      const maplibregl = (await import('maplibre-gl')).default
+      for (const e of events.slice(0, 5)) {
+        const ll = hazardTagLngLat(e)
+        if (!ll) continue
+        const el = document.createElement('div')
+        el.className = `w-hazardtag sev-${e.severity}`
+        const source = document.createElement('span')
+        source.textContent = e.source.toUpperCase()
+        el.append(source, document.createTextNode(short(e.title)))
+        hazardMarkersRef.current.push(new maplibregl.Marker({ element: el, anchor: 'bottom-left', offset: [10, -10] }).setLngLat(ll).addTo(map))
+      }
+    } catch {
+      // Hazard layers are additive. Existing weather/risk text remains the fallback.
+    }
   }
 
   // init once
@@ -104,12 +299,20 @@ export default function WorldMap({ plateUrl }: { state: string; plateUrl: string
 
           readyRef.current = true
           if (plateRef.current) plateRef.current.style.opacity = '0'
+          loadRadar()
+          renderHazards(cur)
         })
       } catch {
         // WebGL/init failure → keep the static plate visible (§28)
       }
     })()
-    return () => { cancelled = true; markersRef.current = []; if (map) map.remove() }
+    return () => {
+      cancelled = true
+      markersRef.current = []
+      hazardMarkersRef.current.forEach(m => m.remove())
+      hazardMarkersRef.current = []
+      if (map) map.remove()
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -122,7 +325,10 @@ export default function WorldMap({ plateUrl }: { state: string; plateUrl: string
     const reduce = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
     if (reduce) map.jumpTo({ center })
     else map.flyTo({ center, duration: 1400, essential: true })
-    if (readyRef.current) placeOverlays(center)
+    if (readyRef.current) {
+      placeOverlays(center)
+      renderHazards(center)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [coords?.lat, coords?.lng])
 

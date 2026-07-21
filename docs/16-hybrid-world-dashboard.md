@@ -1,6 +1,6 @@
 # 16 — Hybrid World Dashboard
 
-> **Status:** SPEC / PRODUCT-ARCHITECTURE DECIDED — **IMPLEMENTATION AUTHORIZED 2026-07-21 (D-050)**; starting at HWD-01 (static prototype, no MapLibre yet)
+> **Status:** SPEC / PRODUCT-ARCHITECTURE DECIDED — **IMPLEMENTATION AUTHORIZED 2026-07-21 (D-050)**; HWD-01→HWD-03 complete; HWD-04 blocked on privacy/data decisions
 > **Decision:** D-047 (architecture) · D-050 (implementation authorization)
 > **Date:** 2026-07-21
 > **Owner:** Paulo Libânio Neto
@@ -1197,6 +1197,8 @@ Goal: compare visual quality with the reference.
 - monitored locations;
 - current inventory/readiness;
 - textual accessibility equivalents.
+
+Implementation status as of 2026-07-21: complete for the isolated `/dashboard-world` prototype. Current location comes from `RiskProvider.coords`; radar uses a keyless RainViewer server-normalized endpoint; hazards come from `/api/hazards` and render as MapLibre GeoJSON polygons/points plus geo-anchored DOM tags. Provider failures degrade additively and preserve the static/MapLibre base and textual equivalent.
 
 ### Phase HWD-04 — Family and routing foundation
 
