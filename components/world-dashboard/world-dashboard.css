@@ -118,8 +118,14 @@
   position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%);
   text-align: center; pointer-events: none; max-width: 60vw;
 }
-.w-brief .loc { font-size: clamp(30px, 6vw, 54px); font-weight: 700; letter-spacing: -0.03em; color: var(--w-ink); text-shadow: 0 2px 24px rgba(0,0,0,0.55); }
-.w-brief .cond { margin-top: 6px; font-size: 13px; color: var(--w-ink); display: inline-flex; align-items: center; gap: 8px; pointer-events: auto; }
+.w-brief .loc { font-family: Georgia, 'Times New Roman', serif; font-size: clamp(38px, 7vw, 68px); font-weight: 600; letter-spacing: -0.02em; color: var(--w-ink); text-shadow: 0 2px 30px rgba(0,0,0,0.6); line-height: 1; }
+.w-brief .sub { margin-top: 8px; font-size: 15px; color: var(--w-ink); text-shadow: 0 1px 12px rgba(0,0,0,0.6); }
+.w-brief .cond { margin-top: 12px; font-size: 13px; color: var(--w-ink); display: inline-flex; align-items: center; gap: 8px; pointer-events: auto; background: rgba(6,7,11,0.5); border: 1px solid var(--w-line); border-radius: 999px; padding: 7px 14px; text-decoration: none; backdrop-filter: blur(6px); }
+
+/* rail C/W/R mode selector (Clear / Watch / Respond) */
+.w-cwr { display: flex; justify-content: center; gap: 22px; }
+.w-cwr span { font-family: 'DM Mono', monospace; font-size: 18px; font-weight: 700; color: var(--w-rail-ink-2); width: 34px; height: 34px; display: grid; place-items: center; border-radius: 9px; }
+.w-cwr span.on { color: #06070b; background: var(--w-state); box-shadow: 0 4px 14px rgba(var(--w-state-rgb), 0.4); }
 
 /* ── Alert Counter (top right) ── */
 .w-alerts { position: absolute; top: 18px; right: 18px; padding: 12px 14px; min-width: 132px; }

@@ -14,9 +14,13 @@ import { useRisk } from '@/components/v2/RiskProvider'
 import type { WorldFamilyMarker, WorldRoute } from '@/lib/world/types'
 import './world-dashboard.css'
 
-// Set to a path under /public (e.g. '/world/parkland.webp') once the Higgsfield
-// image is added. Null → atmospheric placeholder plate (honest, swappable).
-const WORLD_IMAGE: string | null = null
+// World plate: clean Parkland aerial generated in Higgsfield (no baked HUD),
+// so the real React HUD sits over an honest world. Swap freely under /public/world.
+const WORLD_IMAGE: string | null = '/world/parkland.webp'
+
+// Demo location label for the static prototype. Real geocoding lands in HWD-03;
+// the condition line below it is already live data.
+const DEMO_LOCATION = 'Parkland'
 
 // ── mock overlays (HWD-01 only, clearly labeled in the UI) ──
 const MOCK_FAMILY: WorldFamilyMarker[] = [
@@ -104,6 +108,12 @@ export default function WorldDashboard() {
   const alertCount = (snapshot?.alerts.length ?? 0) + (snapshot?.earthquakes.length ?? 0)
   const topAlert = snapshot?.alerts[0]
 
+  // Rail mode selector (like the reference "C W R"): Clear / Watch / Respond.
+  const mode: 'C' | 'W' | 'R' = state === 'safe' ? 'C' : state === 'watch' ? 'W' : 'R'
+  const modeLabel = (language === 'pt'
+    ? { C: 'Modo claro', W: 'Modo atenção', R: 'Modo resposta' }
+    : { C: 'Clear state', W: 'Watch state', R: 'Respond state' })[mode]
+
   const plateStyle = useMemo<React.CSSProperties>(
     () => (WORLD_IMAGE ? ({ ['--world-image' as string]: `url(${WORLD_IMAGE})` }) : {}),
     [],
@@ -157,13 +167,12 @@ export default function WorldDashboard() {
           <div className="rail-row"><span className="k">{c.comms}</span><span className="v">{inv?.has_communication_device ? c.ok : c.none}</span></div>
 
           <div className="rail-div" />
-          <div className="w-legend">
-            {(['safe', 'watch', 'warning', 'critical'] as const).map(s => (
-              <span key={s} className={state === s ? 'on' : ''} style={state === s ? { background: 'var(--w-state)', borderColor: 'var(--w-state)' } : undefined}>
-                {STATE_LABEL[language][s]}
-              </span>
+          <div className="w-cwr" role="group" aria-label="Operating mode">
+            {(['C', 'W', 'R'] as const).map(letter => (
+              <span key={letter} className={mode === letter ? 'on' : ''}>{letter}</span>
             ))}
           </div>
+          <div className="rail-eyebrow" style={{ textAlign: 'center' }}>{modeLabel}</div>
         </aside>
 
         {/* ── Pilot Capsule ── */}
@@ -177,7 +186,8 @@ export default function WorldDashboard() {
 
         {/* ── Central Location Brief ── */}
         <div className="w-brief">
-          <div className="loc">{topAlert ? shorten(topAlert.headline, 46) : c.clearBrief}</div>
+          <div className="loc">{DEMO_LOCATION}</div>
+          <div className="sub">{topAlert ? shorten(topAlert.headline, 60) : c.clearBrief}</div>
           <Link href="/scenario" className="cond">
             <span className="w-dot" />
             {c.openScenario}
