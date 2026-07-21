@@ -192,6 +192,7 @@ Sentry is wired up (`sentry.client.config.ts`, `sentry.server.config.ts`, `sentr
 - **Status Rail / readiness card (D-055)**: o card esquerdo deve parecer um instrumento de "casa pronta", não uma lista administrativa. Hierarquia: conexão/estado, Risk Index grande, diagrama de casa, autonomia, barras de água/comida/energia/combustível, família e comms. A casa é SVG local no React para continuar dinâmica; energia vem de `battery_percent` e combustível de `fuel_liters` até refinarmos o modelo.
 - **Center map text (D-056)**: não renderizar "Your Area/Sua área" no centro do `/dashboard-world`; o mapa deve ficar visualmente limpo entre o readiness card, Pilot e overlays. O resumo textual continua apenas para screen readers.
 - **Alert counter + rail scroll (D-057)**: o contador de alertas não deve ficar no topo direito porque colide com controles globais e fica ilegível; manter no rodapé direito acima da bottom nav. O Status Rail desktop deve terminar acima da nav fixa (`bottom: calc(88px + safe-area)`) e ter scroll interno até o C/W/R.
+- **HWD-06 validation status (D-058)**: `/dashboard-world` passou validação objetiva em 2026-07-21 (`type-check`, lint, Jest 45/45, build, full production journey 31/31, members/circles E2E 19/19, route protection, RainViewer, hazards). Ainda **não** substituir `/dashboard`: faltam aprovação visual/device do dono, browser UI E2E, a11y/perf, custos/providers, privacidade/proveniência e decisão explícita. Relatório: `docs/17-hwd-06-validation.md`.
 
 ## Billing / Stripe (D-042)
 

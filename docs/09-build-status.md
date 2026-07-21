@@ -9,8 +9,9 @@
 
 | Field | Value |
 |---|---|
-| **Current Phase** | Hybrid World Dashboard (HWD) — D-047/D-050/D-054/D-055/D-056/D-057 |
-| **Last Completed Task** | D-057 / HWD-06 alert footer + Status Rail scroll fix (2026-07-21) |
+| **Current Phase** | Hybrid World Dashboard (HWD) — D-047/D-050/D-054/D-055/D-056/D-057/D-058 |
+| **Last Completed Task** | D-058 / HWD-06 validation pass — keep `/dashboard-world` isolated (2026-07-21) |
+| | D-057 / HWD-06 alert footer + Status Rail scroll fix (2026-07-21) |
 | | D-056 / HWD-06 center map title removed (2026-07-21) |
 | | D-055 / HWD-06 Status Rail redesign — household readiness card (2026-07-21) |
 | | D-054 / HWD-06 responsive HUD pass — mobile bottom sheet + desktop collapse (2026-07-21) |
@@ -24,7 +25,7 @@
 | | LA-T02: Stripe **Live** cutover — faturamento real ativo (2026-07-21) |
 | | LA-T01: Stripe test payment → webhook → `profiles.plan=family` (2026-07-20) |
 | **In Progress** | HWD-06 — remaining production validation for `/dashboard-world` |
-| **Next Task** | HWD-06 remaining checks: perf, a11y, provider cost, privacy, E2E, rollout decision. |
+| **Next Task** | HWD-06 remaining gates: owner visual/device review, browser UI E2E, a11y/perf validation, provider cost review, privacy/provenance review, explicit rollout decision. |
 | **Build** | ✅ Passing — type-check, tests, production build clean (2026-07-21) |
 | **Vercel** | ✅ Deployed — domínio canônico `https://eos-app-fawn.vercel.app` |
 | **Supabase** | ✅ Healthy — project ref `alxurmgpyxjhvnliivbf` |
@@ -49,6 +50,7 @@
   - **D-055 / HWD-06 Status Rail redesign**: card esquerdo virou household readiness card conforme mock aprovado: topo conexão/estado, Risk Index central grande, diagrama SVG de casa com callouts, autonomia familiar, barras água/comida/energia/combustível, família e comunicações.
   - **D-056 / HWD-06 center cleanup**: removido o título visual central "Your Area/Sua área"; centro do mapa fica limpo, mantendo equivalente textual para acessibilidade.
   - **D-057 / HWD-06 HUD placement fix**: contador de alertas movido do topo direito para o rodapé direito acima da bottom nav; Status Rail agora reserva espaço acima da nav e mantém scroll interno até o C/W/R.
+  - **D-058 / HWD-06 validation pass**: `type-check`, Jest 45/45, build, lint, full production journey 31/31, members/circles E2E 19/19, route protection, RainViewer e hazards passaram. Resultado: saudável para teste controlado, mas **não substituir `/dashboard` ainda**. Relatório: `docs/17-hwd-06-validation.md`.
 - Colisão de numeração resolvida: D-047 = World Dashboard; a vista unificada de Família passou a **D-049**.
 
 ---

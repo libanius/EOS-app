@@ -83,6 +83,19 @@
 
 ---
 
+## D-058 — HWD-06 validation pass keeps World Dashboard isolated
+
+**Date**: 2026-07-21
+**Status**: DECIDED
+
+**Context**: Após os ajustes D-054→D-057, foi executada uma validação objetiva do `/dashboard-world` contra parte dos critérios de saída do doc 16 §33. Build, type-check, lint, testes unitários, jornada completa de produção, E2E de círculos/membros, proteção de rota, RainViewer e hazards passaram.
+
+**Decision**: `/dashboard-world` continua isolado e **não substitui `/dashboard` ainda**. O release para dashboard padrão fica bloqueado até aprovação visual do dono, validação a11y/performance/browser, revisão de custo/provider e revisão de privacidade/proveniência de rota/shelter.
+
+**Consequence**: O protótipo está saudável para teste controlado pelo dono, mas HWD-06 permanece IN PROGRESS. Relatório completo em `docs/17-hwd-06-validation.md`.
+
+---
+
 ## D-052 — World Dashboard runtime map base toggle
 
 **Date**: 2026-07-21
