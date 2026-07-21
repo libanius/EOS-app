@@ -9,8 +9,9 @@
 
 | Field | Value |
 |---|---|
-| **Current Phase** | Hybrid World Dashboard (HWD) — D-047/D-050/D-054/D-055/D-056 |
-| **Last Completed Task** | D-056 / HWD-06 center map title removed (2026-07-21) |
+| **Current Phase** | Hybrid World Dashboard (HWD) — D-047/D-050/D-054/D-055/D-056/D-057 |
+| **Last Completed Task** | D-057 / HWD-06 alert footer + Status Rail scroll fix (2026-07-21) |
+| | D-056 / HWD-06 center map title removed (2026-07-21) |
 | | D-055 / HWD-06 Status Rail redesign — household readiness card (2026-07-21) |
 | | D-054 / HWD-06 responsive HUD pass — mobile bottom sheet + desktop collapse (2026-07-21) |
 | | HWD-05: Pilot action integration prototype — deterministic states + actions (2026-07-21) |
@@ -47,6 +48,7 @@
   - **D-054 / HWD-06 responsive pass**: HUD mobile reorganizado em bottom sheet com snap states `peek`/`half`/`full`, alça visível, scroll interno, ações rápidas e controles de base Híbrido/Dark. Interação no mapa recolhe o sheet. Desktop ganhou colapso dos painéis auxiliares por scroll/gesto de mapa, com reabertura por hover/foco.
   - **D-055 / HWD-06 Status Rail redesign**: card esquerdo virou household readiness card conforme mock aprovado: topo conexão/estado, Risk Index central grande, diagrama SVG de casa com callouts, autonomia familiar, barras água/comida/energia/combustível, família e comunicações.
   - **D-056 / HWD-06 center cleanup**: removido o título visual central "Your Area/Sua área"; centro do mapa fica limpo, mantendo equivalente textual para acessibilidade.
+  - **D-057 / HWD-06 HUD placement fix**: contador de alertas movido do topo direito para o rodapé direito acima da bottom nav; Status Rail agora reserva espaço acima da nav e mantém scroll interno até o C/W/R.
 - Colisão de numeração resolvida: D-047 = World Dashboard; a vista unificada de Família passou a **D-049**.
 
 ---

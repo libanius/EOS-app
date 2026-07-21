@@ -70,6 +70,19 @@
 
 ---
 
+## D-057 — World Dashboard alert counter moves to footer and rail scroll is protected
+
+**Date**: 2026-07-21
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: O contador de alertas no topo direito estava comprimido por outros controles e ilegível. O dono também reportou que o card Risk Index não rolava até o fim, deixando conteúdo inferior inacessível.
+
+**Decision**: Mover o alert counter para o rodapé direito, acima da bottom navigation, e reservar espaço vertical para o Status Rail terminar antes da nav fixa. O rail permanece scrollável e deve permitir acessar família, comms e C/W/R.
+
+**Consequence**: Top-right fica livre para controles globais, alertas passam a viver no rodapé onde há mais respiro, e o readiness card volta a ser navegável até o final.
+
+---
+
 ## D-052 — World Dashboard runtime map base toggle
 
 **Date**: 2026-07-21

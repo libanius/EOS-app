@@ -135,13 +135,14 @@
   --rail-ok: #3ebf6b;
   --rail-warn: #dda323;
   --rail-danger: #e33f37;
-  position: absolute; top: 18px; left: 18px; bottom: 18px; width: clamp(308px, 22vw, 368px);
+  position: absolute; top: 18px; left: 18px; bottom: calc(88px + env(safe-area-inset-bottom)); width: clamp(308px, 22vw, 368px);
   background: rgba(248, 249, 251, 0.96); color: var(--w-rail-ink);
   border: 1px solid rgba(255, 255, 255, 0.72);
   border-radius: 30px; padding: 22px 24px 20px;
   backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
   box-shadow: 0 26px 70px -24px rgba(0, 0, 0, 0.7);
-  display: flex; flex-direction: column; gap: 14px; overflow: auto;
+  display: flex; flex-direction: column; gap: 14px; overflow-y: auto; overflow-x: hidden;
+  overscroll-behavior: contain;
   scrollbar-width: none;
 }
 .w-rail::-webkit-scrollbar { display: none; }
@@ -462,7 +463,14 @@
 }
 
 /* ── Alert Counter (top right) ── */
-.w-alerts { position: absolute; top: 18px; right: 18px; padding: 12px 14px; min-width: 132px; max-width: 220px; }
+.w-alerts {
+  position: absolute;
+  right: 18px;
+  bottom: calc(88px + env(safe-area-inset-bottom));
+  padding: 12px 14px;
+  min-width: 132px;
+  max-width: 220px;
+}
 .w-alerts .n { font-family: 'DM Mono', monospace; font-size: 30px; font-weight: 500; color: var(--w-state); line-height: 1; font-variant-numeric: tabular-nums; }
 
 /* ── Live layer status: makes invisible overlays explicit when local radar is clear ── */

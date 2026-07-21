@@ -191,6 +191,7 @@ Sentry is wired up (`sentry.client.config.ts`, `sentry.server.config.ts`, `sentr
 - **Responsive HUD / HWD-06 pass (D-054)**: no mobile, não posicionar Status Rail, layers, alerts e ticker como painéis absolutos concorrentes; eles vivem em um bottom sheet com snap states `peek`/`half`/`full`, alça e scroll interno. O padrão foi inspirado no Drawer do 21st.dev, mas implementado com CSS/React locais sem dependência nova. Interações do MapLibre recolhem o sheet; no desktop, scroll/gesto de mapa colapsa rail/sensors/ticker e hover/foco reabre.
 - **Status Rail / readiness card (D-055)**: o card esquerdo deve parecer um instrumento de "casa pronta", não uma lista administrativa. Hierarquia: conexão/estado, Risk Index grande, diagrama de casa, autonomia, barras de água/comida/energia/combustível, família e comms. A casa é SVG local no React para continuar dinâmica; energia vem de `battery_percent` e combustível de `fuel_liters` até refinarmos o modelo.
 - **Center map text (D-056)**: não renderizar "Your Area/Sua área" no centro do `/dashboard-world`; o mapa deve ficar visualmente limpo entre o readiness card, Pilot e overlays. O resumo textual continua apenas para screen readers.
+- **Alert counter + rail scroll (D-057)**: o contador de alertas não deve ficar no topo direito porque colide com controles globais e fica ilegível; manter no rodapé direito acima da bottom nav. O Status Rail desktop deve terminar acima da nav fixa (`bottom: calc(88px + safe-area)`) e ter scroll interno até o C/W/R.
 
 ## Billing / Stripe (D-042)
 
