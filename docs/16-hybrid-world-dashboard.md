@@ -1,12 +1,12 @@
 # 16 — Hybrid World Dashboard
 
-> **Status:** SPEC / PRODUCT-ARCHITECTURE DECIDED — **IMPLEMENTATION AUTHORIZED 2026-07-21 (D-050)**; HWD-01→HWD-04 complete for isolated prototype scope; HWD-05 pending
+> **Status:** SPEC / PRODUCT-ARCHITECTURE DECIDED — **IMPLEMENTATION AUTHORIZED 2026-07-21 (D-050)**; HWD-01→HWD-05 complete for isolated prototype scope; HWD-06 validation in progress
 > **Decision:** D-047 (architecture) · D-050 (implementation authorization)
 > **Date:** 2026-07-21
 > **Owner:** Paulo Libânio Neto
 > **Product:** EOS
 > **Implementation gate:** ✅ cleared by owner on 2026-07-21 (D-050). First surface: isolated `/dashboard-world` route; production `/dashboard` untouched.
-> **Related decisions/specs:** D-029, D-043, D-046, `docs/14-monitoring.md`, `docs/15-eos-pilot.md`
+> **Related decisions/specs:** D-029, D-043, D-046, D-054, `docs/14-monitoring.md`, `docs/15-eos-pilot.md`
 
 ---
 
@@ -1007,6 +1007,8 @@ contextual action bar
 
 The left Status Rail becomes an expandable bottom sheet or compact risk complication.
 
+Implementation rule from D-054: the mobile transformation uses a Drawer-style bottom sheet with snap states (`peek`, `half`, `full`), a visible handle, internal scroll, and automatic collapse when the user interacts with the map. This pattern is adapted from the 21st.dev Drawer component reference, but implemented with the app's existing React/CSS stack and no new UI dependency.
+
 ### 21.4 Existing navigation
 
 The first prototype must coexist with the current bottom navigation and safe-area requirements.
@@ -1238,6 +1240,8 @@ Implementation status as of 2026-07-21: complete for prototype scope (D-053). Th
 - privacy review;
 - E2E tests;
 - staged rollout decision.
+
+Implementation note as of 2026-07-21 (D-054): HWD-06 starts with the responsive HUD pass because usability is currently blocking mobile and smaller desktop testing. Scope: mobile bottom sheet with `peek`/`half`/`full` states, desktop HUD collapse, and map-interaction-driven panel collapse. HWD-06 remains open for the rest of the production exit criteria.
 
 ---
 

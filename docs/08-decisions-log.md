@@ -22,6 +22,24 @@
 
 ---
 
+## D-054 — HWD-06 responsive HUD collapse + mobile bottom sheet
+
+**Date**: 2026-07-21
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: O `/dashboard-world` ficou visualmente forte no desktop largo, mas os painéis atuais competem com o mapa em desktop menor e tornam o mobile inviável. O dono pediu uma proposta usando um elemento do MCP 21st.dev para scroll dinâmico/menus que colapsam e abrem.
+
+**Decision**:
+1. HWD-06 passa a incluir um passe específico de responsividade do HUD antes da validação completa de produção.
+2. O padrão escolhido é o **Drawer/bottom sheet com snap points** inspirado no componente 21st.dev `Drawer` (`id=11441`, by coss.com): alça, posições `peek`/`half`/`full`, painel interno rolável e recolhimento por interação com o mapa.
+3. A implementação EOS será feita com React + CSS existentes, sem instalar `@base-ui/react`, Tailwind ou shadcn nesta etapa.
+4. No mobile, status rail, camadas, alertas e ticker deixam de disputar espaço absoluto e passam para um bottom sheet.
+5. No desktop, scroll/gestos de mapa podem colapsar painéis auxiliares, mantendo hover/foco como caminho rápido para reabrir.
+
+**Consequence**: O mapa volta a ser a superfície primária em telas pequenas e médias, sem perder os controles críticos. HWD-06 continua aberto para validação completa de performance, a11y, privacidade, custos e E2E antes de substituir `/dashboard`.
+
+---
+
 ## D-052 — World Dashboard runtime map base toggle
 
 **Date**: 2026-07-21

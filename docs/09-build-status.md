@@ -9,8 +9,9 @@
 
 | Field | Value |
 |---|---|
-| **Current Phase** | Hybrid World Dashboard (HWD) — D-047/D-050 |
-| **Last Completed Task** | HWD-05: Pilot action integration prototype — deterministic states + actions (2026-07-21) |
+| **Current Phase** | Hybrid World Dashboard (HWD) — D-047/D-050/D-054 |
+| **Last Completed Task** | D-054 / HWD-06 responsive HUD pass — mobile bottom sheet + desktop collapse (2026-07-21) |
+| | HWD-05: Pilot action integration prototype — deterministic states + actions (2026-07-21) |
 | | D-052: World Dashboard runtime map base toggle — Híbrido/Dark (2026-07-21) |
 | | HWD-04: family/routing foundation prototype — EOS family points + OpenAI-inferred candidate route/shelter (2026-07-21) |
 | | HWD-03: real EOS map data — location, RainViewer radar, hazard layers/tags, textual a11y (2026-07-21) |
@@ -19,10 +20,10 @@
 | | D-049: aba Família vira vista unificada (roster + membros do círculo) (2026-07-21) |
 | | LA-T02: Stripe **Live** cutover — faturamento real ativo (2026-07-21) |
 | | LA-T01: Stripe test payment → webhook → `profiles.plan=family` (2026-07-20) |
-| **In Progress** | None |
-| **Next Task** | HWD-06 — production validation for `/dashboard-world` (perf, a11y, responsive, cost, privacy, E2E, rollout). |
+| **In Progress** | HWD-06 — remaining production validation for `/dashboard-world` |
+| **Next Task** | HWD-06 remaining checks: perf, a11y, provider cost, privacy, E2E, rollout decision. |
 | **Build** | ✅ Passing — type-check, tests, production build clean (2026-07-21) |
-| **Vercel** | ✅ Deployed — Stripe **Live** + `NEXT_PUBLIC_MAPTILER_KEY` (protegida por origem) |
+| **Vercel** | ✅ Deployed — domínio canônico `https://eos-app-fawn.vercel.app` |
 | **Supabase** | ✅ Healthy — project ref `alxurmgpyxjhvnliivbf` |
 | **⚠️ Segurança** | Rotacionar segredos expostos em chat: Vercel token (`vcp_…`), Supabase PAT (`sbp_…`), Stripe test key. Stripe **Live** key foi trocada no Vercel; rotacionar também. |
 
@@ -41,6 +42,7 @@
   - **HWD map interaction fix**: `.world-hud` não captura mais drag global; o MapLibre volta a aceitar clicar/arrastar como Google Maps, mantendo botões/painéis com pointer events próprios.
   - **D-052 map base toggle**: painel "Camadas ao vivo" ganhou seletor **Híbrido/Dark**. Híbrido mantém MapTiler hybrid + terreno quando a key existe; Dark força CARTO dark keyless para restaurar o visual operacional anterior. Preferência persiste localmente no browser.
   - **HWD-05**: Pilot Capsule agora calcula estados determinísticos `GO/LIMITED/WAIT/AVOID/PRIORITY OVERRIDE` após seleção de atividade; critical override vence sempre. Ações reais: abrir cenário, abrir checklist, notificar família via push de círculo admin quando permitido, e focar rota/shelter candidata no MapLibre.
+  - **D-054 / HWD-06 responsive pass**: HUD mobile reorganizado em bottom sheet com snap states `peek`/`half`/`full`, alça visível, scroll interno, ações rápidas e controles de base Híbrido/Dark. Interação no mapa recolhe o sheet. Desktop ganhou colapso dos painéis auxiliares por scroll/gesto de mapa, com reabertura por hover/foco.
 - Colisão de numeração resolvida: D-047 = World Dashboard; a vista unificada de Família passou a **D-049**.
 
 ---
@@ -229,8 +231,8 @@ To add a new knowledge source: drop PDF in `docs/`, re-run both commands.
 
 - **Hosting**: Vercel — project linked via `.vercel/project.json`
 - **Branch**: `main` → production (no staging environment)
-- **Build**: production deploy ready as of 2026-07-21, commit `0981f15`
-- **Deploy**: automatic on push to `main`
+- **Build**: production deploy ready as of 2026-07-21, latest `main`
+- **Deploy**: automatic on push to `main`; production alias canônico `https://eos-app-fawn.vercel.app`
 
 ---
 

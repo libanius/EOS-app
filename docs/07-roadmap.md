@@ -87,7 +87,7 @@
 | HWD-03 | Real EOS data on map: location, weather/hazard layers, alert tags, Risk Index, inventory/readiness + textual a11y | ✅ COMPLETE | 2026-07-21 — mapa centraliza na **localização real** (RiskProvider coords, flyTo, fallback Parkland); RainViewer keyless via `/api/world/radar`; hazards reais de `/api/hazards` como polígonos/pontos + tags geo-ancoradas; equivalente textual (§22). |
 | HWD-04 | Family + routing foundation (separate privacy/data decisions) | ✅ COMPLETE (prototype) | 2026-07-21 — D-051: pontos familiares EOS/círculo no mapa com freshness; rota/shelter via OpenAI como candidato inferido, não oficial; pendência de revisão antes de produção. |
 | HWD-05 | Pilot action integration (Pilot Capsule states + actions) — absorbs EOS Pilot | ✅ COMPLETE (prototype) | 2026-07-21 — D-053: deterministic GO/LIMITED/WAIT/AVOID/PRIORITY OVERRIDE + scenario/checklist/notify-family/route-focus actions |
-| HWD-06 | Production validation (perf, a11y, responsive, cost, privacy, E2E, rollout) | PENDING | next — exit criteria doc 16 §33 before any `/dashboard` replacement |
+| HWD-06 | Production validation (perf, a11y, responsive, cost, privacy, E2E, rollout) | IN PROGRESS | D-054 responsive HUD pass first: mobile bottom sheet + desktop collapse; remaining exit criteria doc 16 §33 before any `/dashboard` replacement |
 
 ---
 

@@ -135,13 +135,14 @@ function markerEl(className: string, pin: string, label: string, color?: string)
   return el
 }
 
-export default function WorldMap({ plateUrl, family = [], guidance = null, mapBase = 'hybrid', routeFocusNonce = 0 }: {
+export default function WorldMap({ plateUrl, family = [], guidance = null, mapBase = 'hybrid', routeFocusNonce = 0, onMapInteraction }: {
   state: string
   plateUrl: string
   family?: WorldFamilyMember[]
   guidance?: WorldGuidance | null
   mapBase?: MapBaseMode
   routeFocusNonce?: number
+  onMapInteraction?: () => void
 }) {
   const { coords } = useRisk()
   const ref = useRef<HTMLDivElement>(null)
@@ -327,6 +328,12 @@ export default function WorldMap({ plateUrl, family = [], guidance = null, mapBa
         mapRef.current = map
         map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right')
         map.on('error', () => { /* tiles/provider errors must not blank the app */ })
+        if (onMapInteraction) {
+          map.on('dragstart', onMapInteraction)
+          map.on('zoomstart', onMapInteraction)
+          map.on('rotatestart', onMapInteraction)
+          map.on('pitchstart', onMapInteraction)
+        }
 
         map.on('load', () => {
           if (cancelled || !map) return

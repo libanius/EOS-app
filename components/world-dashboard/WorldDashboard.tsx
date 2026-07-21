@@ -7,7 +7,7 @@
  * No map SDK (MapLibre is HWD-02). Reversible: isolated /dashboard-world route.
  */
 
-import { useCallback, useEffect, useState } from 'react'
+import { type UIEvent, useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useLanguage } from '@/lib/i18n'
 import { useRisk } from '@/components/v2/RiskProvider'
@@ -81,6 +81,7 @@ type PilotState = 'GO' | 'LIMITED' | 'WAIT' | 'AVOID' | 'PRIORITY OVERRIDE'
 type PilotActivityId = 'fishing' | 'boating' | 'camping' | 'family_outdoor' | 'road_trip'
 type PilotActivity = { id: PilotActivityId; pt: string; en: string }
 type PilotRecommendation = { state: PilotState; title: string; detail: string; factors: string[]; window: string }
+type HudSnap = 'peek' | 'half' | 'full'
 
 const PILOT_ACTIVITIES: PilotActivity[] = [
   { id: 'fishing', pt: 'Pescaria', en: 'Fishing' },
@@ -105,6 +106,9 @@ export default function WorldDashboard() {
   const [mapBase, setMapBase] = useState<MapBaseMode>('hybrid')
   const [adminCircles, setAdminCircles] = useState<Array<{ id: string; name: string }>>([])
   const [routeFocusNonce, setRouteFocusNonce] = useState(0)
+  const [hudSnap, setHudSnap] = useState<HudSnap>('peek')
+  const [mobileHud, setMobileHud] = useState(false)
+  const [desktopHudCollapsed, setDesktopHudCollapsed] = useState(false)
 
   const fetchLocal = useCallback(async () => {
     try {
@@ -195,6 +199,25 @@ export default function WorldDashboard() {
     window.addEventListener('online', on); window.addEventListener('offline', off)
     return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off) }
   }, [])
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 860px)')
+    const sync = () => {
+      setMobileHud(mq.matches)
+      if (!mq.matches) setHudSnap('peek')
+    }
+    sync()
+    mq.addEventListener('change', sync)
+    return () => mq.removeEventListener('change', sync)
+  }, [])
+  useEffect(() => {
+    const onWheel = (event: WheelEvent) => {
+      if (mobileHud) return
+      if (event.deltaY > 12) setDesktopHudCollapsed(true)
+      if (event.deltaY < -12) setDesktopHudCollapsed(false)
+    }
+    window.addEventListener('wheel', onWheel, { passive: true })
+    return () => window.removeEventListener('wheel', onWheel)
+  }, [mobileHud])
 
   const cur = snapshot?.current
   const metric = language === 'pt'
@@ -215,9 +238,18 @@ export default function WorldDashboard() {
     setMapBase(base)
     window.localStorage.setItem('eos-world-map-base', base)
   }
+  const collapseHudForMap = () => {
+    if (mobileHud) setHudSnap('peek')
+    else setDesktopHudCollapsed(true)
+  }
+  const handleSheetScroll = (event: UIEvent<HTMLDivElement>) => {
+    const top = event.currentTarget.scrollTop
+    if (top > 56 && hudSnap === 'half') setHudSnap('full')
+    if (top <= 0 && hudSnap === 'full') setHudSnap('half')
+  }
 
   return (
-    <main className="world" data-risk={state}>
+    <main className="world" data-risk={state} data-hud={hudSnap} data-desktop-hud={desktopHudCollapsed ? 'collapsed' : 'open'}>
       <WorldMap
         key={mapBase}
         state={state}
@@ -226,6 +258,7 @@ export default function WorldDashboard() {
         guidance={guidance}
         mapBase={mapBase}
         routeFocusNonce={routeFocusNonce}
+        onMapInteraction={collapseHudForMap}
       />
       <div className="world-vignette" aria-hidden="true" />
 
@@ -383,8 +416,201 @@ export default function WorldDashboard() {
             ? (language === 'pt' ? 'FAMÍLIA: EOS · ROTA/SHELTER: IA CANDIDATA' : 'FAMILY: EOS · ROUTE/SHELTER: AI CANDIDATE')
             : c.mockData}
         </div>
+
+        <MobileWorldSheet
+          c={c}
+          language={language}
+          score={score}
+          state={state}
+          online={online}
+          waterDays={waterDays}
+          inv={inv}
+          checklistPct={checklistPct}
+          alertCount={alertCount}
+          hazardPreview={hazardPreview}
+          cur={cur}
+          aqi={snapshot?.air_quality?.us_aqi ?? null}
+          metric={metric}
+          radar={radar}
+          mapFamilyCount={mapFamily.length}
+          guidance={guidance}
+          mapBase={mapBase}
+          chooseMapBase={chooseMapBase}
+          snap={hudSnap}
+          setSnap={setHudSnap}
+          onScroll={handleSheetScroll}
+          requestGps={requestGps}
+          hasCoords={hasCoords}
+          onFocusRoute={() => setRouteFocusNonce(n => n + 1)}
+        />
       </div>
     </main>
+  )
+}
+
+function MobileWorldSheet({
+  c,
+  language,
+  score,
+  state,
+  online,
+  waterDays,
+  inv,
+  checklistPct,
+  alertCount,
+  hazardPreview,
+  cur,
+  aqi,
+  metric,
+  radar,
+  mapFamilyCount,
+  guidance,
+  mapBase,
+  chooseMapBase,
+  snap,
+  setSnap,
+  onScroll,
+  requestGps,
+  hasCoords,
+  onFocusRoute,
+}: {
+  c: (typeof COPY)[keyof typeof COPY]
+  language: keyof typeof COPY
+  score: number | null
+  state: keyof (typeof STATE_LABEL)['pt']
+  online: boolean
+  waterDays: number
+  inv: Inv | null
+  checklistPct: number
+  alertCount: number
+  hazardPreview: WeatherSnapshot['alerts']
+  cur: WeatherSnapshot['current'] | undefined
+  aqi: number | null
+  metric: boolean
+  radar: RadarStatus | null
+  mapFamilyCount: number
+  guidance: WorldGuidance | null
+  mapBase: MapBaseMode
+  chooseMapBase: (base: MapBaseMode) => void
+  snap: HudSnap
+  setSnap: (snap: HudSnap) => void
+  onScroll: (event: UIEvent<HTMLDivElement>) => void
+  requestGps: () => void
+  hasCoords: boolean
+  onFocusRoute: () => void
+}) {
+  const pt = language === 'pt'
+  const nextSnap: HudSnap = snap === 'peek' ? 'half' : snap === 'half' ? 'full' : 'peek'
+  const snapLabel = snap === 'peek'
+    ? (pt ? 'Abrir controles' : 'Open controls')
+    : snap === 'half'
+      ? (pt ? 'Expandir' : 'Expand')
+      : (pt ? 'Recolher' : 'Collapse')
+
+  return (
+    <section className="w-mobile-sheet" aria-label={pt ? 'Controles do World Dashboard' : 'World Dashboard controls'}>
+      <button
+        type="button"
+        className="sheet-handle"
+        aria-expanded={snap !== 'peek'}
+        onClick={() => setSnap(nextSnap)}
+      >
+        <span className="sheet-grip" aria-hidden="true" />
+        <span className="sheet-summary">
+          <strong>{score ?? '--'}</strong>
+          <span>{STATE_LABEL[language][state]} · {alertCount} {c.alerts.toLowerCase()}</span>
+        </span>
+        <em>{snapLabel}</em>
+      </button>
+
+      <div className="sheet-scroll" onScroll={onScroll}>
+        <div className="sheet-actions">
+          <Link href="/scenario" className="w-chip solid">{c.openScenario}</Link>
+          <Link href="/checklist" className="w-chip">{c.openChecklist}</Link>
+          <button className="w-chip" disabled={!guidance} onClick={onFocusRoute}>{c.focusRoute}</button>
+          {!hasCoords && <button className="w-chip" onClick={requestGps}>{c.useGps}</button>}
+        </div>
+
+        <div className="sheet-section">
+          <div className="sheet-title">{pt ? 'Status da família' : 'Family status'}</div>
+          <div className="sheet-grid">
+            <SheetMetric k={c.connectivity} v={online ? c.online : c.offline} />
+            <SheetMetric k={c.autonomy} v={`~${waterDays.toFixed(1)} ${c.days}`} />
+            <SheetMetric k={c.water} v={`${waterDays.toFixed(1)} ${c.days}`} />
+            <SheetMetric k={c.food} v={`${inv?.food_days ?? 0} ${c.days}`} />
+            <SheetMetric k={c.checklist} v={`${checklistPct}%`} />
+            <SheetMetric k={c.medical} v={inv?.has_medical_kit ? c.ok : c.none} />
+            <SheetMetric k={c.comms} v={inv?.has_communication_device ? c.ok : c.none} />
+            <SheetMetric k={c.family} v={`${mapFamilyCount || '...'}`} />
+          </div>
+        </div>
+
+        <div className="sheet-section">
+          <div className="sheet-title">{pt ? 'Camadas e mapa' : 'Layers and map'}</div>
+          <div className="map-style-control sheet-map-style" aria-label={c.mapBase}>
+            <span>{c.mapBase}</span>
+            <div className="map-style-toggle" role="group" aria-label={c.mapBase}>
+              {(['hybrid', 'dark'] as const).map(base => (
+                <button
+                  key={base}
+                  type="button"
+                  className={mapBase === base ? 'on' : ''}
+                  aria-pressed={mapBase === base}
+                  onClick={() => chooseMapBase(base)}
+                >
+                  {base === 'hybrid' ? c.hybrid : c.dark}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="sheet-grid">
+            <SheetMetric k="Radar" v={radar?.ok ? 'RainViewer' : radar ? (pt ? 'indisp.' : 'unavail.') : '...'} />
+            <SheetMetric k="Hazards" v={`${alertCount}`} />
+            <SheetMetric k={c.route} v={guidance ? 'AI' : 'mock'} />
+            <SheetMetric k="Frame" v={radar?.frameTime ? formatUtcTime(radar.frameTime) : '--'} />
+          </div>
+          {guidance && (
+            <p className="sheet-note">
+              {pt ? 'Shelter candidato' : 'Candidate shelter'}: {shorten(guidance.shelter.name, 48)} · {guidance.shelter.confidence}
+            </p>
+          )}
+        </div>
+
+        {cur && (
+          <div className="sheet-section">
+            <div className="sheet-title">{pt ? 'Condições agora' : 'Current conditions'}</div>
+            <div className="sheet-ticks">
+              <Tick k={c.temp} v={`${metric ? toC(cur.temp_f) : Math.round(cur.temp_f)}°`} />
+              <Tick k={c.wind} v={`${metric ? toKmh(cur.wind_mph) : Math.round(cur.wind_mph)}`} />
+              <Tick k={c.aqi} v={`${aqi ?? '--'}`} />
+              <Tick k={c.uv} v={`${cur.uv_index}`} />
+              <Tick k={c.hum} v={`${cur.humidity_pct}%`} />
+              <Tick k={c.vis} v={`${metric ? toKmTxt(cur.visibility_mi) : cur.visibility_mi.toFixed(1)}`} />
+            </div>
+          </div>
+        )}
+
+        <div className="sheet-section">
+          <div className="sheet-title">{c.alerts}</div>
+          {hazardPreview.length > 0 ? (
+            <div className="sheet-alerts">
+              {hazardPreview.map(a => <span key={a.id}>{shorten(a.headline, 64)}</span>)}
+            </div>
+          ) : (
+            <p className="sheet-note">{pt ? 'Sem alerta oficial no centro atual.' : 'No official alert at current center.'}</p>
+          )}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function SheetMetric({ k, v }: { k: string; v: string }) {
+  return (
+    <div className="sheet-metric">
+      <span>{k}</span>
+      <strong>{v}</strong>
+    </div>
   )
 }
 
