@@ -10,7 +10,8 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Hybrid World Dashboard (HWD) — D-047/D-050 |
-| **Last Completed Task** | HWD-04: family/routing foundation prototype — EOS family points + OpenAI-inferred candidate route/shelter (2026-07-21) |
+| **Last Completed Task** | D-052: World Dashboard runtime map base toggle — Híbrido/Dark (2026-07-21) |
+| | HWD-04: family/routing foundation prototype — EOS family points + OpenAI-inferred candidate route/shelter (2026-07-21) |
 | | HWD-03: real EOS map data — location, RainViewer radar, hazard layers/tags, textual a11y (2026-07-21) |
 | | HWD-02: live MapLibre map (MapTiler satellite + 3D terrain via env) (2026-07-21) |
 | | HWD-01: static World Dashboard prototype at `/dashboard-world` (2026-07-21) |
@@ -37,6 +38,7 @@
   - **HWD-03 polish**: adicionada faixa visível de "Camadas ao vivo" (Radar RainViewer + contagem de hazards + frame UTC + preview de alertas) para evitar que o radar pareça ausente quando não há precipitação local; ticker inferior e badge mock reposicionados acima da bottom nav.
   - **HWD-04**: pontos exatos de família vindos de dados EOS/círculo substituem os mocks quando disponíveis; freshness visível (`agora` para usuário atual, `perfil` para co-membros); `/api/world/guidance` usa OpenAI para shelter/rota candidata e rotula como inferência não oficial. Fallback mantém mock/rota direta sem quebrar o mapa.
   - **HWD map interaction fix**: `.world-hud` não captura mais drag global; o MapLibre volta a aceitar clicar/arrastar como Google Maps, mantendo botões/painéis com pointer events próprios.
+  - **D-052 map base toggle**: painel "Camadas ao vivo" ganhou seletor **Híbrido/Dark**. Híbrido mantém MapTiler hybrid + terreno quando a key existe; Dark força CARTO dark keyless para restaurar o visual operacional anterior. Preferência persiste localmente no browser.
 - Colisão de numeração resolvida: D-047 = World Dashboard; a vista unificada de Família passou a **D-049**.
 
 ---

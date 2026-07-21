@@ -15,6 +15,8 @@ export type MapProviderConfig = {
   terrainSource?: string
 }
 
+export type MapBaseMode = 'hybrid' | 'dark'
+
 // Keyless, MapLibre-compatible dark vector basemap (CARTO). Good enough for the
 // automotive-grade dark instrument look without any API key.
 const CARTO_DARK = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json'
@@ -22,15 +24,18 @@ const CARTO_DARK = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.
 // Parkland, FL — the reference operating area (doc 16 §8.1).
 const PARKLAND: [number, number] = [-80.237, 26.31]
 
-export function getMapConfig(): MapProviderConfig {
+export function getMapConfig(base: MapBaseMode = 'hybrid'): MapProviderConfig {
   const key = process.env.NEXT_PUBLIC_MAPTILER_KEY
   const styleOverride = process.env.NEXT_PUBLIC_MAP_STYLE_URL
 
   // With a key, use hybrid (satellite + labels) — the photorealistic aerial that
   // matches the Higgsfield concept. Keyless falls back to the dark vector base.
-  const styleUrl =
-    styleOverride ||
-    (key ? `https://api.maptiler.com/maps/hybrid/style.json?key=${key}` : CARTO_DARK)
+  // The runtime "dark" option intentionally bypasses the env style override so
+  // the user can restore the original operational vector look in production.
+  const isDark = base === 'dark'
+  const styleUrl = isDark
+    ? CARTO_DARK
+    : styleOverride || (key ? `https://api.maptiler.com/maps/hybrid/style.json?key=${key}` : CARTO_DARK)
 
   return {
     styleUrl,
@@ -38,8 +43,8 @@ export function getMapConfig(): MapProviderConfig {
     zoom: 13.1,
     pitch: 56, // pitched automotive perspective (doc 16 §11.1: ~45–70°)
     bearing: -18,
-    hasTerrain: Boolean(key),
-    terrainSource: key
+    hasTerrain: !isDark && Boolean(key),
+    terrainSource: !isDark && key
       ? `https://api.maptiler.com/tiles/terrain-rgb-v2/tiles.json?key=${key}`
       : undefined,
   }

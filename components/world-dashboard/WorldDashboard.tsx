@@ -13,6 +13,7 @@ import { useLanguage } from '@/lib/i18n'
 import { useRisk } from '@/components/v2/RiskProvider'
 import WorldMap from './WorldMap'
 import type { WorldFamilyMember, WorldGuidance } from './WorldMap'
+import type { MapBaseMode } from '@/lib/world/providers'
 import './world-dashboard.css'
 
 // World plates by risk state — clean Parkland aerials generated in Higgsfield
@@ -38,6 +39,7 @@ const COPY = {
     alerts: 'Alertas ativos', clearBrief: 'Setor limpo — sem alertas', openScenario: 'Abrir cenário',
     yourArea: 'Sua área', mapSummary: 'Mapa da situação',
     temp: 'Temp', wind: 'Vento', aqi: 'AQI', uv: 'UV', hum: 'Umidade', vis: 'Visão',
+    mapBase: 'Base do mapa', hybrid: 'Híbrido', dark: 'Dark',
     needLocation: 'Preciso da sua localização para compor o mundo.', useGps: 'Usar GPS',
     loadErr: 'Não foi possível carregar.', retry: 'Tentar de novo',
     placeholderBg: 'Fundo provisório — troque pela imagem do Higgsfield',
@@ -52,6 +54,7 @@ const COPY = {
     alerts: 'Active alerts', clearBrief: 'Sector clear — no alerts', openScenario: 'Open scenario',
     yourArea: 'Your area', mapSummary: 'Situation map',
     temp: 'Temp', wind: 'Wind', aqi: 'AQI', uv: 'UV', hum: 'Humidity', vis: 'Visibility',
+    mapBase: 'Map base', hybrid: 'Hybrid', dark: 'Dark',
     needLocation: 'EOS needs your location to compose the world.', useGps: 'Use GPS',
     loadErr: 'Could not load.', retry: 'Retry',
     placeholderBg: 'Placeholder background — swap for the Higgsfield image',
@@ -82,6 +85,7 @@ export default function WorldDashboard() {
   const [radar, setRadar] = useState<RadarStatus | null>(null)
   const [mapFamily, setMapFamily] = useState<WorldFamilyMember[]>([])
   const [guidance, setGuidance] = useState<WorldGuidance | null>(null)
+  const [mapBase, setMapBase] = useState<MapBaseMode>('hybrid')
 
   const fetchLocal = useCallback(async () => {
     try {
@@ -97,6 +101,10 @@ export default function WorldDashboard() {
   }, [])
 
   useEffect(() => { fetchLocal() }, [fetchLocal])
+  useEffect(() => {
+    const saved = window.localStorage.getItem('eos-world-map-base')
+    if (saved === 'hybrid' || saved === 'dark') setMapBase(saved)
+  }, [])
   useEffect(() => {
     let cancelled = false
     fetch('/api/world/radar')
@@ -180,10 +188,14 @@ export default function WorldDashboard() {
     : { C: 'Clear state', W: 'Watch state', R: 'Respond state' })[mode]
 
   const worldImage = WORLD_PLATES[state] ?? WORLD_PLATES.watch
+  const chooseMapBase = (base: MapBaseMode) => {
+    setMapBase(base)
+    window.localStorage.setItem('eos-world-map-base', base)
+  }
 
   return (
     <main className="world" data-risk={state}>
-      <WorldMap state={state} plateUrl={worldImage} family={mapFamily} guidance={guidance} />
+      <WorldMap key={mapBase} state={state} plateUrl={worldImage} family={mapFamily} guidance={guidance} mapBase={mapBase} />
       <div className="world-vignette" aria-hidden="true" />
 
       <div className="world-hud">
@@ -259,6 +271,22 @@ export default function WorldDashboard() {
           <div className="sensor-head">
             <span className="w-eyebrow">{language === 'pt' ? 'Camadas ao vivo' : 'Live layers'}</span>
             <span className="sensor-pulse" aria-hidden="true" />
+          </div>
+          <div className="map-style-control" aria-label={c.mapBase}>
+            <span>{c.mapBase}</span>
+            <div className="map-style-toggle" role="group" aria-label={c.mapBase}>
+              {(['hybrid', 'dark'] as const).map(base => (
+                <button
+                  key={base}
+                  type="button"
+                  className={mapBase === base ? 'on' : ''}
+                  aria-pressed={mapBase === base}
+                  onClick={() => chooseMapBase(base)}
+                >
+                  {base === 'hybrid' ? c.hybrid : c.dark}
+                </button>
+              ))}
+            </div>
           </div>
           <div className="sensor-grid">
             <div className="sensor-row">

@@ -4,6 +4,23 @@
 
 ---
 
+## D-052 — World Dashboard runtime map base toggle
+
+**Date**: 2026-07-21
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: Depois do deploy com `NEXT_PUBLIC_MAPTILER_KEY`, o World Dashboard passou a abrir em MapTiler hybrid/satélite. O dono pediu uma opção para voltar ao visual anterior, escuro, semelhante ao protótipo operacional com ruas/labels em dark mode.
+
+**Decision**:
+1. `/dashboard-world` deve oferecer um toggle de base visual no painel "Camadas ao vivo": **Híbrido** e **Dark**.
+2. **Híbrido** mantém MapTiler hybrid + terreno 3D quando a key pública está configurada.
+3. **Dark** força o estilo keyless CARTO dark, mesmo quando existe `NEXT_PUBLIC_MAP_STYLE_URL` ou MapTiler key, para restaurar o visual operacional anterior.
+4. A preferência é local do dispositivo/browser (`localStorage`) e não altera dados EOS, localização, hazards, radar, família ou guidance.
+
+**Consequence**: O usuário consegue alternar entre inspeção satelital e leitura operacional dark sem redeploy/env var. Como MapLibre remove fontes/layers ao trocar style, a implementação remonta o mapa e reanexa rota, radar, hazards e marcadores no `load`.
+
+---
+
 ## D-051 — HWD-04 privacy baseline + OpenAI inferred route/shelter prototype
 
 **Date**: 2026-07-21

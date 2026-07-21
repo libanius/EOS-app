@@ -17,6 +17,7 @@ import type { Map as MLMap, Marker as MLMarker } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { useRisk } from '@/components/v2/RiskProvider'
 import { getMapConfig } from '@/lib/world/providers'
+import type { MapBaseMode } from '@/lib/world/providers'
 
 // Mock overlays as [lng, lat] offsets from the map center (labeled in the HUD).
 const FAMILY_OFF: Array<{ name: string; label: string; color: string; d: [number, number] }> = [
@@ -134,11 +135,12 @@ function markerEl(className: string, pin: string, label: string, color?: string)
   return el
 }
 
-export default function WorldMap({ plateUrl, family = [], guidance = null }: {
+export default function WorldMap({ plateUrl, family = [], guidance = null, mapBase = 'hybrid' }: {
   state: string
   plateUrl: string
   family?: WorldFamilyMember[]
   guidance?: WorldGuidance | null
+  mapBase?: MapBaseMode
 }) {
   const { coords } = useRisk()
   const ref = useRef<HTMLDivElement>(null)
@@ -311,7 +313,7 @@ export default function WorldMap({ plateUrl, family = [], guidance = null }: {
       try {
         const maplibregl = (await import('maplibre-gl')).default
         if (cancelled || !ref.current) return
-        const cfg = getMapConfig()
+        const cfg = getMapConfig(mapBase)
         const center: [number, number] = coords ? [coords.lng, coords.lat] : cfg.center
         centerRef.current = center
 
@@ -356,7 +358,7 @@ export default function WorldMap({ plateUrl, family = [], guidance = null }: {
       if (map) map.remove()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [mapBase])
 
   // recenter when the real location resolves/changes
   useEffect(() => {

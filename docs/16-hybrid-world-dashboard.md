@@ -1,6 +1,6 @@
 # 16 — Hybrid World Dashboard
 
-> **Status:** SPEC / PRODUCT-ARCHITECTURE DECIDED — **IMPLEMENTATION AUTHORIZED 2026-07-21 (D-050)**; HWD-01→HWD-03 complete; HWD-04 blocked on privacy/data decisions
+> **Status:** SPEC / PRODUCT-ARCHITECTURE DECIDED — **IMPLEMENTATION AUTHORIZED 2026-07-21 (D-050)**; HWD-01→HWD-04 complete for isolated prototype scope; HWD-05 pending
 > **Decision:** D-047 (architecture) · D-050 (implementation authorization)
 > **Date:** 2026-07-21
 > **Owner:** Paulo Libânio Neto
@@ -1187,6 +1187,8 @@ Goal: compare visual quality with the reference.
 - add GeoJSON mock overlays;
 - preserve same HUD components;
 - run visual comparison against the Higgsfield reference.
+
+Implementation note as of 2026-07-21 (D-052): `/dashboard-world` supports a runtime visual-base toggle. **Híbrido/Hybrid** uses MapTiler hybrid + terrain when configured; **Dark** forces the keyless CARTO dark vector style so the owner can restore the original operational map look without changing env vars or redeploying.
 
 ### Phase HWD-03 — Existing real EOS data
 
