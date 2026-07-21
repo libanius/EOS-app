@@ -53,8 +53,12 @@
 
 /* ── live map (HWD-02): MapLibre canvas behind the HUD, plate fallback under it ── */
 .world-map-wrap { position: absolute; inset: 0; z-index: 0; }
-.world-map { position: absolute; inset: 0; }
+.world-map { position: absolute; inset: 0; transition: filter 600ms ease; }
 .world-map canvas { outline: none; }
+/* state-aware color grading over the live map (§5.3 / §10) */
+.world[data-risk='watch'] .world-map { filter: saturate(0.95) brightness(0.92); }
+.world[data-risk='warning'] .world-map { filter: saturate(0.85) brightness(0.78); }
+.world[data-risk='critical'] .world-map { filter: saturate(0.8) brightness(0.68) contrast(1.05); }
 .world-map .maplibregl-ctrl-attrib { font-size: 9px; background: rgba(6,7,11,0.5); color: var(--w-ink-2); }
 .world-map .maplibregl-ctrl-attrib a { color: var(--w-ink-2); }
 .w-mapmarker { display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; }

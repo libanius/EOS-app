@@ -59,6 +59,14 @@ export default function WorldMap({ plateUrl }: { state: string; plateUrl: string
         map.on('load', () => {
           if (cancelled || !map) return
 
+          // 3D terrain + atmospheric sky when a keyed provider supplies a DEM (§6.2).
+          if (cfg.hasTerrain && cfg.terrainSource) {
+            if (!map.getSource('eos-dem')) {
+              map.addSource('eos-dem', { type: 'raster-dem', url: cfg.terrainSource })
+            }
+            map.setTerrain({ source: 'eos-dem', exaggeration: 1.2 })
+          }
+
           map.addSource('eos-route', {
             type: 'geojson',
             data: { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: ROUTE } },

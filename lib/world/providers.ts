@@ -26,9 +26,11 @@ export function getMapConfig(): MapProviderConfig {
   const key = process.env.NEXT_PUBLIC_MAPTILER_KEY
   const styleOverride = process.env.NEXT_PUBLIC_MAP_STYLE_URL
 
+  // With a key, use hybrid (satellite + labels) — the photorealistic aerial that
+  // matches the Higgsfield concept. Keyless falls back to the dark vector base.
   const styleUrl =
     styleOverride ||
-    (key ? `https://api.maptiler.com/maps/streets-v2-dark/style.json?key=${key}` : CARTO_DARK)
+    (key ? `https://api.maptiler.com/maps/hybrid/style.json?key=${key}` : CARTO_DARK)
 
   return {
     styleUrl,
