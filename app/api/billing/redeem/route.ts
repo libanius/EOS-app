@@ -7,7 +7,7 @@ import type { Plan } from '@/lib/feature-gates'
 export const runtime = 'nodejs'
 
 /**
- * POST /api/billing/redeem — redeem a non-Stripe gift code (D-060).
+ * POST /api/billing/redeem — redeem a non-Stripe gift code (D-061).
  * Grants profiles.plan for the code's grant_days (plan_status='gift'), one use.
  * Expiry is enforced lazily by lib/plan.ts:reconcileGiftPlan on next plan read.
  */

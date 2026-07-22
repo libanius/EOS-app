@@ -13,7 +13,7 @@ export async function GET() {
   }
   await ensureProfile(supabase, user)
 
-  // Lazily expire gift plans (D-060) — persists the downgrade so every server
+  // Lazily expire gift plans (D-061) — persists the downgrade so every server
   // route that reads profiles.plan sees the correct value afterwards.
   const admin = createAdminClient()
   if (admin) {

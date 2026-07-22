@@ -199,6 +199,12 @@ Sentry is wired up (`sentry.client.config.ts`, `sentry.server.config.ts`, `sentr
 - **Alert counter + rail scroll (D-057)**: o contador de alertas não deve ficar no topo direito porque colide com controles globais e fica ilegível; manter no rodapé direito acima da bottom nav. O Status Rail desktop deve terminar acima da nav fixa (`bottom: calc(88px + safe-area)`) e ter scroll interno até o C/W/R.
 - **HWD-06 validation status (D-058)**: `/dashboard-world` passou validação objetiva em 2026-07-21 (`type-check`, lint, Jest 45/45, build, full production journey 31/31, members/circles E2E 19/19, route protection, RainViewer, hazards). Ainda **não** substituir `/dashboard`: faltam aprovação visual/device do dono, browser UI E2E, a11y/perf, custos/providers, privacidade/proveniência e decisão explícita. Relatório: `docs/17-hwd-06-validation.md`.
 
+## Gift codes + Admin (D-061)
+
+- **Códigos-presente sem Stripe**: tabela `gift_codes` (RLS ON, **sem policies** → deny-all; só service-role). Resgate `POST /api/billing/redeem` (usuário logado, 1 uso via claim atômico `.is('redeemed_by', null)`, seta `plan`+`plan_status='gift'`+`plan_current_period_end`). **Expiração lazy** em `lib/plan.ts:reconcileGiftPlan`, chamada no `/api/profile/plan` (downgrade→free persiste). UI de resgate em Settings.
+- **Criação = owner-only**: `lib/admin.ts:isAdminEmail` com allowlist `ADMIN_EMAILS` (default `eosoffgrid@gmail.com`). `GET/POST /api/admin/gift-codes` + tela `/admin/gift-codes` respondem 403 a não-admin. Rota `/admin` protegida no middleware. Obs: o e-mail admin precisa ser um usuário real do app.
+- **Código A (afiliado Stripe)** ainda não feito: cupom "100% off · once" + promotion codes (checkout já tem `allow_promotion_codes: true`).
+
 ## Billing / Stripe (D-042)
 
 - **Provedor**: Stripe. Self-serve: Checkout hospedado + Billing Portal + webhook como **fonte de verdade** de `profiles.plan`.

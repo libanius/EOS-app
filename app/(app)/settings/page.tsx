@@ -321,7 +321,7 @@ export default function SettingsPage() {
             </button>
           )}
 
-          {/* Gift code redemption (D-060) */}
+          {/* Gift code redemption (D-061) */}
           <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
             <label htmlFor="redeem" style={{ ...styles.help, display: 'block', margin: '0 0 8px' }}>
               {en ? 'Have a gift code?' : 'Tem um código presente?'}

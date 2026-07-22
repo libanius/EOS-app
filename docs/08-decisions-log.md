@@ -4,10 +4,11 @@
 
 ---
 
-## D-060 — Códigos presente sem Stripe (gift codes) + criação owner-only
+## D-061 — Códigos presente sem Stripe (gift codes) + criação owner-only
 
 **Date**: 2026-07-22
 **Status**: DECIDED / IMPLEMENTADO
+> Renumerada de D-060 → D-061 (2026-07-22) para resolver colisão: **D-060 pertence ao Profile photo upload storage** (UPP-02, 2026-07-21).
 
 **Context**: O dono quer dois mecanismos promocionais: (A) código de afiliado via Stripe (1 mês grátis com cartão salvo, cobra no 2º mês) e (B) código-presente **sem Stripe** (teste grátis). Também exigiu que **apenas o dono** (conta `eosoffgrid@gmail.com`) possa **criar** códigos.
 

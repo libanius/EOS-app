@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * Owner-only gift-code admin (D-060). Client gate is cosmetic — the real
+ * Owner-only gift-code admin (D-061). Client gate is cosmetic — the real
  * authorization is /api/admin/gift-codes (ADMIN_EMAILS). Route is auth-protected
  * in middleware.
  */

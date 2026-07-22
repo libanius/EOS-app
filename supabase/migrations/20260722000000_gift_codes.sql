@@ -1,4 +1,4 @@
--- D-060 — Gift codes (non-Stripe): owner-generated codes that grant a temporary
+-- D-061 — Gift codes (non-Stripe): owner-generated codes that grant a temporary
 -- plan (Family/Premium) for a variable number of days, one use each.
 -- Redemption goes through /api/billing/redeem, which uses the service-role client
 -- after authorizing the caller. RLS is ON with NO policies = deny all direct

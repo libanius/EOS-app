@@ -3,7 +3,7 @@ import type { Plan } from '@/lib/feature-gates'
 
 /**
  * Resolve a user's effective plan, lazily downgrading an EXPIRED gift plan to
- * `free` in the DB (D-060). Stripe-driven plans (plan_status 'active', etc.) are
+ * `free` in the DB (D-061). Stripe-driven plans (plan_status 'active', etc.) are
  * never touched here — those are reconciled by the Stripe webhook. `admin` must
  * be a service-role client (gift_codes / plan writes bypass RLS).
  *

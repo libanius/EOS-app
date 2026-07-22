@@ -6,7 +6,7 @@ import { isAdminEmail } from '@/lib/admin'
 export const runtime = 'nodejs'
 
 /**
- * Owner-only gift-code administration (D-060). Only ADMIN_EMAILS may list or
+ * Owner-only gift-code administration (D-061). Only ADMIN_EMAILS may list or
  * create codes. gift_codes is RLS-locked, so all access is via the service-role
  * client here, AFTER verifying the caller is the app owner.
  */

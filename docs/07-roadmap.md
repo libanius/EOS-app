@@ -70,6 +70,8 @@
 | LA-T02 | Stripe Live cutover: create Live products/keys/webhook, swap env vars test → live, redeploy | ✅ COMPLETE | 2026-07-21 — conta Live `acct_1TuL40IaCSStSVaq` (EOS, US, ativada). Produtos/preços Live ($9.90/$19.90), webhook Live e as 4 env vars da Vercel trocadas para live; deploy fresco. IDs sandbox obsoletos limpos dos profiles. Statement descriptor já = "EOS BRIGHTSCALE". |
 | LA-T03 | Optional hazard provider keys (WeatherKit/Xweather/etc.) | DRAFT | Not required for launch; keyless providers already live |
 | LA-T04 | Upstash Redis rate-limit validation | DRAFT | App currently falls back to in-memory limiter |
+| LA-T05 | Gift codes (sem Stripe): criação owner-only + resgate + expiração lazy | ✅ COMPLETE | 2026-07-22 — D-061; `/admin/gift-codes` (ADMIN_EMAILS), `/api/billing/redeem`, `lib/plan.ts`, resgate em Settings |
+| LA-T06 | Códigos de afiliado (Stripe): cupom "100% off · once" + promotion codes | PENDING | falta params do dono + Stripe Live key; checkout já aceita promo code |
 
 ---
 

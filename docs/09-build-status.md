@@ -9,8 +9,12 @@
 
 | Field | Value |
 |---|---|
-| **Current Phase** | Unified Profile & Pilot Personalization (UPP) — D-059, parallel to open HWD-06 gates |
-| **Last Completed Task** | D-060 / UPP-02 Profile photo upload via private Supabase Storage (2026-07-21) |
+| **Current Phase** | Monetização/promo + UPP + open HWD-06 gates |
+| **Last Completed Task** | D-061 / gift codes sem Stripe + criação owner-only (`/admin/gift-codes`) (2026-07-22) |
+| | Fix: banner 'migration pendente' era falso (faltava `avatar_path`); migration photo storage aplicada no banco (2026-07-22) |
+| | Onboarding: 1º acesso com ficha incompleta redireciona p/ `/ficha` (1x) (2026-07-22) |
+| | Conta `paulolibanionetousa@gmail.com` + círculo excluídos a pedido do dono (2026-07-22) |
+| | D-060 / UPP-02 Profile photo upload via private Supabase Storage (2026-07-21) |
 | | D-059 / UPP-00→01 Profile personalization + Pilot memory MVP (2026-07-21) |
 | | D-058 / HWD-06 validation pass — keep `/dashboard-world` isolated (2026-07-21) |
 | | D-057 / HWD-06 alert footer + Status Rail scroll fix (2026-07-21) |
@@ -27,11 +31,22 @@
 | | LA-T02: Stripe **Live** cutover — faturamento real ativo (2026-07-21) |
 | | LA-T01: Stripe test payment → webhook → `profiles.plan=family` (2026-07-20) |
 | **In Progress** | HWD-06 — remaining production validation for `/dashboard-world` |
-| **Next Task** | Apply `20260721021000_profile_photo_storage.sql` in Supabase, then continue HWD-06 owner/browser validation gates. |
+| **Next Task** | Código A (afiliado, Stripe): cupom "100% off · once" + promotion codes — depende dos params do dono + Stripe Live key. Depois: gates de validação HWD-06 (owner/browser). |
 | **Build** | ✅ Passing — type-check, tests, production build clean (2026-07-21) |
 | **Vercel** | ✅ Deployed — domínio canônico `https://eos-app-fawn.vercel.app` |
 | **Supabase** | ✅ Healthy — project ref `alxurmgpyxjhvnliivbf` |
-| **⚠️ Segurança** | Rotacionar segredos expostos em chat: Vercel token (`vcp_…`), Supabase PAT (`sbp_…`), Stripe test key. Stripe **Live** key foi trocada no Vercel; rotacionar também. |
+| **⚠️ Segurança** | Rotacionar segredos expostos em chat: Vercel token (`vcp_…`), Supabase PAT (`sbp_…`), Stripe test/Live keys, MapTiler. |
+
+---
+
+## Sessão 2026-07-22 — Gift codes, fixes de personalização/onboarding, higiene
+
+- **Gift codes sem Stripe (D-061)**: `gift_codes` (RLS deny-all), `POST /api/billing/redeem` (1 uso, claim atômico, seta `plan_status='gift'` + `plan_current_period_end`), expiração lazy em `lib/plan.ts:reconcileGiftPlan` (via `/api/profile/plan`). **Criação owner-only**: `ADMIN_EMAILS` (default `eosoffgrid@gmail.com`), `/api/admin/gift-codes` + tela `/admin/gift-codes` (403 p/ não-dono); `/admin` protegido no middleware. UI de resgate em Settings. **Código A (afiliado Stripe) pendente** de params do dono + Live key.
+- **Fix banner falso "migration pendente"**: `profile_personalization` existia mas faltava `avatar_path` → aplicada `20260721021000_profile_photo_storage.sql` (coluna + bucket `profile-photos` + policies). `tableMissing()` endurecido p/ só considerar `42P01` (erro de coluna não vira banner).
+- **Onboarding**: `FichaFirstRun` — 1º acesso com ficha incompleta redireciona p/ `/ficha` (flag localStorage, 1x, não prende).
+- **Logout** mais visível em Settings (botão centralizado + ícone SVG).
+- **Conta `paulolibanionetousa@gmail.com` + círculo "Família Libanio" excluídos** a pedido do dono (cascata na ordem do `/api/account/delete`).
+- **Higiene**: `.agents/` + `skills-lock.json` no `.gitignore` (eram ~77 pending no VS Code). Colisão D-060 resolvida (photo storage = D-060; gift codes → **D-061**).
 
 ---
 

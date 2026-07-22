@@ -1,5 +1,5 @@
 /**
- * App-owner allowlist (D-060). Only these emails may create gift codes / access
+ * App-owner allowlist (D-061). Only these emails may create gift codes / access
  * admin surfaces. Configurable via ADMIN_EMAILS (comma-separated); defaults to
  * the app owner. Server-only — never gate solely on the client.
  */
