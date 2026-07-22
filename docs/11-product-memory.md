@@ -18,7 +18,7 @@ Every feature decision must answer: "does this help in the next 15 minutes?"
 - D-059 extends the authenticated Ficha Master with `profile_personalization` for avatar URL, user-authored Markdown preferences, Pilot memory, decision style, and risk tolerance. These fields are private/authenticated context and are **not** returned by public QR endpoints.
 - `pilot_memory_md` is explicit/user-controlled in the MVP. Do not let Pilot silently mutate long-term memory until a confirmed-write/audit flow is specified.
 - UPP-01 ships a URL-based avatar field. Real photo upload/storage is UPP-02 and needs bucket/policy review.
-- Production persistence requires applying `supabase/migrations/20260721020000_profile_personalization.sql`; until then `/api/profile/personalization` returns defaults and PATCH reports a clean 503.
+- Production persistence is active: the owner applied `supabase/migrations/20260721020000_profile_personalization.sql` on 2026-07-21 and service-role REST verification returned 200 for `profile_personalization`. `/api/profile/personalization` remains authenticated-only and returns 401 without a session.
 
 ---
 

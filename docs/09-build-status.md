@@ -26,7 +26,7 @@
 | | LA-T02: Stripe **Live** cutover — faturamento real ativo (2026-07-21) |
 | | LA-T01: Stripe test payment → webhook → `profiles.plan=family` (2026-07-20) |
 | **In Progress** | HWD-06 — remaining production validation for `/dashboard-world` |
-| **Next Task** | Apply `20260721020000_profile_personalization.sql` in Supabase, then continue HWD-06 owner/browser validation gates or UPP-02 photo upload pipeline. |
+| **Next Task** | Continue HWD-06 owner/browser validation gates or UPP-02 photo upload pipeline. |
 | **Build** | ✅ Passing — type-check, tests, production build clean (2026-07-21) |
 | **Vercel** | ✅ Deployed — domínio canônico `https://eos-app-fawn.vercel.app` |
 | **Supabase** | ✅ Healthy — project ref `alxurmgpyxjhvnliivbf` |
@@ -59,7 +59,7 @@
 - **D-059 / UPP-00→01 implementado**: o dono pediu que a Ficha Master vire também a fonte autenticada de personalização do usuário: foto de perfil, preferências livres em Markdown, memória do Pilot, estilo de decisão e tolerância a risco.
 - Direção aprovada: manter `profiles` como identidade/emergência; criar `profile_personalization` 1:1 para textos longos e contexto privado do Pilot; **não expor** esses dados no QR público.
 - Entregue: migration + RLS (`20260721020000_profile_personalization.sql`), `GET/PATCH /api/profile/personalization`, editor na `/ficha`, foto reutilizada no readiness card do World Dashboard, e Pilot Capsule lendo estilo/tolerância como fatores de contexto sem escrita automática silenciosa.
-- Pendência operacional: aplicar a migration no Supabase Production antes de esperar persistência real; a API degrada limpo com defaults e PATCH 503 enquanto a tabela não existir.
+- Operacional concluído: migration `20260721020000_profile_personalization.sql` aplicada no Supabase Production pelo dono e verificada via service-role REST (`profile_personalization` retorna 200). A rota pública `/api/profile/personalization` segue protegida com 401 sem sessão.
 
 ---
 
@@ -155,9 +155,9 @@
 
 ## What Is Next
 
-**HWD-06: Production validation + UPP operational follow-up**
+**HWD-06: Production validation**
 
-Aplicar a migration `20260721020000_profile_personalization.sql` no Supabase para liberar persistência real da personalização. Depois, retomar HWD-06 production validation:
+Retomar HWD-06 production validation:
 
 Validar `/dashboard-world` antes de qualquer rollout para substituir `/dashboard`: performance, a11y, responsive, custos/providers, privacidade, E2E e critérios de saída do doc 16 §33.
 
