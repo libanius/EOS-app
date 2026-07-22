@@ -260,20 +260,21 @@ export default function CirclesPage() {
   }, [load])
 
   const toggleField = useCallback(async (id: string, field: string, checked: boolean) => {
-    setCircles(prev => prev.map(c => {
-      if (c.id !== id) return c
-      const fields = checked ? [...c.shared_fields, field] : c.shared_fields.filter(f => f !== field)
-      return { ...c, shared_fields: fields }
-    }))
+    // Empty shared_fields means "share all" (see render). So unchecking a field
+    // from that default must first expand to the explicit full list, then remove
+    // — otherwise [].filter() stays [] and the field re-checks itself.
+    const ALL_FIELDS = ['water', 'food', 'medical', 'comms', 'emergency_contact']
+    const nextFields = (current: string[]) => {
+      const base = current.length === 0 ? ALL_FIELDS : current
+      return checked ? Array.from(new Set([...base, field])) : base.filter(f => f !== field)
+    }
+    setCircles(prev => prev.map(c => (c.id === id ? { ...c, shared_fields: nextFields(c.shared_fields) } : c)))
     try {
       const circle = circles.find(c => c.id === id)
       if (!circle) return
-      const fields = checked
-        ? Array.from(new Set([...circle.shared_fields, field]))
-        : circle.shared_fields.filter(f => f !== field)
       await fetch(`/api/circles/${id}/share`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ shared_fields: fields }),
+        body: JSON.stringify({ shared_fields: nextFields(circle.shared_fields) }),
       })
     } catch { await load() }
   }, [circles, load])
