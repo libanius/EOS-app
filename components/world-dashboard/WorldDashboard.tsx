@@ -121,6 +121,7 @@ export default function WorldDashboard() {
   const [mobileHud, setMobileHud] = useState(false)
   const [desktopHudCollapsed, setDesktopHudCollapsed] = useState(false)
   const [sensorsOpen, setSensorsOpen] = useState(false)
+  const [layersNonce, setLayersNonce] = useState(0)
 
   const fetchLocal = useCallback(async () => {
     try {
@@ -156,12 +157,13 @@ export default function WorldDashboard() {
   }, [])
   useEffect(() => {
     let cancelled = false
+    setRadar(null) // show loading on (re)fetch
     fetch('/api/world/radar')
       .then(r => (r.ok ? r.json() : null))
       .then((data: RadarStatus | null) => { if (!cancelled) setRadar(data) })
       .catch(() => { if (!cancelled) setRadar({ ok: false }) })
     return () => { cancelled = true }
-  }, [])
+  }, [layersNonce])
   useEffect(() => {
     let cancelled = false
     fetch('/api/circles')
@@ -218,7 +220,7 @@ export default function WorldDashboard() {
       .then((data: WorldGuidance | null) => { if (!cancelled && data?.shelter) setGuidance(data) })
       .catch(() => { if (!cancelled) setGuidance(null) })
     return () => { cancelled = true }
-  }, [coords])
+  }, [coords, layersNonce])
   useEffect(() => {
     const on = () => setOnline(true), off = () => setOnline(false)
     setOnline(typeof navigator !== 'undefined' ? navigator.onLine : true)
@@ -376,7 +378,14 @@ export default function WorldDashboard() {
           <div className="sensor-grid">
             <div className="sensor-row">
               <span>Radar</span>
-              <strong>{radar?.ok ? 'RainViewer' : radar ? (language === 'pt' ? 'indisp.' : 'unavail.') : '...'}</strong>
+              <strong>
+                {radar?.ok ? 'RainViewer' : radar ? (language === 'pt' ? 'indisp.' : 'unavail.') : '...'}
+                {radar && !radar.ok && (
+                  <button type="button" className="sensor-retry" onClick={() => setLayersNonce(n => n + 1)} aria-label={language === 'pt' ? 'Tentar de novo' : 'Retry'}>
+                    <RetryIcon />
+                  </button>
+                )}
+              </strong>
             </div>
             <div className="sensor-row">
               <span>Hazards</span>
@@ -627,6 +636,15 @@ function CheckIcon() {
   return (
     <svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden="true" style={{ marginLeft: 4, verticalAlign: 'middle', flex: 'none' }}>
       <path d="M2.5 6.4 L5 8.9 L9.5 3.4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function RetryIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+      <path d="M11.5 7a4.5 4.5 0 1 1-1.32-3.18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M11.5 2.2 V4.5 H9.2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
 }

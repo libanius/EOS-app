@@ -960,6 +960,20 @@
 .rail-comms b i { background: transparent; border: 1.5px solid #b7bcc5; box-sizing: border-box; }
 .rail-comms b i.on { background: var(--rail-ok); border-color: var(--rail-ok); }
 
+/* §8 error-recovery: retry affordance when a live layer fails */
+.sensor-retry {
+  display: inline-flex; align-items: center; justify-content: center;
+  margin-left: 6px; padding: 6px; border: 0; border-radius: 8px; cursor: pointer;
+  color: var(--w-state); background: rgba(var(--w-state-rgb), 0.12);
+  touch-action: manipulation; vertical-align: middle;
+  transition: transform 160ms ease, background 160ms ease;
+}
+.sensor-retry:hover { background: rgba(var(--w-state-rgb), 0.22); }
+.sensor-retry:active { transform: scale(0.9); }
+
+/* §6 contrast: strengthen the ticker scrim so bone-white reads over bright satellite */
+.w-ticker { background: rgba(8, 10, 14, 0.82); }
+
 @media (prefers-reduced-motion: reduce) {
   .world *, .world *::before, .world *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
 }
