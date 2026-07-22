@@ -186,7 +186,7 @@ export default function WorldMap({ plateUrl, family = [], guidance = null, mapBa
     const sh = markerEl(
       `w-mapmarker shelter ${shelter ? 'ai' : ''}`,
       '',
-      shelter ? `AI SHELTER · ${short(shelter.name, 24)}` : '▶ SHELTER (mock)',
+      shelter ? `AI SHELTER · ${short(shelter.name, 24)}` : 'SHELTER · mock',
     )
     markersRef.current.push(new maplibregl.Marker({ element: sh, anchor: 'bottom' }).setLngLat(
       shelter ? [shelter.lng, shelter.lat] : off(center, SHELTER_OFF),
