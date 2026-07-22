@@ -22,6 +22,7 @@ type Ficha = {
 
 type Personalization = {
   avatar_url: string | null
+  avatar_path?: string | null
   user_context_md: string
   pilot_memory_md: string
   decision_style: 'concise' | 'balanced' | 'detailed' | 'checklist'
@@ -47,6 +48,7 @@ const EMPTY: Ficha = {
 
 const EMPTY_PERSONALIZATION: Personalization = {
   avatar_url: null,
+  avatar_path: null,
   user_context_md: '',
   pilot_memory_md: '',
   decision_style: 'balanced',
@@ -63,6 +65,7 @@ export default function FichaPage() {
   const [loading, setLoading] = useState(true)
   const [saved, setSaved] = useState(false)
   const [personalizationSaved, setPersonalizationSaved] = useState(false)
+  const [photoUploading, setPhotoUploading] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [personalizationError, setPersonalizationError] = useState<string | null>(null)
   const [allergyInput, setAllergyInput] = useState('')
@@ -120,6 +123,7 @@ export default function FichaPage() {
         const { personalization: data } = await res.json()
         setPersonalization({
           avatar_url: data.avatar_url ?? null,
+          avatar_path: data.avatar_path ?? null,
           user_context_md: data.user_context_md ?? '',
           pilot_memory_md: data.pilot_memory_md ?? '',
           decision_style: data.decision_style ?? 'balanced',
@@ -201,6 +205,7 @@ export default function FichaPage() {
         const { personalization: savedData } = await res.json()
         setPersonalization({
           avatar_url: savedData.avatar_url ?? null,
+          avatar_path: savedData.avatar_path ?? null,
           user_context_md: savedData.user_context_md ?? '',
           pilot_memory_md: savedData.pilot_memory_md ?? '',
           decision_style: savedData.decision_style ?? 'balanced',
@@ -222,6 +227,41 @@ export default function FichaPage() {
     const next = { ...personalization, ...patch }
     setPersonalization(next)
     if (immediate) savePersonalization(next)
+  }
+
+  async function uploadProfilePhoto(file: File | null) {
+    if (!file) return
+    setPhotoUploading(true)
+    setPersonalizationError(null)
+    try {
+      const form = new FormData()
+      form.append('photo', file)
+      const res = await fetch('/api/profile/personalization/photo', {
+        method: 'POST',
+        body: form,
+      })
+      if (res.ok) {
+        const { personalization: savedData } = await res.json()
+        setPersonalization({
+          avatar_url: savedData.avatar_url ?? null,
+          avatar_path: savedData.avatar_path ?? null,
+          user_context_md: savedData.user_context_md ?? '',
+          pilot_memory_md: savedData.pilot_memory_md ?? '',
+          decision_style: savedData.decision_style ?? 'balanced',
+          risk_tolerance: savedData.risk_tolerance ?? 'balanced',
+          configured: true,
+        })
+        setPersonalizationSaved(true)
+        setTimeout(() => setPersonalizationSaved(false), 2000)
+      } else if (res.status === 401) {
+        window.location.href = '/auth/login?redirectTo=/ficha'
+      } else {
+        const b = await res.json().catch(() => ({}))
+        setPersonalizationError(b.error ?? t('common.saveError'))
+      }
+    } finally {
+      setPhotoUploading(false)
+    }
   }
 
   // ── Allergy + Medication list ─────────────────────────────────────────────
@@ -377,7 +417,30 @@ export default function FichaPage() {
               )}
             </div>
             <div style={S.fieldGroup}>
-              <label style={S.fieldLabel}>{language === 'pt' ? 'Foto de perfil (URL)' : 'Profile photo (URL)'}</label>
+              <label style={S.fieldLabel}>{language === 'pt' ? 'Foto de perfil' : 'Profile photo'}</label>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                style={S.fileInput}
+                onChange={(e) => {
+                  const file = e.currentTarget.files?.[0] ?? null
+                  void uploadProfilePhoto(file)
+                  e.currentTarget.value = ''
+                }}
+                disabled={isPending || photoUploading}
+              />
+              <span style={S.fieldHelp}>
+                {photoUploading
+                  ? (language === 'pt' ? 'Enviando foto...' : 'Uploading photo...')
+                  : personalization.avatar_path
+                    ? (language === 'pt' ? 'Foto armazenada no EOS Storage privado.' : 'Photo stored in private EOS Storage.')
+                    : (language === 'pt' ? 'JPG, PNG ou WebP até 5MB.' : 'JPG, PNG, or WebP up to 5MB.')}
+              </span>
+            </div>
+          </div>
+
+          <div style={{ ...S.fieldGroup, marginBottom: 14 }}>
+            <label style={S.fieldLabel}>{language === 'pt' ? 'URL manual da foto (fallback)' : 'Manual photo URL (fallback)'}</label>
               <input
                 type="url"
                 style={S.input}
@@ -385,9 +448,8 @@ export default function FichaPage() {
                 value={personalization.avatar_url ?? ''}
                 onChange={(e) => updatePersonalization({ avatar_url: e.target.value || null })}
                 onBlur={() => savePersonalization(personalization)}
-                disabled={isPending}
+                disabled={isPending || photoUploading}
               />
-            </div>
           </div>
 
           <div style={S.contactGrid}>
@@ -690,6 +752,8 @@ const S: Record<string, React.CSSProperties> = {
   contactGrid: { display: 'flex', flexDirection: 'column', gap: 12 },
   fieldGroup:  { display: 'flex', flexDirection: 'column', gap: 6 },
   fieldLabel:  { fontSize: 11, fontWeight: 600, color: MU, letterSpacing: 0.5 },
+  fieldHelp:   { fontSize: 11, color: MU, lineHeight: 1.35 },
+  fileInput:   { flex: 1, padding: '9px 10px', background: 'rgba(255,255,255,0.04)', border: `1px solid ${BD}`, borderRadius: 10, color: TX, fontSize: 12, fontFamily: 'inherit', outline: 'none' },
   avatarRow:   { display: 'grid', gridTemplateColumns: '72px 1fr', gap: 14, alignItems: 'center', marginBottom: 14 },
   avatarPreview: { width: 72, height: 72, borderRadius: '50%', overflow: 'hidden', background: 'rgba(13,232,100,0.12)', border: `1px solid ${BD}`, color: AC, display: 'grid', placeItems: 'center', fontSize: 18, fontWeight: 800 },
   avatarImg:   { width: '100%', height: '100%', objectFit: 'cover' as const, display: 'block' },

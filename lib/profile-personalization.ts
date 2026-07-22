@@ -7,6 +7,7 @@ export type RiskTolerance = (typeof RISK_TOLERANCES)[number]
 export type ProfilePersonalization = {
   profile_id?: string
   avatar_url: string | null
+  avatar_path?: string | null
   user_context_md: string
   pilot_memory_md: string
   decision_style: DecisionStyle

@@ -21,7 +21,7 @@ checklists, QR de emergência e Círculos.
 | Identidade | `name`, `location` |
 | Emergência | `blood_type`, `allergies`, `medical_notes`, `medications` |
 | Contato | `emergency_contact_name`, `emergency_contact_phone` |
-| Personalização autenticada | `profile_personalization.avatar_url`, `user_context_md`, `pilot_memory_md`, `decision_style`, `risk_tolerance` |
+| Personalização autenticada | `profile_personalization.avatar_url`, `avatar_path`, `user_context_md`, `pilot_memory_md`, `decision_style`, `risk_tolerance` |
 | Compartilhamento | QR público em `/ficha/[id]` |
 
 Não haverá tabela `master_profile`. A fonte de verdade de identidade/emergência
@@ -88,6 +88,11 @@ usuário ou defaults seguros quando ainda não existe linha.
 - `decision_style`
 - `risk_tolerance`
 
+`POST /api/profile/personalization/photo` aceita multipart form-data com campo
+`photo`, valida JPG/PNG/WebP até 5MB, grava no bucket privado
+`profile-photos`, atualiza `avatar_path` e retorna `avatar_url` como signed URL
+temporária para componentes autenticados.
+
 O contrato público da ficha permanece inalterado: `/ficha/[id]` e `POST
 /api/profile/ficha` não retornam campos de personalização.
 
@@ -102,6 +107,6 @@ O contrato público da ficha permanece inalterado: `/ficha/[id]` e `POST
 - O QR público continua funcionando.
 - A interface funciona em PT/EN.
 - A personalização autenticada é editável na Ficha Master.
-- A foto de perfil pode ser reutilizada por componentes autenticados.
+- A foto de perfil pode ser uploadada e reutilizada por componentes autenticados.
 - Preferências e memória do Pilot não aparecem no QR público.
 - Build e verificação de tipos passam.

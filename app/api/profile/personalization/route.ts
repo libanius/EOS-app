@@ -9,10 +9,23 @@ import {
 } from '@/lib/profile-personalization'
 import { createClient } from '@/lib/supabase/server'
 
-const FIELDS = 'profile_id, avatar_url, user_context_md, pilot_memory_md, decision_style, risk_tolerance, updated_at, pilot_memory_updated_at'
+const FIELDS = 'profile_id, avatar_url, avatar_path, user_context_md, pilot_memory_md, decision_style, risk_tolerance, updated_at, pilot_memory_updated_at'
 
 function tableMissing(error: { code?: string; message?: string } | null) {
   return error?.code === '42P01' || /profile_personalization/i.test(error?.message ?? '')
+}
+
+async function withSignedAvatarUrl(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  data: Record<string, unknown> | null,
+) {
+  if (!data) return data
+  const avatarPath = typeof data.avatar_path === 'string' ? data.avatar_path : ''
+  if (!avatarPath) return data
+  const { data: signed } = await supabase.storage
+    .from('profile-photos')
+    .createSignedUrl(avatarPath, 60 * 60)
+  return { ...data, avatar_url: signed?.signedUrl ?? data.avatar_url ?? null }
 }
 
 export async function GET() {
@@ -38,8 +51,9 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
+  const personalized = await withSignedAvatarUrl(supabase, data)
   return NextResponse.json({
-    personalization: data ?? { ...DEFAULT_PERSONALIZATION, profile_id: user.id },
+    personalization: personalized ?? { ...DEFAULT_PERSONALIZATION, profile_id: user.id },
   })
 }
 
@@ -103,5 +117,6 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  return NextResponse.json({ personalization: data })
+  const personalized = await withSignedAvatarUrl(supabase, data)
+  return NextResponse.json({ personalization: personalized })
 }

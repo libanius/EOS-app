@@ -24,6 +24,7 @@ There is no separate Master Profile table.
 |---|---|---|
 | profile_id | uuid | PK/FK → profiles.id; one row per authenticated profile |
 | avatar_url | text | Optional authenticated profile image URL used by EOS UI components |
+| avatar_path | text | Optional private Supabase Storage path in bucket `profile-photos` |
 | user_context_md | text | User-authored Markdown preferences/context for Pilot |
 | pilot_memory_md | text | Pilot-maintained memory document; explicit user-controlled writes in MVP |
 | decision_style | text | `concise`, `balanced`, `detailed`, or `checklist` |
@@ -34,6 +35,12 @@ There is no separate Master Profile table.
 
 This table is part of the authenticated Ficha Master experience but is not part
 of the public emergency QR contract.
+
+### Storage buckets
+
+| Bucket | Public | Contents | Access |
+|---|---|---|---|
+| profile-photos | false | User profile photos under `{profile_id}/avatar.{ext}` | Owner-only RLS; authenticated API returns temporary signed URLs |
 
 ### family_members
 | Column | Type | Notes |

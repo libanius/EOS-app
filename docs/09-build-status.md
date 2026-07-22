@@ -10,7 +10,8 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Unified Profile & Pilot Personalization (UPP) — D-059, parallel to open HWD-06 gates |
-| **Last Completed Task** | D-059 / UPP-00→01 Profile personalization + Pilot memory MVP (2026-07-21) |
+| **Last Completed Task** | D-060 / UPP-02 Profile photo upload via private Supabase Storage (2026-07-21) |
+| | D-059 / UPP-00→01 Profile personalization + Pilot memory MVP (2026-07-21) |
 | | D-058 / HWD-06 validation pass — keep `/dashboard-world` isolated (2026-07-21) |
 | | D-057 / HWD-06 alert footer + Status Rail scroll fix (2026-07-21) |
 | | D-056 / HWD-06 center map title removed (2026-07-21) |
@@ -26,7 +27,7 @@
 | | LA-T02: Stripe **Live** cutover — faturamento real ativo (2026-07-21) |
 | | LA-T01: Stripe test payment → webhook → `profiles.plan=family` (2026-07-20) |
 | **In Progress** | HWD-06 — remaining production validation for `/dashboard-world` |
-| **Next Task** | Continue HWD-06 owner/browser validation gates or UPP-02 photo upload pipeline. |
+| **Next Task** | Apply `20260721021000_profile_photo_storage.sql` in Supabase, then continue HWD-06 owner/browser validation gates. |
 | **Build** | ✅ Passing — type-check, tests, production build clean (2026-07-21) |
 | **Vercel** | ✅ Deployed — domínio canônico `https://eos-app-fawn.vercel.app` |
 | **Supabase** | ✅ Healthy — project ref `alxurmgpyxjhvnliivbf` |
@@ -60,6 +61,8 @@
 - Direção aprovada: manter `profiles` como identidade/emergência; criar `profile_personalization` 1:1 para textos longos e contexto privado do Pilot; **não expor** esses dados no QR público.
 - Entregue: migration + RLS (`20260721020000_profile_personalization.sql`), `GET/PATCH /api/profile/personalization`, editor na `/ficha`, foto reutilizada no readiness card do World Dashboard, e Pilot Capsule lendo estilo/tolerância como fatores de contexto sem escrita automática silenciosa.
 - Operacional concluído: migration `20260721020000_profile_personalization.sql` aplicada no Supabase Production pelo dono e verificada via service-role REST (`profile_personalization` retorna 200). A rota pública `/api/profile/personalization` segue protegida com 401 sem sessão.
+- **D-060 / UPP-02 implementado**: foto de perfil suporta upload real via `POST /api/profile/personalization/photo`. Direção: bucket privado `profile-photos`, path em `profile_personalization.avatar_path`, signed URL temporária para UI autenticada, QR público sem exposição.
+- Pendência operacional: aplicar `supabase/migrations/20260721021000_profile_photo_storage.sql` no Supabase Production para criar `avatar_path`, bucket e policies de Storage.
 
 ---
 

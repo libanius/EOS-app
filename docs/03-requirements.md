@@ -109,7 +109,7 @@
 
 | ID | Requirement | Status |
 |---|---|---|
-| F10-1 | User can store an authenticated profile photo URL for use in EOS components | ✅ IMPLEMENTED |
+| F10-1 | User can upload or store an authenticated profile photo for use in EOS components | ✅ IMPLEMENTED |
 | F10-2 | User can maintain a Markdown personalization document with preferences, constraints, routines, and decision context | ✅ IMPLEMENTED |
 | F10-3 | Pilot can read the personalization layer when producing contextual recommendations | ✅ IMPLEMENTED |
 | F10-4 | Pilot memory is stored separately from user-authored preferences and can be updated only through explicit user-controlled flows in the MVP | ✅ IMPLEMENTED |

@@ -41,6 +41,24 @@
 
 ---
 
+## D-060 — Profile photo upload uses private Supabase Storage
+
+**Date**: 2026-07-21
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: A primeira entrega de D-059 aceitava `avatar_url`, mas o dono esclareceu que a Profile photo deve ser uploadada também. Como a foto é parte do contexto autenticado da Ficha Master e não deve aparecer no QR público, o upload precisa preservar autenticação e isolamento por usuário.
+
+**Decision**:
+1. Criar bucket Supabase Storage privado `profile-photos`.
+2. Armazenar o path canônico da foto em `profile_personalization.avatar_path`; `avatar_url` permanece como fallback/manual ou URL assinada retornada pela API.
+3. A rota autenticada `POST /api/profile/personalization/photo` recebe multipart upload, valida imagem e tamanho, salva em `profile-photos/{user.id}/avatar.{ext}` com overwrite, e atualiza `profile_personalization`.
+4. `GET /api/profile/personalization` retorna uma signed URL temporária quando `avatar_path` existe.
+5. O QR público continua sem expor avatar, path de storage, signed URL ou preferências.
+
+**Consequence**: A foto passa a ser asset controlado pelo EOS em storage privado. Componentes autenticados podem exibir a imagem via signed URL temporária, e o app ainda mantém fallback para `avatar_url` manual.
+
+---
+
 ## D-054 — HWD-06 responsive HUD collapse + mobile bottom sheet
 
 **Date**: 2026-07-21
