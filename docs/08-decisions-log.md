@@ -4,6 +4,25 @@
 
 ---
 
+## D-060 — Códigos presente sem Stripe (gift codes) + criação owner-only
+
+**Date**: 2026-07-22
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: O dono quer dois mecanismos promocionais: (A) código de afiliado via Stripe (1 mês grátis com cartão salvo, cobra no 2º mês) e (B) código-presente **sem Stripe** (teste grátis). Também exigiu que **apenas o dono** (conta `eosoffgrid@gmail.com`) possa **criar** códigos.
+
+**Decision (B — implementado nesta sessão)**:
+1. Tabela `gift_codes` (`code` PK texto owner-gerado, `plan` family/premium, `grant_days` variável 1–366, `note`, `redeemed_by`, `redeemed_at`). **RLS ON sem policies** = deny-all direto; só service-role acessa. Migration `20260722000000_gift_codes.sql` aplicada via Management API.
+2. **Resgate** `POST /api/billing/redeem` (usuário logado): valida código não usado, **claim atômico** (`.is('redeemed_by', null)`) garante 1 uso, seta `profiles.plan` + `plan_status='gift'` + `plan_current_period_end = agora + grant_days`. Não sobrepõe assinatura Stripe ativa. UI de resgate em Settings.
+3. **Expiração lazy** (`lib/plan.ts:reconcileGiftPlan`): na leitura do plano (`/api/profile/plan`), se `plan_status='gift'` e vencido → downgrade para `free` (persistido → propaga a todas as rotas). Sem cron por ora (pode-se adicionar depois).
+4. **Criação owner-only**: allowlist `ADMIN_EMAILS` (default `eosoffgrid@gmail.com`) em `lib/admin.ts`; endpoint `GET/POST /api/admin/gift-codes` e tela `/admin/gift-codes` só respondem ao dono (403 para o resto). Rota `/admin` protegida no middleware. **Obs:** `eosoffgrid@gmail.com` ainda não é usuário do app — o dono precisa criar/entrar com essa conta para usar a tela.
+
+**Código A (afiliado/Stripe)**: DECIDIDO mas **não implementado** — falta o dono definir formato dos códigos (por-afiliado p/ atribuição), planos, limites, validade, e fornecer a Stripe Live key. Mecanismo: cupom "100% off · once" + promotion code (checkout já aceita promo code).
+
+**Consequence**: EOS ganha teste grátis por código sem tocar no Stripe. Segredos de admin ficam server-side; nenhum usuário comum cria ou lê códigos.
+
+---
+
 ## D-053 — HWD-05 Pilot action integration prototype scope
 
 **Date**: 2026-07-21

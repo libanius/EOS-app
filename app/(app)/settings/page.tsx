@@ -62,6 +62,9 @@ export default function SettingsPage() {
   const [busy, setBusy] = useState<null | 'logout' | 'delete'>(null)
   const [billingBusy, setBillingBusy] = useState<null | Plan | 'portal'>(null)
   const [billingMsg, setBillingMsg] = useState<'success' | 'cancelled' | null>(null)
+  const [redeemCode, setRedeemCode] = useState('')
+  const [redeemState, setRedeemState] = useState<null | 'sending' | 'ok' | 'err'>(null)
+  const [redeemMsg, setRedeemMsg] = useState('')
 
   useEffect(() => {
     fetch('/api/profile/plan')
@@ -121,6 +124,31 @@ export default function SettingsPage() {
       alert(en ? 'Network error.' : 'Erro de rede.')
     } finally {
       setBillingBusy(null)
+    }
+  }
+
+  const handleRedeem = async () => {
+    const code = redeemCode.trim()
+    if (!code) return
+    setRedeemState('sending'); setRedeemMsg('')
+    try {
+      const res = await fetch('/api/billing/redeem', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code }),
+      })
+      const d = await res.json().catch(() => ({}))
+      if (res.ok && d.plan) {
+        setPlan(d.plan as Plan)
+        setRedeemState('ok')
+        setRedeemMsg(en ? `Redeemed: ${String(d.plan).toUpperCase()} for ${d.grantDays} days.` : `Resgatado: ${String(d.plan).toUpperCase()} por ${d.grantDays} dias.`)
+        setRedeemCode('')
+      } else {
+        setRedeemState('err')
+        setRedeemMsg(String(d.error ?? (en ? 'Could not redeem.' : 'Não foi possível resgatar.')))
+      }
+    } catch {
+      setRedeemState('err'); setRedeemMsg(en ? 'Network error.' : 'Erro de rede.')
     }
   }
 
@@ -292,6 +320,35 @@ export default function SettingsPage() {
               {billingBusy === 'portal' ? (en ? 'Opening…' : 'Abrindo…') : t('settings.planManage')}
             </button>
           )}
+
+          {/* Gift code redemption (D-060) */}
+          <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+            <label htmlFor="redeem" style={{ ...styles.help, display: 'block', margin: '0 0 8px' }}>
+              {en ? 'Have a gift code?' : 'Tem um código presente?'}
+            </label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                id="redeem"
+                value={redeemCode}
+                onChange={e => setRedeemCode(e.target.value.toUpperCase())}
+                placeholder={en ? 'Enter code' : 'Digite o código'}
+                autoCapitalize="characters"
+                autoCorrect="off"
+                spellCheck={false}
+                style={{ flex: 1, minHeight: 48, padding: '12px 14px', background: '#111116', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 14, color: '#f5f5f5', fontSize: 15, fontFamily: 'inherit', letterSpacing: '0.04em' }}
+              />
+              <button
+                onClick={handleRedeem}
+                disabled={redeemState === 'sending' || !redeemCode.trim()}
+                style={{ minHeight: 48, padding: '12px 18px', background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.35)', borderRadius: 14, color: '#22c55e', fontSize: 14, fontWeight: 650, cursor: redeemCode.trim() ? 'pointer' : 'default', whiteSpace: 'nowrap', opacity: redeemState === 'sending' || !redeemCode.trim() ? 0.5 : 1 }}
+              >
+                {redeemState === 'sending' ? '…' : (en ? 'Redeem' : 'Resgatar')}
+              </button>
+            </div>
+            {redeemMsg && (
+              <p role="status" style={{ marginTop: 8, fontSize: 13, color: redeemState === 'ok' ? '#22c55e' : '#f59e0b' }}>{redeemMsg}</p>
+            )}
+          </div>
         </div>
 
         {/* Push notifications */}
