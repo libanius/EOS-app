@@ -231,6 +231,23 @@ Pilot eventually learns the user's decision process:
 
 This is the differentiator: Pilot does not just learn preferences. It learns how the user makes decisions.
 
+### Profile Personalization Source
+
+The long-lived personalization source is the authenticated Ficha Master extension
+`profile_personalization` (D-059):
+
+- `user_context_md`: user-authored Markdown preferences, constraints, routines,
+  equipment notes, family norms, and decision context.
+- `pilot_memory_md`: Pilot-maintained memory document for learned preferences.
+- `decision_style`: how the user wants recommendations framed.
+- `risk_tolerance`: conservative/balanced/flexible bias for non-critical decisions.
+- `avatar_url`: reusable authenticated profile image for EOS components.
+
+Critical alerts and Rules Engine outputs still override this layer. Pilot can
+read personalization for context, but automatic writes to `pilot_memory_md`
+require a future explicit confirmation/audit flow; the MVP does not let the
+agent silently mutate long-term memory.
+
 ---
 
 ## 7. Response Structure

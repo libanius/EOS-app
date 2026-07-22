@@ -14,6 +14,7 @@ import { useRisk } from '@/components/v2/RiskProvider'
 import WorldMap from './WorldMap'
 import type { WorldFamilyMember, WorldGuidance } from './WorldMap'
 import type { MapBaseMode } from '@/lib/world/providers'
+import type { ProfilePersonalization } from '@/lib/profile-personalization'
 import type { WeatherSnapshot } from '@/lib/weather/types'
 import './world-dashboard.css'
 
@@ -114,6 +115,7 @@ export default function WorldDashboard() {
   const [guidance, setGuidance] = useState<WorldGuidance | null>(null)
   const [mapBase, setMapBase] = useState<MapBaseMode>('hybrid')
   const [adminCircles, setAdminCircles] = useState<Array<{ id: string; name: string }>>([])
+  const [personalization, setPersonalization] = useState<ProfilePersonalization | null>(null)
   const [routeFocusNonce, setRouteFocusNonce] = useState(0)
   const [hudSnap, setHudSnap] = useState<HudSnap>('peek')
   const [mobileHud, setMobileHud] = useState(false)
@@ -137,6 +139,16 @@ export default function WorldDashboard() {
   }, [])
 
   useEffect(() => { fetchLocal() }, [fetchLocal])
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/profile/personalization')
+      .then(r => (r.ok ? r.json() : null))
+      .then((data: { personalization?: ProfilePersonalization } | null) => {
+        if (!cancelled) setPersonalization(data?.personalization ?? null)
+      })
+      .catch(() => { if (!cancelled) setPersonalization(null) })
+    return () => { cancelled = true }
+  }, [])
   useEffect(() => {
     const saved = window.localStorage.getItem('eos-world-map-base')
     if (saved === 'hybrid' || saved === 'dark') setMapBase(saved)
@@ -315,6 +327,7 @@ export default function WorldDashboard() {
           checklistPct={checklistPct}
           people={people}
           family={mapFamily.length ? mapFamily.map(m => ({ id: m.id, name: m.name })) : familyRoster}
+          avatarUrl={personalization?.avatar_url ?? null}
         />
 
         {/* ── Pilot Capsule ── */}
@@ -327,6 +340,7 @@ export default function WorldDashboard() {
           canFocusRoute={Boolean(guidance?.route?.points?.length || guidance?.shelter)}
           onFocusRoute={() => setRouteFocusNonce(n => n + 1)}
           adminCircleId={adminCircles[0]?.id}
+          personalization={personalization}
         />
 
         {/* ── Alert Counter ── */}
@@ -464,6 +478,7 @@ function StatusRail({
   checklistPct,
   people,
   family,
+  avatarUrl,
 }: {
   c: (typeof COPY)[keyof typeof COPY]
   language: keyof typeof COPY
@@ -481,6 +496,7 @@ function StatusRail({
   checklistPct: number
   people: number
   family: FamilyRosterPerson[]
+  avatarUrl: string | null
 }) {
   const pt = language === 'pt'
   const readiness = readinessLabel(state, language)
@@ -538,9 +554,14 @@ function StatusRail({
 
       <div className="family-strip">
         <div className="family-faces" aria-hidden="true">
-          {familyAvatars.map(person => (
+          {familyAvatars.map((person, index) => (
             <span key={person.id} className="family-face">
-              {initials(person.name)}
+              {index === 0 && avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={avatarUrl} alt="" />
+              ) : (
+                initials(person.name)
+              )}
               <i />
             </span>
           ))}
@@ -801,6 +822,7 @@ function PilotCapsule({
   canFocusRoute,
   onFocusRoute,
   adminCircleId,
+  personalization,
 }: {
   snapshot: WeatherSnapshot | null
   riskState: string
@@ -810,6 +832,7 @@ function PilotCapsule({
   canFocusRoute: boolean
   onFocusRoute: () => void
   adminCircleId?: string
+  personalization: ProfilePersonalization | null
 }) {
   const { language } = useLanguage()
   const [open, setOpen] = useState(false)
@@ -828,6 +851,7 @@ function PilotCapsule({
     guidance,
     pt,
     criticalAlert: criticalAlert?.headline,
+    personalization,
   })
   const override = recommendation.state === 'PRIORITY OVERRIDE'
 
@@ -918,6 +942,7 @@ function buildPilotRecommendation({
   guidance,
   pt,
   criticalAlert,
+  personalization,
 }: {
   snapshot: WeatherSnapshot | null
   riskState: string
@@ -927,6 +952,7 @@ function buildPilotRecommendation({
   guidance: WorldGuidance | null
   pt: boolean
   criticalAlert?: string
+  personalization: ProfilePersonalization | null
 }): PilotRecommendation {
   if (riskState === 'critical' || criticalAlert) {
     return {
@@ -985,6 +1011,12 @@ function buildPilotRecommendation({
     `${pt ? 'Rajada' : 'Gust'} ${pt ? toKmh(gust) + ' km/h' : Math.round(gust) + ' mph'}`,
     `${pt ? 'Chuva' : 'Rain'} ${Math.round(precip)}%`,
     `${pt ? 'Checklist' : 'Checklist'} ${checklistPct}%`,
+    personalization?.risk_tolerance && personalization.risk_tolerance !== 'balanced'
+      ? `${pt ? 'Perfil' : 'Profile'} ${riskToleranceCopy(personalization.risk_tolerance, pt)}`
+      : null,
+    personalization?.decision_style && personalization.decision_style !== 'balanced'
+      ? `${pt ? 'Estilo' : 'Style'} ${decisionStyleCopy(personalization.decision_style, pt)}`
+      : null,
     isRoadTrip && guidance?.shelter ? (pt ? 'Rota candidata no mapa' : 'Candidate route on map') : null,
     aqi ? `AQI ${aqi}` : null,
     vis < 6 ? `${pt ? 'Visão' : 'Visibility'} ${pt ? toKmTxt(vis) + ' km' : vis.toFixed(1) + ' mi'}` : null,
@@ -1022,6 +1054,23 @@ const shorten = (s: string, n: number) => (s.length > n ? s.slice(0, n) + '…' 
 const formatDays = (days: number) => {
   if (!Number.isFinite(days) || days <= 0) return '0'
   return days >= 10 ? String(Math.round(days)) : days.toFixed(days >= 3 ? 0 : 1)
+}
+const riskToleranceCopy = (value: NonNullable<ProfilePersonalization['risk_tolerance']>, pt: boolean) => {
+  const copy = {
+    conservative: pt ? 'conservador' : 'conservative',
+    balanced: pt ? 'equilibrado' : 'balanced',
+    flexible: pt ? 'flexível' : 'flexible',
+  }
+  return copy[value]
+}
+const decisionStyleCopy = (value: NonNullable<ProfilePersonalization['decision_style']>, pt: boolean) => {
+  const copy = {
+    concise: pt ? 'conciso' : 'concise',
+    balanced: pt ? 'equilibrado' : 'balanced',
+    detailed: pt ? 'detalhado' : 'detailed',
+    checklist: 'checklist',
+  }
+  return copy[value]
 }
 const initials = (name: string) => name
   .split(/\s+/)

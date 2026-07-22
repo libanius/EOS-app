@@ -15,6 +15,10 @@ Every feature decision must answer: "does this help in the next 15 minutes?"
 - `profiles` is the only identity record; there is no separate Master Profile table.
 - `/ficha` is the unified editor for identity, location, medical information, emergency contact, and public QR.
 - Completion is a UI calculation over seven signals defined in `docs/13-ficha-master.md`; it is not persisted in the database.
+- D-059 extends the authenticated Ficha Master with `profile_personalization` for avatar URL, user-authored Markdown preferences, Pilot memory, decision style, and risk tolerance. These fields are private/authenticated context and are **not** returned by public QR endpoints.
+- `pilot_memory_md` is explicit/user-controlled in the MVP. Do not let Pilot silently mutate long-term memory until a confirmed-write/audit flow is specified.
+- UPP-01 ships a URL-based avatar field. Real photo upload/storage is UPP-02 and needs bucket/policy review.
+- Production persistence requires applying `supabase/migrations/20260721020000_profile_personalization.sql`; until then `/api/profile/personalization` returns defaults and PATCH reports a clean 503.
 
 ---
 

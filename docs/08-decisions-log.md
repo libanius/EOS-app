@@ -22,6 +22,25 @@
 
 ---
 
+## D-059 — Unified Profile Personalization + Pilot memory layer
+
+**Date**: 2026-07-21
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: O dono quer enriquecer o perfil do usuário com foto, preferências em Markdown no estilo de custom instructions das LLMs, e uma camada persistente que o Pilot possa consultar e melhorar ao longo do tempo. Essa personalização deve ser unificada com a Ficha Master, sem expor dados sensíveis no QR público.
+
+**Decision**:
+1. A Ficha Master continua sendo a experiência central de edição do usuário, mas ganha uma seção autenticada de **Personalização do Pilot**.
+2. Dados curtos/operacionais existentes permanecem em `profiles`; dados longos e privados de personalização vivem em uma nova tabela `profile_personalization`, vinculada 1:1 ao `profiles.id`.
+3. A primeira entrega inclui `avatar_url`, `user_context_md`, `pilot_memory_md`, `decision_style` e `risk_tolerance`.
+4. `user_context_md` é escrito pelo usuário como preferências livres; `pilot_memory_md` é reservado para memória progressiva do Pilot, mas no MVP só será editável/gravável de forma explícita. Escrita automática pelo Pilot exige confirmação e auditoria futura.
+5. O QR público `/ficha/[id]` e `POST /api/profile/ficha` **não** expõem foto, preferências, contexto nem memória do Pilot.
+6. O World Dashboard pode consumir essa camada para personalizar componentes autenticados, começando pela foto no readiness card e pela leitura de preferências no Pilot Capsule.
+
+**Consequence**: O perfil passa a ser a camada de contexto de longo prazo do Pilot sem quebrar a separação de privacidade da ficha de emergência. HWD-06 permanece aberto e `/dashboard-world` continua isolado; esta decisão autoriza uma trilha paralela pequena para personalização.
+
+---
+
 ## D-054 — HWD-06 responsive HUD collapse + mobile bottom sheet
 
 **Date**: 2026-07-21

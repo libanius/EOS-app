@@ -91,6 +91,21 @@
 
 ---
 
+## Unified Profile & Pilot Personalization (UPP)
+
+*Goal: make the Ficha Master the authenticated source of long-term user context for EOS Pilot, without exposing private preferences through the public emergency QR.*
+
+> Decision: D-059. This runs as an owner-directed parallel slice while HWD-06 remains isolated.
+
+| Task ID | Task | Status | Notes |
+|---|---|---|---|
+| UPP-00 | Spec + data model decision for profile personalization and Pilot memory | ✅ COMPLETE | 2026-07-21 — D-059; requirements, data model, Ficha Master and Pilot specs updated |
+| UPP-01 | MVP implementation: `profile_personalization` table, authenticated API, Ficha Master editor, avatar in World Dashboard | ✅ COMPLETE | 2026-07-21 — no public QR exposure; Pilot memory writes remain explicit/user-controlled |
+| UPP-02 | Profile photo upload pipeline using private/public storage policy | PENDING | Current MVP may accept URL; storage bucket/policy needs separate review |
+| UPP-03 | Pilot confirmed-write memory flow and audit trail | PENDING | No silent long-term memory mutation |
+
+---
+
 ## Production Experience — EOS Pilot
 
 *Goal: add a daily-use decision layer that increases EOS usefulness before emergencies while preserving safety priority.*

@@ -9,8 +9,9 @@
 
 | Field | Value |
 |---|---|
-| **Current Phase** | Hybrid World Dashboard (HWD) — D-047/D-050/D-054/D-055/D-056/D-057/D-058 |
-| **Last Completed Task** | D-058 / HWD-06 validation pass — keep `/dashboard-world` isolated (2026-07-21) |
+| **Current Phase** | Unified Profile & Pilot Personalization (UPP) — D-059, parallel to open HWD-06 gates |
+| **Last Completed Task** | D-059 / UPP-00→01 Profile personalization + Pilot memory MVP (2026-07-21) |
+| | D-058 / HWD-06 validation pass — keep `/dashboard-world` isolated (2026-07-21) |
 | | D-057 / HWD-06 alert footer + Status Rail scroll fix (2026-07-21) |
 | | D-056 / HWD-06 center map title removed (2026-07-21) |
 | | D-055 / HWD-06 Status Rail redesign — household readiness card (2026-07-21) |
@@ -25,7 +26,7 @@
 | | LA-T02: Stripe **Live** cutover — faturamento real ativo (2026-07-21) |
 | | LA-T01: Stripe test payment → webhook → `profiles.plan=family` (2026-07-20) |
 | **In Progress** | HWD-06 — remaining production validation for `/dashboard-world` |
-| **Next Task** | HWD-06 remaining gates: owner visual/device review, browser UI E2E, a11y/perf validation, provider cost review, privacy/provenance review, explicit rollout decision. |
+| **Next Task** | Apply `20260721020000_profile_personalization.sql` in Supabase, then continue HWD-06 owner/browser validation gates or UPP-02 photo upload pipeline. |
 | **Build** | ✅ Passing — type-check, tests, production build clean (2026-07-21) |
 | **Vercel** | ✅ Deployed — domínio canônico `https://eos-app-fawn.vercel.app` |
 | **Supabase** | ✅ Healthy — project ref `alxurmgpyxjhvnliivbf` |
@@ -52,6 +53,13 @@
   - **D-057 / HWD-06 HUD placement fix**: contador de alertas movido do topo direito para o rodapé direito acima da bottom nav; Status Rail agora reserva espaço acima da nav e mantém scroll interno até o C/W/R.
   - **D-058 / HWD-06 validation pass**: `type-check`, Jest 45/45, build, lint, full production journey 31/31, members/circles E2E 19/19, route protection, RainViewer e hazards passaram. Resultado: saudável para teste controlado, mas **não substituir `/dashboard` ainda**. Relatório: `docs/17-hwd-06-validation.md`.
 - Colisão de numeração resolvida: D-047 = World Dashboard; a vista unificada de Família passou a **D-049**.
+
+## Sessão 2026-07-21 — Profile personalization / Pilot memory (UPP)
+
+- **D-059 / UPP-00→01 implementado**: o dono pediu que a Ficha Master vire também a fonte autenticada de personalização do usuário: foto de perfil, preferências livres em Markdown, memória do Pilot, estilo de decisão e tolerância a risco.
+- Direção aprovada: manter `profiles` como identidade/emergência; criar `profile_personalization` 1:1 para textos longos e contexto privado do Pilot; **não expor** esses dados no QR público.
+- Entregue: migration + RLS (`20260721020000_profile_personalization.sql`), `GET/PATCH /api/profile/personalization`, editor na `/ficha`, foto reutilizada no readiness card do World Dashboard, e Pilot Capsule lendo estilo/tolerância como fatores de contexto sem escrita automática silenciosa.
+- Pendência operacional: aplicar a migration no Supabase Production antes de esperar persistência real; a API degrada limpo com defaults e PATCH 503 enquanto a tabela não existir.
 
 ---
 
@@ -147,7 +155,9 @@
 
 ## What Is Next
 
-**HWD-06: Production validation**
+**HWD-06: Production validation + UPP operational follow-up**
+
+Aplicar a migration `20260721020000_profile_personalization.sql` no Supabase para liberar persistência real da personalização. Depois, retomar HWD-06 production validation:
 
 Validar `/dashboard-world` antes de qualquer rollout para substituir `/dashboard`: performance, a11y, responsive, custos/providers, privacidade, E2E e critérios de saída do doc 16 §33.
 

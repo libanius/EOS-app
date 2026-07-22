@@ -20,7 +20,18 @@ type Ficha = {
   medications: string[]
 }
 
+type Personalization = {
+  avatar_url: string | null
+  user_context_md: string
+  pilot_memory_md: string
+  decision_style: 'concise' | 'balanced' | 'detailed' | 'checklist'
+  risk_tolerance: 'conservative' | 'balanced' | 'flexible'
+  configured?: boolean
+}
+
 const BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
+const DECISION_STYLE_OPTIONS: Personalization['decision_style'][] = ['balanced', 'concise', 'detailed', 'checklist']
+const RISK_TOLERANCE_OPTIONS: Personalization['risk_tolerance'][] = ['balanced', 'conservative', 'flexible']
 
 const EMPTY: Ficha = {
   id: '',
@@ -34,14 +45,26 @@ const EMPTY: Ficha = {
   medications: [],
 }
 
+const EMPTY_PERSONALIZATION: Personalization = {
+  avatar_url: null,
+  user_context_md: '',
+  pilot_memory_md: '',
+  decision_style: 'balanced',
+  risk_tolerance: 'balanced',
+  configured: true,
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function FichaPage() {
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
   const [ficha, setFicha] = useState<Ficha>(EMPTY)
+  const [personalization, setPersonalization] = useState<Personalization>(EMPTY_PERSONALIZATION)
   const [loading, setLoading] = useState(true)
   const [saved, setSaved] = useState(false)
+  const [personalizationSaved, setPersonalizationSaved] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [personalizationError, setPersonalizationError] = useState<string | null>(null)
   const [allergyInput, setAllergyInput] = useState('')
   const [medInput, setMedInput] = useState('')
   const [isPending, startTransition] = useTransition()
@@ -86,9 +109,32 @@ export default function FichaPage() {
     }
   }, [])
 
+  const loadPersonalization = useCallback(async () => {
+    try {
+      const res = await fetch('/api/profile/personalization')
+      if (res.status === 401) {
+        window.location.href = '/auth/login?redirectTo=/ficha'
+        return
+      }
+      if (res.ok) {
+        const { personalization: data } = await res.json()
+        setPersonalization({
+          avatar_url: data.avatar_url ?? null,
+          user_context_md: data.user_context_md ?? '',
+          pilot_memory_md: data.pilot_memory_md ?? '',
+          decision_style: data.decision_style ?? 'balanced',
+          risk_tolerance: data.risk_tolerance ?? 'balanced',
+          configured: data.configured ?? true,
+        })
+      }
+    } catch {
+      setPersonalizationError(language === 'pt' ? 'Não foi possível carregar a personalização.' : 'Could not load personalization.')
+    }
+  }, [language])
+
   useRealtimeSync(['profiles'], () => { void loadFicha(true) })
 
-  useEffect(() => { loadFicha() }, [loadFicha])
+  useEffect(() => { loadFicha(); loadPersonalization() }, [loadFicha, loadPersonalization])
 
   // ── Save ─────────────────────────────────────────────────────────────────
 
@@ -135,6 +181,47 @@ export default function FichaPage() {
   function handleBlur(patch?: Partial<Ficha>) {
     if (!isDirtyRef.current) return
     save(patch ? { ...ficha, ...patch } : ficha)
+  }
+
+  const savePersonalization = useCallback((data: Personalization) => {
+    startTransition(async () => {
+      setPersonalizationError(null)
+      const res = await fetch('/api/profile/personalization', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          avatar_url: data.avatar_url,
+          user_context_md: data.user_context_md,
+          pilot_memory_md: data.pilot_memory_md,
+          decision_style: data.decision_style,
+          risk_tolerance: data.risk_tolerance,
+        }),
+      })
+      if (res.ok) {
+        const { personalization: savedData } = await res.json()
+        setPersonalization({
+          avatar_url: savedData.avatar_url ?? null,
+          user_context_md: savedData.user_context_md ?? '',
+          pilot_memory_md: savedData.pilot_memory_md ?? '',
+          decision_style: savedData.decision_style ?? 'balanced',
+          risk_tolerance: savedData.risk_tolerance ?? 'balanced',
+          configured: true,
+        })
+        setPersonalizationSaved(true)
+        setTimeout(() => setPersonalizationSaved(false), 2000)
+      } else if (res.status === 401) {
+        window.location.href = '/auth/login?redirectTo=/ficha'
+      } else {
+        const b = await res.json().catch(() => ({}))
+        setPersonalizationError(b.error ?? t('common.saveError'))
+      }
+    })
+  }, [t])
+
+  function updatePersonalization(patch: Partial<Personalization>, immediate = false) {
+    const next = { ...personalization, ...patch }
+    setPersonalization(next)
+    if (immediate) savePersonalization(next)
   }
 
   // ── Allergy + Medication list ─────────────────────────────────────────────
@@ -253,6 +340,121 @@ export default function FichaPage() {
               />
             </div>
           </div>
+        </div>
+
+        {/* Personalização do Pilot */}
+        <div style={S.section}>
+          <div style={S.sectionHeaderRow}>
+            <div>
+              <h2 style={S.sectionTitle}>
+                {language === 'pt' ? 'Personalização do Pilot' : 'Pilot personalization'}
+              </h2>
+              <p style={S.sectionHint}>
+                {language === 'pt'
+                  ? 'Contexto privado que o Pilot pode consultar para adaptar recomendações.'
+                  : 'Private context Pilot can read to adapt recommendations.'}
+              </p>
+            </div>
+            {personalizationSaved && <span style={S.savedBadge}>✓ {t('common.saved')}</span>}
+          </div>
+
+          {personalization.configured === false && (
+            <div style={S.warnBanner}>
+              {language === 'pt'
+                ? 'Migration profile_personalization pendente no Supabase. A leitura usa defaults até aplicar o SQL.'
+                : 'Supabase profile_personalization migration is pending. Reads use defaults until SQL is applied.'}
+            </div>
+          )}
+          {personalizationError && <div style={S.errorBanner}>{personalizationError}</div>}
+
+          <div style={S.avatarRow}>
+            <div style={S.avatarPreview}>
+              {personalization.avatar_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={personalization.avatar_url} alt="" style={S.avatarImg} />
+              ) : (
+                <span>{initials(ficha.name || 'EOS')}</span>
+              )}
+            </div>
+            <div style={S.fieldGroup}>
+              <label style={S.fieldLabel}>{language === 'pt' ? 'Foto de perfil (URL)' : 'Profile photo (URL)'}</label>
+              <input
+                type="url"
+                style={S.input}
+                placeholder="https://..."
+                value={personalization.avatar_url ?? ''}
+                onChange={(e) => updatePersonalization({ avatar_url: e.target.value || null })}
+                onBlur={() => savePersonalization(personalization)}
+                disabled={isPending}
+              />
+            </div>
+          </div>
+
+          <div style={S.contactGrid}>
+            <div style={S.fieldGroup}>
+              <label style={S.fieldLabel}>{language === 'pt' ? 'Estilo de decisão' : 'Decision style'}</label>
+              <select
+                style={S.input}
+                value={personalization.decision_style}
+                onChange={(e) => updatePersonalization({ decision_style: e.target.value as Personalization['decision_style'] }, true)}
+                disabled={isPending}
+              >
+                {DECISION_STYLE_OPTIONS.map(opt => (
+                  <option key={opt} value={opt}>{decisionStyleLabel(opt, language)}</option>
+                ))}
+              </select>
+            </div>
+            <div style={S.fieldGroup}>
+              <label style={S.fieldLabel}>{language === 'pt' ? 'Tolerância a risco' : 'Risk tolerance'}</label>
+              <select
+                style={S.input}
+                value={personalization.risk_tolerance}
+                onChange={(e) => updatePersonalization({ risk_tolerance: e.target.value as Personalization['risk_tolerance'] }, true)}
+                disabled={isPending}
+              >
+                {RISK_TOLERANCE_OPTIONS.map(opt => (
+                  <option key={opt} value={opt}>{riskToleranceLabel(opt, language)}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div style={{ ...S.fieldGroup, marginTop: 12 }}>
+            <label style={S.fieldLabel}>{language === 'pt' ? 'Preferências do usuário (Markdown)' : 'User preferences (Markdown)'}</label>
+            <textarea
+              style={{ ...S.textarea, minHeight: 160, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}
+              placeholder={language === 'pt'
+                ? '- Prefiro recomendações conservadoras com família\n- Evitar sair depois do pôr do sol\n- Equipamentos importantes: rádio VHF, gerador, kit médico'
+                : '- Prefer conservative family recommendations\n- Avoid leaving after sunset\n- Key equipment: VHF radio, generator, medical kit'}
+              value={personalization.user_context_md}
+              onChange={(e) => updatePersonalization({ user_context_md: e.target.value })}
+              onBlur={() => savePersonalization(personalization)}
+              disabled={isPending}
+            />
+          </div>
+
+          <div style={{ ...S.fieldGroup, marginTop: 12 }}>
+            <label style={S.fieldLabel}>{language === 'pt' ? 'Memória do Pilot (Markdown)' : 'Pilot memory (Markdown)'}</label>
+            <textarea
+              style={{ ...S.textarea, minHeight: 120, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}
+              placeholder={language === 'pt'
+                ? 'O Pilot usará este documento como memória explícita. No MVP, alterações são feitas por você.'
+                : 'Pilot uses this document as explicit memory. In the MVP, you control edits.'}
+              value={personalization.pilot_memory_md}
+              onChange={(e) => updatePersonalization({ pilot_memory_md: e.target.value })}
+              onBlur={() => savePersonalization(personalization)}
+              disabled={isPending}
+            />
+          </div>
+
+          <button
+            type="button"
+            style={{ ...S.saveBtn, marginTop: 12 }}
+            onClick={() => savePersonalization(personalization)}
+            disabled={isPending}
+          >
+            {t('common.save')}
+          </button>
         </div>
 
         {/* QR Code */}
@@ -404,6 +606,32 @@ export default function FichaPage() {
   )
 }
 
+function initials(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(part => part[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase() || 'EO'
+}
+
+function decisionStyleLabel(value: Personalization['decision_style'], language: 'pt' | 'en') {
+  const labels = {
+    pt: { balanced: 'Equilibrado', concise: 'Conciso', detailed: 'Detalhado', checklist: 'Checklist' },
+    en: { balanced: 'Balanced', concise: 'Concise', detailed: 'Detailed', checklist: 'Checklist' },
+  }
+  return labels[language][value]
+}
+
+function riskToleranceLabel(value: Personalization['risk_tolerance'], language: 'pt' | 'en') {
+  const labels = {
+    pt: { balanced: 'Equilibrada', conservative: 'Conservadora', flexible: 'Flexível' },
+    en: { balanced: 'Balanced', conservative: 'Conservative', flexible: 'Flexible' },
+  }
+  return labels[language][value]
+}
+
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const AC  = '#0DE864'
@@ -429,6 +657,7 @@ const S: Record<string, React.CSSProperties> = {
   savedBadge:  { fontSize: 11, color: AC, fontWeight: 700, letterSpacing: 0.5 },
   saveBtn:     { fontSize: 13, fontWeight: 700, color: '#fff', background: AC, border: 'none', borderRadius: 8, padding: '6px 14px', cursor: 'pointer' },
   errorBanner: { background: 'rgba(232,65,13,0.1)', border: `1px solid ${DNG}44`, borderRadius: 10, padding: '10px 14px', fontSize: 13, color: DNG, marginBottom: 16 },
+  warnBanner:  { background: 'rgba(221,163,35,0.12)', border: '1px solid rgba(221,163,35,0.35)', borderRadius: 10, padding: '10px 14px', fontSize: 12, color: '#DDA323', marginBottom: 12, lineHeight: 1.45 },
   completionCard: { background: SF, border: `1px solid ${BD}`, borderRadius: 16, padding: '16px 20px', marginBottom: 12 },
   completionHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 20, marginBottom: 12 },
   completionLabel: { fontSize: 12, fontWeight: 700, color: TX, marginBottom: 4 },
@@ -443,7 +672,9 @@ const S: Record<string, React.CSSProperties> = {
   qrHint:      { fontSize: 12, color: MU, lineHeight: 1.5, marginBottom: 8 },
   qrUrl:       { fontSize: 10, color: 'rgba(255,255,255,0.25)', wordBreak: 'break-all' as const, fontFamily: 'monospace' },
   section:     { background: SF, border: `1px solid ${BD}`, borderRadius: 16, padding: '16px 20px', marginBottom: 12 },
+  sectionHeaderRow: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 14 },
   sectionTitle:{ fontSize: 13, fontWeight: 700, color: TX, letterSpacing: 0.3, marginBottom: 14 },
+  sectionHint: { fontSize: 11, color: MU, lineHeight: 1.45, marginTop: -8, maxWidth: 340 },
   bloodGrid:   { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 },
   bloodBtn:    { padding: '12px 4px', borderRadius: 10, border: `1px solid ${BD}`, background: 'rgba(255,255,255,0.03)', color: MU, fontSize: 14, fontWeight: 700, cursor: 'pointer' },
   bloodActive: { padding: '12px 4px', borderRadius: 10, border: `1px solid ${DNG}55`, background: `rgba(232,65,13,0.15)`, color: DNG, fontSize: 14, fontWeight: 800, cursor: 'pointer', boxShadow: `0 0 12px rgba(232,65,13,0.2)` },
@@ -459,4 +690,7 @@ const S: Record<string, React.CSSProperties> = {
   contactGrid: { display: 'flex', flexDirection: 'column', gap: 12 },
   fieldGroup:  { display: 'flex', flexDirection: 'column', gap: 6 },
   fieldLabel:  { fontSize: 11, fontWeight: 600, color: MU, letterSpacing: 0.5 },
+  avatarRow:   { display: 'grid', gridTemplateColumns: '72px 1fr', gap: 14, alignItems: 'center', marginBottom: 14 },
+  avatarPreview: { width: 72, height: 72, borderRadius: '50%', overflow: 'hidden', background: 'rgba(13,232,100,0.12)', border: `1px solid ${BD}`, color: AC, display: 'grid', placeItems: 'center', fontSize: 18, fontWeight: 800 },
+  avatarImg:   { width: '100%', height: '100%', objectFit: 'cover' as const, display: 'block' },
 }

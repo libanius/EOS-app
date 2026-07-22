@@ -19,6 +19,22 @@ added by migration `20260628000400_profile_emergency_card.sql` are:
 `emergency_contact_phone`, `medical_notes`, and `medications`.
 There is no separate Master Profile table.
 
+### profile_personalization
+| Column | Type | Notes |
+|---|---|---|
+| profile_id | uuid | PK/FK → profiles.id; one row per authenticated profile |
+| avatar_url | text | Optional authenticated profile image URL used by EOS UI components |
+| user_context_md | text | User-authored Markdown preferences/context for Pilot |
+| pilot_memory_md | text | Pilot-maintained memory document; explicit user-controlled writes in MVP |
+| decision_style | text | `concise`, `balanced`, `detailed`, or `checklist` |
+| risk_tolerance | text | `conservative`, `balanced`, or `flexible` |
+| created_at | timestamptz | |
+| updated_at | timestamptz | |
+| pilot_memory_updated_at | timestamptz | Last explicit update to Pilot memory |
+
+This table is part of the authenticated Ficha Master experience but is not part
+of the public emergency QR contract.
+
 ### family_members
 | Column | Type | Notes |
 |---|---|---|
