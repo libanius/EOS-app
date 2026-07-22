@@ -120,6 +120,7 @@ export default function WorldDashboard() {
   const [hudSnap, setHudSnap] = useState<HudSnap>('peek')
   const [mobileHud, setMobileHud] = useState(false)
   const [desktopHudCollapsed, setDesktopHudCollapsed] = useState(false)
+  const [sensorsOpen, setSensorsOpen] = useState(false)
 
   const fetchLocal = useCallback(async () => {
     try {
@@ -343,17 +344,19 @@ export default function WorldDashboard() {
           personalization={personalization}
         />
 
-        {/* ── Alert Counter ── */}
-        <div className="w-glass w-alerts" aria-label={c.alerts}>
+        {/* ── Alert Counter (tappable → weather/alerts) ── */}
+        <Link href="/weather" className="w-glass w-alerts tappable" aria-label={`${alertCount} ${c.alerts} — ${language === 'pt' ? 'ver detalhes' : 'view details'}`}>
           <div className="w-eyebrow" style={{ marginBottom: 4 }}>{c.alerts}</div>
           <div className="n">{alertCount}</div>
-        </div>
+        </Link>
 
-        <div className="w-sensors" aria-label="World data layers">
-          <div className="sensor-head">
+        <div className={`w-sensors${sensorsOpen ? '' : ' collapsed'}`} aria-label="World data layers">
+          <button type="button" className="sensor-head" aria-expanded={sensorsOpen} onClick={() => setSensorsOpen(v => !v)}>
             <span className="w-eyebrow">{language === 'pt' ? 'Camadas ao vivo' : 'Live layers'}</span>
+            <span className="sensor-summary">{radar?.ok ? 'Radar ✓' : 'Radar —'} · {alertCount} hz</span>
             <span className="sensor-pulse" aria-hidden="true" />
-          </div>
+            <svg className="sensor-caret" width="11" height="11" viewBox="0 0 11 11" aria-hidden="true"><path d="M2.5 4 L5.5 7 L8.5 4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          </button>
           <div className="map-style-control" aria-label={c.mapBase}>
             <span>{c.mapBase}</span>
             <div className="map-style-toggle" role="group" aria-label={c.mapBase}>
@@ -575,10 +578,13 @@ function StatusRail({
         <b>HAM VHF <i className={commsReady ? 'on' : ''} /></b>
       </div>
 
-      <div className="w-cwr" role="group" aria-label={modeLabel}>
-        {(['C', 'W', 'R'] as const).map(letter => (
-          <span key={letter} className={mode === letter ? 'on' : ''}>{letter}</span>
-        ))}
+      <div className="w-cwr-wrap">
+        <div className="w-cwr" role="group" aria-label={modeLabel}>
+          {(['C', 'W', 'R'] as const).map(letter => (
+            <span key={letter} className={mode === letter ? 'on' : ''}>{letter}</span>
+          ))}
+        </div>
+        <span className="w-cwr-label">{modeLabel}</span>
       </div>
     </aside>
   )

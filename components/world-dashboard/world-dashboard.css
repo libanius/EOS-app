@@ -904,6 +904,62 @@
   }
 }
 
+/* ───────────────────────────────────────────────────────────────────────────
+   UI/UX Pro Max pass (2026-07-21): touch targets, focus, press feedback,
+   color-not-only, tappable alert counter, collapsible live-layers, C/W/R label.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* §1 focus-visible on every interactive HUD control */
+.world-hud :is(button, a, [role="button"], [tabindex]):focus-visible {
+  outline: 2px solid var(--w-state);
+  outline-offset: 2px;
+  border-radius: 10px;
+}
+
+/* §2 touch targets ≥44px + reduced tap delay + press feedback */
+.w-chip {
+  min-height: 44px;
+  touch-action: manipulation;
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+.w-chip:active { transform: scale(0.97); }
+.sheet-actions .w-chip, .sheet-handle { min-height: 44px; }
+.sheet-handle { touch-action: manipulation; }
+.map-style-toggle button { min-height: 40px; touch-action: manipulation; }
+
+/* tappable Alert Counter (was a static number) */
+.w-alerts.tappable {
+  cursor: pointer; text-decoration: none; text-align: left; display: block;
+  touch-action: manipulation;
+  transition: transform 160ms ease, border-color 160ms ease;
+}
+.w-alerts.tappable:hover { border-color: rgba(var(--w-state-rgb), 0.5); }
+.w-alerts.tappable:active { transform: scale(0.97); }
+
+/* §6 C/W/R now carries a visible label (was aria-only) */
+.w-cwr-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.w-cwr-label { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--w-rail-ink-2); }
+
+/* §19.5 declutter: collapsible Live Layers panel */
+.w-sensors .sensor-head {
+  width: 100%; background: transparent; border: 0; cursor: pointer;
+  color: inherit; font: inherit; padding: 0; min-height: 34px;
+  touch-action: manipulation;
+}
+.sensor-summary { font-size: 11px; font-weight: 600; color: var(--w-ink-2); font-variant-numeric: tabular-nums; }
+.sensor-caret { color: var(--w-ink-2); transition: transform 200ms ease; flex: none; }
+.w-sensors:not(.collapsed) .sensor-caret { transform: rotate(180deg); }
+.w-sensors:not(.collapsed) .sensor-summary { display: none; }
+.w-sensors.collapsed .map-style-control,
+.w-sensors.collapsed .sensor-grid,
+.w-sensors.collapsed .sensor-note,
+.w-sensors.collapsed .sensor-alerts { display: none; }
+.w-sensors.collapsed .sensor-head { margin-bottom: 0; }
+
+/* §1 color-not-only: comms uses hollow-vs-filled dot (shape), not just color */
+.rail-comms b i { background: transparent; border: 1.5px solid #b7bcc5; box-sizing: border-box; }
+.rail-comms b i.on { background: var(--rail-ok); border-color: var(--rail-ok); }
+
 @media (prefers-reduced-motion: reduce) {
   .world *, .world *::before, .world *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
 }
