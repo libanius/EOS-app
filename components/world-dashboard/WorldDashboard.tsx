@@ -535,9 +535,9 @@ function StatusRail({
 
       <div className="house-stage" aria-label={pt ? 'Modelo de prontidão da casa' : 'House readiness model'}>
         <HouseModel />
-        <Callout className="callout-shutters" tone={shuttersReady ? 'ok' : 'warn'} label={pt ? 'Venezianas' : 'Shutters'} value={shuttersReady ? '✓' : `${checklistPct}%`} />
+        <Callout className="callout-shutters" tone={shuttersReady ? 'ok' : 'warn'} label={pt ? 'Venezianas' : 'Shutters'} ok={shuttersReady} value={shuttersReady ? undefined : `${checklistPct}%`} />
         <Callout className="callout-loose" tone={looseItemsReady ? 'ok' : 'danger'} label={pt ? 'Itens soltos' : 'Loose items'} />
-        <Callout className="callout-water" tone={waterReady ? 'ok' : 'warn'} label={c.water} value={waterReady ? '✓' : `${formatDays(waterDays)}d`} />
+        <Callout className="callout-water" tone={waterReady ? 'ok' : 'warn'} label={c.water} ok={waterReady} value={waterReady ? undefined : `${formatDays(waterDays)}d`} />
         <Callout className="callout-fuel" tone={fuelPct >= 50 ? 'ok' : fuelPct > 0 ? 'warn' : 'danger'} label={pt ? 'Comb.' : 'Fuel'} value={inv ? `${fuelPct}%` : '--'} />
       </div>
 
@@ -623,11 +623,19 @@ function HouseModel() {
   )
 }
 
-function Callout({ className, tone, label, value }: { className: string; tone: 'ok' | 'warn' | 'danger'; label: string; value?: string }) {
+function CheckIcon() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden="true" style={{ marginLeft: 4, verticalAlign: 'middle', flex: 'none' }}>
+      <path d="M2.5 6.4 L5 8.9 L9.5 3.4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function Callout({ className, tone, label, value, ok }: { className: string; tone: 'ok' | 'warn' | 'danger'; label: string; value?: string; ok?: boolean }) {
   return (
     <div className={`house-callout ${className} ${tone}`}>
       <i />
-      <span>{label}{value ? ` ${value}` : ''}</span>
+      <span>{label}{ok ? <CheckIcon /> : value ? ` ${value}` : ''}</span>
     </div>
   )
 }
