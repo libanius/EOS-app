@@ -12,7 +12,10 @@ import { createClient } from '@/lib/supabase/server'
 const FIELDS = 'profile_id, avatar_url, avatar_path, user_context_md, pilot_memory_md, decision_style, risk_tolerance, updated_at, pilot_memory_updated_at'
 
 function tableMissing(error: { code?: string; message?: string } | null) {
-  return error?.code === '42P01' || /profile_personalization/i.test(error?.message ?? '')
+  // ONLY a genuinely missing table (undefined_table 42P01). A missing COLUMN
+  // (42703) previously matched the name regex and showed a false "migration
+  // pending" banner even though the table existed.
+  return error?.code === '42P01'
 }
 
 async function withSignedAvatarUrl(
