@@ -175,6 +175,7 @@ Sentry is wired up (`sentry.client.config.ts`, `sentry.server.config.ts`, `sentr
 - Env vars: `NEXT_PUBLIC_VAPID_PUBLIC_KEY` (client subscribe + server send, **inlined em build-time** → mudar exige redeploy), `VAPID_PRIVATE_KEY` (server send), `VAPID_SUBJECT` (mailto).
 - Público e privado **devem ser um par** gerado junto (`npx web-push generate-vapid-keys`). Setar só um quebra o envio. O par atual foi gerado em 2026-07-05 e está no `.env.local` (gitignored) + Vercel Prod+Preview.
 - Rotas: `app/api/push/subscribe` (salva subscription), `app/api/circles/[id]/push` (admin do círculo envia via `web-push`), toggle em `/settings`.
+- Client subscribe must not await `navigator.serviceWorker.ready` without a timeout; if SW registration stalls, the Settings button can remain in loading. Convert `NEXT_PUBLIC_VAPID_PUBLIC_KEY` from URL-safe base64 to `Uint8Array` before `pushManager.subscribe`, request `Notification` permission explicitly, and surface API errors in the UI.
 
 ---
 

@@ -10,7 +10,8 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Monetização/promo + UPP + open HWD-06 gates |
-| **Last Completed Task** | D-061 / gift codes sem Stripe + criação owner-only (`/admin/gift-codes`) (2026-07-22) |
+| **Last Completed Task** | Fix: botão "Alertas Push" não fica mais preso em loading; timeout, permissão explícita e VAPID Uint8Array (2026-07-22) |
+| | D-061 / gift codes sem Stripe + criação owner-only (`/admin/gift-codes`) (2026-07-22) |
 | | Fix: banner 'migration pendente' era falso (faltava `avatar_path`); migration photo storage aplicada no banco (2026-07-22) |
 | | Onboarding: 1º acesso com ficha incompleta redireciona p/ `/ficha` (1x) (2026-07-22) |
 | | Conta `paulolibanionetousa@gmail.com` + círculo excluídos a pedido do dono (2026-07-22) |
@@ -41,6 +42,7 @@
 
 ## Sessão 2026-07-22 — Gift codes, fixes de personalização/onboarding, higiene
 
+- **Fix Alertas Push em Settings**: o botão podia ficar indefinidamente em "Aguarde..." quando `navigator.serviceWorker.ready` não resolvia ou quando o fluxo de permissão/VAPID falhava sem feedback. Corrigido com timeout de 8s, `Notification.requestPermission()`, conversão da `NEXT_PUBLIC_VAPID_PUBLIC_KEY` para `Uint8Array`, validação de resposta de `/api/push/subscribe` e mensagem visível de sucesso/erro.
 - **Gift codes sem Stripe (D-061)**: `gift_codes` (RLS deny-all), `POST /api/billing/redeem` (1 uso, claim atômico, seta `plan_status='gift'` + `plan_current_period_end`), expiração lazy em `lib/plan.ts:reconcileGiftPlan` (via `/api/profile/plan`). **Criação owner-only**: `ADMIN_EMAILS` (default `eosoffgrid@gmail.com`), `/api/admin/gift-codes` + tela `/admin/gift-codes` (403 p/ não-dono); `/admin` protegido no middleware. UI de resgate em Settings. **Código A (afiliado Stripe) pendente** de params do dono + Live key.
 - **Fix banner falso "migration pendente"**: `profile_personalization` existia mas faltava `avatar_path` → aplicada `20260721021000_profile_photo_storage.sql` (coluna + bucket `profile-photos` + policies). `tableMissing()` endurecido p/ só considerar `42P01` (erro de coluna não vira banner).
 - **Onboarding**: `FichaFirstRun` — 1º acesso com ficha incompleta redireciona p/ `/ficha` (flag localStorage, 1x, não prende).

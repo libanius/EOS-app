@@ -58,6 +58,7 @@ export default function SettingsPage() {
   const [plan, setPlan] = useState<Plan | null>(null)
   const [pushEnabled, setPushEnabled] = useState(false)
   const [pushBusy, setPushBusy] = useState(false)
+  const [pushMsg, setPushMsg] = useState('')
   const [email, setEmail] = useState<string | null>(null)
   const [busy, setBusy] = useState<null | 'logout' | 'delete'>(null)
   const [billingBusy, setBillingBusy] = useState<null | Plan | 'portal'>(null)
@@ -185,31 +186,56 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
-    navigator.serviceWorker.ready.then(reg => reg.pushManager.getSubscription())
+    withTimeout(navigator.serviceWorker.ready, 8000)
+      .then(reg => reg.pushManager.getSubscription())
       .then(sub => setPushEnabled(!!sub)).catch(() => {})
   }, [])
 
   const togglePush = async () => {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
+    setPushMsg('')
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      setPushMsg(en ? 'Push is not supported in this browser.' : 'Push não é suportado neste navegador.')
+      return
+    }
     setPushBusy(true)
     try {
-      const reg = await navigator.serviceWorker.ready
+      const reg = await withTimeout(navigator.serviceWorker.ready, 8000)
       if (pushEnabled) {
         const sub = await reg.pushManager.getSubscription()
         if (sub) {
-          await fetch('/api/push/subscribe', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ endpoint: sub.endpoint }) })
+          const res = await fetch('/api/push/subscribe', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ endpoint: sub.endpoint }) })
+          if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? `HTTP ${res.status}`)
           await sub.unsubscribe()
-          setPushEnabled(false)
         }
+        setPushEnabled(false)
+        setPushMsg(en ? 'Push alerts disabled on this device.' : 'Alertas push desativados neste dispositivo.')
       } else {
         const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
-        if (!vapidKey) { alert('Push não configurado (VAPID key ausente)'); return }
-        const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: vapidKey })
+        if (!vapidKey) throw new Error(en ? 'Push is not configured.' : 'Push não configurado (VAPID key ausente).')
+        if ('Notification' in window) {
+          const permission = await Notification.requestPermission()
+          if (permission !== 'granted') {
+            setPushMsg(en ? 'Notification permission was not granted.' : 'Permissão de notificação não foi concedida.')
+            return
+          }
+        }
+        const sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(vapidKey),
+        })
         const subJson = sub.toJSON()
-        await fetch('/api/push/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(subJson) })
+        const res = await fetch('/api/push/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(subJson) })
+        if (!res.ok) {
+          await sub.unsubscribe().catch(() => {})
+          throw new Error((await res.json().catch(() => ({}))).error ?? `HTTP ${res.status}`)
+        }
         setPushEnabled(true)
+        setPushMsg(en ? 'Push alerts enabled on this device.' : 'Alertas push ativados neste dispositivo.')
       }
-    } catch (e) { console.error('Push toggle error:', e) }
+    } catch (e) {
+      console.error('Push toggle error:', e)
+      setPushMsg(e instanceof Error ? e.message : (en ? 'Could not update push alerts.' : 'Não foi possível atualizar alertas push.'))
+    }
     finally { setPushBusy(false) }
   }
 
@@ -370,6 +396,11 @@ export default function SettingsPage() {
             >
               {pushBusy ? 'Aguarde…' : pushEnabled ? 'Desativar alertas push' : 'Ativar alertas push'}
             </button>
+            {pushMsg && (
+              <p role="status" style={{ margin: '10px 0 0', color: pushEnabled ? '#22c55e' : '#f59e0b', fontSize: 13, lineHeight: 1.45 }}>
+                {pushMsg}
+              </p>
+            )}
           </div>
         )}
 
@@ -422,6 +453,25 @@ export default function SettingsPage() {
       </section>
     </main>
   )
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const id = window.setTimeout(() => reject(new Error('Service Worker timeout. Recarregue a página e tente de novo.')), ms)
+    promise.then(
+      value => { window.clearTimeout(id); resolve(value) },
+      error => { window.clearTimeout(id); reject(error) },
+    )
+  })
+}
+
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
+  const rawData = window.atob(base64)
+  const output = new Uint8Array(rawData.length)
+  for (let i = 0; i < rawData.length; i += 1) output[i] = rawData.charCodeAt(i)
+  return output
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
