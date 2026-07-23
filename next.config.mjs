@@ -6,12 +6,14 @@ const withPWA = nextPwa({
   skipWaiting: true,
   disable: process.env.NODE_ENV === 'development',
   runtimeCaching: [
-    // App shell & static pages → cache-first
+    // Authenticated pages must refresh from the network so post-deploy fixes
+    // like push registration are not trapped behind an old service worker cache.
     {
       urlPattern: /^https?.*\/(?:onboarding|family|inventory|scenario|checklist|circles|settings|login|signup)$/i,
-      handler: 'CacheFirst',
+      handler: 'NetworkFirst',
       options: {
         cacheName: 'eos-pages',
+        networkTimeoutSeconds: 6,
         expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 7 },
       },
     },

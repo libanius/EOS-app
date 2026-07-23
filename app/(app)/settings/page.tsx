@@ -466,19 +466,47 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 }
 
 async function getPushServiceWorkerRegistration() {
-  const existing = await navigator.serviceWorker.getRegistration('/')
-  const reg = existing ?? await navigator.serviceWorker.register('/sw.js', { scope: '/' })
+  let reg = await navigator.serviceWorker.getRegistration('/')
+  if (!reg) reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' })
   await reg.update().catch(() => {})
   if (reg.active) return reg
-  const activating = reg.installing ?? reg.waiting
-  if (!activating) return withTimeout(navigator.serviceWorker.ready, 10000)
-  await withTimeout(new Promise<void>((resolve, reject) => {
-    activating.addEventListener('statechange', () => {
-      if (activating.state === 'activated') resolve()
-      if (activating.state === 'redundant') reject(new Error('Service Worker ficou redundante. Recarregue a página e tente de novo.'))
-    })
-  }), 10000)
-  return withTimeout(navigator.serviceWorker.ready, 10000)
+  return withTimeout(Promise.race([waitForActiveServiceWorker(reg), navigator.serviceWorker.ready]), 10000)
+}
+
+function waitForActiveServiceWorker(reg: ServiceWorkerRegistration): Promise<ServiceWorkerRegistration> {
+  return new Promise((resolve, reject) => {
+    const cleanup: Array<() => void> = []
+
+    const watchWorker = (worker: ServiceWorker | null) => {
+      if (!worker) return
+      const onStateChange = () => {
+        if (reg.active || worker.state === 'activated') {
+          cleanup.forEach(fn => fn())
+          resolve(reg)
+        }
+        if (worker.state === 'redundant') {
+          cleanup.forEach(fn => fn())
+          reject(new Error('Service Worker ficou redundante. Recarregue a página e tente de novo.'))
+        }
+      }
+      worker.addEventListener('statechange', onStateChange)
+      cleanup.push(() => worker.removeEventListener('statechange', onStateChange))
+      onStateChange()
+    }
+
+    const onUpdateFound = () => watchWorker(reg.installing)
+    reg.addEventListener('updatefound', onUpdateFound)
+    cleanup.push(() => reg.removeEventListener('updatefound', onUpdateFound))
+
+    if (reg.active) {
+      cleanup.forEach(fn => fn())
+      resolve(reg)
+      return
+    }
+
+    watchWorker(reg.installing)
+    watchWorker(reg.waiting)
+  })
 }
 
 function urlBase64ToUint8Array(base64String: string) {
