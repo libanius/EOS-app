@@ -186,7 +186,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
-    withTimeout(navigator.serviceWorker.ready, 8000)
+    getPushServiceWorkerRegistration()
       .then(reg => reg.pushManager.getSubscription())
       .then(sub => setPushEnabled(!!sub)).catch(() => {})
   }, [])
@@ -199,7 +199,7 @@ export default function SettingsPage() {
     }
     setPushBusy(true)
     try {
-      const reg = await withTimeout(navigator.serviceWorker.ready, 8000)
+      const reg = await getPushServiceWorkerRegistration()
       if (pushEnabled) {
         const sub = await reg.pushManager.getSubscription()
         if (sub) {
@@ -463,6 +463,22 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
       error => { window.clearTimeout(id); reject(error) },
     )
   })
+}
+
+async function getPushServiceWorkerRegistration() {
+  const existing = await navigator.serviceWorker.getRegistration('/')
+  const reg = existing ?? await navigator.serviceWorker.register('/sw.js', { scope: '/' })
+  await reg.update().catch(() => {})
+  if (reg.active) return reg
+  const activating = reg.installing ?? reg.waiting
+  if (!activating) return withTimeout(navigator.serviceWorker.ready, 10000)
+  await withTimeout(new Promise<void>((resolve, reject) => {
+    activating.addEventListener('statechange', () => {
+      if (activating.state === 'activated') resolve()
+      if (activating.state === 'redundant') reject(new Error('Service Worker ficou redundante. Recarregue a página e tente de novo.'))
+    })
+  }), 10000)
+  return withTimeout(navigator.serviceWorker.ready, 10000)
 }
 
 function urlBase64ToUint8Array(base64String: string) {
