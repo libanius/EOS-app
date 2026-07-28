@@ -214,7 +214,7 @@ function markerEl(className: string, pin: string, label: string, color?: string)
   return el
 }
 
-export default function WorldMap({ plateUrl, family = [], shelters = [], guidance = null, mapBase = 'hybrid', routeFocusNonce = 0, focus = null, onMapInteraction }: {
+export default function WorldMap({ plateUrl, family = [], shelters = [], guidance = null, mapBase = 'hybrid', routeFocusNonce = 0, focus = null, courseTo = null, onMapInteraction }: {
   state: string
   plateUrl: string
   family?: WorldFamilyMember[]
@@ -224,6 +224,12 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
   routeFocusNonce?: number
   /** A place picked from search. `nonce` re-triggers the fly-to on re-pick. */
   focus?: { lat: number; lng: number; label: string; nonce: number } | null
+  /**
+   * A course the user asked to see: EOS draws it as a layer on its own map
+   * instead of only handing off to another app (D-069). Indicative straight
+   * line — EOS does not claim to know the roads.
+   */
+  courseTo?: { lat: number; lng: number; label: string; nonce: number } | null
   onMapInteraction?: () => void
 }) {
   const { coords } = useRisk()
@@ -233,6 +239,7 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
   const hazardMarkersRef = useRef<MLMarker[]>([])
   // Kept out of markersRef so a family/shelter refresh never wipes the search pin.
   const searchMarkerRef = useRef<MLMarker | null>(null)
+  const courseMarkerRef = useRef<MLMarker | null>(null)
   const readyRef = useRef(false)
   const centerRef = useRef<[number, number] | null>(null)
   const plateRef = useRef<HTMLDivElement>(null)
@@ -446,6 +453,13 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
           map.addLayer({ id: 'eos-route-glow', type: 'line', source: 'eos-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#00e5a0', 'line-width': 9, 'line-opacity': 0.18, 'line-blur': 6 } })
           map.addLayer({ id: 'eos-route', type: 'line', source: 'eos-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#00e5a0', 'line-width': 3.5, 'line-opacity': 0.95 } })
 
+          // Course: its own source so the family/shelter refresh never wipes it.
+          // Dashed on purpose — a dashed line reads as "direction", a solid one
+          // would read as "this is the road", which EOS does not know.
+          map.addSource('eos-course', { type: 'geojson', data: EMPTY_LINE })
+          map.addLayer({ id: 'eos-course-glow', type: 'line', source: 'eos-course', layout: { 'line-cap': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': 10, 'line-opacity': 0.10, 'line-blur': 6 } })
+          map.addLayer({ id: 'eos-course', type: 'line', source: 'eos-course', layout: { 'line-cap': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': 3, 'line-opacity': 0.9, 'line-dasharray': [1.6, 1.6] } })
+
           readyRef.current = true
           void placeOverlays()
           if (plateRef.current) plateRef.current.style.opacity = '0'
@@ -463,6 +477,8 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
       hazardMarkersRef.current = []
       searchMarkerRef.current?.remove()
       searchMarkerRef.current = null
+      courseMarkerRef.current?.remove()
+      courseMarkerRef.current = null
       if (map) map.remove()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -540,6 +556,53 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
 
     return () => { cancelled = true }
   }, [focus])
+
+  // Draw the course inside EOS: line, destination pin, and a camera that frames
+  // both ends. Handing off to another app stays available, but it is no longer
+  // the only answer to "how do I get there".
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !readyRef.current) return
+
+    const source = map.getSource('eos-course') as { setData?: (d: unknown) => void } | undefined
+    courseMarkerRef.current?.remove()
+    courseMarkerRef.current = null
+
+    if (!courseTo || !coords) {
+      source?.setData?.(EMPTY_LINE)
+      return
+    }
+
+    const from: [number, number] = [coords.lng, coords.lat]
+    const to: [number, number] = [courseTo.lng, courseTo.lat]
+    source?.setData?.({
+      type: 'Feature',
+      properties: {},
+      geometry: { type: 'LineString', coordinates: [from, to] },
+    })
+
+    let cancelled = false
+    ;(async () => {
+      const maplibregl = (await import('maplibre-gl')).default
+      if (cancelled || !mapRef.current) return
+      const el = markerEl('w-mapmarker destination', '', short(courseTo.label, 28))
+      courseMarkerRef.current = new maplibregl.Marker({ element: el, anchor: 'bottom' })
+        .setLngLat(to)
+        .addTo(mapRef.current)
+
+      const reduce = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      mapRef.current.fitBounds(
+        [
+          [Math.min(from[0], to[0]), Math.min(from[1], to[1])],
+          [Math.max(from[0], to[0]), Math.max(from[1], to[1])],
+        ],
+        { padding: { top: 110, right: 60, bottom: 220, left: 60 }, duration: reduce ? 0 : 1100, maxZoom: 15 },
+      )
+    })()
+
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [courseTo, coords?.lat, coords?.lng])
 
   return (
     <div className="world-map-wrap" aria-hidden="true">

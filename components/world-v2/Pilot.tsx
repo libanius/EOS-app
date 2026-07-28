@@ -71,7 +71,8 @@ const COPY = {
     added: 'No checklist',
     tasksTitle: 'Vira tarefa',
     goTitle: 'Ir até lá',
-    navigate: 'Iniciar navegação',
+    showOnMap: 'Ver no mapa',
+    navigate: 'Abrir no app de mapas',
     open: 'Abrir o Pilot, seu especialista EOS',
     close: 'Fechar',
     suggestions: 'Perguntas',
@@ -93,7 +94,8 @@ const COPY = {
     added: 'On checklist',
     tasksTitle: 'Becomes a task',
     goTitle: 'Go there',
-    navigate: 'Start navigation',
+    showOnMap: 'Show on map',
+    navigate: 'Open in maps app',
     open: 'Open the Pilot, your EOS specialist',
     close: 'Close',
     suggestions: 'Questions',
@@ -123,7 +125,15 @@ function fromAnswer(answer: PilotAnswer): Message {
   }
 }
 
-export default function Pilot({ ctx, online }: { ctx: PilotContext; online: boolean }) {
+export default function Pilot({
+  ctx,
+  online,
+  onShowCourse,
+}: {
+  ctx: PilotContext
+  online: boolean
+  onShowCourse: (destination: PilotDestination) => void
+}) {
   const { language } = useLanguage()
   const reduceMotion = useReducedMotion()
   const c = COPY[language]
@@ -449,14 +459,29 @@ export default function Pilot({ ctx, online }: { ctx: PilotContext; online: bool
                                   </em>
                                 )}
                               </span>
-                              <a
-                                href={directionsUrl(destination, destination.label)}
-                                target="_blank"
-                                rel="noreferrer"
-                                onClick={() => haptic.impact()}
-                              >
-                                {c.navigate}
-                              </a>
+                              <span className="go">
+                                {/* EOS answers first, on its own map. The phone's
+                                    maps app is the second step, for turn-by-turn. */}
+                                <button
+                                  type="button"
+                                  className="primary"
+                                  onClick={() => {
+                                    haptic.impact()
+                                    onShowCourse(destination)
+                                    setOpen(false)
+                                  }}
+                                >
+                                  {c.showOnMap}
+                                </button>
+                                <a
+                                  href={directionsUrl(destination, destination.label)}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  onClick={() => haptic.impact()}
+                                >
+                                  {c.navigate}
+                                </a>
+                              </span>
                             </div>
                           )
                         })}

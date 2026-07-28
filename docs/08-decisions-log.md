@@ -4,6 +4,23 @@
 
 ---
 
+## D-069 — O trajeto é uma camada do EOS; o app de mapas é o segundo passo
+
+**Date**: 2026-07-28
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: Com D-068 o Pilot passou a propor destinos, mas a única ação era um deep-link — tocar em "Navegar" **saía do EOS**. O dono buscou uma loja pelo Pilot, recebeu o destino certo, e o botão abriu outro app. A expectativa do produto é explícita: *"Rotas, família, abrigos, recursos e zonas de risco são camadas inteligentes sobre o mapa."* Entregar tudo para fora contradiz isso.
+
+**Decision**:
+1. **EOS responde primeiro, no próprio mapa.** "Ver no mapa" desenha o trajeto como camada (`eos-course`), crava o pino do destino e enquadra a câmera nas duas pontas. O sheet recolhe para peek — mostrar o mapa significa mostrar o mapa.
+2. **A linha é tracejada de propósito.** Tracejado lê como *direção*; contínuo leria como *esta é a estrada* — e o EOS não conhece as estradas (D-065). A honestidade está na forma, não numa nota de rodapé.
+3. **O app de mapas continua disponível, como segundo passo.** "Abrir no app de mapas" entrega o turn-by-turn com trânsito e interdições ao vivo, que o EOS nunca terá.
+4. Fonte própria (`eos-course`), separada de `eos-route`, para o polling de família e abrigos não apagar o trajeto.
+
+**Consequence**: a promessa de "camadas inteligentes sobre o mapa" passa a valer para rota também. O EOS diz *onde, a que distância e para que lado* sem soltar o usuário; a navegação passo a passo continua sendo do aparelho.
+
+---
+
 ## D-068 — Pilot acessa posições consentidas e propõe navegação
 
 **Date**: 2026-07-28

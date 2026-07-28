@@ -224,7 +224,19 @@ async function main() {
     await shot('15-pilot-coordenadas')
     const geo = await page.locator('.chat-pilot').last().innerText().catch(() => '?')
     log('\n   RESPOSTA SOBRE POSIÇÃO:\n   ' + geo.replace(/\n/g, '\n   '))
-    log('   botões de navegação:', await page.locator('.chat-destination a').count())
+    log('   destinos propostos:', await page.locator('.chat-destination').count())
+    log('   ações por destino:', (await page.locator('.chat-destination .go > *').allTextContents()).join(' | '))
+
+    // D-069: o trajeto tem de aparecer DENTRO do EOS
+    const showBtn = page.locator('.chat-destination .go > .primary').first()
+    if (await showBtn.count()) {
+      await showBtn.click()
+      await page.waitForTimeout(4500)
+      await shot('16-curso-no-mapa-EOS')
+      const drawn = await page.evaluate(() => !!document.querySelector('.w-mapmarker.destination'))
+      log('   pino de destino no mapa EOS:', drawn ? 'sim ✅' : 'não ❌')
+      log('   Pilot fechou para revelar o mapa:', (await page.locator('.wv2-pilot-chat').count()) === 0 ? 'sim ✅' : 'não ❌')
+    } else log('   ⚠️  sem botão Ver no mapa')
   } else log('⚠️  orbe não encontrado')
 
   log('\n─── erros de console ───')

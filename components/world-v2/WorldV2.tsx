@@ -144,6 +144,7 @@ export default function WorldV2() {
   const simulation = useSimulation()
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [searched, setSearched] = useState<{ lat: number; lng: number; label: string; nonce: number } | null>(null)
+  const [course, setCourse] = useState<{ lat: number; lng: number; label: string; nonce: number } | null>(null)
   const family = useCircleFamily(language === 'pt', coords, avatarUrl)
   const shelterSnapshot = useShelters(coords)
 
@@ -255,6 +256,7 @@ export default function WorldV2() {
           mapBase="dark"
           family={family}
           focus={searched}
+          courseTo={course}
           shelters={(shelterSnapshot?.shelters ?? []).map(s => ({ id: s.id, name: s.name, lat: s.lat, lng: s.lng, distanceKm: s.distanceKm }))}
           onMapInteraction={() => setDetent('peek')}
         />
@@ -334,7 +336,16 @@ export default function WorldV2() {
 
       {/* Always reachable, above every other surface — that is the whole point. */}
       <div className="wv2-chrome">
-        <Pilot ctx={pilotContext} online={data.online} />
+        <Pilot
+          ctx={pilotContext}
+          online={data.online}
+          onShowCourse={destination => {
+            setCourse({ ...destination, nonce: Date.now() })
+            // "Show on map" has to actually reveal the map: collapse the sheet
+            // so the course is not drawn behind it.
+            setDetent('peek')
+          }}
+        />
       </div>
     </main>
   )
