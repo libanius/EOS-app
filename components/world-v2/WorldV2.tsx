@@ -16,6 +16,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { useLanguage } from '@/lib/i18n'
 import { useRisk } from '@/components/v2/RiskProvider'
+import { useSimulation } from '@/components/SimulationProvider'
 import WorldMap from '@/components/world-dashboard/WorldMap'
 import DetentSheet, { type Detent } from './DetentSheet'
 import Pilot from './Pilot'
@@ -140,6 +141,7 @@ export default function WorldV2() {
 
   const { snapshot, score, state, hasCoords, coords, requestGps, refresh } = useRisk()
   const data = useWorldData()
+  const simulation = useSimulation()
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [searched, setSearched] = useState<{ lat: number; lng: number; label: string; nonce: number } | null>(null)
   const family = useCircleFamily(language === 'pt', coords, avatarUrl)
@@ -211,8 +213,9 @@ export default function WorldV2() {
         ? { name: shelterSnapshot.shelters[0].name, distanceKm: shelterSnapshot.shelters[0].distanceKm }
         : null,
       sheltersKnown: Boolean(shelterSnapshot),
+      simulated: simulation.active,
     }),
-    [metric, state, score, snapshot, hasCoords, data, shelterSnapshot],
+    [metric, state, score, snapshot, hasCoords, data, shelterSnapshot, simulation.active],
   )
 
   const sections = (
@@ -321,7 +324,7 @@ export default function WorldV2() {
 
       {/* Always reachable, above every other surface — that is the whole point. */}
       <div className="wv2-chrome">
-        <Pilot ctx={pilotContext} />
+        <Pilot ctx={pilotContext} online={data.online} />
       </div>
     </main>
   )

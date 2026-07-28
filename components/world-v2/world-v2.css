@@ -1327,3 +1327,404 @@
   .wv2-sim-page .sim-chip:active { transform: none; }
   .wv2-sim-page .sim-toggle .track > i { transition: none; }
 }
+
+/* ═══ PILOT — conversation surface ═════════════════════════════════════════
+   The highest-value screen in EOS, so it gets the room: a full-height sheet
+   rather than a small console. Tone is carried visually too — the accent ring
+   and the verdict colour follow the risk index, so the surface *feels* calm on
+   a quiet day and urgent when it is not. */
+
+.wv2-pilot-chat {
+  position: absolute;
+  z-index: 6;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  top: 72px;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--r-sheet) var(--r-sheet) 0 0;
+  overflow: hidden;
+  transform-origin: bottom center;
+}
+@media (min-width: 900px) {
+  .wv2-pilot-chat {
+    left: auto;
+    right: var(--edge);
+    width: 460px;
+    top: auto;
+    height: min(78dvh, 760px);
+    bottom: calc(var(--nav-inset) + var(--edge) + 74px);
+    border-radius: 30px;
+    transform-origin: bottom right;
+  }
+}
+
+.wv2-pilot-chat .chat-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding: var(--s4) var(--s5) var(--s3);
+  border-bottom: 1px solid var(--sep);
+}
+.wv2-pilot-chat .chat-id { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.wv2-pilot-chat .chat-id em { font-style: normal; color: var(--accent); }
+.wv2-pilot-chat .chat-close {
+  flex: none;
+  width: 36px; height: 36px;
+  display: grid; place-items: center;
+  border: 0; border-radius: var(--r-pill);
+  background: var(--fill-2);
+  color: var(--ink);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.wv2-pilot-chat .chat-close:active { transform: scale(0.92); }
+
+.wv2-pilot-chat .chat-stream {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+  padding: var(--s4) var(--s5);
+}
+
+/* The user's turn: a quiet aligned bubble. The specialist does the talking. */
+.wv2-pilot-chat .chat-user {
+  align-self: flex-end;
+  max-width: 84%;
+  margin: 0;
+  padding: var(--s3) var(--s4);
+  border-radius: 18px 18px 6px 18px;
+  background: var(--fill-1);
+  color: var(--ink);
+}
+
+.wv2-pilot-chat .chat-pilot { --verdict: var(--accent); }
+.wv2-pilot-chat .chat-pilot[data-verdict='ready'] { --verdict: #30d158; }
+.wv2-pilot-chat .chat-pilot[data-verdict='watch'] { --verdict: #ffd60a; }
+.wv2-pilot-chat .chat-pilot[data-verdict='hold']  { --verdict: #ff9f0a; }
+.wv2-pilot-chat .chat-pilot[data-verdict='act']   { --verdict: #ff453a; }
+
+.wv2-pilot-chat .chat-verdict {
+  display: inline-block;
+  margin-bottom: var(--s2);
+  padding: 3px 9px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--verdict);
+  color: var(--verdict);
+  background: rgba(255, 255, 255, 0.06);
+}
+.wv2-pilot-chat .chat-headline { margin: 0 0 var(--s2); color: var(--ink); text-wrap: balance; }
+.wv2-pilot-chat .chat-pilot p { margin: 0 0 var(--s2); }
+.wv2-pilot-chat .chat-pilot p:last-child { margin-bottom: 0; }
+
+.wv2-pilot-chat .chat-factors {
+  display: flex; flex-wrap: wrap; gap: var(--s2);
+  margin-top: var(--s3);
+}
+.wv2-pilot-chat .chat-factors span {
+  padding: var(--s2) var(--s3);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+}
+.wv2-pilot-chat .chat-factors em { display: block; font-style: normal; }
+.wv2-pilot-chat .chat-factors b { display: block; margin-top: 1px; color: var(--ink); }
+
+.wv2-pilot-chat .chat-caveat {
+  margin-top: var(--s3);
+  padding: var(--s3);
+  border-left: 3px solid var(--ink-3);
+  border-radius: 0 10px 10px 0;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--ink-2);
+}
+
+/* Advice that becomes work. */
+.wv2-pilot-chat .chat-tasks {
+  margin-top: var(--s4);
+  padding: var(--s3);
+  border: 1px solid rgba(var(--accent-rgb), 0.32);
+  border-radius: var(--r-tile);
+  background: rgba(var(--accent-rgb), 0.07);
+}
+.wv2-pilot-chat .chat-tasks > p { margin: 0 0 var(--s2); }
+.wv2-pilot-chat .chat-task {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--s3);
+  padding: var(--s2) 0;
+  border-top: 1px solid var(--sep);
+}
+.wv2-pilot-chat .chat-task:first-of-type { border-top: 0; }
+.wv2-pilot-chat .chat-task > span { min-width: 0; }
+.wv2-pilot-chat .chat-task strong { display: block; color: var(--ink); }
+.wv2-pilot-chat .chat-task em { display: block; font-style: normal; margin-top: 1px; }
+.wv2-pilot-chat .chat-task button {
+  flex: none;
+  min-height: 36px;
+  padding: 0 var(--s4);
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+  color: var(--accent-ink);
+  font: inherit; font-size: 0.8125rem; font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.wv2-pilot-chat .chat-task button.done {
+  background: transparent;
+  border: 1px solid var(--sep-strong);
+  color: var(--ink-3);
+  cursor: default;
+}
+
+.wv2-pilot-chat .chat-actions { display: flex; flex-wrap: wrap; gap: var(--s2); margin-top: var(--s4); }
+.wv2-pilot-chat .chat-thinking { margin: 0; }
+
+.wv2-pilot-chat .chat-suggestions {
+  flex: none;
+  display: flex; gap: var(--s2);
+  overflow-x: auto;
+  padding: var(--s3) var(--s5);
+  border-top: 1px solid var(--sep);
+}
+
+.wv2-pilot-chat .chat-compose {
+  flex: none;
+  display: flex; align-items: center; gap: var(--s2);
+  padding: var(--s3) var(--s5) calc(var(--s4) + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--sep);
+}
+.wv2-pilot-chat .chat-compose input {
+  flex: 1; min-width: 0;
+  min-height: 44px;
+  padding: 0 var(--s4);
+  border-radius: var(--r-pill);
+  border: 1px solid var(--sep-strong);
+  background: var(--fill-2);
+  color: var(--ink);
+  font: inherit; font-size: 0.9375rem; letter-spacing: -0.006em;
+}
+.wv2-pilot-chat .chat-compose input:focus {
+  outline: none;
+  border-color: rgba(var(--accent-rgb), 0.6);
+}
+.wv2-pilot-chat .chat-compose input::placeholder { color: var(--ink-3); }
+.wv2-pilot-chat .chat-compose button {
+  flex: none;
+  width: 44px; height: 44px;
+  display: grid; place-items: center;
+  border: 0; border-radius: var(--r-pill);
+  background: var(--accent);
+  color: var(--accent-ink);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: opacity 160ms ease-out;
+}
+.wv2-pilot-chat .chat-compose button:disabled { opacity: 0.35; cursor: not-allowed; }
+.wv2-pilot-chat .chat-compose button:active:not(:disabled) { transform: scale(0.92); }
+
+/* Critical tightens the surface: less air, more signal. */
+.wv2-pilot-chat[data-state='critical'] .chat-stream { gap: var(--s3); }
+
+@media (prefers-reduced-motion: reduce) {
+  .wv2-pilot-chat .chat-close:active,
+  .wv2-pilot-chat .chat-compose button:active:not(:disabled) { transform: none; }
+}
+
+/* ═══ LIST PAGES (checklist and friends) ═══════════════════════════════════ */
+
+.wv2.wv2-list-page {
+  position: static;
+  inset: auto;
+  overflow: visible;
+  min-height: 100dvh;
+  background: #000;
+}
+.wv2-list-page .list-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+  max-width: 720px;
+  margin: 0 auto;
+  padding: calc(var(--s8) + env(safe-area-inset-top)) var(--edge) calc(var(--nav-inset) + var(--s8));
+}
+.wv2-list-page .list-header { padding: 0 var(--s2); }
+.wv2-list-page .list-title {
+  margin: var(--s2) 0 0;
+  font-size: clamp(1.875rem, 7vw, 2.375rem);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  font-weight: 700;
+}
+
+.wv2-list-page .list-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+  margin: var(--s3) 0 var(--s4);
+}
+.wv2-list-page .list-progress .track {
+  flex: 1;
+  height: 8px;
+  border-radius: var(--r-pill);
+  background: var(--fill-1);
+  overflow: hidden;
+}
+.wv2-list-page .list-progress .track > i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 420ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.wv2-list-page .list-horizons {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s2);
+}
+.wv2-list-page .horizon {
+  padding: var(--s3);
+  border-radius: var(--r-tile);
+  background: var(--fill-2);
+}
+.wv2-list-page .horizon strong { display: block; margin-top: 2px; color: var(--ink); }
+
+.wv2-list-page .list-kits {
+  display: flex;
+  gap: var(--s2);
+  overflow-x: auto;
+  padding: 0 var(--s1) var(--s1);
+}
+.wv2-list-page .list-kit {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  min-height: 44px;
+  padding: 0 var(--s4);
+  border-radius: var(--r-pill);
+  border: 1px solid var(--sep-strong);
+  background: var(--mat-thin);
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: -0.006em;
+  white-space: nowrap;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform 100ms ease-out, background 160ms ease-out, color 160ms ease-out;
+}
+.wv2-list-page .list-kit:active { transform: scale(0.97); }
+.wv2-list-page .list-kit.on {
+  background: var(--accent);
+  border-color: transparent;
+  color: var(--accent-ink);
+  font-weight: 700;
+}
+
+/* Segmented control for the horizon filter. */
+.wv2-list-page .list-filter {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 3px;
+  padding: 3px;
+  border-radius: 14px;
+  background: var(--fill-2);
+}
+.wv2-list-page .list-filter button {
+  min-height: 38px;
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background 160ms ease-out, color 160ms ease-out;
+}
+.wv2-list-page .list-filter button.on {
+  background: var(--fill-1);
+  color: var(--ink);
+}
+
+.wv2-list-page .list-item {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s2) 0;
+  border-bottom: 1px solid var(--sep);
+}
+.wv2-list-page .list-item:last-child { border-bottom: 0; }
+
+.wv2-list-page .list-check {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s2) 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.wv2-list-page .list-check .box {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  border: 1.8px solid var(--sep-strong);
+  color: var(--accent-ink);
+  transition: background 180ms ease-out, border-color 180ms ease-out;
+}
+.wv2-list-page .list-item.done .box {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.wv2-list-page .list-check .label { min-width: 0; }
+.wv2-list-page .list-check strong {
+  display: block;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.wv2-list-page .list-item.done .list-check strong {
+  color: var(--ink-3);
+  text-decoration: line-through;
+}
+.wv2-list-page .list-check em { display: block; font-style: normal; margin-top: 1px; }
+
+.wv2-list-page .list-remove {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--ink-3);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.wv2-list-page .list-remove:hover { color: #ff453a; background: rgba(255, 69, 58, 0.12); }
+.wv2-list-page .list-remove:active { transform: scale(0.9); }
+
+@media (prefers-reduced-motion: reduce) {
+  .wv2-list-page .list-kit:active,
+  .wv2-list-page .list-remove:active { transform: none; }
+  .wv2-list-page .list-progress .track > i { transition: none; }
+}

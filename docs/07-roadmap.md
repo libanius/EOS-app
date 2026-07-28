@@ -145,7 +145,7 @@
 | SIM-T00 | Spec + decisão do simulador | ✅ COMPLETE | 2026-07-27 — D-067 / doc 19 |
 | SIM-T01 | `SimulationProvider` + injeção no `RiskProvider` + cromo persistente + travas de segurança | ✅ COMPLETE | 2026-07-28 — verificado em navegador: risco real 11 → simulado 81, Pilot muda para "Aja agora", faixa some ao encerrar |
 | SIM-T02 | Painéis de configuração (ameaça, clima, recursos, saúde, infraestrutura, posição) | ✅ COMPLETE (MVP) | 2026-07-28 — ameaça, severidade, chegada, infraestrutura, mobilidade/medicação, reservas. **Falta**: traduzir o texto livre para os painéis (hoje é só descrição) |
-| SIM-T03 | Sessão: briefing pelo Pilot com RAG, rodar, sair a um toque | PENDING | Reusa `/api/analyze` + `getRelevantChunks`; regra crítica vence o modelo |
+| SIM-T03 | Sessão: briefing pelo Pilot com RAG, rodar, sair a um toque | ✅ COMPLETE | 2026-07-28 — `/api/pilot/chat` com RAG; o Pilot sabe quando está em simulação |
 | SIM-T04 | Injeção de eventos e avanço de tempo ("+6h", "a energia caiu") | PENDING | É o que separa simulador de cenário estático |
 | SIM-T05 | Debrief com lacunas quantificadas + escrita confirmada no checklist | PENDING | "Faltaram 40 L", não "melhore suas reservas" |
 | SIM-T06 | Execução contra o Plano da Família | PENDING | Depende de PLAN-T01. É o que vira ensaio de família |
@@ -198,7 +198,9 @@
 |---|---|---|---|
 | PILOT-T00 | EOS Pilot concept/spec inserted into App Spine | ✅ COMPLETE | 2026-07-20 — D-046 / `docs/15-eos-pilot.md` |
 | PILOT-T01 | Dashboard complication prototype: "What's the plan?" entry point | ON HOLD | superseded by HWD-05 (D-050); component `PilotComplication` drafted, not shipped |
-| PILOT-T02 | MVP activity flow: Fishing, Boating, Camping, Family Outdoor, Road Trip | BLOCKED | Progressive choices, not generic chat |
+| PILOT-T02 | MVP activity flow: Fishing, Boating, Camping, Family Outdoor, Road Trip | ⏸️ SUPERSEDED | 2026-07-28 — substituído pela conversa com especialista; as 5 intenções cobrem a decisão |
+| PILOT-T05 | Pilot conversacional: tom por índice de risco + tarefas executáveis | ✅ COMPLETE | 2026-07-28 — `/api/pilot/chat` (RAG + tom por estado); o que o Pilot recomenda vira item do checklist com um toque, nunca automático |
+| PILOT-T06 | Checklist reconstruído no design system da v2 | ✅ COMPLETE | 2026-07-28 — prontidão como manchete, tiers viram horizontes (3/7/30 dias). Antigo em `/checklist-legacy` |
 | PILOT-T03 | Rule-backed recommendation states: GO, LIMITED, WAIT, AVOID, PRIORITY OVERRIDE | BLOCKED | Critical rules must override AI |
 | PILOT-T04 | Metrics instrumentation for discovery, trust, retention, personalization, safety | BLOCKED | Needed before production rollout |
 

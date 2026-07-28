@@ -185,6 +185,31 @@ async function main() {
   await shot('10-apos-encerrar')
   log('   faixa após encerrar:', await page.locator('.sim-banner').count() ? 'ainda presente ❌' : 'removida ✅')
 
+  // ── 6. CHECKLIST redesenhado ────────────────────────────────────────────
+  await page.goto(`${BASE}/checklist`, { waitUntil: 'networkidle' })
+  await page.waitForTimeout(3500)
+  await shot('11-checklist')
+  log('   kits:', (await page.locator('.list-kit').allTextContents()).join(' | '))
+  log('   prontidão:', await page.locator('.list-progress .t-figure').first().textContent().catch(() => '?'))
+
+  // ── 7. PILOT como conversa ──────────────────────────────────────────────
+  await page.goto(`${BASE}/dashboard`, { waitUntil: 'networkidle' })
+  await page.waitForTimeout(8000)
+  const orb3 = page.locator('.wv2-pilot-orb')
+  if (await orb3.count()) {
+    await orb3.click()
+    await page.waitForTimeout(1800)
+    await shot('12-pilot-conversa')
+    log('   tom exibido:', await page.locator('.chat-id em').first().textContent().catch(() => '?'))
+    log('   1a mensagem:', await page.locator('.chat-headline').first().textContent().catch(() => '?'))
+    // toca numa pergunta sugerida (motor local, sem rede)
+    await page.locator('.chat-suggestions .pilot-chip').nth(2).click()
+    await page.waitForTimeout(1200)
+    await shot('13-pilot-pergunta-local')
+    log('   msgs no fluxo:', await page.locator('.chat-pilot, .chat-user').count())
+    log('   campo de texto presente:', await page.locator('.chat-compose input').count())
+  } else log('⚠️  orbe não encontrado')
+
   log('\n─── erros de console ───')
   log(errors.length ? errors.slice(0, 10).join('\n') : '  nenhum')
 

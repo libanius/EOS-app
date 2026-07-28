@@ -12,6 +12,7 @@ const PROTECTED_ROUTES = [
   '/scenario',
   '/scenario-legacy',
   '/checklist',
+  '/checklist-legacy',
   '/circles',
   '/settings',
   '/weather',

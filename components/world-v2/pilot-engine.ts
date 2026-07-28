@@ -64,6 +64,8 @@ export type PilotContext = {
   nearestShelter: { name: string; distanceKm: number } | null
   /** False until the FEMA lookup answered — "I don't know" is not "there is none". */
   sheltersKnown: boolean
+  /** True while a training simulation is running (D-067). */
+  simulated?: boolean
 }
 
 export const PILOT_INTENTS: Array<{ id: PilotIntentId; pt: string; en: string }> = [
