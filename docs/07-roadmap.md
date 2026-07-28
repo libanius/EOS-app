@@ -122,7 +122,7 @@
 | Task ID | Task | Status | Notes |
 |---|---|---|---|
 | FAM-T00 | Decisão + spec: localização ao vivo, consentimento próprio, freshness, retenção | ✅ COMPLETE | 2026-07-27 — D-064; docs 06 e 12 atualizados |
-| FAM-T01 | Migration `20260727000000_live_location.sql`: `last_location_*` em profiles | ✅ COMPLETE (código) | 2026-07-27 — **falta aplicar no Supabase**. APIs degradam limpo até lá. |
+| FAM-T01 | Migration `20260727000000_live_location.sql`: `last_location_*` em profiles | ✅ COMPLETE | 2026-07-27 — aplicada em produção pelo dono e verificada por REST service-role. |
 | FAM-T02 | Corrigir vazamento: gatear `location_lat/lng` em `/api/circles` por `shared_fields` | ✅ COMPLETE | 2026-07-27 — sem consentimento não sai coordenada; retorna `location_source`/`location_at` para a UI rotular |
 | FAM-T03 | `POST /api/location` + hook de envio periódico enquanto o app está aberto | ✅ COMPLETE | 2026-07-27 — `LocationReporter` nunca dispara prompt de permissão; 2 min, só com aba visível; servidor grava só o último ponto |
 | FAM-T04 | Toggle próprio de localização na tela de Círculos + marcadores reais com freshness no mapa v2; remover mocks do `WorldMap` | ✅ COMPLETE | 2026-07-27 — mocks 'Paulo/Isadora/Ana' + rota + `SHELTER · mock` removidos das duas telas |

@@ -11,7 +11,7 @@
 |---|---|
 | **Current Phase** | Localização familiar ao vivo (FAM) + gates de validação da v2 abertos (WV2-T05) |
 | **Last Completed Task** | **D-064 / FAM-T01→T04 — localização familiar ao vivo, consentimento próprio e remoção dos mocks do mapa (2026-07-27)** |
-| **⚠️ Ação do dono pendente** | Aplicar `supabase/migrations/20260727000000_live_location.sql` no Supabase. Até lá o app funciona, mas só mostra o ponto de perfil — `/api/location` responde `stored: false, reason: migration_pending`. |
+| **Migration** | ✅ `20260727000000_live_location.sql` aplicada pelo dono em 2026-07-27. Verificado via REST service-role: as 4 colunas `last_location_*` respondem 200 em `profiles`. |
 | | D-063 / WV2-T04 — World v2 promovido a `/dashboard` e lançado em produção (2026-07-27) |
 | | D-062 / WV2-T01→T03 — design system Apple, `DetentSheet` com gesto real e Pilot copiloto local-first (2026-07-27) |
 | | Fix: controles do mapa colidiam com `AppActions` (fixed, z-index 200) — botão de localização ficava oculto (2026-07-27) |
