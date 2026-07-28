@@ -68,6 +68,17 @@ export type PilotContext = {
   simulated?: boolean
   /** Human-readable place, so the Pilot can name where it is talking about. */
   locationLabel?: string | null
+  /** Where the user is, so distances can be computed on-device. */
+  coords?: { lat: number; lng: number } | null
+  /**
+   * Consented circle members with position (D-068). Only members who enabled
+   * the location toggle ever reach here — /api/circles gates it server-side.
+   */
+  family?: Array<{ name: string; lat: number; lng: number; freshness: string; isMe?: boolean }>
+  /** Official open shelters with coordinates. */
+  shelters?: Array<{ name: string; lat: number; lng: number; distanceKm: number }>
+  /** The place the user just searched on the map — their current point of interest. */
+  searchedPlace?: { label: string; lat: number; lng: number } | null
 }
 
 export const PILOT_INTENTS: Array<{ id: PilotIntentId; pt: string; en: string }> = [

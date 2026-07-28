@@ -215,8 +215,17 @@ export default function WorldV2() {
       sheltersKnown: Boolean(shelterSnapshot),
       simulated: simulation.active,
       locationLabel: hasCoords ? (metric ? 'Sua área' : 'Your area') : null,
+      coords,
+      family: family.map(m => ({ name: m.name, lat: m.lat, lng: m.lng, freshness: m.freshness, isMe: m.isMe })),
+      shelters: (shelterSnapshot?.shelters ?? []).map(s => ({
+        name: s.name,
+        lat: s.lat,
+        lng: s.lng,
+        distanceKm: s.distanceKm,
+      })),
+      searchedPlace: searched ? { label: searched.label, lat: searched.lat, lng: searched.lng } : null,
     }),
-    [metric, state, score, snapshot, hasCoords, data, shelterSnapshot, simulation.active],
+    [metric, state, score, snapshot, hasCoords, coords, data, shelterSnapshot, simulation.active, family, searched],
   )
 
   const sections = (

@@ -42,7 +42,7 @@ async function main() {
   // Parkland, FL — mesma região que o dono usa
   await admin(`/rest/v1/profiles?id=eq.${uid}`, {
     method: 'PATCH',
-    body: JSON.stringify({ name: 'Paulo (teste)', location: 'Parkland, FL', location_lat: 26.3101, location_lng: -80.2373 }),
+    body: JSON.stringify({ name: 'Paulo (teste)', location: 'Bend, OR', location_lat: 44.0582, location_lng: -121.3153 }),
   })
   await admin('/rest/v1/resource_inventory', {
     method: 'POST',
@@ -65,7 +65,7 @@ async function main() {
     isMobile: true,
     hasTouch: true,
     permissions: ['geolocation'],
-    geolocation: { latitude: 26.3101, longitude: -80.2373 },
+    geolocation: { latitude: 44.0582, longitude: -121.3153 },
     locale: 'pt-BR',
   })
   const page = await ctx.newPage()
@@ -216,6 +216,15 @@ async function main() {
     await shot('14-pilot-temperatura')
     const last = await page.locator('.chat-pilot').last().innerText().catch(() => '?')
     log('\n   RESPOSTA SOBRE TEMPERATURA:\n   ' + last.replace(/\n/g, '\n   '))
+
+    // D-068: posições e navegação
+    await page.locator('.chat-compose input').fill('onde estou exatamente? me dê as coordenadas e como chegar no abrigo oficial aberto mais próximo')
+    await page.locator('.chat-compose button[type=submit]').click()
+    await page.waitForTimeout(25000)
+    await shot('15-pilot-coordenadas')
+    const geo = await page.locator('.chat-pilot').last().innerText().catch(() => '?')
+    log('\n   RESPOSTA SOBRE POSIÇÃO:\n   ' + geo.replace(/\n/g, '\n   '))
+    log('   botões de navegação:', await page.locator('.chat-destination a').count())
   } else log('⚠️  orbe não encontrado')
 
   log('\n─── erros de console ───')

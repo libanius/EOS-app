@@ -1728,3 +1728,36 @@
   .wv2-list-page .list-remove:active { transform: none; }
   .wv2-list-page .list-progress .track > i { transition: none; }
 }
+
+/* Destinations the Pilot proposes: distance and bearing are computed on-device,
+   and the button hands off to the phone's maps app (D-065). */
+.wv2-pilot-chat .chat-destinations {
+  margin-top: var(--s4);
+  padding: var(--s3);
+  border: 1px solid var(--sep-strong);
+  border-radius: var(--r-tile);
+  background: rgba(255, 255, 255, 0.05);
+}
+.wv2-pilot-chat .chat-destinations > p { margin: 0 0 var(--s2); }
+.wv2-pilot-chat .chat-destination {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--s3);
+  padding: var(--s2) 0;
+  border-top: 1px solid var(--sep);
+}
+.wv2-pilot-chat .chat-destination:first-of-type { border-top: 0; }
+.wv2-pilot-chat .chat-destination > span { min-width: 0; }
+.wv2-pilot-chat .chat-destination strong { display: block; color: var(--ink); }
+.wv2-pilot-chat .chat-destination em { display: block; font-style: normal; margin-top: 1px; }
+.wv2-pilot-chat .chat-destination a {
+  flex: none;
+  display: inline-flex; align-items: center;
+  min-height: 36px;
+  padding: 0 var(--s4);
+  border-radius: var(--r-pill);
+  background: var(--ink);
+  color: #06070b;
+  font-size: 0.8125rem; font-weight: 700;
+  text-decoration: none;
+  touch-action: manipulation;
+}
+.wv2-pilot-chat .chat-destination a:active { transform: scale(0.96); }

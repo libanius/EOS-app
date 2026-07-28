@@ -77,8 +77,23 @@ type Body = {
     } | null
     locationLabel: string | null
     fetchedAt: string | null
+    /** Where the user is. */
+    selfCoords: { lat: number; lng: number } | null
+    /**
+     * Consented family positions (D-068). Distances and bearings are computed
+     * ON DEVICE and sent as numbers — the model reports geometry, it never
+     * calculates it. Trigonometry is exactly what language models get subtly
+     * and confidently wrong.
+     */
+    family: Array<{ name: string; lat: number; lng: number; freshness: string; distanceKm: number; heading: string; isMe: boolean }>
+    shelterList: Array<{ name: string; lat: number; lng: number; distanceKm: number; heading: string }>
+    /** What the user just looked up on the map — treat it as their destination of interest. */
+    searchedPlace: { label: string; lat: number; lng: number; distanceKm: number; heading: string } | null
   }
 }
+
+/** A place the Pilot considers worth travelling to. */
+export type PilotDestination = { label: string; lat: number; lng: number }
 
 const toC = (f: number) => Math.round(((f - 32) * 5) / 9)
 const toKmh = (mph: number) => Math.round(mph * 1.609)
@@ -142,6 +157,43 @@ function situationReport(ctx: Body['context']): string {
   } else if (ctx.sheltersKnown) {
     lines.push(pt ? '- Abrigos oficiais abertos por perto: nenhum (normal fora de desastre ativo).' : '- Open official shelters nearby: none (normal outside an active disaster).')
   }
+  if (ctx.selfCoords) {
+    lines.push(
+      pt
+        ? `- Sua posição: ${ctx.selfCoords.lat.toFixed(5)}, ${ctx.selfCoords.lng.toFixed(5)}`
+        : `- Your position: ${ctx.selfCoords.lat.toFixed(5)}, ${ctx.selfCoords.lng.toFixed(5)}`,
+    )
+  }
+  if (ctx.family?.length) {
+    lines.push(
+      (pt ? '- Família (posições consentidas): ' : '- Family (consented positions): ') +
+        ctx.family
+          .map(m =>
+            pt
+              ? `${m.name}${m.isMe ? ' (você)' : ''} em ${m.lat.toFixed(5)},${m.lng.toFixed(5)} — ${m.distanceKm.toFixed(1)} km a ${m.heading}, leitura ${m.freshness}`
+              : `${m.name}${m.isMe ? ' (you)' : ''} at ${m.lat.toFixed(5)},${m.lng.toFixed(5)} — ${m.distanceKm.toFixed(1)} km ${m.heading}, reading ${m.freshness}`,
+          )
+          .join(' ; '),
+    )
+  } else {
+    lines.push(pt ? '- Família: nenhum membro compartilhando posição.' : '- Family: no member is sharing position.')
+  }
+  if (ctx.shelterList?.length) {
+    lines.push(
+      (pt ? '- Abrigos oficiais abertos: ' : '- Open official shelters: ') +
+        ctx.shelterList
+          .map(sh => `${sh.name} (${sh.lat.toFixed(5)},${sh.lng.toFixed(5)}) ${sh.distanceKm.toFixed(1)} km ${sh.heading}`)
+          .join(' ; '),
+    )
+  }
+  if (ctx.searchedPlace) {
+    const sp = ctx.searchedPlace
+    lines.push(
+      pt
+        ? `- Lugar que o usuário acabou de buscar no mapa: ${sp.label} (${sp.lat.toFixed(5)},${sp.lng.toFixed(5)}), a ${sp.distanceKm.toFixed(1)} km ${sp.heading}.`
+        : `- Place the user just searched on the map: ${sp.label} (${sp.lat.toFixed(5)},${sp.lng.toFixed(5)}), ${sp.distanceKm.toFixed(1)} km ${sp.heading}.`,
+    )
+  }
   if (ctx.locationLabel) lines.push(pt ? `- Local: ${ctx.locationLabel}` : `- Location: ${ctx.locationLabel}`)
   if (ctx.fetchedAt) lines.push(pt ? `- Leitura de: ${ctx.fetchedAt}` : `- Reading taken at: ${ctx.fetchedAt}`)
 
@@ -172,11 +224,11 @@ const TONE: Record<Body['context']['riskState'], { pt: string; en: string }> = {
   },
 }
 
-function extractJson(raw: string): { reply: string; tasks: PilotTask[] } {
+function extractJson(raw: string): { reply: string; tasks: PilotTask[]; destinations: PilotDestination[] } {
   const match = raw.match(/\{[\s\S]*\}/)
-  if (!match) return { reply: raw.trim(), tasks: [] }
+  if (!match) return { reply: raw.trim(), tasks: [], destinations: [] }
   try {
-    const parsed = JSON.parse(match[0]) as { reply?: string; tasks?: unknown }
+    const parsed = JSON.parse(match[0]) as { reply?: string; tasks?: unknown; destinations?: unknown }
     const tasks = Array.isArray(parsed.tasks)
       ? (parsed.tasks as PilotTask[])
           .filter(t => t && typeof t.name === 'string' && t.name.trim())
@@ -189,9 +241,24 @@ function extractJson(raw: string): { reply: string; tasks: PilotTask[] } {
             unit: typeof t.unit === 'string' && t.unit.trim() ? t.unit.trim().slice(0, 16) : null,
           }))
       : []
-    return { reply: String(parsed.reply ?? raw).trim(), tasks }
+    const destinations = Array.isArray(parsed.destinations)
+      ? (parsed.destinations as PilotDestination[])
+          .filter(
+            d =>
+              d &&
+              typeof d.lat === 'number' &&
+              typeof d.lng === 'number' &&
+              Number.isFinite(d.lat) &&
+              Number.isFinite(d.lng) &&
+              Math.abs(d.lat) <= 90 &&
+              Math.abs(d.lng) <= 180,
+          )
+          .slice(0, 4)
+          .map(d => ({ label: String(d.label ?? '').trim().slice(0, 60) || 'Destino', lat: d.lat, lng: d.lng }))
+      : []
+    return { reply: String(parsed.reply ?? raw).trim(), tasks, destinations }
   } catch {
-    return { reply: raw.trim(), tasks: [] }
+    return { reply: raw.trim(), tasks: [], destinations: [] }
   }
 }
 
@@ -217,7 +284,7 @@ export async function POST(request: NextRequest) {
   const openai = getOpenAIClient()
   if (!openai) {
     return NextResponse.json(
-      { error: 'offline', reply: null, tasks: [] },
+      { error: 'offline', reply: null, tasks: [], destinations: [] },
       { status: 200 },
     )
   }
@@ -267,11 +334,11 @@ export async function POST(request: NextRequest) {
       ? (pt ? `BASE DE CONHECIMENTO (use e cite quando útil):\n${knowledge}` : `KNOWLEDGE BASE (use and cite when useful):\n${knowledge}`)
       : '',
     pt
-      ? 'REGRAS INEGOCIÁVEIS: 1) Nunca invente abrigo, rota ou ordem de evacuação — evacuação só existe se houver ordem oficial. 2) Use os números reais da família acima; nada de conselho genérico. 3) Se faltar dado, diga que falta. 4) Nunca suavize um risco crítico.'
-      : 'NON-NEGOTIABLE RULES: 1) Never invent a shelter, route or evacuation order — evacuation exists only under an official order. 2) Use the real household numbers above; no generic advice. 3) If data is missing, say so. 4) Never soften a critical risk.',
+      ? 'REGRAS INEGOCIÁVEIS: 1) Nunca invente abrigo, rota ou ordem de evacuação — evacuação só existe se houver ordem oficial. 2) Use os números reais da família acima; nada de conselho genérico. 3) Se faltar dado, diga que falta. 4) Nunca suavize um risco crítico. 5) NUNCA calcule distância, rumo ou coordenada por conta própria — use apenas os números já fornecidos acima. Ao mencionar direção ou distância, **copie o valor exato** que foi dado (ex.: "34.0 km a NO"); nunca parafraseie para outra direção nem arredonde o rumo. 6) Só cite posição de quem aparece na lista de posições consentidas.'
+      : 'NON-NEGOTIABLE RULES: 1) Never invent a shelter, route or evacuation order — evacuation exists only under an official order. 2) Use the real household numbers above; no generic advice. 3) If data is missing, say so. 4) Never soften a critical risk. 5) NEVER compute a distance, bearing or coordinate yourself — use only the numbers given above. When mentioning a direction or distance, **copy the exact value** you were given (e.g. "34.0 km NW"); never paraphrase it into a different direction or round the bearing. 6) Only cite the position of people who appear in the consented positions list.',
     pt
-      ? 'Responda no mesmo idioma em que o usuário escreveu. RESPONDA SOMENTE com JSON: {"reply":"sua resposta","tasks":[{"name":"ação curta e executável","why":"por que","tier":"ESSENTIAL|MODERATE|EXCELLENT","quantity":1,"unit":null}]}. Inclua em tasks TODA ação concreta que você recomendar (ex.: "Abastecer o carro" vira task). Se não recomendar ação, tasks é [].'
-      : 'Reply in the language the user wrote in. ANSWER ONLY with JSON: {"reply":"your answer","tasks":[{"name":"short executable action","why":"why","tier":"ESSENTIAL|MODERATE|EXCELLENT","quantity":1,"unit":null}]}. Put EVERY concrete action you recommend into tasks. If you recommend none, tasks is [].',
+      ? 'Responda no mesmo idioma em que o usuário escreveu. RESPONDA SOMENTE com JSON: {"reply":"sua resposta","tasks":[{"name":"ação curta e executável","why":"por que","tier":"ESSENTIAL|MODERATE|EXCELLENT","quantity":1,"unit":null}],"destinations":[{"label":"nome do lugar","lat":0,"lng":0}]}. Inclua em tasks TODA ação concreta que você recomendar. Inclua em destinations TODO lugar para onde valha a pena ir — copiando as coordenadas exatas da lista acima, nunca inventando — para que o usuário possa iniciar a navegação com um toque. Se não houver, use [].'
+      : 'Reply in the language the user wrote in. ANSWER ONLY with JSON: {"reply":"your answer","tasks":[{"name":"short executable action","why":"why","tier":"ESSENTIAL|MODERATE|EXCELLENT","quantity":1,"unit":null}],"destinations":[{"label":"place name","lat":0,"lng":0}]}. Put EVERY concrete action into tasks. Put in destinations EVERY place worth travelling to — copying the exact coordinates from the list above, never inventing them — so the user can start navigation with one tap. Use [] when there are none.',
   ]
     .filter(Boolean)
     .join('\n\n')
@@ -288,9 +355,9 @@ export async function POST(request: NextRequest) {
     })
 
     const raw = completion.choices[0]?.message?.content ?? ''
-    const { reply, tasks } = extractJson(raw)
-    return NextResponse.json({ reply, tasks })
+    const { reply, tasks, destinations } = extractJson(raw)
+    return NextResponse.json({ reply, tasks, destinations })
   } catch {
-    return NextResponse.json({ error: 'unavailable', reply: null, tasks: [] }, { status: 200 })
+    return NextResponse.json({ error: 'unavailable', reply: null, tasks: [], destinations: [] }, { status: 200 })
   }
 }

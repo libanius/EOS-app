@@ -4,6 +4,27 @@
 
 ---
 
+## D-068 — Pilot acessa posições consentidas e propõe navegação
+
+**Date**: 2026-07-28
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: O Pilot conversacional recebia clima, reservas e composição da família, mas nenhuma coordenada — então não sabia dizer onde a família estava nem para onde ir. O dono pediu explicitamente: *"eu quero que ele me responda as coordenadas de tudo que eu tiver permissão. Sim, as coordenadas da minha família com certeza eu preciso. Sugerir rota até o ponto de interesse e iniciar navegação."*
+
+**Ampliação de divulgação registrada**: o consentimento de D-064 era para o **círculo** ver a posição. Enviar essas coordenadas ao provedor de IA é uma divulgação **diferente e mais ampla**. O dono decidiu assumi-la. Mitigações aplicadas:
+1. **O gate de consentimento continua sendo o mesmo e único.** Só chegam ao modelo posições que `/api/circles` já liberou server-side — quem não ativou o toggle de localização não aparece, nem para a IA.
+2. **A regra 6 do prompt** proíbe o modelo de citar posição de quem não está na lista de posições consentidas.
+3. Nenhuma coordenada é persistida no provedor além da chamada.
+
+**Decision**:
+1. O Pilot recebe: posição do usuário, posições consentidas da família (nome, coordenada, idade da leitura), e abrigos oficiais com coordenada.
+2. **Toda geometria é calculada no aparelho** e enviada como número pronto — distância e rumo. A regra 5 do prompt **proíbe** o modelo de calcular distância, rumo ou coordenada. Modelos de linguagem erram trigonometria com confiança, e um rumo errado em emergência aponta a família para o lado errado.
+3. O Pilot passa a devolver `destinations[]` com coordenadas **copiadas** da lista fornecida, nunca inventadas. A UI renderiza cada destino com distância e rumo (calculados localmente) e um botão **Iniciar navegação**, que entrega ao app de mapas do aparelho (D-065).
+
+**Consequence**: o Pilot responde "onde está minha filha" e "como chego lá" — fechando o ciclo entre saber e agir. O custo é a ampliação de divulgação acima, registrada e mitigada.
+
+---
+
 ## D-067 — Cenário vira simulador: o app inteiro responde ao ambiente simulado
 
 **Date**: 2026-07-27

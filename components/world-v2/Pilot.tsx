@@ -36,7 +36,9 @@ import {
   type PilotIntentId,
   type PilotVerdict,
 } from './pilot-engine'
-import type { PilotTask } from '@/app/api/pilot/chat/route'
+import type { PilotDestination, PilotTask } from '@/app/api/pilot/chat/route'
+import { bearing, compassPoint, distanceKm } from '@/lib/world/shelters'
+import { directionsUrl, formatDistance } from '@/lib/world/navigation'
 
 type Message = {
   id: string
@@ -47,6 +49,7 @@ type Message = {
   factors?: Array<{ label: string; value: string }>
   actions?: PilotAnswer['actions']
   tasks?: PilotTask[]
+  destinations?: PilotDestination[]
   caveat?: string
 }
 
@@ -67,6 +70,8 @@ const COPY = {
     addTask: 'Adicionar',
     added: 'No checklist',
     tasksTitle: 'Vira tarefa',
+    goTitle: 'Ir até lá',
+    navigate: 'Iniciar navegação',
     open: 'Abrir o Pilot, seu especialista EOS',
     close: 'Fechar',
     suggestions: 'Perguntas',
@@ -87,6 +92,8 @@ const COPY = {
     addTask: 'Add',
     added: 'On checklist',
     tasksTitle: 'Becomes a task',
+    goTitle: 'Go there',
+    navigate: 'Start navigation',
     open: 'Open the Pilot, your EOS specialist',
     close: 'Close',
     suggestions: 'Questions',
@@ -256,6 +263,35 @@ export default function Pilot({ ctx, online }: { ctx: PilotContext; online: bool
                 }
               : null,
             locationLabel: ctx.locationLabel ?? null,
+            selfCoords: ctx.coords ?? null,
+            // Geometry is computed HERE, not by the model. Language models get
+            // trigonometry confidently wrong, and a wrong bearing in an
+            // emergency points a family the wrong way.
+            family: (ctx.family ?? []).map(m => ({
+              name: m.name,
+              lat: m.lat,
+              lng: m.lng,
+              freshness: m.freshness,
+              isMe: Boolean(m.isMe),
+              distanceKm: ctx.coords ? distanceKm(ctx.coords, m) : 0,
+              heading: ctx.coords ? compassPoint(bearing(ctx.coords, m), pt) : '—',
+            })),
+            searchedPlace: ctx.searchedPlace
+              ? {
+                  label: ctx.searchedPlace.label,
+                  lat: ctx.searchedPlace.lat,
+                  lng: ctx.searchedPlace.lng,
+                  distanceKm: ctx.coords ? distanceKm(ctx.coords, ctx.searchedPlace) : 0,
+                  heading: ctx.coords ? compassPoint(bearing(ctx.coords, ctx.searchedPlace), pt) : '—',
+                }
+              : null,
+            shelterList: (ctx.shelters ?? []).map(sh => ({
+              name: sh.name,
+              lat: sh.lat,
+              lng: sh.lng,
+              distanceKm: sh.distanceKm,
+              heading: ctx.coords ? compassPoint(bearing(ctx.coords, sh), pt) : '—',
+            })),
             fetchedAt: ctx.snapshot?.fetched_at
               ? new Date(ctx.snapshot.fetched_at).toLocaleTimeString(pt ? 'pt-BR' : 'en-US', {
                   hour: '2-digit',
@@ -265,12 +301,18 @@ export default function Pilot({ ctx, online }: { ctx: PilotContext; online: bool
           },
         }),
       })
-      const data = (await response.json()) as { reply?: string | null; tasks?: PilotTask[]; error?: string }
+      const data = (await response.json()) as {
+        reply?: string | null
+        tasks?: PilotTask[]
+        destinations?: PilotDestination[]
+        error?: string
+      }
       push({
         id: nextId(),
         role: 'pilot',
         text: data.reply || c.unavailable,
         tasks: data.tasks?.length ? data.tasks : undefined,
+        destinations: data.destinations?.length ? data.destinations : undefined,
       })
     } catch {
       push({ id: nextId(), role: 'pilot', text: c.unavailable })
@@ -383,6 +425,38 @@ export default function Pilot({ ctx, online }: { ctx: PilotContext; online: bool
                               >
                                 {done ? c.added : c.addTask}
                               </button>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+
+                    {message.destinations && (
+                      <div className="chat-destinations">
+                        <p className="t-caps ink-3">{c.goTitle}</p>
+                        {message.destinations.map(destination => {
+                          const away = ctx.coords ? distanceKm(ctx.coords, destination) : null
+                          const heading = ctx.coords
+                            ? compassPoint(bearing(ctx.coords, destination), pt)
+                            : null
+                          return (
+                            <div key={`${destination.lat},${destination.lng}`} className="chat-destination">
+                              <span>
+                                <strong className="t-sub">{destination.label}</strong>
+                                {away !== null && (
+                                  <em className="t-foot ink-3">
+                                    {formatDistance(away, pt)} · {heading}
+                                  </em>
+                                )}
+                              </span>
+                              <a
+                                href={directionsUrl(destination, destination.label)}
+                                target="_blank"
+                                rel="noreferrer"
+                                onClick={() => haptic.impact()}
+                              >
+                                {c.navigate}
+                              </a>
                             </div>
                           )
                         })}

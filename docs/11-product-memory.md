@@ -9,7 +9,8 @@
 
 - **O Pilot só sabe o que o cliente envia em `context`.** Ele não lê o banco nem chama provedores. Quando perguntado a temperatura, respondeu "não tenho acesso a dados em tempo real" — não era alucinação nem fase faltante: eu simplesmente não estava mandando o snapshot de clima. Ao adicionar campo novo ao app, lembrar de estendê-lo em `app/api/pilot/chat/route.ts` **e** no `Pilot.tsx`, senão o especialista fica cego para ele.
 - O system prompt agora contém uma instrução explícita **proibindo** o disclaimer padrão de "sem acesso em tempo real" e mandando responder com os números do bloco DADOS AO VIVO.
-- **Posições da família NÃO são enviadas ao modelo** por decisão de privacidade (coordenadas de terceiros saindo para um provedor externo). Se for incluir, precisa de decisão registrada.
+- **Posições da família VÃO ao modelo desde D-068**, mas apenas as que `/api/circles` já liberou pelo consentimento de D-064. O gate é único: quem não ativou o toggle não aparece nem no mapa nem para a IA.
+- **O modelo nunca calcula geometria.** Distância e rumo são computados no aparelho (`lib/world/shelters.ts`) e enviados prontos; o prompt proíbe o modelo de calcular. Rumo errado em emergência aponta a família para o lado errado.
 
 ---
 
