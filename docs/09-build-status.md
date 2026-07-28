@@ -12,7 +12,7 @@
 | **Current Phase** | Abrigos oficiais + planos da família (FAM/PLAN) + gates de validação da v2 abertos (WV2-T05) |
 | **Last Completed Task** | **D-065 / FAM-T05→T07 — abrigos oficiais do FEMA NSS, rumo/distância on-device e deep-link de navegação (2026-07-27)** |
 | | D-066 / PLAN-T00 — spec dos Planos de Emergência da Família (`docs/18-family-plans.md`) (2026-07-27) |
-| | D-064 / FAM-T01→T04 — localização familiar ao vivo, consentimento próprio e remoção dos mocks do mapa (2026-07-27)** |
+| | D-064 / FAM-T01→T04 — localização familiar ao vivo, consentimento próprio e remoção dos mocks do mapa (2026-07-27) |
 | **Migration** | ✅ `20260727000000_live_location.sql` aplicada pelo dono em 2026-07-27. Verificado via REST service-role: as 4 colunas `last_location_*` respondem 200 em `profiles`. |
 | | D-063 / WV2-T04 — World v2 promovido a `/dashboard` e lançado em produção (2026-07-27) |
 | | D-062 / WV2-T01→T03 — design system Apple, `DetentSheet` com gesto real e Pilot copiloto local-first (2026-07-27) |
@@ -39,9 +39,9 @@
 | | D-049: aba Família vira vista unificada (roster + membros do círculo) (2026-07-21) |
 | | LA-T02: Stripe **Live** cutover — faturamento real ativo (2026-07-21) |
 | | LA-T01: Stripe test payment → webhook → `profiles.plan=family` (2026-07-20) |
-| **In Progress** | HWD-06 — remaining production validation for `/dashboard-world` |
-| **Next Task** | Código A (afiliado, Stripe): cupom "100% off · once" + promotion codes — depende dos params do dono + Stripe Live key. Depois: gates de validação HWD-06 (owner/browser). |
-| **Build** | ✅ Passing — type-check, tests, production build clean (2026-07-21) |
+| **In Progress** | — |
+| **Next Task** | **PLAN-T01** — modelo de dados + RLS por círculo + API dos Planos de Emergência da Família (`docs/18-family-plans.md`). Alternativas abertas: **WV2-T05** (gates de validação da v2, dívida assumida em D-063), **FAM-T08** (cache offline dos abrigos), **LA-T06** (códigos de afiliado, travado nos params do dono). |
+| **Build** | ✅ Passing — type-check, ESLint e production build limpos (2026-07-27) |
 | **Vercel** | ✅ Deployed — domínio canônico `https://eos-app-fawn.vercel.app` |
 | **Supabase** | ✅ Healthy — project ref `alxurmgpyxjhvnliivbf` |
 | **⚠️ Segurança** | Rotacionar segredos expostos em chat: Vercel token (`vcp_…`), Supabase PAT (`sbp_…`), Stripe test/Live keys, MapTiler. |
