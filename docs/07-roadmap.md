@@ -204,6 +204,8 @@
 | PILOT-T07 | Pilot com dados ao vivo, coordenadas consentidas, busca de lugares e navegação | ✅ COMPLETE | 2026-07-28 — D-068/D-069. `findPlaces` (Nominatim) dá ao Pilot capacidade de procurar POIs reais; trajeto vira camada do EOS |
 | WV2-T08 | `/weather` no design system da v2, sem alterar funções | ✅ COMPLETE | 2026-07-28 — escopo `.wv2` para herdar tipografia e tokens; ritmo único de espaçamento por `gap`; raios alinhados. Zero mudança de comportamento |
 | WV2-T09 | Prontidão pareada ao índice de risco no dashboard | ✅ COMPLETE | 2026-07-28 — os dois números só significam algo juntos: risco 9 lê diferente a 20% e a 90% de prontidão |
+| WV2-T10 | Responsividade no celular: câmera do usuário, teclado e entrada única | ✅ COMPLETE | 2026-07-28 — D-070. A recentragem automática recolhia o sheet em uso; agora a câmera segue só na 1ª leitura e apenas gestos reais recolhem o HUD |
+| WV2-T11 | PilotBar substitui a busca — o Pilot vira a entrada única | ✅ COMPLETE | 2026-07-28 — D-070; `MapSearch` aposentado |
 | PILOT-T03 | Rule-backed recommendation states: GO, LIMITED, WAIT, AVOID, PRIORITY OVERRIDE | BLOCKED | Critical rules must override AI |
 | PILOT-T04 | Metrics instrumentation for discovery, trust, retention, personalization, safety | BLOCKED | Needed before production rollout |
 

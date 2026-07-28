@@ -20,8 +20,7 @@ import { useSimulation } from '@/components/SimulationProvider'
 import WorldMap from '@/components/world-dashboard/WorldMap'
 import DetentSheet, { type Detent } from './DetentSheet'
 import Pilot from './Pilot'
-import MapSearch from './MapSearch'
-import type { GeocodeResult } from '@/app/api/geocode/search/route'
+import PilotBar from './PilotBar'
 import type { PilotContext } from './pilot-engine'
 import type { ShelterSnapshot } from '@/lib/world/shelters'
 import { Bar, Card, IconButton, Pill, PillLink, SectionLabel, Tile, TileGrid } from './primitives'
@@ -145,8 +144,10 @@ export default function WorldV2() {
   const data = useWorldData()
   const simulation = useSimulation()
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
-  const [searched, setSearched] = useState<{ lat: number; lng: number; label: string; nonce: number } | null>(null)
   const [course, setCourse] = useState<{ lat: number; lng: number; label: string; nonce: number } | null>(null)
+  const [pilotOpen, setPilotOpen] = useState(false)
+  const [pilotAsk, setPilotAsk] = useState<{ text: string; nonce: number } | null>(null)
+  const [recenterNonce, setRecenterNonce] = useState(0)
   const family = useCircleFamily(language === 'pt', coords, avatarUrl)
   const shelterSnapshot = useShelters(coords)
 
@@ -226,9 +227,8 @@ export default function WorldV2() {
         lng: s.lng,
         distanceKm: s.distanceKm,
       })),
-      searchedPlace: searched ? { label: searched.label, lat: searched.lat, lng: searched.lng } : null,
     }),
-    [metric, state, score, snapshot, hasCoords, coords, data, shelterSnapshot, simulation.active, family, searched],
+    [metric, state, score, snapshot, hasCoords, coords, data, shelterSnapshot, simulation.active, family],
   )
 
   const sections = (
@@ -257,21 +257,22 @@ export default function WorldV2() {
           plateUrl="/world/parkland.webp"
           mapBase="dark"
           family={family}
-          focus={searched}
           courseTo={course}
+          recenterNonce={recenterNonce}
           shelters={(shelterSnapshot?.shelters ?? []).map(s => ({ id: s.id, name: s.name, lat: s.lat, lng: s.lng, distanceKm: s.distanceKm }))}
           onMapInteraction={() => setDetent('peek')}
         />
       </div>
       <div className="wv2-scrim" aria-hidden="true" />
 
-      <MapSearch
+      <PilotBar
         pt={metric}
-        near={coords}
-        onPick={(result: GeocodeResult) =>
-          setSearched({ lat: result.lat, lng: result.lng, label: result.name, nonce: Date.now() })
-        }
-        onClear={() => setSearched(null)}
+        riskState={state}
+        onOpen={() => setPilotOpen(true)}
+        onAsk={question => {
+          setPilotOpen(true)
+          setPilotAsk({ text: question, nonce: Date.now() })
+        }}
       />
 
       <div className="wv2-layer wv2-chrome">
@@ -286,7 +287,14 @@ export default function WorldV2() {
 
 
         <div className="wv2-mapcontrols">
-          <IconButton label={c.useGps} onClick={requestGps} active={hasCoords}>
+          <IconButton
+            label={c.useGps}
+            active={hasCoords}
+            onClick={() => {
+              requestGps()
+              setRecenterNonce(n => n + 1)
+            }}
+          >
             <LocationIcon />
           </IconButton>
           <IconButton label={c.refresh} onClick={() => { refresh(); data.refresh() }}>
@@ -341,6 +349,9 @@ export default function WorldV2() {
         <Pilot
           ctx={pilotContext}
           online={data.online}
+          open={pilotOpen}
+          onOpenChange={setPilotOpen}
+          incoming={pilotAsk}
           onShowCourse={destination => {
             setCourse({ ...destination, nonce: Date.now() })
             // "Show on map" has to actually reveal the map: collapse the sheet

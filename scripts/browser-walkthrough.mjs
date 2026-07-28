@@ -117,8 +117,14 @@ async function main() {
     await shot('02-sheet-arrastado')
   } else log('⚠️  grabber do sheet não encontrado')
 
+  // O mapa não pode voltar sozinho para o usuário
+  await page.mouse.move(200, 500); await page.mouse.down(); await page.mouse.move(200, 260, { steps: 12 }); await page.mouse.up()
+  await page.waitForTimeout(1500)
+  await page.waitForTimeout(9000)
+  await shot('03b-mapa-ficou-onde-eu-deixei')
+
   // Pilot
-  const orb = page.locator('.wv2-pilot-orb')
+  const orb = page.locator('.bar-orb')
   if (await orb.count()) {
     await orb.click()
     await page.waitForTimeout(1200)
@@ -132,15 +138,16 @@ async function main() {
   } else log('⚠️  orbe do Pilot não encontrado')
 
   // busca
-  const search = page.locator('.wv2-search input')
+  const search = page.locator('.wv2-pilotbar input')
   if (await search.count()) {
-    await search.fill('Coral Springs')
+    await search.fill('home depot mais perto de mim')
     await search.press('Enter')
-    await page.waitForTimeout(4000)
-    await shot('04-busca')
-    const hits = await page.locator('.search-hit').count()
-    log('   resultados de busca:', hits)
-    if (hits) { await page.locator('.search-hit').first().click(); await page.waitForTimeout(2500); await shot('05-busca-selecionada') }
+    await page.waitForTimeout(26000)
+    await shot('04-barra-pilot')
+    const reply = await page.locator('.chat-pilot').last().innerText().catch(() => '?')
+    log('\n   BARRA → PILOT:\n   ' + reply.replace(/\n/g, '\n   '))
+    log('   campo de conversa visível:', await page.locator('.chat-compose input').isVisible().catch(() => false) ? 'sim ✅' : 'não ❌')
+    await page.keyboard.press('Escape'); await page.waitForTimeout(800)
   } else log('⚠️  campo de busca não encontrado')
 
   // ── 5. SIMULADOR ────────────────────────────────────────────────────────
@@ -195,7 +202,7 @@ async function main() {
   // ── 7. PILOT como conversa ──────────────────────────────────────────────
   await page.goto(`${BASE}/dashboard`, { waitUntil: 'networkidle' })
   await page.waitForTimeout(8000)
-  const orb3 = page.locator('.wv2-pilot-orb')
+  const orb3 = page.locator('.bar-orb')
   if (await orb3.count()) {
     await orb3.click()
     await page.waitForTimeout(1800)

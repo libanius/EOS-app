@@ -214,7 +214,7 @@ function markerEl(className: string, pin: string, label: string, color?: string)
   return el
 }
 
-export default function WorldMap({ plateUrl, family = [], shelters = [], guidance = null, mapBase = 'hybrid', routeFocusNonce = 0, focus = null, courseTo = null, onMapInteraction }: {
+export default function WorldMap({ plateUrl, family = [], shelters = [], guidance = null, mapBase = 'hybrid', routeFocusNonce = 0, focus = null, courseTo = null, recenterNonce = 0, onMapInteraction }: {
   state: string
   plateUrl: string
   family?: WorldFamilyMember[]
@@ -230,6 +230,8 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
    * line — EOS does not claim to know the roads.
    */
   courseTo?: { lat: number; lng: number; label: string; nonce: number } | null
+  /** Bump to re-centre on the user. Nothing else ever moves the camera to them. */
+  recenterNonce?: number
   onMapInteraction?: () => void
 }) {
   const { coords } = useRisk()
@@ -240,6 +242,8 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
   // Kept out of markersRef so a family/shelter refresh never wipes the search pin.
   const searchMarkerRef = useRef<MLMarker | null>(null)
   const courseMarkerRef = useRef<MLMarker | null>(null)
+  // The camera follows the user exactly once — on the first fix.
+  const centeredOnceRef = useRef(false)
   const readyRef = useRef(false)
   const centerRef = useRef<[number, number] | null>(null)
   const plateRef = useRef<HTMLDivElement>(null)
@@ -434,10 +438,17 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
         map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right')
         map.on('error', () => { /* tiles/provider errors must not blank the app */ })
         if (onMapInteraction) {
-          map.on('dragstart', onMapInteraction)
-          map.on('zoomstart', onMapInteraction)
-          map.on('rotatestart', onMapInteraction)
-          map.on('pitchstart', onMapInteraction)
+          // ONLY user-driven moves collapse the HUD. MapLibre fires these for
+          // programmatic camera moves too, so a flyTo() used to collapse the
+          // sheet the user was mid-scroll on — the map fighting the person.
+          // `originalEvent` is present only when a real pointer caused it.
+          const ifUser = (event: { originalEvent?: unknown }) => {
+            if (event?.originalEvent) onMapInteraction()
+          }
+          map.on('dragstart', ifUser)
+          map.on('zoomstart', ifUser)
+          map.on('rotatestart', ifUser)
+          map.on('pitchstart', ifUser)
         }
 
         map.on('load', () => {
@@ -490,9 +501,18 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
     if (!map || !coords) return
     const center: [number, number] = [coords.lng, coords.lat]
     centerRef.current = center
-    const reduce = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (reduce) map.jumpTo({ center })
-    else map.flyTo({ center, duration: 1400, essential: true })
+
+    // Follow the user ONCE. `watchPosition` fires on every GPS jitter, and
+    // re-centring on each one yanked the map out from under anyone trying to
+    // look somewhere else. After the first fix the camera belongs to the user;
+    // the arrow button is how they ask for it back.
+    if (!centeredOnceRef.current) {
+      centeredOnceRef.current = true
+      const reduce = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      if (reduce) map.jumpTo({ center })
+      else map.flyTo({ center, duration: 1400, essential: true })
+    }
+
     if (readyRef.current) {
       void placeOverlays()
       renderHazards(center)
@@ -556,6 +576,18 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
 
     return () => { cancelled = true }
   }, [focus])
+
+  // Explicit recentre — the only thing besides the first fix that moves the
+  // camera to the user.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !recenterNonce || !coords) return
+    const reduce = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const target = { center: [coords.lng, coords.lat] as [number, number], zoom: Math.max(map.getZoom(), 14) }
+    if (reduce) map.jumpTo(target)
+    else map.flyTo({ ...target, duration: 900, essential: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recenterNonce])
 
   // Draw the course inside EOS: line, destination pin, and a camera that frames
   // both ends. Handing off to another app stays available, but it is no longer

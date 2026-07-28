@@ -1855,3 +1855,70 @@
   margin: var(--s1) 0;
   background: var(--sep);
 }
+
+/* ═══ PILOT BAR ════════════════════════════════════════════════════════════
+   One entry point: the field and the orb are the same tool. Typing here is
+   talking to the Pilot, which searches, answers, routes and orchestrates. */
+
+.wv2-pilotbar {
+  position: absolute;
+  z-index: 4;
+  top: calc(max(16px, env(safe-area-inset-top, 0px) + 8px));
+  left: var(--edge);
+  right: calc(16px + 88px + 10px);
+  max-width: 560px;
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+.wv2-pilotbar .bar-field {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  height: 46px;
+  padding: 0 var(--s4);
+  border-radius: var(--r-pill);
+  border: 1px solid var(--sep);
+  background: var(--mat-thick);
+  backdrop-filter: blur(var(--mat-blur-md)) saturate(var(--mat-sat));
+  -webkit-backdrop-filter: blur(var(--mat-blur-md)) saturate(var(--mat-sat));
+  box-shadow: 0 10px 26px -14px rgba(0, 0, 0, 0.95);
+}
+.wv2-pilotbar .bar-field:focus-within { border-color: rgba(var(--accent-rgb), 0.55); }
+.wv2-pilotbar input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.9375rem;
+  letter-spacing: -0.006em;
+}
+.wv2-pilotbar input::placeholder { color: var(--ink-3); }
+.wv2-pilotbar .bar-orb {
+  flex: none;
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-pill);
+  color: var(--accent);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform 110ms ease-out;
+}
+.wv2-pilotbar .bar-orb:active { transform: scale(0.92); }
+.wv2[data-risk='critical'] .wv2-pilotbar .bar-orb {
+  animation: wv2-pilot-alert 1800ms ease-in-out infinite;
+}
+
+/* The conversation lifts above the on-screen keyboard. */
+.wv2-pilot-chat { bottom: var(--wv2-keyboard, 0px); }
+
+@media (prefers-reduced-motion: reduce) {
+  .wv2-pilotbar .bar-orb:active { transform: none; }
+  .wv2[data-risk='critical'] .wv2-pilotbar .bar-orb { animation: none; }
+}

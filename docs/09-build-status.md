@@ -10,7 +10,8 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Abrigos oficiais + planos da família (FAM/PLAN) + gates de validação da v2 abertos (WV2-T05) |
-| **Last Completed Task** | **`/weather` no design system da v2 + prontidão pareada ao risco no dashboard (2026-07-28)** |
+| **Last Completed Task** | **D-070 — mapa para de brigar com o usuário; PilotBar vira a entrada única (2026-07-28)** |
+| | `/weather` no design system da v2 + prontidão pareada ao risco no dashboard (2026-07-28)** |
 | | D-069 — trajeto vira camada do EOS; app de mapas é o segundo passo |
 | | D-068 — Pilot acessa posições consentidas, busca lugares reais e propõe navegação |
 | | Fix: JSON cru vazava na conversa quando a resposta era truncada |

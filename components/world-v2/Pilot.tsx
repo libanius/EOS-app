@@ -128,10 +128,17 @@ function fromAnswer(answer: PilotAnswer): Message {
 export default function Pilot({
   ctx,
   online,
+  open,
+  onOpenChange,
+  incoming,
   onShowCourse,
 }: {
   ctx: PilotContext
   online: boolean
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  /** A question typed in the PilotBar. The nonce lets the same text be re-asked. */
+  incoming: { text: string; nonce: number } | null
   onShowCourse: (destination: PilotDestination) => void
 }) {
   const { language } = useLanguage()
@@ -139,7 +146,6 @@ export default function Pilot({
   const c = COPY[language]
   const pt = ctx.pt
 
-  const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
   const [draft, setDraft] = useState('')
   const [busy, setBusy] = useState(false)
@@ -165,11 +171,44 @@ export default function Pilot({
   useEffect(() => {
     if (!open) return
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false)
+      if (event.key === 'Escape') onOpenChange(false)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
+  }, [open, onOpenChange])
+
+  // Mobile keyboards shrink the visual viewport WITHOUT changing dvh, so the
+  // compose field slid under the keyboard and vanished. Track the real visible
+  // height and lift the sheet by the covered amount.
+  useEffect(() => {
+    if (!open || typeof window === 'undefined') return
+    const vv = window.visualViewport
+    if (!vv) return
+    const sync = () => {
+      const covered = Math.max(0, window.innerHeight - vv.height - vv.offsetTop)
+      document.documentElement.style.setProperty('--wv2-keyboard', `${Math.round(covered)}px`)
+    }
+    sync()
+    vv.addEventListener('resize', sync)
+    vv.addEventListener('scroll', sync)
+    return () => {
+      vv.removeEventListener('resize', sync)
+      vv.removeEventListener('scroll', sync)
+      document.documentElement.style.setProperty('--wv2-keyboard', '0px')
+    }
   }, [open])
+
+  // A question typed in the bar arrives here and is sent as if it had been
+  // typed in the conversation — one entry point, one behaviour.
+  const lastIncoming = useRef(0)
+  useEffect(() => {
+    if (!incoming || incoming.nonce === lastIncoming.current) return
+    lastIncoming.current = incoming.nonce
+    setMessages(current => (current.length ? current : [fromAnswer(opening)]))
+    setDraft(incoming.text)
+    void sendQuestion(incoming.text)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [incoming])
 
   const push = (message: Message) => {
     setMessages(current => [...current, message])
@@ -187,6 +226,12 @@ export default function Pilot({
   const send = async () => {
     const question = draft.trim()
     if (!question || busy) return
+    setDraft('')
+    await sendQuestion(question)
+  }
+
+  const sendQuestion = async (question: string) => {
+    if (!question.trim() || busy) return
     haptic.impact()
     setDraft('')
     push({ id: nextId(), role: 'user', text: question })
@@ -360,7 +405,7 @@ export default function Pilot({
             type="button"
             className="wv2-pilot-scrim"
             aria-label={c.close}
-            onClick={() => setOpen(false)}
+            onClick={() => onOpenChange(false)}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -386,7 +431,7 @@ export default function Pilot({
                 <strong className="t-title2">{c.title}</strong>
                 <em className="t-foot">{c.subtitleByState[ctx.riskState]}</em>
               </span>
-              <button type="button" className="chat-close" onClick={() => setOpen(false)} aria-label={c.close}>
+              <button type="button" className="chat-close" onClick={() => onOpenChange(false)} aria-label={c.close}>
                 <CloseIcon />
               </button>
             </header>
@@ -468,7 +513,7 @@ export default function Pilot({
                                   onClick={() => {
                                     haptic.impact()
                                     onShowCourse(destination)
-                                    setOpen(false)
+                                    onOpenChange(false)
                                   }}
                                 >
                                   {c.showOnMap}
@@ -544,33 +589,7 @@ export default function Pilot({
         )}
       </AnimatePresence>
 
-      {/* The orb steps aside once the conversation is open — the header owns
-          the close from then on, and two stacked close buttons is noise. */}
-      {!open && (
-        <button
-          type="button"
-          className="wv2-pilot-orb wv2-fume"
-          data-open="false"
-          aria-expanded={false}
-          aria-label={c.open}
-          onClick={() => {
-            haptic.impact()
-            setOpen(true)
-          }}
-        >
-          <SparkIcon />
-        </button>
-      )}
     </>
-  )
-}
-
-function SparkIcon() {
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M12 3c.5 3.6 1.9 5 5.5 5.5-3.6.5-5 1.9-5.5 5.5-.5-3.6-1.9-5-5.5-5.5C10.1 8 11.5 6.6 12 3Z" fill="currentColor" />
-      <path d="M17.8 14.5c.28 2 1.05 2.77 3.05 3.05-2 .28-2.77 1.05-3.05 3.05-.28-2-1.05-2.77-3.05-3.05 2-.28 2.77-1.05 3.05-3.05Z" fill="currentColor" opacity="0.72" />
-    </svg>
   )
 }
 

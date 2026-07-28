@@ -112,11 +112,14 @@ async function findPlaces(question: string, at: { lat: number; lng: number } | n
   const query = question.replace(FILLER, ' ').replace(/[?!.,]/g, ' ').replace(/\s+/g, ' ').trim()
   if (query.length < 3 || !at) return [] as Array<{ label: string; lat: number; lng: number; distanceKm: number }>
 
-  const d = 0.6 // degrees — a metro-area window, not the whole state
+  // 0.6° is ~66 km of latitude — wide enough that a search near Parkland
+  // reached Miami and the model picked it. A tight box plus a distance sort is
+  // what "nearest" actually means.
+  const d = 0.25
   const params = new URLSearchParams({
     q: query,
     format: 'json',
-    limit: '5',
+    limit: '12',
     viewbox: `${at.lng - d},${at.lat + d},${at.lng + d},${at.lat - d}`,
     bounded: '1',
   })
@@ -143,6 +146,7 @@ async function findPlaces(question: string, at: { lat: number; lng: number } | n
       })
       .filter((p): p is { label: string; lat: number; lng: number; distanceKm: number } => p !== null)
       .sort((a, b) => a.distanceKm - b.distanceKm)
+      .slice(0, 4)
   } catch {
     return []
   }
@@ -398,9 +402,9 @@ export async function POST(request: NextRequest) {
   const places = await findPlaces(question, context.selfCoords)
   const placesBlock = places.length
     ? (pt
-        ? `LUGARES REAIS ENCONTRADOS PERTO DO USUÁRIO para esta pergunta (coordenadas verificadas — copie-as, não invente):\n` +
+        ? `LUGARES REAIS PERTO DO USUÁRIO, JÁ ORDENADOS DO MAIS PRÓXIMO PARA O MAIS DISTANTE (coordenadas verificadas — copie-as, não invente). Se a pergunta for pelo "mais próximo", a resposta é O PRIMEIRO da lista; não escolha outro:\n` +
           places.map(p => `- ${p.label} (${p.lat.toFixed(5)},${p.lng.toFixed(5)}) a ${p.distanceKm.toFixed(1)} km`).join('\n')
-        : `REAL PLACES FOUND NEAR THE USER for this question (verified coordinates — copy them, do not invent):\n` +
+        : `REAL PLACES NEAR THE USER, ALREADY SORTED NEAREST FIRST (verified coordinates — copy them, do not invent). If the question asks for the nearest one, the answer is THE FIRST ITEM; do not pick another:\n` +
           places.map(p => `- ${p.label} (${p.lat.toFixed(5)},${p.lng.toFixed(5)}) ${p.distanceKm.toFixed(1)} km away`).join('\n'))
     : ''
 

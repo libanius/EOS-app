@@ -4,6 +4,27 @@
 
 ---
 
+## D-070 — O Pilot é a única entrada; a câmera pertence ao usuário
+
+**Date**: 2026-07-28
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: Uso real no celular expôs três falhas que se somavam:
+1. **O mapa brigava com o usuário.** `watchPosition` dispara a cada tremida do GPS → `coords` muda → `flyTo` recentraliza. E `flyTo` é programático, mas o MapLibre dispara `dragstart`/`zoomstart` também para movimentos programáticos — que estavam ligados ao `onMapInteraction`. Resultado: **a recentragem recolhia o sheet que a pessoa estava rolando**, no mesmo instante. Impossível navegar.
+2. **Não dava para digitar no Pilot no celular.** O teclado encolhe o *visual viewport* sem alterar `dvh`, então o campo de escrita ficava embaixo do teclado.
+3. **Barra de busca sobrando.** O Pilot já procura lugares, nomeia coordenadas, desenha trajeto e cria tarefas. Uma caixa separada que só geocodifica era uma versão mais fraca da mesma coisa, ao lado dela.
+
+**Decision**:
+1. **A câmera segue o usuário exatamente uma vez**, na primeira leitura. Depois disso ela é dele. A setinha no canto é como se pede de volta (`recenterNonce`).
+2. **Só movimento originado por gesto recolhe o HUD.** O handler agora exige `event.originalEvent`, que só existe quando um ponteiro real causou o movimento.
+3. **Uma entrada só.** A barra de busca vira a **PilotBar**: digitar ali é falar com o Pilot, com o orb ao lado. Ele procura, encontra, responde, redireciona e orquestra. `MapSearch` sai da composição.
+4. **A conversa acompanha o teclado** via `visualViewport`, publicando `--wv2-keyboard`.
+5. **"Mais próximo" passa a significar isso**: a janela de busca caiu de 0.6° (~66 km, que alcançava Miami a partir de Parkland) para 0.25°, o limite subiu para 12 resultados, e a lista vai ao modelo **ordenada por distância** com a instrução de que a resposta ao "mais próximo" é *o primeiro item* — o modelo não escolhe.
+
+**Consequence**: o mapa deixa de disputar o controle com quem o usa, e o Pilot passa a ser o orquestrador único que o produto sempre quis ser.
+
+---
+
 ## D-069 — O trajeto é uma camada do EOS; o app de mapas é o segundo passo
 
 **Date**: 2026-07-28
