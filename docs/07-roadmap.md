@@ -126,7 +126,30 @@
 | FAM-T02 | Corrigir vazamento: gatear `location_lat/lng` em `/api/circles` por `shared_fields` | ✅ COMPLETE | 2026-07-27 — sem consentimento não sai coordenada; retorna `location_source`/`location_at` para a UI rotular |
 | FAM-T03 | `POST /api/location` + hook de envio periódico enquanto o app está aberto | ✅ COMPLETE | 2026-07-27 — `LocationReporter` nunca dispara prompt de permissão; 2 min, só com aba visível; servidor grava só o último ponto |
 | FAM-T04 | Toggle próprio de localização na tela de Círculos + marcadores reais com freshness no mapa v2; remover mocks do `WorldMap` | ✅ COMPLETE | 2026-07-27 — mocks 'Paulo/Isadora/Ana' + rota + `SHELTER · mock` removidos das duas telas |
-| FAM-T05 | Fonte de rota/abrigo (dívida D-051 §5) | PENDING | **Bloqueia** qualquer rota/abrigo voltar ao mapa. OpenAI não é fonte geoespacial nem de emergência. |
+| FAM-T05 | Fonte de rota/abrigo (dívida D-051 §5) | ✅ COMPLETE (decisão) | 2026-07-27 — **D-065**: FEMA NSS para abrigo; navegação entregue ao app de mapas; rumo/distância on-device. Dívida D-051 §5 resolvida. |
+| FAM-T06 | Provider FEMA NSS: proxy `/api/shelters` com cache + camada no mapa v2 | ✅ COMPLETE | 2026-07-27 — `lib/world/shelters.ts`; verificado ao vivo: 4 abrigos reais perto de Bend/OR, `empty:true` em Parkland |
+| FAM-T07 | Rumo/distância on-device + botão "Como chegar" (deep-link) + adaptador de rotas | ✅ COMPLETE | 2026-07-27 — `lib/world/navigation.ts`; Pilot passa a citar abrigo aberto em "ficar ou sair" |
+| FAM-T08 | Cache offline dos abrigos (`lib/offline-storage.ts`) | PENDING | Destino precisa estar no aparelho quando a torre cair |
+
+---
+
+## Planos de Emergência da Família (PLAN)
+
+*Goal: carregar o combinado operacional da família — para onde ir e como se encontrar quando nada estiver funcionando.*
+
+> Decisão: **D-066**. Spec completa: `docs/18-family-plans.md`.
+> Princípio: **o plano precisa funcionar exatamente quando o EOS não funciona.**
+
+| Task ID | Task | Status | Notes |
+|---|---|---|---|
+| PLAN-T00 | Spec + decisão do conceito de plano de voo familiar | ✅ COMPLETE | 2026-07-27 — D-066 / doc 18 |
+| PLAN-T01 | Modelo de dados + RLS por círculo + API autenticada | PENDING | 5 tabelas; endpoints públicos de ficha nunca tocam nelas |
+| PLAN-T02 | Editor: pontos de encontro (1/2/3), lugares conhecidos, papéis, gatilhos | PENDING | Ponto de encontro e papéis são obrigatórios; o resto é opcional |
+| PLAN-T03 | Desenho de rotas no mapa + edição de traçado | PENDING | Rotas são autorais, não roteadas (D-066 §2) |
+| PLAN-T04 | Versionamento, push ao círculo e reconhecimento explícito | PENDING | **Parte difícil, não adiável.** Duas versões diferentes = famílias em lugares diferentes |
+| PLAN-T05 | Cache offline do plano + execução sem rede | PENDING | Critério de aceitação: avião no chão (doc 18 §13) |
+| PLAN-T06 | Envelope do plano como recorte do download de mapas offline | PENDING | É o que torna o download finito e certo |
+| PLAN-T07 | Pilot propõe/revisa planos com confirmação elemento a elemento | PENDING | Depende de UPP-03; sem escrita silenciosa |
 
 ---
 

@@ -45,6 +45,9 @@ type HazardEvent = {
 type HazardSnapshot = { events?: HazardEvent[]; fetchedAt?: string }
 type RadarSnapshot = { ok?: boolean; tileUrl?: string; attribution?: string; frameTime?: number }
 export type WorldFamilyMember = { id: string; name: string; lat: number; lng: number; isMe?: boolean; freshness: string }
+/** Official FEMA shelters (D-065). Rendered distinctly from family points. */
+export type WorldShelter = { id: string; name: string; lat: number; lng: number; distanceKm: number }
+
 export type WorldGuidance = {
   shelter: { name: string; lat: number; lng: number; confidence: string; source: string }
   route: { label: string; confidence: string; points: Array<[number, number]> }
@@ -134,10 +137,11 @@ function markerEl(className: string, pin: string, label: string, color?: string)
   return el
 }
 
-export default function WorldMap({ plateUrl, family = [], guidance = null, mapBase = 'hybrid', routeFocusNonce = 0, onMapInteraction }: {
+export default function WorldMap({ plateUrl, family = [], shelters = [], guidance = null, mapBase = 'hybrid', routeFocusNonce = 0, onMapInteraction }: {
   state: string
   plateUrl: string
   family?: WorldFamilyMember[]
+  shelters?: WorldShelter[]
   guidance?: WorldGuidance | null
   mapBase?: MapBaseMode
   routeFocusNonce?: number
@@ -168,7 +172,7 @@ export default function WorldMap({ plateUrl, family = [], guidance = null, mapBa
     markersRef.current.forEach(m => m.remove())
     markersRef.current = []
 
-    if (!family.length && !guidance?.shelter) return
+    if (!family.length && !shelters.length && !guidance?.shelter) return
     const maplibregl = (await import('maplibre-gl')).default
 
     family.slice(0, 8).forEach((m, i) => {
@@ -179,6 +183,15 @@ export default function WorldMap({ plateUrl, family = [], guidance = null, mapBa
       const el = markerEl('w-mapmarker real', initials, `${short(m.name, 18)} · ${m.freshness}`, color)
       markersRef.current.push(new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([m.lng, m.lat]).addTo(map))
     })
+
+    // Official FEMA shelters. Distance is on the label because it is the fact
+    // that decides whether this shelter is reachable on foot.
+    for (const shelter of shelters.slice(0, 6)) {
+      const el = markerEl('w-mapmarker shelter', '', `${short(shelter.name, 26)} · ${shelter.distanceKm.toFixed(1)} km`)
+      markersRef.current.push(
+        new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([shelter.lng, shelter.lat]).addTo(map),
+      )
+    }
 
     const shelter = guidance?.shelter
     if (shelter) {
@@ -383,7 +396,7 @@ export default function WorldMap({ plateUrl, family = [], guidance = null, mapBa
   useEffect(() => {
     if (readyRef.current) void placeOverlays()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [family, guidance])
+  }, [family, shelters, guidance])
 
   useEffect(() => {
     const map = mapRef.current

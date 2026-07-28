@@ -4,6 +4,55 @@
 
 ---
 
+## D-066 — Planos de Emergência da Família ("plano de voo")
+
+**Date**: 2026-07-27
+**Status**: DECIDED / SPEC — implementação faseada (PLAN-T00→T07)
+**Spec**: `docs/18-family-plans.md`
+
+**Context**: Abrigo oficial (D-065) só existe durante desastre ativo e não resolve o caso mais comum de uma família: pai no trabalho, filha na escola, mãe na estrada, celular mudo. O dono definiu o conceito: um plano autoral, escrito em calma, compartilhado no círculo, **executado quando o sistema está degradado** — combinado antes, seguido sem negociação durante.
+
+**Decision**:
+1. **O plano é autoral e determinístico.** Pontos de encontro, lugares conhecidos, rotas desenhadas, papéis ("quem busca quem") e gatilhos, todos escritos pela família. Nenhum passo depende de inferência em tempo de execução.
+2. **Rotas são desenhadas, não roteadas.** Carregam conhecimento local que nenhum motor tem ("não pegue a ponte baixa, ela alaga") e sobrevivem offline. Um roteador pode **propor** um traçado para o usuário editar; nunca substitui a rota salva.
+3. **Versionamento é requisito de segurança, não de conveniência.** Plano tem `version`; o aparelho exibe a idade da cópia local; alteração dispara push ao círculo; membros **reconhecem** explicitamente a nova versão e o autor vê quem reconheceu. Duas pessoas em versões diferentes vão para lugares diferentes — é a falha que mata.
+4. **Escopo é o círculo, jamais público.** O plano revela casa, escola, trabalho e ponto de encontro; é o dado mais sensível do EOS. **Nunca** entra na ficha pública nem no QR.
+5. **Pilot participa sem escrita silenciosa** (mesma trava de UPP-03): propõe rascunho, aponta lacunas, indica qual contingência se aplica durante o evento. Confirmação do usuário elemento a elemento. Plano alterado por IA sem o usuário saber é indistinguível de sabotagem.
+6. **O plano precede os mapas offline** no roadmap: o envelope geográfico do plano é o que torna o download offline finito e certo (spec §10).
+
+**Consequence**: EOS deixa de ser só diagnóstico e passa a carregar o combinado operacional da família. Assume-se o custo de um modelo de dados novo, RLS por círculo, e o problema de sincronismo do §6 — que é a parte difícil e não pode ser adiada para depois do editor.
+
+---
+
+## D-065 — Fonte oficial de abrigo + navegação entregue ao aparelho
+
+**Date**: 2026-07-27
+**Status**: DECIDED / IMPLEMENTAÇÃO EM CURSO
+**Resolve**: a dívida de **D-051 §5** (tirar rota/abrigo da inferência por OpenAI antes de produção).
+
+**Context**: Pesquisa de fontes feita contra endpoints reais em 2026-07-27, não de memória:
+
+| Fonte | Verificado | Resultado |
+|---|---|---|
+| **FEMA NSS `gis.fema.gov/.../NSS/OpenShelters/FeatureServer/0`** | HTTP 200 | **Oficial, público, sem chave.** Geometria WGS84, `shelter_status`, capacidade, ADA, pets. 20 abrigos abertos no país no dia. |
+| OpenFEMA API | HTTP 200 | 48 datasets, **zero** de abrigos |
+| OSM via Overpass | 504 na instância pública; mirror OK | 15 "shelters" perto de Parkland, todos sem nome e sem `shelter_type` — são abrigos de ônibus. Semântica errada. |
+| Camadas ArcGIS da comunidade | HTTP 200 | Fragmentadas por estado/condado, várias de contas pessoais. Não autoritativas. |
+| OSRM demo | HTTP 200, 0,6s | Funciona, mas o servidor público proíbe uso em produção. |
+
+**Decision**:
+1. **Abrigos: FEMA National Shelter System**, consumido via proxy server-side com cache. Único uso permitido. **Ressalva documentada**: `evacuation_capacity`, `total_population` e `org_name` vêm frequentemente nulos e acessibilidade vem `UNK` — o EOS pode afirmar *onde* e *se está aberto*, nunca prometer vaga ou acessibilidade.
+2. **Zero abrigo aberto é a resposta normal.** Fora de desastre ativo não há nenhum. A UI diz isso; não inventa candidato — foi exatamente o erro do `SHELTER · mock` (D-064 §5).
+3. **Navegação é entregue ao app de mapas do aparelho** (deep-link Apple/Google Maps). Ele tem trânsito e interdições ao vivo que o EOS nunca terá; desenhar rota confiante que ignora estrada alagada é o mesmo erro do abrigo fictício.
+4. **Rumo e distância são calculados no aparelho** — trigonometria pura, sem rede e sem chave. É o único componente de navegação que funciona em degradação total, e por isso é o que o EOS realmente possui.
+5. **Nenhuma chave de roteamento nesta fase.** Uma API hospedada morre 100% offline e seria dívida, não ativo. Roteamento fica atrás de um **adaptador** (padrão já usado em `lib/world/providers.ts` e nos adapters de hazard), para o motor on-device do app nativo plugar sem reescrever UI.
+
+**Nota técnica registrada**: navegação turn-by-turn offline **não é viável numa PWA** — exibir mapa offline é (PMTiles + MapLibre + Cache API), mas não existe engine de rotas WASM madura com grafo empacotado. Navegação offline real mora no app nativo (fase M), com Valhalla ou GraphHopper embarcados.
+
+**Consequence**: D-051 §5 fica resolvida — nenhuma rota ou abrigo inferido volta ao mapa. O EOS passa a mostrar abrigo oficial de verdade, e admite quando não há nenhum.
+
+---
+
 ## D-064 — Localização familiar ao vivo + consentimento próprio
 
 **Date**: 2026-07-27

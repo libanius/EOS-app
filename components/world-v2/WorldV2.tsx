@@ -21,9 +21,13 @@ import WorldMap from '@/components/world-dashboard/WorldMap'
 import DetentSheet, { type Detent } from './DetentSheet'
 import Pilot from './Pilot'
 import type { PilotContext } from './pilot-engine'
+import type { ShelterSnapshot } from '@/lib/world/shelters'
 import { Bar, Card, IconButton, Pill, PillLink, SectionLabel, Tile, TileGrid } from './primitives'
 import { SPRING } from './motion'
 import { useCircleFamily } from './useCircleFamily'
+import { useShelters } from './useShelters'
+import { compassPoint } from '@/lib/world/shelters'
+import { directionsUrl, formatDistance, walkingMinutes } from '@/lib/world/navigation'
 import { useWorldData } from './useWorldData'
 import './world-v2.css'
 
@@ -59,6 +63,12 @@ const COPY = {
     collapse: 'Recolher',
     sheetLabel: 'Situação da família',
     grabber: 'Arraste para redimensionar o painel, ou toque para alternar',
+    shelters: 'Abrigos oficiais',
+    noShelters: 'Nenhum abrigo aberto perto de você. É o normal fora de desastre ativo.',
+    sheltersError: 'Não foi possível consultar o FEMA agora.',
+    directions: 'Como chegar',
+    onFoot: 'a pé',
+    capacityUnknown: 'FEMA não informa vagas nem acessibilidade deste abrigo.',
     provenance: 'Pontos da família aparecem só para quem ativou o compartilhamento, sempre com a idade do ponto. Rota e abrigo estão fora do mapa até haver fonte oficial.',
     checklistDone: 'Checklist',
     temp: 'Temp',
@@ -99,6 +109,12 @@ const COPY = {
     collapse: 'Collapse',
     sheetLabel: 'Family situation',
     grabber: 'Drag to resize the panel, or tap to cycle',
+    shelters: 'Official shelters',
+    noShelters: 'No open shelter near you. That is normal outside an active disaster.',
+    sheltersError: 'Could not reach FEMA right now.',
+    directions: 'Directions',
+    onFoot: 'on foot',
+    capacityUnknown: 'FEMA does not report capacity or accessibility for this shelter.',
     provenance: 'Family points appear only for members who enabled sharing, always with the age of the point. Route and shelter stay off the map until there is an official source.',
     checklistDone: 'Checklist',
     temp: 'Temp',
@@ -124,6 +140,7 @@ export default function WorldV2() {
   const { snapshot, score, state, hasCoords, coords, requestGps, refresh } = useRisk()
   const data = useWorldData()
   const family = useCircleFamily(language === 'pt', coords)
+  const shelterSnapshot = useShelters(coords)
 
   const [detent, setDetent] = useState<Detent>('peek')
   const [isDesktop, setIsDesktop] = useState(false)
@@ -172,8 +189,12 @@ export default function WorldV2() {
       powerDays: data.powerDays,
       fuelDays: data.fuelDays,
       autonomyDays: data.autonomyDays,
+      nearestShelter: shelterSnapshot?.shelters[0]
+        ? { name: shelterSnapshot.shelters[0].name, distanceKm: shelterSnapshot.shelters[0].distanceKm }
+        : null,
+      sheltersKnown: Boolean(shelterSnapshot),
     }),
-    [metric, state, score, snapshot, hasCoords, data],
+    [metric, state, score, snapshot, hasCoords, data, shelterSnapshot],
   )
 
   const sections = (
@@ -189,6 +210,7 @@ export default function WorldV2() {
       headlines={headlines}
       hasCoords={hasCoords}
       onUseGps={requestGps}
+      shelters={shelterSnapshot}
     />
   )
 
@@ -200,6 +222,7 @@ export default function WorldV2() {
           plateUrl="/world/parkland.webp"
           mapBase="dark"
           family={family}
+          shelters={(shelterSnapshot?.shelters ?? []).map(s => ({ id: s.id, name: s.name, lat: s.lat, lng: s.lng, distanceKm: s.distanceKm }))}
           onMapInteraction={() => setDetent('peek')}
         />
       </div>
@@ -300,6 +323,7 @@ type SectionProps = {
   headlines: Array<{ id: string; headline: string }>
   hasCoords: boolean
   onUseGps: () => void
+  shelters: ShelterSnapshot | null
 }
 
 function WorldSections({
@@ -314,6 +338,7 @@ function WorldSections({
   headlines,
   hasCoords,
   onUseGps,
+  shelters,
 }: SectionProps) {
   return (
     <>
@@ -394,6 +419,43 @@ function WorldSections({
         ) : (
           <p className="t-body ink-2" style={{ marginTop: '0.25rem' }}>
             {c.noAlerts}
+          </p>
+        )}
+      </Card>
+
+      {/* ── Official shelters (D-065). "None open" is a real answer. ── */}
+      <Card>
+        <SectionLabel trailing={shelters?.shelters.length ? `${shelters.shelters.length}` : undefined}>
+          {c.shelters}
+        </SectionLabel>
+        {shelters?.error ? (
+          <p className="t-body ink-2" style={{ marginTop: '0.25rem' }}>{c.sheltersError}</p>
+        ) : shelters?.shelters.length ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.25rem' }}>
+            {shelters.shelters.slice(0, 2).map(shelter => (
+              <div key={shelter.id}>
+                <p className="t-body">{shelter.name}</p>
+                <p className="t-sub ink-2" style={{ marginTop: 2 }}>
+                  {formatDistance(shelter.distanceKm, metric)} · {compassPoint(shelter.bearing, metric)}
+                  {shelter.distanceKm <= 12 ? ` · ~${walkingMinutes(shelter.distanceKm)} min ${c.onFoot}` : ''}
+                </p>
+                <div style={{ marginTop: '0.5rem' }}>
+                  <a
+                    className="wv2-pill"
+                    href={directionsUrl({ lat: shelter.lat, lng: shelter.lng }, shelter.name)}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {c.directions}
+                  </a>
+                </div>
+              </div>
+            ))}
+            <p className="t-foot ink-3">{c.capacityUnknown}</p>
+          </div>
+        ) : (
+          <p className="t-body ink-2" style={{ marginTop: '0.25rem' }}>
+            {shelters ? c.noShelters : '—'}
           </p>
         )}
       </Card>

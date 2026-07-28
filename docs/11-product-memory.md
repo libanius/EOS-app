@@ -5,6 +5,18 @@
 
 ---
 
+## Abrigos, rotas e planos (2026-07-27)
+
+- **FEMA National Shelter System é público e sem chave**: `https://gis.fema.gov/arcgis/rest/services/NSS/OpenShelters/FeatureServer/0`. Geometria WGS84 direto no MapLibre; `shelter_status` confiável. **Mas** `evacuation_capacity`, `total_population` e `org_name` vêm frequentemente nulos e acessibilidade vem `UNK` — nunca prometer vaga nem acessibilidade a partir daí.
+- **Zero abrigo aberto é o estado normal.** Verificado em 2026-07-27: 20 abertos no país inteiro (OR, WA, GU, MP, WI, CA, TX), nenhum na Flórida. Abrigo só abre em desastre ativo. A UI tem de dizer "nenhum aberto" sem inventar candidato.
+- **OSM/Overpass não serve para abrigo de emergência.** `amenity=shelter` na prática são abrigos de ônibus e quiosques: perto de Parkland vieram 15, todos sem nome e sem `shelter_type`. Não repetir essa avaliação.
+- **OpenFEMA (`fema.gov/api/open`) não tem dataset de abrigos** — 48 datasets, zero. Não confundir com o NSS.
+- **Navegação turn-by-turn offline não é viável em PWA.** Exibir mapa offline é (PMTiles + MapLibre + Cache API); rodar motor de rotas com grafo empacotado no navegador não é. Navegação offline real depende do app nativo (fase M) com Valhalla/GraphHopper embarcados. Não prometer isso na web.
+- **O plano da família é o que torna o download de mapas offline finito** (doc 18 §10): baixa-se o envelope do plano, não "o mundo". Por isso PLAN vem antes dos mapas offline.
+- **Versão do plano é problema de segurança, não de UX** (doc 18 §6): duas pessoas executando versões diferentes vão para lugares diferentes. `family_plan_acks` existe por isso e não pode ser cortado do MVP.
+
+---
+
 ## World v2 / entrada do app (2026-07-27)
 
 - **A entrada real do app não é só `app/page.tsx`.** `signIn` e `updatePassword` em `lib/auth/actions.ts` fazem `redirect()` próprio depois de autenticar. Mudar apenas o redirect de `/` não muda onde o usuário cai ao logar — foi exatamente o que aconteceu ao promover o dashboard. Ao trocar a tela inicial, os três pontos precisam ser alterados juntos.

@@ -60,6 +60,10 @@ export type PilotContext = {
   powerDays: number
   fuelDays: number
   autonomyDays: number
+  /** Nearest OFFICIAL open shelter (D-065), or null when none is open nearby. */
+  nearestShelter: { name: string; distanceKm: number } | null
+  /** False until the FEMA lookup answered — "I don't know" is not "there is none". */
+  sheltersKnown: boolean
 }
 
 export const PILOT_INTENTS: Array<{ id: PilotIntentId; pt: string; en: string }> = [
@@ -292,6 +296,9 @@ function answerStayOrGo(ctx: PilotContext): PilotAnswer {
         : 'There is no evacuation order, and moving during the peak exposes the family for no gain.',
       factors: [
         { label: pt ? 'Autonomia' : 'Autonomy', value: `${days(ctx.autonomyDays)}d` },
+        ctx.nearestShelter
+          ? { label: pt ? 'Abrigo aberto' : 'Open shelter', value: `${ctx.nearestShelter.distanceKm.toFixed(1)} km` }
+          : { label: pt ? 'Abrigos' : 'Shelters', value: ctx.sheltersKnown ? (pt ? 'nenhum aberto' : 'none open') : '—' },
         ...weatherFactors(ctx, pt),
       ].slice(0, 3),
       actions: [{ label: pt ? 'Abrir resposta' : 'Open response', href: '/scenario', primary: true }],
@@ -299,7 +306,17 @@ function answerStayOrGo(ctx: PilotContext): PilotAnswer {
     }
   }
 
+  // An open official shelter changes the answer: it is the only destination EOS
+  // is allowed to name. Note the asymmetry — a shelter existing does not mean
+  // "go", it means "there is somewhere to go if you must".
+  const shelter = ctx.nearestShelter
   const canSustain = ctx.autonomyDays >= 3
+  const shelterFactor = shelter
+    ? { label: pt ? 'Abrigo aberto' : 'Open shelter', value: `${shelter.distanceKm.toFixed(1)} km` }
+    : ctx.sheltersKnown
+      ? { label: pt ? 'Abrigos' : 'Shelters', value: pt ? 'nenhum aberto' : 'none open' }
+      : { label: pt ? 'Abrigos' : 'Shelters', value: '—' }
+
   return {
     intent: 'stay_or_go',
     verdict: canSustain ? 'ready' : 'watch',
@@ -319,6 +336,7 @@ function answerStayOrGo(ctx: PilotContext): PilotAnswer {
         : `The household lasts ${days(ctx.autonomyDays)} days. Restock before the window closes.`,
     factors: [
       { label: pt ? 'Autonomia' : 'Autonomy', value: `${days(ctx.autonomyDays)}d` },
+      shelterFactor,
       { label: pt ? 'Combustível' : 'Fuel', value: `${days(ctx.fuelDays)}d` },
     ],
     actions: [
