@@ -6,6 +6,17 @@ import { useLanguage, type MessageKey } from '@/lib/i18n'
 
 const NAV: Array<{ href: string; labelKey: MessageKey; icon: React.ReactNode }> = [
   {
+    href: '/dashboard',
+    labelKey: 'nav.world',
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="9" />
+        <path d="M3 12h18" />
+        <path d="M12 3a14 14 0 0 1 0 18a14 14 0 0 1 0-18z" />
+      </svg>
+    ),
+  },
+  {
     href: '/scenario',
     labelKey: 'nav.scenario',
     icon: (

@@ -35,7 +35,9 @@ export default async function Home() {
   }
   const { data: { user } } = await supabase.auth.getUser()
 
-  if (user) redirect('/scenario')
+  // The World dashboard is the app's front door: it answers "how bad is it and
+  // what do I do" before the user has to choose a destination.
+  if (user) redirect('/dashboard')
 
   return (
     <main style={s.page}>
