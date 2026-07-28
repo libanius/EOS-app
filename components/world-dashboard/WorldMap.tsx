@@ -214,7 +214,7 @@ function markerEl(className: string, pin: string, label: string, color?: string)
   return el
 }
 
-export default function WorldMap({ plateUrl, family = [], shelters = [], guidance = null, mapBase = 'hybrid', routeFocusNonce = 0, onMapInteraction }: {
+export default function WorldMap({ plateUrl, family = [], shelters = [], guidance = null, mapBase = 'hybrid', routeFocusNonce = 0, focus = null, onMapInteraction }: {
   state: string
   plateUrl: string
   family?: WorldFamilyMember[]
@@ -222,6 +222,8 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
   guidance?: WorldGuidance | null
   mapBase?: MapBaseMode
   routeFocusNonce?: number
+  /** A place picked from search. `nonce` re-triggers the fly-to on re-pick. */
+  focus?: { lat: number; lng: number; label: string; nonce: number } | null
   onMapInteraction?: () => void
 }) {
   const { coords } = useRisk()
@@ -229,6 +231,8 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
   const mapRef = useRef<MLMap | null>(null)
   const markersRef = useRef<MLMarker[]>([])
   const hazardMarkersRef = useRef<MLMarker[]>([])
+  // Kept out of markersRef so a family/shelter refresh never wipes the search pin.
+  const searchMarkerRef = useRef<MLMarker | null>(null)
   const readyRef = useRef(false)
   const centerRef = useRef<[number, number] | null>(null)
   const plateRef = useRef<HTMLDivElement>(null)
@@ -457,6 +461,8 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
       markersRef.current = []
       hazardMarkersRef.current.forEach(m => m.remove())
       hazardMarkersRef.current = []
+      searchMarkerRef.current?.remove()
+      searchMarkerRef.current = null
       if (map) map.remove()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -506,6 +512,34 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
       bearing: map.getBearing(),
     })
   }, [guidance, routeFocusNonce])
+
+  // Fly to a searched place and pin it. Separate from placeOverlays so the pin
+  // survives the family/shelter polling that runs underneath it.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !readyRef.current) return
+
+    searchMarkerRef.current?.remove()
+    searchMarkerRef.current = null
+    if (!focus) return
+
+    let cancelled = false
+    ;(async () => {
+      const maplibregl = (await import('maplibre-gl')).default
+      if (cancelled || !mapRef.current) return
+      const el = markerEl('w-mapmarker searched', '', short(focus.label, 30))
+      searchMarkerRef.current = new maplibregl.Marker({ element: el, anchor: 'bottom' })
+        .setLngLat([focus.lng, focus.lat])
+        .addTo(mapRef.current)
+
+      const reduce = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      const target = { center: [focus.lng, focus.lat] as [number, number], zoom: Math.max(map.getZoom(), 14.5) }
+      if (reduce) map.jumpTo(target)
+      else map.flyTo({ ...target, duration: 1200, essential: true })
+    })()
+
+    return () => { cancelled = true }
+  }, [focus])
 
   return (
     <div className="world-map-wrap" aria-hidden="true">

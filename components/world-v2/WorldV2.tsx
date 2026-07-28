@@ -13,13 +13,14 @@
  */
 
 import { useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
 import { motion, useReducedMotion } from 'framer-motion'
 import { useLanguage } from '@/lib/i18n'
 import { useRisk } from '@/components/v2/RiskProvider'
 import WorldMap from '@/components/world-dashboard/WorldMap'
 import DetentSheet, { type Detent } from './DetentSheet'
 import Pilot from './Pilot'
+import MapSearch from './MapSearch'
+import type { GeocodeResult } from '@/app/api/geocode/search/route'
 import type { PilotContext } from './pilot-engine'
 import type { ShelterSnapshot } from '@/lib/world/shelters'
 import { Bar, Card, IconButton, Pill, PillLink, SectionLabel, Tile, TileGrid } from './primitives'
@@ -140,6 +141,7 @@ export default function WorldV2() {
   const { snapshot, score, state, hasCoords, coords, requestGps, refresh } = useRisk()
   const data = useWorldData()
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const [searched, setSearched] = useState<{ lat: number; lng: number; label: string; nonce: number } | null>(null)
   const family = useCircleFamily(language === 'pt', coords, avatarUrl)
   const shelterSnapshot = useShelters(coords)
 
@@ -227,6 +229,7 @@ export default function WorldV2() {
       hasCoords={hasCoords}
       onUseGps={requestGps}
       shelters={shelterSnapshot}
+      conditionLine={conditionLine}
     />
   )
 
@@ -238,11 +241,21 @@ export default function WorldV2() {
           plateUrl="/world/parkland.webp"
           mapBase="dark"
           family={family}
+          focus={searched}
           shelters={(shelterSnapshot?.shelters ?? []).map(s => ({ id: s.id, name: s.name, lat: s.lat, lng: s.lng, distanceKm: s.distanceKm }))}
           onMapInteraction={() => setDetent('peek')}
         />
       </div>
       <div className="wv2-scrim" aria-hidden="true" />
+
+      <MapSearch
+        pt={metric}
+        near={coords}
+        onPick={(result: GeocodeResult) =>
+          setSearched({ lat: result.lat, lng: result.lng, label: result.name, nonce: Date.now() })
+        }
+        onClear={() => setSearched(null)}
+      />
 
       <div className="wv2-layer wv2-chrome">
         {/* Textual equivalent of the map for assistive technology. */}
@@ -254,17 +267,6 @@ export default function WorldV2() {
           }.`}
         </p>
 
-        <Link className="wv2-capsule" href="/weather">
-          <span className="dot" aria-hidden="true">
-            {score ?? '—'}
-          </span>
-          <span className="txt">
-            <b>{hasCoords ? c.yourArea : c.locating}</b>
-            <span>
-              {conditionLine} · {stateLabel}
-            </span>
-          </span>
-        </Link>
 
         <div className="wv2-mapcontrols">
           <IconButton label={c.useGps} onClick={requestGps} active={hasCoords}>
@@ -340,6 +342,7 @@ type SectionProps = {
   hasCoords: boolean
   onUseGps: () => void
   shelters: ShelterSnapshot | null
+  conditionLine: string
 }
 
 function WorldSections({
@@ -355,6 +358,7 @@ function WorldSections({
   hasCoords,
   onUseGps,
   shelters,
+  conditionLine,
 }: SectionProps) {
   return (
     <>
@@ -366,7 +370,7 @@ function WorldSections({
           <span className="t-title2">{stateLabel}</span>
         </div>
         <p className="t-sub ink-2" style={{ marginTop: '0.5rem' }}>
-          {hasCoords ? c.yourArea : c.locating} · {c.checklistDone} {data.checklistPct}%
+          {hasCoords ? c.yourArea : c.locating} · {conditionLine} · {c.checklistDone} {data.checklistPct}%
         </p>
         {!hasCoords && (
           <div style={{ marginTop: '1rem' }}>

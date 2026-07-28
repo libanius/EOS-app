@@ -1032,3 +1032,131 @@
   .wv2 .w-selfpuck .disc { outline-color: #000; }
   .wv2 .w-mapmarker .lab { border-color: rgba(255, 255, 255, 0.6); }
 }
+
+/* ═══ MAP SEARCH ═══════════════════════════════════════════════════════════
+   Top of the map, where people look for it. Sized to stop short of the global
+   AppActions buttons (fixed, top-right, z-index 200) — the collision that hid
+   the GPS control once already. */
+
+.wv2-search {
+  position: absolute;
+  z-index: 4;
+  top: calc(max(16px, env(safe-area-inset-top, 0px) + 8px));
+  left: var(--edge);
+  right: calc(16px + 88px + 10px);
+  max-width: 520px;
+}
+
+.wv2-search .search-field {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  height: 44px;
+  padding: 0 var(--s3) 0 var(--s4);
+  border-radius: var(--r-pill);
+  border: 1px solid var(--sep);
+  background: var(--mat-thick);
+  backdrop-filter: blur(var(--mat-blur-md)) saturate(var(--mat-sat));
+  -webkit-backdrop-filter: blur(var(--mat-blur-md)) saturate(var(--mat-sat));
+  box-shadow: 0 10px 26px -14px rgba(0, 0, 0, 0.95);
+  color: var(--ink-2);
+}
+.wv2-search .search-field:focus-within {
+  border-color: rgba(var(--accent-rgb), 0.55);
+  color: var(--accent);
+}
+.wv2-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.9375rem;
+  letter-spacing: -0.006em;
+}
+.wv2-search input::placeholder { color: var(--ink-3); }
+/* The browser's own clear affordance duplicates ours and breaks the layout. */
+.wv2-search input::-webkit-search-cancel-button { display: none; }
+
+.wv2-search .search-clear {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--ink-2);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.wv2-search .search-clear:active { transform: scale(0.9); }
+
+.wv2-search .search-results {
+  margin-top: var(--s2);
+  padding: var(--s2);
+  border-radius: 20px;
+  border: 1px solid var(--sep);
+  background: var(--mat-thick);
+  backdrop-filter: blur(var(--mat-blur-lg)) saturate(var(--mat-sat));
+  -webkit-backdrop-filter: blur(var(--mat-blur-lg)) saturate(var(--mat-sat));
+  box-shadow: 0 20px 44px -22px rgba(0, 0, 0, 1);
+  max-height: 46dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.wv2-search .search-note { margin: 0; padding: var(--s3); }
+
+.wv2-search .search-hit {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s3);
+  padding: var(--s3);
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--ink-2);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.wv2-search .search-hit:hover,
+.wv2-search .search-hit:focus-visible { background: rgba(255, 255, 255, 0.07); }
+.wv2-search .search-hit:active { background: rgba(255, 255, 255, 0.12); }
+.wv2-search .search-hit > svg { flex: none; margin-top: 2px; }
+.wv2-search .search-hit > span { min-width: 0; }
+.wv2-search .search-hit strong {
+  display: block;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wv2-search .search-hit em {
+  display: block;
+  margin-top: 1px;
+  font-style: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Searched place: neutral ink, so it never reads as family or as a shelter. */
+.wv2 .w-mapmarker.searched .pin {
+  background: var(--ink);
+  color: #06070b;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .wv2-search .search-field,
+  .wv2-search .search-results {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
