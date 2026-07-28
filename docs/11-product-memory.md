@@ -5,6 +5,16 @@
 
 ---
 
+## Localização familiar: o centroide da cidade empilha todo mundo (2026-07-28)
+
+Quando dois membros cadastram só o nome da cidade ("Parkland, Florida"), o geocoding devolve **o mesmo centroide** para os dois. Os marcadores caem no mesmo pixel e um esconde o outro — o mapa passa a mentir sobre quantas pessoas ele conhece, e o usuário conclui que a feature não funciona.
+
+ agora agrupa por coordenada arredondada e espalha os co-locados num anel, em **pixels** (para o espalhamento sobreviver ao zoom). Se voltar a empilhar, é aqui.
+
+Consequência de produto: enquanto o ponto for de perfil, todo mundo da mesma cidade fica no mesmo lugar. Só o ponto **ao vivo** distingue de verdade — mais um motivo para o GPS consentido importar.
+
+---
+
 ## Armadilha recorrente: estender só um lado (2026-07-28)
 
 Três bugs desta sessão são o **mesmo erro**: adicionar um campo em uma ponta e esquecer a outra.

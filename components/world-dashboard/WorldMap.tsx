@@ -267,12 +267,30 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
     if (!family.length && !shelters.length && !guidance?.shelter) return
     const maplibregl = (await import('maplibre-gl')).default
 
+    // Co-located people must not hide each other. Two members who both geocoded
+    // the same city share the exact same profile point, and one marker lands on
+    // top of the other — the map then lies about how many people it knows.
+    // Fan them out in a small ring, in PIXELS so the spread survives zoom.
+    const buckets = new Map<string, number[]>()
+    family.slice(0, 8).forEach((m, i) => {
+      const key = `${m.lat.toFixed(4)},${m.lng.toFixed(4)}`
+      buckets.set(key, [...(buckets.get(key) ?? []), i])
+    })
+    const offsetFor = (m: WorldFamilyMember, index: number): [number, number] => {
+      const bucket = buckets.get(`${m.lat.toFixed(4)},${m.lng.toFixed(4)}`) ?? [index]
+      if (bucket.length < 2) return [0, 0]
+      const angle = (bucket.indexOf(index) / bucket.length) * Math.PI * 2 - Math.PI / 2
+      return [Math.cos(angle) * 26, Math.sin(angle) * 26]
+    }
+
     family.slice(0, 8).forEach((m, i) => {
       if (m.isMe) {
         // Centred, unlabelled: a presence, not a marker (see selfPuckEl).
         const puck = selfPuckEl(m.avatarUrl, m.live !== false)
         markersRef.current.push(
-          new maplibregl.Marker({ element: puck, anchor: 'center' }).setLngLat([m.lng, m.lat]).addTo(map),
+          new maplibregl.Marker({ element: puck, anchor: 'center', offset: offsetFor(m, i) })
+            .setLngLat([m.lng, m.lat])
+            .addTo(map),
         )
         return
       }
@@ -281,7 +299,11 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
       // Freshness is part of the label by contract: a stale point presented as
       // a current one is worse than no point at all.
       const el = markerEl('w-mapmarker real', initials, `${short(m.name, 18)} · ${m.freshness}`, color)
-      markersRef.current.push(new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([m.lng, m.lat]).addTo(map))
+      markersRef.current.push(
+        new maplibregl.Marker({ element: el, anchor: 'bottom', offset: offsetFor(m, i) })
+          .setLngLat([m.lng, m.lat])
+          .addTo(map),
+      )
     })
 
     // Official FEMA shelters. Distance is on the label because it is the fact

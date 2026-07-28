@@ -30,7 +30,7 @@ async function login(browser, user, lat, lng) {
 }
 
 const paulo = await mkUser('Paulo', 26.3101, -80.2373)
-const esposa = await mkUser('Esposa', 26.3150, -80.2400)
+const esposa = await mkUser('Esposa', 26.3100794, -80.23727)
 const circle = await admin('/rest/v1/circles',{method:'POST',body:JSON.stringify({name:'Família Teste',leader_id:paulo.id,invite_code:`T${Date.now()%100000}`})}).then(r=>r.json())
 const cid = circle[0].id
 await admin('/rest/v1/circle_members',{method:'POST',body:JSON.stringify([
@@ -42,7 +42,7 @@ console.log('✅ dois usuários num círculo')
 const browser = await chromium.launch()
 
 // ── A esposa liga o toggle de localização, pela UI ──
-const wife = await login(browser, esposa, 26.3150, -80.2400)
+const wife = await login(browser, esposa, 26.3100794, -80.23727)
 await wife.goto(`${B}/circles`,{waitUntil:'networkidle'})
 await wife.waitForTimeout(5000)
 const toggle = wife.locator('label:has-text("Compartilhar minha localização") input')
@@ -62,7 +62,15 @@ console.log("'location' PERSISTIU:", fields.includes('location') ? 'sim ✅' : '
 const p = await login(browser, paulo, 26.3101, -80.2373)
 await p.goto(`${B}/dashboard`,{waitUntil:'networkidle'})
 await p.waitForTimeout(14000)
+const api = await p.evaluate(async () => {
+  const r = await fetch('/api/circles'); const d = await r.json()
+  return (d.circles?.[0]?.members ?? []).map(m => ({n:m.name, lat:m.location_lat, src:m.location_source, sh:m.shares_location, me:m.is_me}))
+})
+console.log('  /api/circles devolveu:', JSON.stringify(api))
 const markers = await p.locator('.w-mapmarker.real .lab').allTextContents()
+const boxes = await p.locator('.w-mapmarker.real, .w-selfpuck').evaluateAll(els => els.map(e => { const r = e.getBoundingClientRect(); return [Math.round(r.x), Math.round(r.y)] }))
+console.log('  posições dos marcadores:', JSON.stringify(boxes))
+console.log('  marcadores SOBREPOSTOS:', new Set(boxes.map(b => b.join(','))).size < boxes.length ? 'SIM ❌' : 'não ✅')
 console.log('marcadores de família no mapa do Paulo:', markers.length ? markers.join(' | ') : '(nenhum)')
 console.log('PAULO VÊ A ESPOSA:', markers.some(m => /esposa/i.test(m)) ? 'sim ✅' : 'NÃO ❌')
 await p.screenshot({path:'/tmp/eos-shots/21-paulo-ve-esposa.png'})
