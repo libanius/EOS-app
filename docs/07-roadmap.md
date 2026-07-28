@@ -201,6 +201,9 @@
 | PILOT-T02 | MVP activity flow: Fishing, Boating, Camping, Family Outdoor, Road Trip | ⏸️ SUPERSEDED | 2026-07-28 — substituído pela conversa com especialista; as 5 intenções cobrem a decisão |
 | PILOT-T05 | Pilot conversacional: tom por índice de risco + tarefas executáveis | ✅ COMPLETE | 2026-07-28 — `/api/pilot/chat` (RAG + tom por estado); o que o Pilot recomenda vira item do checklist com um toque, nunca automático |
 | PILOT-T06 | Checklist reconstruído no design system da v2 | ✅ COMPLETE | 2026-07-28 — prontidão como manchete, tiers viram horizontes (3/7/30 dias). Antigo em `/checklist-legacy` |
+| PILOT-T07 | Pilot com dados ao vivo, coordenadas consentidas, busca de lugares e navegação | ✅ COMPLETE | 2026-07-28 — D-068/D-069. `findPlaces` (Nominatim) dá ao Pilot capacidade de procurar POIs reais; trajeto vira camada do EOS |
+| WV2-T08 | `/weather` no design system da v2, sem alterar funções | ✅ COMPLETE | 2026-07-28 — escopo `.wv2` para herdar tipografia e tokens; ritmo único de espaçamento por `gap`; raios alinhados. Zero mudança de comportamento |
+| WV2-T09 | Prontidão pareada ao índice de risco no dashboard | ✅ COMPLETE | 2026-07-28 — os dois números só significam algo juntos: risco 9 lê diferente a 20% e a 90% de prontidão |
 | PILOT-T03 | Rule-backed recommendation states: GO, LIMITED, WAIT, AVOID, PRIORITY OVERRIDE | BLOCKED | Critical rules must override AI |
 | PILOT-T04 | Metrics instrumentation for discovery, trust, retention, personalization, safety | BLOCKED | Needed before production rollout |
 

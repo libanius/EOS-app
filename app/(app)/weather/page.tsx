@@ -85,7 +85,7 @@ function RecommendationCard({ rec, onSave }: { rec: WeatherRecommendation; onSav
   const color = RISK_COLOR[rec.risk]
   return (
     <div style={{
-      border: `1px solid ${color}33`, borderRadius: 14,
+      border: `1px solid ${color}33`, borderRadius: 20,
       background: RISK_BG[rec.risk], marginBottom: 10, overflow: 'hidden',
     }}>
       <button
@@ -107,7 +107,7 @@ function RecommendationCard({ rec, onSave }: { rec: WeatherRecommendation; onSav
           <p style={{ margin: '10px 0 8px', fontSize: 13, color: '#a1a1aa', lineHeight: 1.6 }}>{rec.reason}</p>
 
           {rec.window && (
-            <div style={{ background: `${color}12`, border: `1px solid ${color}33`, borderRadius: 8, padding: '6px 10px', marginBottom: 10 }}>
+            <div style={{ background: `${color}12`, border: `1px solid ${color}33`, borderRadius: 14, padding: '6px 10px', marginBottom: 10 }}>
               <span style={{ fontSize: 12, fontWeight: 700, color: color }}>⏱ {rec.window}</span>
             </div>
           )}
@@ -118,7 +118,7 @@ function RecommendationCard({ rec, onSave }: { rec: WeatherRecommendation; onSav
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {rec.factors.map((f, i) => (
                   <span key={i} style={{
-                    fontSize: 11, padding: '3px 8px', borderRadius: 6,
+                    fontSize: 11, padding: '3px 8px', borderRadius: 12,
                     background: f.is_concern ? 'rgba(255,107,107,0.12)' : 'rgba(255,255,255,0.05)',
                     color: f.is_concern ? '#ff8c8c' : '#a1a1aa',
                     border: `1px solid ${f.is_concern ? 'rgba(255,107,107,0.3)' : 'rgba(255,255,255,0.08)'}`,
@@ -137,7 +137,7 @@ function RecommendationCard({ rec, onSave }: { rec: WeatherRecommendation; onSav
                 {onSave && (
                   <button onClick={() => onSave(rec.checklist)} style={{
                     fontSize: 10, padding: '3px 8px', background: `${AC}18`, border: `1px solid ${AC}44`,
-                    borderRadius: 6, color: AC, fontWeight: 700, cursor: 'pointer',
+                    borderRadius: 12, color: AC, fontWeight: 700, cursor: 'pointer',
                   }}>+ Salvar no Kit</button>
                 )}
               </div>
@@ -176,7 +176,7 @@ function RainNowcast({ precip }: { precip: UpcomingPrecipitationResult | null })
     title = 'Chuva diminuindo nos próximos minutos.'
   }
   return (
-    <div style={{ background: 'rgba(86,194,230,0.08)', border: `1px solid ${cyan}44`, borderRadius: 12, padding: '10px 14px', marginBottom: 12 }}>
+    <div style={{ background: 'rgba(86,194,230,0.08)', border: `1px solid ${cyan}44`, borderRadius: 18, padding: '10px 14px', marginBottom: 12 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
         <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.1em', color: cyan }}>RAIN NOWCAST</span>
         <span style={{ fontSize: 10, color: '#71717a', fontFamily: "'DM Mono', ui-monospace, monospace" }}>{precip.source}</span>
@@ -194,7 +194,7 @@ function RainNowcast({ precip }: { precip: UpcomingPrecipitationResult | null })
 function HazardEventCard({ ev }: { ev: HazardEvent }) {
   const meta = HAZARD_CLASS_META[ev.visualClass] ?? HAZARD_CLASS_META.ADVISORY
   return (
-    <div style={{ background: `${meta.color}12`, border: `1px solid ${meta.color}44`, borderRadius: 10, padding: '10px 14px' }}>
+    <div style={{ background: `${meta.color}12`, border: `1px solid ${meta.color}44`, borderRadius: 16, padding: '10px 14px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 3 }}>
         <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.08em', color: meta.color }}>
           {meta.label}
@@ -369,8 +369,10 @@ export default function WeatherPage() {
   const cur = snapshot?.current
   const aqi = snapshot?.air_quality
 
+  // Scoped into .wv2 so the page inherits the v2 type stack and tokens without
+  // touching a single inline style — and therefore without touching behaviour.
   return (
-    <div style={{ padding: '16px 16px 120px', maxWidth: 600, margin: '0 auto' }}>
+    <div className="wv2 wv2-weather" data-risk="safe" data-ready="true">
 
       {/* ── Header ── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
@@ -392,13 +394,13 @@ export default function WeatherPage() {
         <button
           onClick={() => coords && fetchData(coords.lat, coords.lng)}
           disabled={loading}
-          style={{ background: 'rgba(0,229,160,0.1)', border: '1px solid rgba(0,229,160,0.25)', color: AC, borderRadius: 8, padding: '7px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: loading ? 0.5 : 1 }}
+          style={{ background: 'rgba(0,229,160,0.1)', border: '1px solid rgba(0,229,160,0.25)', color: AC, borderRadius: 14, padding: '7px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: loading ? 0.5 : 1 }}
         >
           {loading ? '↻ Loading' : '↻ Refresh'}
         </button>
       </div>
 
-      {error && <div style={{ background: 'rgba(255,107,107,0.1)', border: '1px solid rgba(255,107,107,0.3)', borderRadius: 10, padding: '10px 14px', marginBottom: 12, fontSize: 13, color: '#ff8c8c' }}>⚠ {error}</div>}
+      {error && <div style={{ background: 'rgba(255,107,107,0.1)', border: '1px solid rgba(255,107,107,0.3)', borderRadius: 16, padding: '10px 14px', marginBottom: 12, fontSize: 13, color: '#ff8c8c' }}>⚠ {error}</div>}
 
       {/* ── Live Intelligence Network (D-043) — real multi-channel status ── */}
       <div style={{ marginBottom: 12 }}>
@@ -420,7 +422,7 @@ export default function WeatherPage() {
         (snapshot?.alerts ?? []).length > 0 && (
           <div style={{ marginBottom: 12 }}>
             {snapshot!.alerts.map((alert, i) => (
-              <div key={i} style={{ background: RISK_BG[alert.severity === 'CRITICAL' ? 'critical' : alert.severity === 'HIGH' ? 'high' : 'medium'], border: `1px solid ${RISK_COLOR[alert.severity === 'CRITICAL' ? 'critical' : alert.severity === 'HIGH' ? 'high' : 'medium']}44`, borderRadius: 10, padding: '10px 14px', marginBottom: 6 }}>
+              <div key={i} style={{ background: RISK_BG[alert.severity === 'CRITICAL' ? 'critical' : alert.severity === 'HIGH' ? 'high' : 'medium'], border: `1px solid ${RISK_COLOR[alert.severity === 'CRITICAL' ? 'critical' : alert.severity === 'HIGH' ? 'high' : 'medium']}44`, borderRadius: 16, padding: '10px 14px', marginBottom: 6 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
                   <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.1em', color: RISK_COLOR[alert.severity === 'CRITICAL' ? 'critical' : 'high'] }}>{alert.source} ALERT</span>
                   {alert.expires && <span style={{ fontSize: 10, color: '#71717a' }}>Expires {fmtTime(alert.expires)}</span>}
@@ -434,7 +436,7 @@ export default function WeatherPage() {
 
       {/* ── Current Conditions Card ── */}
       {cur && (
-        <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, padding: 16, marginBottom: 12 }}>
+        <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 22, padding: 16, marginBottom: 12 }}>
           {/* Big temp + condition */}
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
             <div>
@@ -470,7 +472,7 @@ export default function WeatherPage() {
               { label: 'Visibility',value: `${cur.visibility_mi.toFixed(1)} mi`,icon: '👁' },
               { label: 'Rain',      value: `${cur.precip_prob_pct}%`,           icon: '🌧' },
             ].map(({ label, value, icon }) => (
-              <div key={label} style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: '8px 10px' }}>
+              <div key={label} style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 16, padding: '8px 10px' }}>
                 <p style={{ margin: '0 0 2px', fontSize: 10, color: '#71717a' }}>{icon} {label}</p>
                 <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#f0f0f8' }}>{value}</p>
               </div>
@@ -479,7 +481,7 @@ export default function WeatherPage() {
 
           {/* Air Quality */}
           {aqi && aqi.us_aqi != null && (
-            <div style={{ marginTop: 10, padding: '8px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ marginTop: 10, padding: '8px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ fontSize: 12, color: '#a1a1aa' }}>💨 Air Quality</span>
               <div style={{ textAlign: 'right' }}>
                 <span style={{ fontSize: 13, fontWeight: 800, color: aqiColor(aqi.us_aqi) }}>AQI {aqi.us_aqi} — {aqi.category}</span>
@@ -496,7 +498,7 @@ export default function WeatherPage() {
           <p style={{ margin: '0 0 8px', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: '#71717a', textTransform: 'uppercase' }}>Next 12 Hours</p>
           <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4 }}>
             {snapshot.hourly.slice(0, 12).map((h, i) => (
-              <div key={i} style={{ minWidth: 58, flexShrink: 0, textAlign: 'center', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10, padding: '8px 4px' }}>
+              <div key={i} style={{ minWidth: 58, flexShrink: 0, textAlign: 'center', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 16, padding: '8px 4px' }}>
                 <p style={{ margin: '0 0 3px', fontSize: 10, color: '#71717a' }}>{fmtHour(h.time_iso)}</p>
                 <div style={{ fontSize: 16 }}>{h.condition_icon}</div>
                 <p style={{ margin: '3px 0 2px', fontSize: 13, fontWeight: 700, color: '#f0f0f8' }}>{Math.round(h.temp_f)}°</p>
@@ -510,7 +512,7 @@ export default function WeatherPage() {
 
       {/* ── 3-Day Forecast ── */}
       {snapshot && snapshot.daily.length > 0 && (
-        <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, padding: '10px 14px', marginBottom: 16 }}>
+        <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 20, padding: '10px 14px', marginBottom: 16 }}>
           <p style={{ margin: '0 0 8px', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: '#71717a', textTransform: 'uppercase' }}>3-Day Outlook</p>
           {snapshot.daily.map((d, i) => (
             <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: i < snapshot.daily.length - 1 ? 8 : 0, borderBottom: i < snapshot.daily.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none', marginBottom: i < snapshot.daily.length - 1 ? 8 : 0 }}>
@@ -526,7 +528,7 @@ export default function WeatherPage() {
 
       {/* ── Earthquakes (fallback only — otherwise shown as classified hazard events) ── */}
       {!hazards && (snapshot?.earthquakes ?? []).length > 0 && (
-        <div style={{ background: 'rgba(255,107,107,0.06)', border: '1px solid rgba(255,107,107,0.2)', borderRadius: 12, padding: '10px 14px', marginBottom: 12 }}>
+        <div style={{ background: 'rgba(255,107,107,0.06)', border: '1px solid rgba(255,107,107,0.2)', borderRadius: 18, padding: '10px 14px', marginBottom: 12 }}>
           <p style={{ margin: '0 0 6px', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: '#ff8c8c', textTransform: 'uppercase' }}>🌍 Nearby Earthquakes (last 24h)</p>
           {snapshot!.earthquakes.map((eq, i) => (
             <p key={i} style={{ margin: i > 0 ? '4px 0 0' : 0, fontSize: 12, color: '#d4d4d8' }}>M{eq.magnitude.toFixed(1)} — {eq.place}</p>
@@ -546,7 +548,7 @@ export default function WeatherPage() {
             placeholder="Ex: observar as estrelas, pesca noturna, trilha…"
             style={{
               flex: 1, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)',
-              borderRadius: 10, padding: '10px 14px', fontSize: 13, color: '#f0f0f8',
+              borderRadius: 16, padding: '10px 14px', fontSize: 13, color: '#f0f0f8',
               outline: 'none',
             }}
           />
@@ -554,7 +556,7 @@ export default function WeatherPage() {
             onClick={() => void handleCustomActivity()}
             disabled={!customActivity.trim() || !snapshot || customLoading}
             style={{
-              background: AC, color: '#0a0a0f', border: 'none', borderRadius: 10,
+              background: AC, color: '#0a0a0f', border: 'none', borderRadius: 16,
               padding: '10px 16px', fontWeight: 700, fontSize: 13, cursor: 'pointer',
               opacity: (!customActivity.trim() || !snapshot || customLoading) ? 0.4 : 1,
               flexShrink: 0,
@@ -567,7 +569,7 @@ export default function WeatherPage() {
         {customResult && (
           <div style={{
             marginTop: 10, border: `1px solid ${RISK_COLOR[customResult.risk]}44`,
-            borderRadius: 12, background: RISK_BG[customResult.risk], padding: 14,
+            borderRadius: 18, background: RISK_BG[customResult.risk], padding: 14,
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
               <span style={{ fontSize: 13, fontWeight: 700, color: '#f0f0f8' }}>{customActivity}</span>
@@ -576,7 +578,7 @@ export default function WeatherPage() {
             <p style={{ margin: '0 0 6px', fontSize: 13, color: RISK_COLOR[customResult.risk], fontWeight: 600 }}>{customResult.title}</p>
             <p style={{ margin: '0 0 10px', fontSize: 12, color: '#a1a1aa', lineHeight: 1.5 }}>{customResult.reason}</p>
             {customResult.best_time && (
-              <div style={{ marginBottom: 10, padding: '5px 10px', background: `${AC}12`, border: `1px solid ${AC}33`, borderRadius: 6 }}>
+              <div style={{ marginBottom: 10, padding: '5px 10px', background: `${AC}12`, border: `1px solid ${AC}33`, borderRadius: 12 }}>
                 <span style={{ fontSize: 12, color: AC, fontWeight: 700 }}>⏱ {customResult.best_time}</span>
               </div>
             )}
@@ -584,7 +586,7 @@ export default function WeatherPage() {
               <p style={{ margin: 0, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: '#71717a', textTransform: 'uppercase' }}>Checklist</p>
               <button onClick={() => setKitPicker({ items: customResult.checklist })} style={{
                 fontSize: 10, padding: '3px 8px', background: `${AC}18`, border: `1px solid ${AC}44`,
-                borderRadius: 6, color: AC, fontWeight: 700, cursor: 'pointer',
+                borderRadius: 12, color: AC, fontWeight: 700, cursor: 'pointer',
               }}>+ Salvar no Kit</button>
             </div>
             {customResult.checklist.map((item, i) => (
@@ -613,7 +615,7 @@ export default function WeatherPage() {
           const isOpen = openCategories.has(cat)
           const activeCount = items.filter(a => activeActivities.has(a.id)).length
           return (
-            <div key={cat} style={{ marginBottom: 8, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, overflow: 'hidden' }}>
+            <div key={cat} style={{ marginBottom: 8, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 18, overflow: 'hidden' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px' }}>
                 <button
                   onClick={() => toggleCategory(cat)}
@@ -680,7 +682,7 @@ export default function WeatherPage() {
             const critical = recommendations.filter(r => r.risk === 'critical').length
             const high     = recommendations.filter(r => r.risk === 'high').length
             return (critical > 0 || high > 0) ? (
-              <div style={{ background: 'rgba(255,107,107,0.08)', border: '1px solid rgba(255,107,107,0.25)', borderRadius: 10, padding: '10px 14px', marginTop: 4 }}>
+              <div style={{ background: 'rgba(255,107,107,0.08)', border: '1px solid rgba(255,107,107,0.25)', borderRadius: 16, padding: '10px 14px', marginTop: 4 }}>
                 <p style={{ margin: 0, fontSize: 12, color: '#ff8c8c', fontWeight: 600 }}>
                   {critical > 0 && `${critical} critical risk${critical > 1 ? 's' : ''}. `}
                   {high > 0 && `${high} high risk${high > 1 ? 's' : ''}. `}
@@ -719,7 +721,7 @@ export default function WeatherPage() {
           display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '0 16px 32px',
         }} onClick={() => setKitPicker(null)}>
           <div style={{
-            background: '#13131e', border: '1px solid #2a2a3a', borderRadius: 16,
+            background: '#13131e', border: '1px solid #2a2a3a', borderRadius: 22,
             padding: 20, width: '100%', maxWidth: 440,
           }} onClick={(e) => e.stopPropagation()}>
             <p style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 700, color: '#f0f0f8' }}>
@@ -729,7 +731,7 @@ export default function WeatherPage() {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
               {KITS.map((k) => (
                 <button key={k.type} onClick={() => setSaveKit(k.type)} style={{
-                  padding: '8px 14px', borderRadius: 10, cursor: 'pointer',
+                  padding: '8px 14px', borderRadius: 16, cursor: 'pointer',
                   border: `1.5px solid ${saveKit === k.type ? k.color : '#2a2a3a'}`,
                   background: saveKit === k.type ? `${k.color}18` : 'transparent',
                   color: saveKit === k.type ? k.color : '#8a8a99',
@@ -742,11 +744,11 @@ export default function WeatherPage() {
             <div style={{ display: 'flex', gap: 10 }}>
               <button onClick={() => setKitPicker(null)} style={{
                 flex: 1, padding: '10px 0', background: 'transparent', border: '1px solid #2a2a3a',
-                borderRadius: 10, color: '#8a8a99', fontSize: 13, cursor: 'pointer',
+                borderRadius: 16, color: '#8a8a99', fontSize: 13, cursor: 'pointer',
               }}>Cancelar</button>
               <button onClick={() => void saveToKit(kitPicker.items)} disabled={saving} style={{
                 flex: 2, padding: '10px 0', background: saving ? '#2a2a3a' : AC,
-                border: 'none', borderRadius: 10,
+                border: 'none', borderRadius: 16,
                 color: saving ? '#8a8a99' : '#0a0a0f',
                 fontSize: 13, fontWeight: 700, cursor: saving ? 'default' : 'pointer',
               }}>{saving ? 'Salvando…' : 'Salvar'}</button>

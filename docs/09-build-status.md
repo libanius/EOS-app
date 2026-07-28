@@ -10,7 +10,11 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Abrigos oficiais + planos da família (FAM/PLAN) + gates de validação da v2 abertos (WV2-T05) |
-| **Last Completed Task** | **Pilot vira conversa com especialista: tom por índice de risco e conselho que vira tarefa (2026-07-28)** |
+| **Last Completed Task** | **`/weather` no design system da v2 + prontidão pareada ao risco no dashboard (2026-07-28)** |
+| | D-069 — trajeto vira camada do EOS; app de mapas é o segundo passo |
+| | D-068 — Pilot acessa posições consentidas, busca lugares reais e propõe navegação |
+| | Fix: JSON cru vazava na conversa quando a resposta era truncada |
+| | Pilot vira conversa com especialista: tom por índice de risco e conselho que vira tarefa (2026-07-28)** |
 | | Checklist reconstruído no design system da v2; antigo em `/checklist-legacy` |
 | | D-067 / SIM-T01→T02 — simulador funcionando: o app inteiro responde ao cenário (2026-07-28)** |
 | | Redesign do `/scenario` no design system da v2; analisador antigo preservado em `/scenario-legacy` |

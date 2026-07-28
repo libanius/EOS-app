@@ -1796,3 +1796,62 @@
   color: #06070b;
   font-weight: 700;
 }
+
+/* ═══ WEATHER ══════════════════════════════════════════════════════════════
+   The page keeps its own inline styles and all of its behaviour; scoping it
+   into .wv2 gives it the system's type stack, and the flex gap gives it the air
+   it was missing. Restyle by containment, not by rewrite. */
+
+.wv2.wv2-weather {
+  position: static;
+  inset: auto;
+  overflow: visible;
+  min-height: 100dvh;
+  background: #000;
+  display: flex;
+  flex-direction: column;
+  /* The breathing room: one deliberate rhythm between sections instead of a
+     dozen different inline margins. */
+  gap: var(--s6);
+  max-width: 640px;
+  margin: 0 auto;
+  /* Clears the global AppActions row (fixed, top-right) — the same collision
+     that once hid the dashboard GPS button. */
+  padding: calc(68px + env(safe-area-inset-top)) var(--edge) calc(var(--nav-inset) + var(--s8));
+}
+/* Section headings in the page read as v2 caps. */
+.wv2-weather p[style*="letterSpacing"],
+.wv2-weather p[style*="letter-spacing"] { letter-spacing: 0.065em; }
+
+@media (min-width: 900px) {
+  .wv2.wv2-weather { gap: var(--s8); }
+}
+
+/* Paired figures: risk index and readiness, side by side. Neither number tells
+   the whole story alone — a risk of 9 means something different at 20% ready
+   than at 90%. */
+.wv2-pair {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: var(--s3);
+  margin-top: var(--s2);
+}
+.wv2-pair .fig { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.wv2-pair .fig > .t-display {
+  font-size: clamp(2.75rem, 12vw, 4rem);
+  line-height: 0.92;
+}
+.wv2-pair .fig > .t-display > i {
+  font-style: normal;
+  font-size: 0.44em;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-left: 1px;
+}
+.wv2-pair .sep {
+  width: 1px;
+  align-self: stretch;
+  margin: var(--s1) 0;
+  background: var(--sep);
+}

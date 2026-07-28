@@ -36,6 +36,7 @@ import './world-v2.css'
 const COPY = {
   pt: {
     riskIndex: 'Índice de risco',
+    readinessLabel: 'Prontidão',
     readiness: 'Prontidão',
     autonomy: 'Autonomia da família',
     autonomyHint: 'limitada pelo recurso mais escasso',
@@ -82,6 +83,7 @@ const COPY = {
   },
   en: {
     riskIndex: 'Risk index',
+    readinessLabel: 'Readiness',
     readiness: 'Readiness',
     autonomy: 'Family autonomy',
     autonomyHint: 'bounded by the scarcest reserve',
@@ -389,12 +391,22 @@ function WorldSections({
       {/* ── Risk: the one number this screen exists to communicate ── */}
       <Card accented>
         <SectionLabel trailing={data.online ? c.online : c.offline}>{c.riskIndex}</SectionLabel>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', marginTop: '0.25rem' }}>
-          <span className="t-display accent">{score ?? '—'}</span>
-          <span className="t-title2">{stateLabel}</span>
+        {/* Two paired figures: how bad it is, and how ready you are. They only
+            mean something next to each other — a risk of 9 reads differently at
+            20% readiness than at 90%. */}
+        <div className="wv2-pair">
+          <div className="fig">
+            <span className="t-display accent">{score ?? '—'}</span>
+            <span className="t-sub ink-2">{stateLabel}</span>
+          </div>
+          <span className="sep" aria-hidden="true" />
+          <div className="fig">
+            <span className="t-display">{data.checklistPct}<i>%</i></span>
+            <span className="t-sub ink-2">{c.readinessLabel}</span>
+          </div>
         </div>
-        <p className="t-sub ink-2" style={{ marginTop: '0.5rem' }}>
-          {hasCoords ? c.yourArea : c.locating} · {conditionLine} · {c.checklistDone} {data.checklistPct}%
+        <p className="t-sub ink-2" style={{ marginTop: '0.75rem' }}>
+          {hasCoords ? c.yourArea : c.locating} · {conditionLine}
         </p>
         {!hasCoords && (
           <div style={{ marginTop: '1rem' }}>

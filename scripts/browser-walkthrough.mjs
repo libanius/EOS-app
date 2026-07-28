@@ -241,6 +241,22 @@ async function main() {
     } else log('   ⚠️  sem botão Ver no mapa')
   } else log('⚠️  orbe não encontrado')
 
+  // ── 8. WEATHER no design system ─────────────────────────────────────────
+  await page.goto(`${BASE}/weather`, { waitUntil: 'networkidle' })
+  await page.waitForTimeout(6000)
+  await shot('17-weather')
+  log('   weather no escopo wv2:', await page.locator('.wv2-weather').count() ? 'sim ✅' : 'não ❌')
+  log('   funções preservadas (botão refresh):', await page.locator('button:has-text("Refresh"), button:has-text("Loading")').count())
+
+  // ── 9. Readiness ao lado do risco ───────────────────────────────────────
+  await page.goto(`${BASE}/dashboard`, { waitUntil: 'networkidle' })
+  await page.waitForTimeout(8000)
+  await page.locator('.wv2-grabber').click()
+  await page.waitForTimeout(1500)
+  await shot('18-risco-e-prontidao')
+  const figs = await page.locator('.wv2-pair .fig').allTextContents()
+  log('   par no card de risco:', figs.join('  |  '))
+
   log('\n─── erros de console ───')
   log(errors.length ? errors.slice(0, 10).join('\n') : '  nenhum')
 
