@@ -5,6 +5,14 @@
 
 ---
 
+## Pilot conversacional (2026-07-28)
+
+- **O Pilot só sabe o que o cliente envia em `context`.** Ele não lê o banco nem chama provedores. Quando perguntado a temperatura, respondeu "não tenho acesso a dados em tempo real" — não era alucinação nem fase faltante: eu simplesmente não estava mandando o snapshot de clima. Ao adicionar campo novo ao app, lembrar de estendê-lo em `app/api/pilot/chat/route.ts` **e** no `Pilot.tsx`, senão o especialista fica cego para ele.
+- O system prompt agora contém uma instrução explícita **proibindo** o disclaimer padrão de "sem acesso em tempo real" e mandando responder com os números do bloco DADOS AO VIVO.
+- **Posições da família NÃO são enviadas ao modelo** por decisão de privacidade (coordenadas de terceiros saindo para um provedor externo). Se for incluir, precisa de decisão registrada.
+
+---
+
 ## Abrigos, rotas e planos (2026-07-27)
 
 - **FEMA National Shelter System é público e sem chave**: `https://gis.fema.gov/arcgis/rest/services/NSS/OpenShelters/FeatureServer/0`. Geometria WGS84 direto no MapLibre; `shelter_status` confiável. **Mas** `evacuation_capacity`, `total_population` e `org_name` vêm frequentemente nulos e acessibilidade vem `UNK` — nunca prometer vaga nem acessibilidade a partir daí.

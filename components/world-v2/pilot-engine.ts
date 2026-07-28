@@ -66,6 +66,8 @@ export type PilotContext = {
   sheltersKnown: boolean
   /** True while a training simulation is running (D-067). */
   simulated?: boolean
+  /** Human-readable place, so the Pilot can name where it is talking about. */
+  locationLabel?: string | null
 }
 
 export const PILOT_INTENTS: Array<{ id: PilotIntentId; pt: string; en: string }> = [

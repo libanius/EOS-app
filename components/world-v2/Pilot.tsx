@@ -207,6 +207,61 @@ export default function Pilot({ ctx, online }: { ctx: PilotContext; online: bool
             hasMedicalConditions: ctx.household.hasMedicalConditions,
             mobilityImpaired: ctx.household.mobilityImpaired,
             simulated: ctx.simulated ?? false,
+            // Everything the app already knows. Withholding this is what made
+            // the Pilot answer "I have no real-time access" while the dashboard
+            // was showing the temperature two centimetres away.
+            weather: ctx.snapshot?.current
+              ? {
+                  tempF: ctx.snapshot.current.temp_f,
+                  feelsF: ctx.snapshot.current.feels_like_f,
+                  humidityPct: ctx.snapshot.current.humidity_pct,
+                  windMph: ctx.snapshot.current.wind_mph,
+                  gustMph: ctx.snapshot.current.wind_gust_mph,
+                  uvIndex: ctx.snapshot.current.uv_index,
+                  visibilityMi: ctx.snapshot.current.visibility_mi,
+                  pressureHpa: ctx.snapshot.current.pressure_hpa,
+                  precipProbPct: ctx.snapshot.current.precip_prob_pct,
+                  condition: ctx.snapshot.current.condition,
+                }
+              : null,
+            airQualityAqi: ctx.snapshot?.air_quality?.us_aqi ?? null,
+            alerts: (ctx.snapshot?.alerts ?? []).map(a => ({
+              severity: a.severity,
+              type: a.type,
+              headline: a.headline,
+            })),
+            earthquakes: (ctx.snapshot?.earthquakes ?? []).map(e => ({
+              magnitude: e.magnitude,
+              place: e.place,
+            })),
+            hourly: (ctx.snapshot?.hourly ?? []).slice(0, 8).map(h => ({
+              hour: new Date(h.time_iso).toLocaleTimeString(pt ? 'pt-BR' : 'en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+              }),
+              tempF: h.temp_f,
+              precipProbPct: h.precip_prob_pct,
+              gustMph: h.wind_gust_mph,
+            })),
+            nearestShelter: ctx.nearestShelter,
+            sheltersKnown: ctx.sheltersKnown,
+            inventory: ctx.inventory
+              ? {
+                  waterLiters: ctx.inventory.water_liters,
+                  foodDays: ctx.inventory.food_days,
+                  fuelLiters: ctx.inventory.fuel_liters,
+                  batteryPercent: ctx.inventory.battery_percent,
+                  hasMedicalKit: ctx.inventory.has_medical_kit,
+                  hasCommsDevice: ctx.inventory.has_communication_device,
+                }
+              : null,
+            locationLabel: ctx.locationLabel ?? null,
+            fetchedAt: ctx.snapshot?.fetched_at
+              ? new Date(ctx.snapshot.fetched_at).toLocaleTimeString(pt ? 'pt-BR' : 'en-US', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })
+              : null,
           },
         }),
       })

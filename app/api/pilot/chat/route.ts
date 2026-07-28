@@ -47,7 +47,105 @@ type Body = {
     hasMedicalConditions: boolean
     mobilityImpaired: number
     simulated: boolean
+    /** Live conditions. Without these the model correctly says it cannot know. */
+    weather: {
+      tempF: number
+      feelsF: number
+      humidityPct: number
+      windMph: number
+      gustMph: number
+      uvIndex: number
+      visibilityMi: number
+      pressureHpa: number
+      precipProbPct: number
+      condition: string
+    } | null
+    airQualityAqi: number | null
+    alerts: Array<{ severity: string; type: string; headline: string }>
+    earthquakes: Array<{ magnitude: number; place: string }>
+    /** Next hours, so "when does it get bad" is answerable. */
+    hourly: Array<{ hour: string; tempF: number; precipProbPct: number; gustMph: number }>
+    nearestShelter: { name: string; distanceKm: number } | null
+    sheltersKnown: boolean
+    inventory: {
+      waterLiters: number
+      foodDays: number
+      fuelLiters: number
+      batteryPercent: number
+      hasMedicalKit: boolean
+      hasCommsDevice: boolean
+    } | null
+    locationLabel: string | null
+    fetchedAt: string | null
   }
+}
+
+const toC = (f: number) => Math.round(((f - 32) * 5) / 9)
+const toKmh = (mph: number) => Math.round(mph * 1.609)
+const toKm = (mi: number) => (mi * 1.609).toFixed(1)
+
+/**
+ * The live situation, rendered for the model. This block is the difference
+ * between a specialist and a chatbot: without it the model truthfully answers
+ * that it has no real-time access, which is exactly the wrong answer when the
+ * app is holding a current weather snapshot.
+ */
+function situationReport(ctx: Body['context']): string {
+  const pt = ctx.pt
+  const lines: string[] = []
+
+  if (ctx.weather) {
+    const w = ctx.weather
+    lines.push(
+      pt
+        ? `- Agora: ${toC(w.tempF)}°C (sensação ${toC(w.feelsF)}°C), ${w.condition}. Vento ${toKmh(w.windMph)} km/h, rajada ${toKmh(w.gustMph)} km/h. Umidade ${w.humidityPct}%. UV ${w.uvIndex}. Visibilidade ${toKm(w.visibilityMi)} km. Pressão ${w.pressureHpa} hPa. Chance de chuva ${w.precipProbPct}%.`
+        : `- Now: ${Math.round(w.tempF)}°F (feels ${Math.round(w.feelsF)}°F), ${w.condition}. Wind ${Math.round(w.windMph)} mph, gust ${Math.round(w.gustMph)} mph. Humidity ${w.humidityPct}%. UV ${w.uvIndex}. Visibility ${w.visibilityMi.toFixed(1)} mi. Pressure ${w.pressureHpa} hPa. Rain chance ${w.precipProbPct}%.`,
+    )
+  }
+  if (ctx.airQualityAqi !== null && ctx.airQualityAqi !== undefined) {
+    lines.push(pt ? `- Qualidade do ar (AQI): ${ctx.airQualityAqi}` : `- Air quality (AQI): ${ctx.airQualityAqi}`)
+  }
+  if (ctx.hourly?.length) {
+    const series = ctx.hourly
+      .map(h => (pt ? `${h.hour} ${toC(h.tempF)}°C chuva ${h.precipProbPct}% rajada ${toKmh(h.gustMph)}km/h` : `${h.hour} ${Math.round(h.tempF)}°F rain ${h.precipProbPct}% gust ${Math.round(h.gustMph)}mph`))
+      .join(' | ')
+    lines.push(pt ? `- Próximas horas: ${series}` : `- Next hours: ${series}`)
+  }
+  if (ctx.alerts?.length) {
+    lines.push(
+      (pt ? '- Alertas oficiais ativos: ' : '- Active official alerts: ') +
+        ctx.alerts.map(a => `[${a.severity}] ${a.headline}`).join(' ; '),
+    )
+  } else {
+    lines.push(pt ? '- Alertas oficiais ativos: nenhum' : '- Active official alerts: none')
+  }
+  if (ctx.earthquakes?.length) {
+    lines.push(
+      (pt ? '- Sismos recentes: ' : '- Recent earthquakes: ') +
+        ctx.earthquakes.map(e => `M${e.magnitude} ${e.place}`).join(' ; '),
+    )
+  }
+  if (ctx.inventory) {
+    const i = ctx.inventory
+    lines.push(
+      pt
+        ? `- Inventário: ${i.waterLiters} L de água, ${i.foodDays} dias de comida, ${i.fuelLiters} L de combustível, bateria ${i.batteryPercent}%, kit médico ${i.hasMedicalKit ? 'sim' : 'não'}, rádio ${i.hasCommsDevice ? 'sim' : 'não'}.`
+        : `- Inventory: ${i.waterLiters} L water, ${i.foodDays} days food, ${i.fuelLiters} L fuel, battery ${i.batteryPercent}%, medical kit ${i.hasMedicalKit ? 'yes' : 'no'}, radio ${i.hasCommsDevice ? 'yes' : 'no'}.`,
+    )
+  }
+  if (ctx.nearestShelter) {
+    lines.push(
+      pt
+        ? `- Abrigo oficial aberto mais próximo: ${ctx.nearestShelter.name}, a ${ctx.nearestShelter.distanceKm.toFixed(1)} km.`
+        : `- Nearest open official shelter: ${ctx.nearestShelter.name}, ${ctx.nearestShelter.distanceKm.toFixed(1)} km away.`,
+    )
+  } else if (ctx.sheltersKnown) {
+    lines.push(pt ? '- Abrigos oficiais abertos por perto: nenhum (normal fora de desastre ativo).' : '- Open official shelters nearby: none (normal outside an active disaster).')
+  }
+  if (ctx.locationLabel) lines.push(pt ? `- Local: ${ctx.locationLabel}` : `- Location: ${ctx.locationLabel}`)
+  if (ctx.fetchedAt) lines.push(pt ? `- Leitura de: ${ctx.fetchedAt}` : `- Reading taken at: ${ctx.fetchedAt}`)
+
+  return lines.join('\n')
 }
 
 /**
@@ -154,6 +252,12 @@ export async function POST(request: NextRequest) {
       : `SITUATION: risk index ${context.score ?? '—'} (${context.riskState}). ${context.headline}`,
     pt ? `FAMÍLIA: ${household}` : `HOUSEHOLD: ${household}`,
     pt ? `RECURSOS: ${reserves}` : `RESOURCES: ${reserves}`,
+    pt
+      ? `DADOS AO VIVO QUE VOCÊ TEM AGORA (leitura real dos sensores e provedores do EOS):\n${situationReport(context)}`
+      : `LIVE DATA YOU HAVE RIGHT NOW (real readings from the EOS sensors and providers):\n${situationReport(context)}`,
+    pt
+      ? 'VOCÊ TEM ACESSO A DADOS EM TEMPO REAL. Eles estão acima. NUNCA diga que não tem acesso a dados em tempo real nem mande o usuário consultar outra fonte de meteorologia — responda com os números acima e cite a hora da leitura quando fizer sentido. Se um dado específico não estiver na lista, diga exatamente qual falta.'
+      : 'YOU DO HAVE REAL-TIME DATA. It is above. NEVER say you lack real-time access, and never tell the user to check another weather source — answer with the numbers above and cite the reading time when it matters. If one specific figure is missing from the list, say exactly which one.',
     context.simulated
       ? pt
         ? 'ATENÇÃO: isto é uma SIMULAÇÃO de treino. Trate como real para efeito de instrução, mas nunca diga que há uma emergência de verdade.'
@@ -166,8 +270,8 @@ export async function POST(request: NextRequest) {
       ? 'REGRAS INEGOCIÁVEIS: 1) Nunca invente abrigo, rota ou ordem de evacuação — evacuação só existe se houver ordem oficial. 2) Use os números reais da família acima; nada de conselho genérico. 3) Se faltar dado, diga que falta. 4) Nunca suavize um risco crítico.'
       : 'NON-NEGOTIABLE RULES: 1) Never invent a shelter, route or evacuation order — evacuation exists only under an official order. 2) Use the real household numbers above; no generic advice. 3) If data is missing, say so. 4) Never soften a critical risk.',
     pt
-      ? 'RESPONDA SOMENTE com JSON: {"reply":"sua resposta","tasks":[{"name":"ação curta e executável","why":"por que","tier":"ESSENTIAL|MODERATE|EXCELLENT","quantity":1,"unit":null}]}. Inclua em tasks TODA ação concreta que você recomendar (ex.: "Abastecer o carro" vira task). Se não recomendar ação, tasks é [].'
-      : 'ANSWER ONLY with JSON: {"reply":"your answer","tasks":[{"name":"short executable action","why":"why","tier":"ESSENTIAL|MODERATE|EXCELLENT","quantity":1,"unit":null}]}. Put EVERY concrete action you recommend into tasks. If you recommend none, tasks is [].',
+      ? 'Responda no mesmo idioma em que o usuário escreveu. RESPONDA SOMENTE com JSON: {"reply":"sua resposta","tasks":[{"name":"ação curta e executável","why":"por que","tier":"ESSENTIAL|MODERATE|EXCELLENT","quantity":1,"unit":null}]}. Inclua em tasks TODA ação concreta que você recomendar (ex.: "Abastecer o carro" vira task). Se não recomendar ação, tasks é [].'
+      : 'Reply in the language the user wrote in. ANSWER ONLY with JSON: {"reply":"your answer","tasks":[{"name":"short executable action","why":"why","tier":"ESSENTIAL|MODERATE|EXCELLENT","quantity":1,"unit":null}]}. Put EVERY concrete action you recommend into tasks. If you recommend none, tasks is [].',
   ]
     .filter(Boolean)
     .join('\n\n')

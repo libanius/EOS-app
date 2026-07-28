@@ -214,6 +214,7 @@ export default function WorldV2() {
         : null,
       sheltersKnown: Boolean(shelterSnapshot),
       simulated: simulation.active,
+      locationLabel: hasCoords ? (metric ? 'Sua área' : 'Your area') : null,
     }),
     [metric, state, score, snapshot, hasCoords, data, shelterSnapshot, simulation.active],
   )

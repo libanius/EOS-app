@@ -208,6 +208,14 @@ async function main() {
     await shot('13-pilot-pergunta-local')
     log('   msgs no fluxo:', await page.locator('.chat-pilot, .chat-user').count())
     log('   campo de texto presente:', await page.locator('.chat-compose input').count())
+
+    // A pergunta que expôs a falha: o Pilot tem os dados ao vivo?
+    await page.locator('.chat-compose input').fill('qual é a temperatura agora?')
+    await page.locator('.chat-compose button[type=submit]').click()
+    await page.waitForTimeout(22000)
+    await shot('14-pilot-temperatura')
+    const last = await page.locator('.chat-pilot').last().innerText().catch(() => '?')
+    log('\n   RESPOSTA SOBRE TEMPERATURA:\n   ' + last.replace(/\n/g, '\n   '))
   } else log('⚠️  orbe não encontrado')
 
   log('\n─── erros de console ───')
