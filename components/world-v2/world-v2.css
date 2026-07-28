@@ -898,3 +898,137 @@
   .wv2-fume::after { display: none; }
   .pilot-chip { border-color: rgba(255, 255, 255, 0.5); }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MAP MARKERS — v2 language
+   ───────────────────────────────────────────────────────────────────────────
+   These styles used to live only in world-dashboard.css, which v2 never
+   imported — so every family and shelter marker rendered as unstyled text on
+   the production map. Rebuilt here on v2 tokens.
+
+   The system has TWO kinds of object, and the distinction is the whole point:
+
+     PIN  — someone or something else, at a place. Labelled, anchored bottom,
+            points down at its location.
+     PUCK — you. Not a label on the map; the presence the map is oriented
+            around. Centred on the point, no name, no tail.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.wv2 .w-mapmarker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  cursor: pointer;
+}
+.wv2 .w-mapmarker .pin {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-pill);
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  color: #06070b;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6);
+}
+.wv2 .w-mapmarker .lab {
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 3px 7px;
+  border-radius: 7px;
+  border: 1px solid var(--sep);
+  background: var(--mat-thick);
+  backdrop-filter: blur(var(--mat-blur-sm)) saturate(var(--mat-sat));
+  -webkit-backdrop-filter: blur(var(--mat-blur-sm)) saturate(var(--mat-sat));
+  color: var(--ink);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: -0.004em;
+}
+/* Shelters are institutions, not people: square-ish tag, accent-filled. */
+.wv2 .w-mapmarker.shelter .lab {
+  border-color: transparent;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 700;
+}
+
+/* ── The self puck ── */
+.wv2 .w-selfpuck {
+  position: relative;
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+.wv2 .w-selfpuck .disc {
+  position: relative;
+  z-index: 1;
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: var(--r-pill);
+  /* Two rings: an ink hairline so the puck reads over bright satellite, and the
+     state-coloured ring outside it, so "who" and "how bad" are one object. */
+  border: 2.5px solid var(--accent);
+  outline: 1.5px solid rgba(6, 7, 11, 0.85);
+  outline-offset: -4px;
+  background: #0b0d12;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.7);
+}
+.wv2 .w-selfpuck .disc img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.wv2 .w-selfpuck .eos-glyph {
+  width: 22px;
+  height: 22px;
+  fill: var(--accent);
+}
+/* The halo is a signal, not decoration: it says the point is live. */
+.wv2 .w-selfpuck .halo {
+  position: absolute;
+  inset: -9px;
+  border-radius: var(--r-pill);
+  background: radial-gradient(circle, rgba(var(--accent-rgb), 0.30) 0%, rgba(var(--accent-rgb), 0) 70%);
+}
+.wv2 .w-selfpuck[data-live='true'] .halo {
+  animation: wv2-self-live 2400ms ease-in-out infinite;
+}
+/* A stale point must not look alive — it loses the pulse and dims the ring. */
+.wv2 .w-selfpuck[data-live='false'] .disc {
+  border-color: var(--ink-3);
+}
+.wv2 .w-selfpuck[data-live='false'] .halo { opacity: 0.35; }
+.wv2 .w-selfpuck[data-live='false'] .eos-glyph { fill: var(--ink-2); }
+
+@keyframes wv2-self-live {
+  0%, 100% { transform: scale(0.9); opacity: 0.75; }
+  50%      { transform: scale(1.12); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wv2 .w-selfpuck[data-live='true'] .halo { animation: none; }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .wv2 .w-mapmarker .lab {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .wv2 .w-selfpuck .disc { outline-color: #000; }
+  .wv2 .w-mapmarker .lab { border-color: rgba(255, 255, 255, 0.6); }
+}

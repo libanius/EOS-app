@@ -39,7 +39,11 @@ function freshnessLabel(member: CircleMember, pt: boolean): string {
   return pt ? `há ${hours} h` : `${hours} h ago`
 }
 
-export function useCircleFamily(pt: boolean, selfCoords: { lat: number; lng: number } | null) {
+export function useCircleFamily(
+  pt: boolean,
+  selfCoords: { lat: number; lng: number } | null,
+  selfAvatarUrl: string | null,
+) {
   const [family, setFamily] = useState<WorldFamilyMember[]>([])
 
   const load = useCallback(async () => {
@@ -59,11 +63,14 @@ export function useCircleFamily(pt: boolean, selfCoords: { lat: number; lng: num
           lng: member.location_lng,
           isMe: member.is_me,
           freshness: freshnessLabel(member, pt),
+          avatarUrl: member.is_me ? selfAvatarUrl : null,
+          // Only a live GPS fix pulses; a profile point is a place, not a presence.
+          live: member.location_source === 'live',
         })
       }
     }
     setFamily(Array.from(byUser.values()))
-  }, [pt])
+  }, [pt, selfAvatarUrl])
 
   useEffect(() => {
     void load()
@@ -85,6 +92,8 @@ export function useCircleFamily(pt: boolean, selfCoords: { lat: number; lng: num
       lng: selfCoords.lng,
       isMe: true,
       freshness: pt ? 'agora' : 'now',
+      avatarUrl: selfAvatarUrl,
+      live: true,
     }
     if (meIndex >= 0) withSelf[meIndex] = { ...me, id: withSelf[meIndex].id }
     else withSelf.push(me)

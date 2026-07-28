@@ -44,7 +44,18 @@ type HazardEvent = {
 }
 type HazardSnapshot = { events?: HazardEvent[]; fetchedAt?: string }
 type RadarSnapshot = { ok?: boolean; tileUrl?: string; attribution?: string; frameTime?: number }
-export type WorldFamilyMember = { id: string; name: string; lat: number; lng: number; isMe?: boolean; freshness: string }
+export type WorldFamilyMember = {
+  id: string
+  name: string
+  lat: number
+  lng: number
+  isMe?: boolean
+  freshness: string
+  /** Signed avatar URL for the self puck. Others always render as pins. */
+  avatarUrl?: string | null
+  /** Drives the "live signal" halo — a stale point does not pulse. */
+  live?: boolean
+}
 /** Official FEMA shelters (D-065). Rendered distinctly from family points. */
 export type WorldShelter = { id: string; name: string; lat: number; lng: number; distanceKm: number }
 
@@ -120,6 +131,72 @@ function short(text: string, max = 38) {
   return text.length <= max ? text : `${text.slice(0, max - 1).trim()}…`
 }
 
+/**
+ * The self marker is a PUCK, not a pin — deliberately a different kind of object.
+ *
+ * A pin points at a place someone else is. You are not a place: you are the
+ * presence the map is oriented around, so the puck sits centred on the point
+ * with no name label. Being told your own name on your own map is noise.
+ *
+ * Falls back to the EOS mark (three bars + signal dot) when there is no photo.
+ */
+function selfPuckEl(avatarUrl: string | null | undefined, live: boolean) {
+  const el = document.createElement('div')
+  el.className = 'w-selfpuck'
+  el.dataset.live = live ? 'true' : 'false'
+
+  const halo = document.createElement('span')
+  halo.className = 'halo'
+  el.appendChild(halo)
+
+  const disc = document.createElement('span')
+  disc.className = 'disc'
+  if (avatarUrl) {
+    const img = document.createElement('img')
+    img.src = avatarUrl
+    img.alt = ''
+    // A broken signed URL must degrade to the mark, never to an empty circle.
+    img.onerror = () => {
+      img.remove()
+      disc.appendChild(eosGlyph())
+    }
+    disc.appendChild(img)
+  } else {
+    disc.appendChild(eosGlyph())
+  }
+  el.appendChild(disc)
+  return el
+}
+
+/** EOS mark, matching public/icon.svg: three bars and a signal dot. */
+function eosGlyph() {
+  const ns = 'http://www.w3.org/2000/svg'
+  const svg = document.createElementNS(ns, 'svg')
+  svg.setAttribute('viewBox', '0 0 512 512')
+  svg.setAttribute('class', 'eos-glyph')
+  svg.setAttribute('aria-hidden', 'true')
+  const bars: Array<[number, number, number]> = [
+    [128, 120, 256],
+    [128, 230, 192],
+    [128, 340, 256],
+  ]
+  for (const [x, y, w] of bars) {
+    const r = document.createElementNS(ns, 'rect')
+    r.setAttribute('x', String(x))
+    r.setAttribute('y', String(y))
+    r.setAttribute('width', String(w))
+    r.setAttribute('height', '52')
+    r.setAttribute('rx', '8')
+    svg.appendChild(r)
+  }
+  const dot = document.createElementNS(ns, 'circle')
+  dot.setAttribute('cx', '420')
+  dot.setAttribute('cy', '150')
+  dot.setAttribute('r', '26')
+  svg.appendChild(dot)
+  return svg
+}
+
 function markerEl(className: string, pin: string, label: string, color?: string) {
   const el = document.createElement('div')
   el.className = className
@@ -176,8 +253,16 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
     const maplibregl = (await import('maplibre-gl')).default
 
     family.slice(0, 8).forEach((m, i) => {
+      if (m.isMe) {
+        // Centred, unlabelled: a presence, not a marker (see selfPuckEl).
+        const puck = selfPuckEl(m.avatarUrl, m.live !== false)
+        markersRef.current.push(
+          new maplibregl.Marker({ element: puck, anchor: 'center' }).setLngLat([m.lng, m.lat]).addTo(map),
+        )
+        return
+      }
       const initials = m.name.split(/\s+/).map(p => p[0]).join('').slice(0, 2).toUpperCase() || 'FM'
-      const color = m.isMe ? '#00e5a0' : ['#ffb347', '#9aa0ad', '#7c6bff', '#35d7f2'][i % 4]
+      const color = ['#ffb347', '#9aa0ad', '#7c6bff', '#35d7f2'][i % 4]
       // Freshness is part of the label by contract: a stale point presented as
       // a current one is worse than no point at all.
       const el = markerEl('w-mapmarker real', initials, `${short(m.name, 18)} · ${m.freshness}`, color)

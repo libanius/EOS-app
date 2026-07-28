@@ -139,13 +139,29 @@ export default function WorldV2() {
 
   const { snapshot, score, state, hasCoords, coords, requestGps, refresh } = useRisk()
   const data = useWorldData()
-  const family = useCircleFamily(language === 'pt', coords)
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const family = useCircleFamily(language === 'pt', coords, avatarUrl)
   const shelterSnapshot = useShelters(coords)
 
   const [detent, setDetent] = useState<Detent>('peek')
   const [isDesktop, setIsDesktop] = useState(false)
   const [panelOpen, setPanelOpen] = useState(true)
   const [ready, setReady] = useState(false)
+
+  // The self puck wears the user's photo; without one it falls back to the EOS
+  // mark, so the puck is never an empty circle.
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/profile/personalization')
+      .then(response => (response.ok ? response.json() : null))
+      .then((data: { personalization?: { avatar_url?: string | null } } | null) => {
+        if (!cancelled) setAvatarUrl(data?.personalization?.avatar_url ?? null)
+      })
+      .catch(() => {
+        if (!cancelled) setAvatarUrl(null)
+      })
+    return () => { cancelled = true }
+  }, [])
 
   // Layout is chosen after mount so the server never guesses the form factor;
   // the chrome cross-fades in once resolved instead of snapping between the two.
