@@ -133,6 +133,26 @@
 
 ---
 
+## Cenário — Simulador (SIM)
+
+*Goal: transformar o Cenário num simulador aeronáutico — a família configura o ambiente e o EOS inteiro responde como se fosse verdade.*
+
+> Decisão: **D-067**. Spec completa: `docs/19-scenario-simulator.md`.
+> Princípio: **mesmos instrumentos, entradas injetadas.** A injeção acontece no `RiskProvider`, não nas telas.
+
+| Task ID | Task | Status | Notes |
+|---|---|---|---|
+| SIM-T00 | Spec + decisão do simulador | ✅ COMPLETE | 2026-07-27 — D-067 / doc 19 |
+| SIM-T01 | `SimulationProvider` + injeção no `RiskProvider` + cromo persistente + travas de segurança | PENDING | **Primeiro e sozinho.** As travas precisam existir antes de a simulação alcançar o app |
+| SIM-T02 | Painéis de configuração (ameaça, clima, recursos, saúde, infraestrutura, posição) | PENDING | Linguagem natural traduz para os painéis, sempre revisável antes de rodar |
+| SIM-T03 | Sessão: briefing pelo Pilot com RAG, rodar, sair a um toque | PENDING | Reusa `/api/analyze` + `getRelevantChunks`; regra crítica vence o modelo |
+| SIM-T04 | Injeção de eventos e avanço de tempo ("+6h", "a energia caiu") | PENDING | É o que separa simulador de cenário estático |
+| SIM-T05 | Debrief com lacunas quantificadas + escrita confirmada no checklist | PENDING | "Faltaram 40 L", não "melhore suas reservas" |
+| SIM-T06 | Execução contra o Plano da Família | PENDING | Depende de PLAN-T01. É o que vira ensaio de família |
+| SIM-T07 | Drills compartilhados no círculo + registro de treino | PENDING | — |
+
+---
+
 ## Planos de Emergência da Família (PLAN)
 
 *Goal: carregar o combinado operacional da família — para onde ir e como se encontrar quando nada estiver funcionando.*

@@ -4,6 +4,26 @@
 
 ---
 
+## D-067 — Cenário vira simulador: o app inteiro responde ao ambiente simulado
+
+**Date**: 2026-07-27
+**Status**: DECIDED / SPEC — implementação faseada (SIM-T00→T07)
+**Spec**: `docs/19-scenario-simulator.md`
+
+**Context**: A aba Cenário é hoje um analisador de pergunta única. O dono definiu o que ela deve ser, na metáfora aeronáutica estrita: um simulador onde a família configura o ambiente (clima, inventário, saúde, infraestrutura) e **o EOS inteiro passa a se comportar como se fosse verdade** — como um aluno de aviação cujos instrumentos não sabem que é mentira.
+
+**Decision**:
+1. **Injeção no `RiskProvider`, não nas telas.** Todas as telas já leem `useRisk()`; dar duas fontes ao provider (REAL / SIMULADO) coloca o app inteiro em simulação sem tocar em nenhuma tela. Mesmos instrumentos, entradas injetadas.
+2. **Alerta real crítico encerra a simulação imediatamente.** A sessão é abortada, o app volta ao real, o alerta ocupa a tela. Abrupto de propósito: ameaça real nunca disputa atenção com ficção.
+3. **Escrita em dado real só com confirmação explícita item a item.** O debrief propõe lacunas quantificadas para o checklist; nada muda sozinho. Mesma trava de D-062.1 e UPP-03.
+4. **Travas adicionais**: cromo persistente e impossível de ignorar em todas as telas; expiração automática ao recarregar e por inatividade; zero escrita durante a sessão.
+5. **O simulador é o único lugar do EOS onde um modelo pertence ao caminho principal.** Reconcilia D-062.1 (Pilot local porque a rede cai em emergência): treina-se em calmaria, com rede, onde profundidade vale mais que latência. Reusa `/api/analyze` + `getRelevantChunks` em vez de criar outro pipeline. Regra crítica continua vencendo o modelo.
+6. **SIM-T01 vem sozinho e primeiro**: as travas de segurança precisam existir antes de a simulação alcançar o app inteiro.
+
+**Consequence**: EOS passa de informação para preparo — e ganha a forma de testar o Plano da Família (D-066), que hoje seria um compromisso que ninguém nunca exercitou. Assume-se a feature de maior risco do produto, mitigada pelas travas acima.
+
+---
+
 ## D-066 — Planos de Emergência da Família ("plano de voo")
 
 **Date**: 2026-07-27
