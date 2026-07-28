@@ -23,6 +23,7 @@ import Pilot from './Pilot'
 import type { PilotContext } from './pilot-engine'
 import { Bar, Card, IconButton, Pill, PillLink, SectionLabel, Tile, TileGrid } from './primitives'
 import { SPRING } from './motion'
+import { useCircleFamily } from './useCircleFamily'
 import { useWorldData } from './useWorldData'
 import './world-v2.css'
 
@@ -58,7 +59,7 @@ const COPY = {
     collapse: 'Recolher',
     sheetLabel: 'Situação da família',
     grabber: 'Arraste para redimensionar o painel, ou toque para alternar',
-    provenance: 'Família e rota no mapa são demonstração. Clima, alertas e reservas são dados reais.',
+    provenance: 'Pontos da família aparecem só para quem ativou o compartilhamento, sempre com a idade do ponto. Rota e abrigo estão fora do mapa até haver fonte oficial.',
     checklistDone: 'Checklist',
     temp: 'Temp',
     wind: 'Vento',
@@ -98,7 +99,7 @@ const COPY = {
     collapse: 'Collapse',
     sheetLabel: 'Family situation',
     grabber: 'Drag to resize the panel, or tap to cycle',
-    provenance: 'Family and route on the map are a demo. Weather, alerts and reserves are real data.',
+    provenance: 'Family points appear only for members who enabled sharing, always with the age of the point. Route and shelter stay off the map until there is an official source.',
     checklistDone: 'Checklist',
     temp: 'Temp',
     wind: 'Wind',
@@ -120,8 +121,9 @@ export default function WorldV2() {
   const metric = language === 'pt'
   const reduceMotion = useReducedMotion()
 
-  const { snapshot, score, state, hasCoords, requestGps, refresh } = useRisk()
+  const { snapshot, score, state, hasCoords, coords, requestGps, refresh } = useRisk()
   const data = useWorldData()
+  const family = useCircleFamily(language === 'pt', coords)
 
   const [detent, setDetent] = useState<Detent>('peek')
   const [isDesktop, setIsDesktop] = useState(false)
@@ -197,6 +199,7 @@ export default function WorldV2() {
           state={state}
           plateUrl="/world/parkland.webp"
           mapBase="dark"
+          family={family}
           onMapInteraction={() => setDetent('peek')}
         />
       </div>

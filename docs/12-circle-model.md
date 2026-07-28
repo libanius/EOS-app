@@ -102,6 +102,24 @@ Família (exibido) = family_members (meu roster) ∪ co-membros do círculo (som
 - **Sem duplicação de dado**: nada novo é escrito em `family_members`; é merge em tempo de render, igual ao Household de inventário.
 - **Info exibida (1ª entrega)**: nome, role, localização e contato de emergência (quando compartilhado) — o que `/api/circles` já expõe. **Ficha médica** dos co-membros é follow-up (decisão de privacidade + ampliar a API).
 
+### Localização (D-064)
+
+Localização tem **toggle próprio**, separado do compartilhamento de inventário — é
+dado mais sensível que litros de água e merece decisão própria. Implementada como o
+campo `location` em `shared_fields`.
+
+| Estado | O que o círculo vê |
+|---|---|
+| Consentiu + GPS recente | Ponto ao vivo, com idade visível ("agora", "há 4 min") |
+| Consentiu, sem GPS recente | Ponto do perfil, rotulado `perfil` |
+| Não consentiu | **Nada.** Nenhum ponto, nenhum marcador |
+
+Regras invioláveis:
+- **Default é não compartilhar.** O array vazio de `shared_fields` significa "compartilha tudo" para inventário e contato, por convenção legada — `location` está fora dessa regra e exige a string presente.
+- **Retenção é o último ponto.** Sem trilha, sem replay, sem histórico.
+- **Freshness sempre visível.** Um ponto velho apresentado como atual é pior que nenhum ponto.
+- **Revogação é imediata.** Desligar o toggle remove o ponto da visão do círculo na próxima leitura.
+
 ### Isadora entra no círculo do Paulo
 
 ```

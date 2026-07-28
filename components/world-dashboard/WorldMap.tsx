@@ -7,9 +7,15 @@
  * critical text. Degrades to the static world plate on load/WebGL failure (§28).
  *
  * HWD-03: the map centers on the user's REAL location (RiskProvider coords),
- * falling back to Parkland. Family markers + shelter route are MOCK (labeled),
- * placed as offsets from the current center so they stay near the user until
- * real family/routing lands in HWD-04 (privacy-gated).
+ * falling back to Parkland.
+ *
+ * D-064: this component renders ONLY real data. Family markers come from
+ * consented circle members (`/api/circles`) and always carry a freshness label;
+ * route/shelter render only when real guidance is supplied. When there is
+ * nothing real to draw, it draws nothing.
+ *
+ * Shared by `/dashboard` (World v2) and `/dashboard-world` (HWD v1) — a change
+ * here lands on both screens.
  */
 
 import { useEffect, useRef } from 'react'
@@ -19,18 +25,11 @@ import { useRisk } from '@/components/v2/RiskProvider'
 import { getMapConfig } from '@/lib/world/providers'
 import type { MapBaseMode } from '@/lib/world/providers'
 
-// Mock overlays as [lng, lat] offsets from the map center (labeled in the HUD).
-const FAMILY_OFF: Array<{ name: string; label: string; color: string; d: [number, number] }> = [
-  { name: 'Paulo', label: 'HOME', color: '#00e5a0', d: [-0.006, -0.004] },
-  { name: 'Isadora', label: 'SCHOOL', color: '#ffb347', d: [0.008, 0.006] },
-  { name: 'Ana', label: 'WORK', color: '#9aa0ad', d: [-0.010, 0.004] },
-]
-const ROUTE_OFF: Array<[number, number]> = [
-  [-0.006, -0.004], [-0.001, -0.006], [0.005, -0.008], [0.011, -0.010],
-]
-const SHELTER_OFF: [number, number] = [0.011, -0.010]
-
-const off = (c: [number, number], d: [number, number]): [number, number] => [c[0] + d[0], c[1] + d[1]]
+// D-064 §5: no mock overlays. This component used to invent three family pins
+// ("Paulo/Isadora/Ana"), a route and a `SHELTER · mock` marker whenever it got no
+// data — and that shipped to the production dashboard. A fictional shelter on an
+// emergency product is a hazard, not a placeholder. No real data → no marker.
+const EMPTY_LINE = { type: 'Feature' as const, properties: {}, geometry: { type: 'LineString' as const, coordinates: [] as Array<[number, number]> } }
 
 type HazardSeverity = 'info' | 'minor' | 'moderate' | 'severe' | 'extreme'
 type HazardEvent = {
@@ -153,44 +152,41 @@ export default function WorldMap({ plateUrl, family = [], guidance = null, mapBa
   const centerRef = useRef<[number, number] | null>(null)
   const plateRef = useRef<HTMLDivElement>(null)
 
-  // Place / reposition family + route overlays. Real HWD-04 data wins; mock
-  // overlays remain only as a labeled fallback when no family/guidance exists.
-  const placeOverlays = async (center: [number, number]) => {
+  // Place / reposition family + route overlays from REAL data only (D-064 §5).
+  const placeOverlays = async () => {
     const map = mapRef.current
     if (!map) return
-    const routeCoords = guidance?.route?.points?.length
-      ? guidance.route.points
-      : ROUTE_OFF.map(d => off(center, d))
+
+    const routeCoords = guidance?.route?.points?.length ? guidance.route.points : []
     const src = map.getSource('eos-route') as { setData?: (d: unknown) => void } | undefined
     src?.setData?.({
-      type: 'Feature', properties: {},
+      type: 'Feature',
+      properties: {},
       geometry: { type: 'LineString', coordinates: routeCoords },
     })
+
     markersRef.current.forEach(m => m.remove())
     markersRef.current = []
+
+    if (!family.length && !guidance?.shelter) return
     const maplibregl = (await import('maplibre-gl')).default
-    if (family.length) {
-      family.slice(0, 8).forEach((m, i) => {
-        const initials = m.name.split(/\s+/).map(p => p[0]).join('').slice(0, 2).toUpperCase() || 'FM'
-        const color = m.isMe ? '#00e5a0' : ['#ffb347', '#9aa0ad', '#7c6bff', '#35d7f2'][i % 4]
-        const el = markerEl('w-mapmarker real', initials, `${short(m.name, 18)} · ${m.freshness}`, color)
-        markersRef.current.push(new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([m.lng, m.lat]).addTo(map))
-      })
-    } else {
-      for (const f of FAMILY_OFF) {
-        const el = markerEl('w-mapmarker', f.name.slice(0, 2).toUpperCase(), f.label, f.color)
-        markersRef.current.push(new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat(off(center, f.d)).addTo(map))
-      }
-    }
+
+    family.slice(0, 8).forEach((m, i) => {
+      const initials = m.name.split(/\s+/).map(p => p[0]).join('').slice(0, 2).toUpperCase() || 'FM'
+      const color = m.isMe ? '#00e5a0' : ['#ffb347', '#9aa0ad', '#7c6bff', '#35d7f2'][i % 4]
+      // Freshness is part of the label by contract: a stale point presented as
+      // a current one is worse than no point at all.
+      const el = markerEl('w-mapmarker real', initials, `${short(m.name, 18)} · ${m.freshness}`, color)
+      markersRef.current.push(new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([m.lng, m.lat]).addTo(map))
+    })
+
     const shelter = guidance?.shelter
-    const sh = markerEl(
-      `w-mapmarker shelter ${shelter ? 'ai' : ''}`,
-      '',
-      shelter ? `AI SHELTER · ${short(shelter.name, 24)}` : 'SHELTER · mock',
-    )
-    markersRef.current.push(new maplibregl.Marker({ element: sh, anchor: 'bottom' }).setLngLat(
-      shelter ? [shelter.lng, shelter.lat] : off(center, SHELTER_OFF),
-    ).addTo(map))
+    if (shelter) {
+      const sh = markerEl('w-mapmarker shelter ai', '', `AI SHELTER · ${short(shelter.name, 24)}`)
+      markersRef.current.push(
+        new maplibregl.Marker({ element: sh, anchor: 'bottom' }).setLngLat([shelter.lng, shelter.lat]).addTo(map),
+      )
+    }
   }
 
   const loadRadar = async () => {
@@ -344,12 +340,12 @@ export default function WorldMap({ plateUrl, family = [], guidance = null, mapBa
             map.setTerrain({ source: 'eos-dem', exaggeration: 1.2 })
           }
 
-          map.addSource('eos-route', { type: 'geojson', data: { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: ROUTE_OFF.map(d => off(cur, d)) } } })
+          map.addSource('eos-route', { type: 'geojson', data: EMPTY_LINE })
           map.addLayer({ id: 'eos-route-glow', type: 'line', source: 'eos-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#00e5a0', 'line-width': 9, 'line-opacity': 0.18, 'line-blur': 6 } })
           map.addLayer({ id: 'eos-route', type: 'line', source: 'eos-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#00e5a0', 'line-width': 3.5, 'line-opacity': 0.95 } })
 
           readyRef.current = true
-          void placeOverlays(cur)
+          void placeOverlays()
           if (plateRef.current) plateRef.current.style.opacity = '0'
           loadRadar()
           renderHazards(cur)
@@ -378,25 +374,21 @@ export default function WorldMap({ plateUrl, family = [], guidance = null, mapBa
     if (reduce) map.jumpTo({ center })
     else map.flyTo({ center, duration: 1400, essential: true })
     if (readyRef.current) {
-      void placeOverlays(center)
+      void placeOverlays()
       renderHazards(center)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [coords?.lat, coords?.lng])
 
   useEffect(() => {
-    const center = centerRef.current
-    if (readyRef.current && center) void placeOverlays(center)
+    if (readyRef.current) void placeOverlays()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [family, guidance])
 
   useEffect(() => {
     const map = mapRef.current
-    const center = centerRef.current
-    if (!map || !readyRef.current || !center || !routeFocusNonce) return
-    const routeCoords = guidance?.route?.points?.length
-      ? guidance.route.points
-      : ROUTE_OFF.map(d => off(center, d))
+    if (!map || !readyRef.current || !routeFocusNonce) return
+    const routeCoords = guidance?.route?.points?.length ? guidance.route.points : []
     if (!routeCoords.length) return
     const points = guidance?.shelter
       ? [...routeCoords, [guidance.shelter.lng, guidance.shelter.lat] as [number, number]]

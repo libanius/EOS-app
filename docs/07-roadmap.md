@@ -108,7 +108,25 @@
 | WV2-T04 | Promoção a `/dashboard`: redirects de entrada, botão central no BottomNav, legacy preservado | ✅ COMPLETE | 2026-07-27 — D-063 |
 | WV2-T05 | Validação de produção da v2: E2E de navegador, a11y/perf medidos, custo de provider, revisão de privacidade/proveniência | PENDING | Herda os gates abertos do HWD-06. **Rollout ocorreu antes destes gates**, por decisão do dono (D-063). |
 | WV2-T06 | Rótulos dos controles de mapa no toque | PENDING | `aria-label`/`title` cobrem leitor de tela e hover; no toque não há hover. Alternativas: legenda curta ou mover as ações para dentro do sheet. |
-| WV2-T07 | Reconstruir features do HWD v1 sobre a v2 conforme demanda | PENDING | Camadas ao vivo, marcadores de família, toggle de base, focar rota, notificar círculo. Não portar em bloco. |
+| WV2-T07 | Reconstruir features do HWD v1 sobre a v2 conforme demanda | PENDING | Camadas ao vivo, toggle de base, notificar círculo. Marcadores de família saíram daqui para a seção FAM. |
+
+---
+
+## Family Location (FAM)
+
+*Goal: answer "where is my family right now" — the central question of an emergency — without turning EOS into a surveillance product.*
+
+> Decisão: **D-064**. Mantém D-051 §2 (só o último ponto, sem histórico).
+> Consentimento é opt-in explícito por círculo, via `shared_fields = 'location'`.
+
+| Task ID | Task | Status | Notes |
+|---|---|---|---|
+| FAM-T00 | Decisão + spec: localização ao vivo, consentimento próprio, freshness, retenção | ✅ COMPLETE | 2026-07-27 — D-064; docs 06 e 12 atualizados |
+| FAM-T01 | Migration `20260727000000_live_location.sql`: `last_location_*` em profiles | ✅ COMPLETE (código) | 2026-07-27 — **falta aplicar no Supabase**. APIs degradam limpo até lá. |
+| FAM-T02 | Corrigir vazamento: gatear `location_lat/lng` em `/api/circles` por `shared_fields` | ✅ COMPLETE | 2026-07-27 — sem consentimento não sai coordenada; retorna `location_source`/`location_at` para a UI rotular |
+| FAM-T03 | `POST /api/location` + hook de envio periódico enquanto o app está aberto | ✅ COMPLETE | 2026-07-27 — `LocationReporter` nunca dispara prompt de permissão; 2 min, só com aba visível; servidor grava só o último ponto |
+| FAM-T04 | Toggle próprio de localização na tela de Círculos + marcadores reais com freshness no mapa v2; remover mocks do `WorldMap` | ✅ COMPLETE | 2026-07-27 — mocks 'Paulo/Isadora/Ana' + rota + `SHELTER · mock` removidos das duas telas |
+| FAM-T05 | Fonte de rota/abrigo (dívida D-051 §5) | PENDING | **Bloqueia** qualquer rota/abrigo voltar ao mapa. OpenAI não é fonte geoespacial nem de emergência. |
 
 ---
 

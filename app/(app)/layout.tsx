@@ -2,6 +2,7 @@ import BottomNav from '@/components/BottomNav'
 import AppActions from '@/components/AppActions'
 import SyncStatus from '@/components/SyncStatus'
 import FichaFirstRun from '@/components/FichaFirstRun'
+import LocationReporter from '@/components/LocationReporter'
 
 // NOTE: V2Shell (components/v2 — the "Prévia Viva" risk state machine) is WIP and
 // NOT on the roadmap yet (see D-045 / P3-T07). It was shipped to production
@@ -12,6 +13,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
       <FichaFirstRun />
+      {/* D-064: silent unless the user consented AND already granted GPS. */}
+      <LocationReporter />
       <AppActions />
       {children}
       <SyncStatus />

@@ -3,9 +3,60 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { generateInviteCode, computeCircleScore } from '@/lib/circles'
 
-type MemberProfile = { name?: string; location_lat?: number; location_lng?: number; emergency_contact_name?: string; emergency_contact_phone?: string }
+type MemberProfile = {
+  name?: string
+  location_lat?: number
+  location_lng?: number
+  last_location_lat?: number | null
+  last_location_lng?: number | null
+  last_location_at?: string | null
+  emergency_contact_name?: string
+  emergency_contact_phone?: string
+}
 
 type CircleRole = 'Admin' | 'Editor' | 'Viewer'
+
+/** Beyond this the live point is history, not a position — fall back to profile. */
+const LIVE_POINT_MAX_AGE_MS = 30 * 60 * 1000
+
+/**
+ * D-064 — location consent.
+ *
+ * Unlike inventory and emergency contact, an EMPTY `shared_fields` does NOT mean
+ * "share location". That legacy "empty = share all" convention predates this
+ * decision, and a member who never opened the toggle must not start broadcasting
+ * their position because of it. Location requires the string to be present.
+ */
+function sharesLocation(sharedFields: string[]) {
+  return sharedFields.includes('location')
+}
+
+/**
+ * Resolve what the circle is allowed to see for one member: a fresh live point,
+ * or the static profile point, or nothing. `freshness` is returned alongside so
+ * the UI can never present a stale point as a current one.
+ */
+function memberLocation(profile: MemberProfile | null, consented: boolean, isMe: boolean) {
+  const none = { lat: null, lng: null, source: null as 'live' | 'profile' | null, at: null as string | null }
+  // You always see yourself: consent governs what OTHERS see, not your own map.
+  if (!profile || (!consented && !isMe)) return none
+
+  const liveAt = profile.last_location_at ? Date.parse(profile.last_location_at) : 0
+  const liveFresh = liveAt > 0 && Date.now() - liveAt < LIVE_POINT_MAX_AGE_MS
+  if (liveFresh && typeof profile.last_location_lat === 'number' && typeof profile.last_location_lng === 'number') {
+    return {
+      lat: profile.last_location_lat,
+      lng: profile.last_location_lng,
+      source: 'live' as const,
+      at: profile.last_location_at ?? null,
+    }
+  }
+
+  if (typeof profile.location_lat === 'number' && typeof profile.location_lng === 'number') {
+    return { lat: profile.location_lat, lng: profile.location_lng, source: 'profile' as const, at: null }
+  }
+  return none
+}
 
 export async function GET() {
   const supabase = await createClient()
@@ -45,9 +96,20 @@ export async function GET() {
     if (admin && memberIds.length) {
       const { data: profs } = await admin
         .from('profiles')
-        .select('id, name, location_lat, location_lng, emergency_contact_name, emergency_contact_phone')
+        .select(
+          'id, name, location_lat, location_lng, last_location_lat, last_location_lng, last_location_at, emergency_contact_name, emergency_contact_phone',
+        )
         .in('id', memberIds)
       for (const p of profs ?? []) profileById.set(p.id, p as MemberProfile)
+      // Migration 20260727000000_live_location.sql not applied yet: the live
+      // columns are unknown, so re-read without them. Circles must keep working.
+      if (!profs) {
+        const { data: legacy } = await admin
+          .from('profiles')
+          .select('id, name, location_lat, location_lng, emergency_contact_name, emergency_contact_phone')
+          .in('id', memberIds)
+        for (const p of legacy ?? []) profileById.set(p.id, p as MemberProfile)
+      }
     }
     const row = Array.isArray(pooled) ? pooled[0] : pooled
     const score = computeCircleScore({
@@ -71,16 +133,25 @@ export async function GET() {
         const p = profileById.get(m.user_id) ?? null
         const sharedFields = (m.shared_fields as string[] | undefined) ?? []
         const sharesContact = m.share_inventory && (sharedFields.length === 0 || sharedFields.includes('emergency_contact'))
+        const isMe = m.user_id === user.id
+        // D-064: coordinates were previously returned for every member with no
+        // gate at all, while emergency contact was gated — a privacy defect
+        // against doc 12 §103 and D-051 §1.
+        const location = memberLocation(p, sharesLocation(sharedFields), isMe)
         return {
           user_id: m.user_id,
           role: m.role as CircleRole,
           name: p?.name ?? '—',
-          location_lat: p?.location_lat ?? null,
-          location_lng: p?.location_lng ?? null,
+          location_lat: location.lat,
+          location_lng: location.lng,
+          /** 'live' | 'profile' | null — the UI must label the point with this. */
+          location_source: location.source,
+          location_at: location.at,
+          shares_location: sharesLocation(sharedFields),
           emergency_contact_name: sharesContact ? (p?.emergency_contact_name ?? null) : null,
           emergency_contact_phone: sharesContact ? (p?.emergency_contact_phone ?? null) : null,
           share_inventory: m.share_inventory as boolean,
-          is_me: m.user_id === user.id,
+          is_me: isMe,
         }
       }),
     })

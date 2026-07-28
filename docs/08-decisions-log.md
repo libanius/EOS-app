@@ -4,6 +4,30 @@
 
 ---
 
+## D-064 — Localização familiar ao vivo + consentimento próprio
+
+**Date**: 2026-07-27
+**Status**: DECIDED
+
+**Context**: Ao retomar as pendências, quatro achados:
+1. A v2 não passa `family`/`guidance` ao `WorldMap`, então **marcadores mock** (nomes fixos "Paulo/Isadora/Ana" + rota + `SHELTER · mock`) foram para produção na tela principal.
+2. `/api/circles` devolve `location_lat/lng` de todo membro **sem gating**, enquanto `emergency_contact` é gated. `location` sequer existe em `shared_fields`. Isso contraria doc 12 §103 e **D-051 §1**.
+3. Não existe localização ao vivo: o que há é `profiles.location_lat/lng`, ponto estático geocodificado. O EOS sabe onde cada um mora, não onde está.
+4. A dívida de **D-051 §5** (tirar rota/abrigo do OpenAI antes de substituir `/dashboard`) venceu com D-063.
+
+**Decision (dono, 2026-07-27)**:
+1. **Localização ao vivo sempre.** Enquanto o app está aberto e o membro consentiu, o cliente envia GPS periodicamente. Persistência é **apenas o último ponto** (mantém D-051 §2: sem trilha, sem replay, sem histórico).
+2. **Consentimento com toggle próprio.** Novo campo `location` em `circle_members.shared_fields`, com controle separado na tela de Círculos. Localização não pega carona no compartilhamento de inventário — é dado mais sensível e merece decisão própria. **Default = não compartilhado.**
+3. **Freshness é obrigatória na UI.** Todo ponto exibido carrega idade ("agora", "há 4 min", "perfil"). Um ponto velho apresentado como atual é pior que nenhum ponto.
+4. **Fallback honesto.** Sem consentimento ou sem GPS recente, cai para o ponto de perfil rotulado como `perfil`, nunca como posição atual.
+5. **Mocks banidos da produção.** `WorldMap` deixa de inventar família/rota/abrigo quando não recebe dados. Sem dado real → sem marcador.
+
+**Consequence**: EOS passa a responder "onde minha família está agora", que é a pergunta central em emergência. Assume-se o custo: bateria, e um dado sensível de posição atual por membro consentido. Mitigações: só o último ponto, opt-in explícito, freshness visível e revogação imediata pelo toggle.
+
+**Ainda aberto**: revisão de fonte de rota/abrigo (D-051 §5) permanece **não resolvida** — nenhuma rota ou abrigo volta ao mapa até haver fonte oficial ou curada. Registrado em FAM-T05.
+
+---
+
 ## D-063 — Promoção do World v2 a `/dashboard` e rollout em produção
 
 **Date**: 2026-07-27

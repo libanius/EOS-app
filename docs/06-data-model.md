@@ -19,6 +19,21 @@ added by migration `20260628000400_profile_emergency_card.sql` are:
 `emergency_contact_phone`, `medical_notes`, and `medications`.
 There is no separate Master Profile table.
 
+**Location — two distinct concepts (D-064). Do not conflate them:**
+
+| Column | Type | Notes |
+|---|---|---|
+| location_lat / location_lng | double precision | **Profile point.** Geocoded home/base address. Static. Pre-existing. |
+| last_location_lat / last_location_lng | double precision | **Live point.** Last GPS position reported by the client. Added by `20260727000000_live_location.sql`. |
+| last_location_at | timestamptz | When the live point was recorded. Drives the freshness label. |
+| last_location_accuracy_m | double precision | GPS accuracy in metres, as reported by the browser. |
+
+Retention is **the latest point only** (D-051 §2, reaffirmed by D-064). There is no
+trail, no replay and no history table — a new report overwrites the previous one.
+A live point is only readable by others when the member has consented (see
+`circle_members.shared_fields` below); otherwise the profile point is used and must
+be labelled `perfil`, never as a current position.
+
 ### profile_personalization
 | Column | Type | Notes |
 |---|---|---|
@@ -116,6 +131,22 @@ of the public emergency QR contract.
 | circle_id | uuid | FK → circles.id |
 | profile_id | uuid | FK → profiles.id |
 | joined_at | timestamptz | |
+| share_inventory | boolean | member shares resources with the circle |
+| shared_fields | text[] | which fields are shared |
+
+**`shared_fields` semantics (D-064):**
+
+| Value | Gates |
+|---|---|
+| `water`, `food`, `medical`, `comms` | inventory quantities in the household pool |
+| `emergency_contact` | emergency contact name/phone |
+| `location` | **both** the live point and the profile point on the map |
+
+An **empty array means "share all"** for the inventory/contact fields — that legacy
+default predates D-064. `location` is deliberately **excluded from that default**:
+it is only shared when the string `location` is explicitly present. Members who
+never touched the toggle must not start broadcasting position because of a legacy
+convention.
 
 ### knowledge_base
 | Column | Type | Notes |

@@ -263,6 +263,9 @@ export default function CirclesPage() {
     // Empty shared_fields means "share all" (see render). So unchecking a field
     // from that default must first expand to the explicit full list, then remove
     // — otherwise [].filter() stays [] and the field re-checks itself.
+    //
+    // D-064: 'location' is deliberately NOT in this list. Expanding the legacy
+    // default must never switch position sharing on behind the user's back.
     const ALL_FIELDS = ['water', 'food', 'medical', 'comms', 'emergency_contact']
     const nextFields = (current: string[]) => {
       const base = current.length === 0 ? ALL_FIELDS : current
@@ -689,6 +692,22 @@ export default function CirclesPage() {
                       {t('circles.leave')}
                     </button>
                   )}
+                </div>
+                {/* D-064: location has its own consent, independent of inventory
+                    sharing — it is a more sensitive fact than litres of water. */}
+                <div style={{ paddingTop: 10, borderTop: '1px solid #1a1a24' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#a5a5b5', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={c.shared_fields.includes('location')}
+                      onChange={e => toggleField(c.id, 'location', e.target.checked)}
+                      style={{ width: 14, height: 14, accentColor: '#22c55e' }}
+                    />
+                    📍 {t('circles.shareLocation')}
+                  </label>
+                  <p style={{ margin: '6px 0 0 22px', fontSize: 11, lineHeight: 1.4, color: '#6b6b8a' }}>
+                    {t('circles.shareLocationHelp')}
+                  </p>
                 </div>
                 {c.share_inventory && (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, paddingTop: 8, borderTop: '1px solid #1a1a24' }}>
