@@ -4,18 +4,26 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useLanguage, type MessageKey } from '@/lib/i18n'
 
-const NAV: Array<{ href: string; labelKey: MessageKey; icon: React.ReactNode }> = [
-  {
-    href: '/dashboard',
-    labelKey: 'nav.world',
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="9" />
-        <path d="M3 12h18" />
-        <path d="M12 3a14 14 0 0 1 0 18a14 14 0 0 1 0-18z" />
-      </svg>
-    ),
-  },
+type NavItem = { href: string; labelKey: MessageKey; icon: React.ReactNode }
+
+/**
+ * The World dashboard is the app's home, so it does not compete as one tab
+ * among seven — it sits raised at the centre, always the largest target and
+ * always in the same place. The remaining destinations split evenly around it.
+ */
+const HOME: NavItem = {
+  href: '/dashboard',
+  labelKey: 'nav.world',
+  icon: (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3 12h18" />
+      <path d="M12 3a14 14 0 0 1 0 18a14 14 0 0 1 0-18z" />
+    </svg>
+  ),
+}
+
+const NAV_LEFT: NavItem[] = [
   {
     href: '/scenario',
     labelKey: 'nav.scenario',
@@ -48,6 +56,9 @@ const NAV: Array<{ href: string; labelKey: MessageKey; icon: React.ReactNode }> 
       </svg>
     ),
   },
+]
+
+const NAV_RIGHT: NavItem[] = [
   {
     href: '/checklist',
     labelKey: 'nav.checklist',
@@ -88,25 +99,44 @@ export default function BottomNav() {
   const pathname = usePathname()
   const { t } = useLanguage()
 
+  const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/')
+
+  const tab = ({ href, labelKey, icon }: NavItem) => {
+    const active = isActive(href)
+    const label = t(labelKey)
+    return (
+      <Link
+        key={href}
+        href={href}
+        className={`nb${active ? ' on' : ''}`}
+        aria-label={label}
+        aria-current={active ? 'page' : undefined}
+      >
+        {icon}
+        <span>{label}</span>
+      </Link>
+    )
+  }
+
+  const homeActive = isActive(HOME.href)
+  const homeLabel = t(HOME.labelKey)
+
   return (
     <nav className="nav" role="navigation" aria-label={t('nav.main')}>
       <div className="nav-tabs">
-        {NAV.map(({ href, labelKey, icon }) => {
-          const active = pathname === href || pathname.startsWith(href + '/')
-          const label = t(labelKey)
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={`nb${active ? ' on' : ''}`}
-              aria-label={label}
-              aria-current={active ? 'page' : undefined}
-            >
-              {icon}
-              <span>{label}</span>
-            </Link>
-          )
-        })}
+        {NAV_LEFT.map(tab)}
+
+        <Link
+          href={HOME.href}
+          className={`nb nb-home${homeActive ? ' on' : ''}`}
+          aria-label={homeLabel}
+          aria-current={homeActive ? 'page' : undefined}
+        >
+          <span className="nb-home-orb">{HOME.icon}</span>
+          <span>{homeLabel}</span>
+        </Link>
+
+        {NAV_RIGHT.map(tab)}
       </div>
     </nav>
   )
