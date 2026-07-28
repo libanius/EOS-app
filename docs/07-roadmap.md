@@ -1,6 +1,6 @@
 # 07 — Roadmap
 
-> Last updated: 2026-07-21
+> Last updated: 2026-07-27
 
 ---
 
@@ -89,7 +89,26 @@
 | HWD-03 | Real EOS data on map: location, weather/hazard layers, alert tags, Risk Index, inventory/readiness + textual a11y | ✅ COMPLETE | 2026-07-21 — mapa centraliza na **localização real** (RiskProvider coords, flyTo, fallback Parkland); RainViewer keyless via `/api/world/radar`; hazards reais de `/api/hazards` como polígonos/pontos + tags geo-ancoradas; equivalente textual (§22). |
 | HWD-04 | Family + routing foundation (separate privacy/data decisions) | ✅ COMPLETE (prototype) | 2026-07-21 — D-051: pontos familiares EOS/círculo no mapa com freshness; rota/shelter via OpenAI como candidato inferido, não oficial; pendência de revisão antes de produção. |
 | HWD-05 | Pilot action integration (Pilot Capsule states + actions) — absorbs EOS Pilot | ✅ COMPLETE (prototype) | 2026-07-21 — D-053: deterministic GO/LIMITED/WAIT/AVOID/PRIORITY OVERRIDE + scenario/checklist/notify-family/route-focus actions |
-| HWD-06 | Production validation (perf, a11y, responsive, cost, privacy, E2E, rollout) | IN PROGRESS | D-058 validation report created (`docs/17-hwd-06-validation.md`). Automated checks pass; remaining gates: owner visual approval, browser UI E2E, a11y/perf, provider cost, privacy/provenance, explicit rollout decision. |
+| HWD-06 | Production validation (perf, a11y, responsive, cost, privacy, E2E, rollout) | ⏸️ SUPERSEDED | 2026-07-27 — D-062: o HUD do v1 deixou de ser o caminho de produção. `/dashboard-world` permanece como referência histórica. Os gates abertos migraram para WV2-T05. |
+
+---
+
+## World Dashboard v2 (WV2)
+
+*Goal: rebuild every surface above the map on an Apple-grade design system, and make it the app's front door.*
+
+> Decisions: D-062 (design system + Pilot local-first), D-063 (promoção a `/dashboard` + rollout).
+> Código: `components/world-v2/`. O `WorldMap` do HWD é reaproveitado **sem alteração**, travado em base dark.
+
+| Task ID | Task | Status | Notes |
+|---|---|---|---|
+| WV2-T01 | Fundações: tokens de material iOS, escala tipográfica com tracking óptico, spacing em `rem`, 3 sinais de a11y, e `motion.ts` como fonte única de física | ✅ COMPLETE | 2026-07-27 — D-062 |
+| WV2-T02 | `DetentSheet`: sheet com gesto real — tracking 1:1, handoff de velocidade, projeção de momentum, rubber-banding, interrompível, só `transform` | ✅ COMPLETE | 2026-07-27 — substitui o sheet do HWD-06 que animava `height` por clique |
+| WV2-T03 | Pilot copiloto: orbe "liquid glass fumê" + console; motor determinístico local (`pilot-engine.ts`) sobre RiskProvider, inventário, ficha e `RulesEngine` | ✅ COMPLETE | 2026-07-27 — D-062.1; 5 intenções; evacuação nunca inferida; declara o que não sabe |
+| WV2-T04 | Promoção a `/dashboard`: redirects de entrada, botão central no BottomNav, legacy preservado | ✅ COMPLETE | 2026-07-27 — D-063 |
+| WV2-T05 | Validação de produção da v2: E2E de navegador, a11y/perf medidos, custo de provider, revisão de privacidade/proveniência | PENDING | Herda os gates abertos do HWD-06. **Rollout ocorreu antes destes gates**, por decisão do dono (D-063). |
+| WV2-T06 | Rótulos dos controles de mapa no toque | PENDING | `aria-label`/`title` cobrem leitor de tela e hover; no toque não há hover. Alternativas: legenda curta ou mover as ações para dentro do sheet. |
+| WV2-T07 | Reconstruir features do HWD v1 sobre a v2 conforme demanda | PENDING | Camadas ao vivo, marcadores de família, toggle de base, focar rota, notificar círculo. Não portar em bloco. |
 
 ---
 

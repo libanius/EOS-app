@@ -279,6 +279,32 @@ textarea.input { resize: vertical; min-height: 100px; line-height: 1.6; }
 .nb.on { color: var(--ac); }
 .nb:active { opacity: 0.7; }
 
+/* Raised home tab: the World dashboard. Bigger target, fixed position, and the
+   only filled control in the bar — so "where do I get back to" is never a
+   question the user has to answer twice. */
+.nb-home { justify-content: flex-end; }
+.nb-home:active { opacity: 1; }
+.nb-home-orb {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  margin-top: -20px;
+  border-radius: 999px;
+  background: var(--ac);
+  color: #06070b;
+  border: 3px solid var(--sf);
+  box-shadow: 0 10px 22px -8px rgba(0, 229, 160, 0.55);
+  transition: transform 110ms ease-out;
+}
+.nb-home:active .nb-home-orb { transform: scale(0.92); }
+.nb-home.on .nb-home-orb { box-shadow: 0 0 0 4px rgba(0, 229, 160, 0.18), 0 10px 22px -8px rgba(0, 229, 160, 0.6); }
+
+@media (prefers-reduced-motion: reduce) {
+  .nb-home-orb { transition: none; }
+  .nb-home:active .nb-home-orb { transform: none; }
+}
+
 /* ─── MODAL ──────────────────────────────────────────────── */
 .overlay {
   position: fixed;

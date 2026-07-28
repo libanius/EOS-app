@@ -17,6 +17,7 @@ const COOKIE_MAX_AGE = 60 * 60 * 24 * 365
 
 const messages = {
   pt: {
+    'nav.world': 'Mundo',
     'nav.scenario': 'Cenário',
     'nav.family': 'Família',
     'nav.inventory': 'Recursos',
@@ -336,6 +337,7 @@ const messages = {
     'auth.savePassword': 'Salvar nova senha',
   },
   en: {
+    'nav.world': 'World',
     'nav.scenario': 'Scenario',
     'nav.family': 'Family',
     'nav.inventory': 'Resources',

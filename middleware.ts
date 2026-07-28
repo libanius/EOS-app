@@ -4,6 +4,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 const PROTECTED_ROUTES = [
   '/admin',
   '/dashboard',
+  '/dashboard-legacy',
   '/dashboard-world',
   '/onboarding',
   '/family',

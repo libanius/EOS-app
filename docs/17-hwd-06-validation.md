@@ -1,3 +1,7 @@
+> **STATUS (2026-07-27) — relatório histórico.** A superfície validada aqui (`/dashboard-world`) deixou de ser o caminho de produção (D-062). O `/dashboard` passou a ser o **World v2**, lançado por decisão do dono (D-063) **sem que estes gates fossem fechados**. Os gates abertos abaixo continuam válidos e foram transferidos para **WV2-T05**, agora aplicáveis à v2.
+
+---
+
 # 17 — HWD-06 Validation Report
 
 > Last updated: 2026-07-21  

@@ -1,0 +1,900 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   EOS World v2 — design system
+   ───────────────────────────────────────────────────────────────────────────
+   A genuine-feeling Apple surface over the existing black map, with Runna's
+   shape language: oversized display numerals, chunky rounded cards, pill
+   controls, one decisive accent, generous negative space.
+
+   Everything here is a token or a primitive. No component invents a colour, a
+   radius, a duration or a letter-spacing of its own.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.wv2 {
+  /* ── Materials (iOS dark system materials) ──────────────────────────────
+     Weight encodes hierarchy: thick separates structural regions (the sheet),
+     regular floats above content (cards), thin is for controls inside a
+     surface. A thin material is never stacked on another thin material. */
+  --mat-thick: rgba(24, 24, 27, 0.78);
+  --mat-regular: rgba(32, 32, 36, 0.62);
+  --mat-thin: rgba(120, 120, 128, 0.16);
+  --mat-blur-lg: 40px;   /* bigger surface reads as thicker glass */
+  --mat-blur-md: 24px;
+  --mat-blur-sm: 14px;
+  --mat-sat: 180%;
+
+  /* ── Separators ── */
+  --sep: rgba(255, 255, 255, 0.09);
+  --sep-strong: rgba(255, 255, 255, 0.16);
+
+  /* ── Ink (vibrancy levels over translucent surfaces) ──────────────────
+     Flat grey dies over a moving map. These are white-derived with alpha, so
+     they keep contrast as the backdrop changes underneath. */
+  --ink: #ffffff;
+  --ink-2: rgba(235, 235, 245, 0.66);
+  --ink-3: rgba(235, 235, 245, 0.38);
+
+  /* ── Fills (non-semantic control backgrounds) ── */
+  --fill-1: rgba(120, 120, 128, 0.24);
+  --fill-2: rgba(120, 120, 128, 0.14);
+
+  /* ── Radii — Runna-scale softness, largest surface gets the largest radius ── */
+  --r-sheet: 38px;
+  --r-card: 26px;
+  --r-tile: 18px;
+  --r-pill: 999px;
+
+  /* ── Spacing in rem so layout scales WITH the user's text size ── */
+  --s1: 0.25rem;
+  --s2: 0.5rem;
+  --s3: 0.75rem;
+  --s4: 1rem;
+  --s5: 1.25rem;
+  --s6: 1.5rem;
+  --s8: 2rem;
+
+  /* ── Chrome insets ── */
+  --nav-inset: calc(72px + env(safe-area-inset-bottom));
+  --edge: 14px;
+
+  /* ── Accent: one decisive colour, driven by risk state.
+     Apple dark-mode system colours, escalating honestly green→yellow→orange→red. */
+  --accent: #30d158;
+  --accent-rgb: 48, 209, 88;
+  --accent-ink: #04150a;
+
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: #000;
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
+    'Inter', 'DM Sans', system-ui, sans-serif;
+  font-optical-sizing: auto;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.wv2[data-risk='safe']     { --accent: #30d158; --accent-rgb: 48, 209, 88;  --accent-ink: #04150a; }
+.wv2[data-risk='watch']    { --accent: #ffd60a; --accent-rgb: 255, 214, 10; --accent-ink: #191400; }
+.wv2[data-risk='warning']  { --accent: #ff9f0a; --accent-rgb: 255, 159, 10; --accent-ink: #190e00; }
+.wv2[data-risk='critical'] { --accent: #ff453a; --accent-rgb: 255, 69, 58;  --accent-ink: #1a0403; }
+
+/* Chrome materialises in once the layout has resolved, instead of snapping
+   between the mobile and desktop composition on hydration. */
+.wv2-chrome {
+  opacity: 0;
+  transition: opacity 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.wv2[data-ready='true'] .wv2-chrome { opacity: 1; }
+
+/* ── Map layer (existing WorldMap, untouched) ─────────────────────────────── */
+.wv2-map {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+.wv2-map .world-map-wrap,
+.wv2-map .world-plate,
+.wv2-map .world-map { position: absolute; inset: 0; }
+.wv2-map .maplibregl-ctrl-attrib {
+  background: rgba(0, 0, 0, 0.42);
+  color: var(--ink-3);
+  font-size: 9px;
+}
+.wv2-map .maplibregl-ctrl-attrib a { color: var(--ink-3); }
+
+/* Scrim only where floating chrome actually overlaps the map — a gradient
+   edge effect, not a hard divider. */
+.wv2-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.55) 0%, transparent 22%);
+}
+
+.wv2-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+.wv2-layer > * { pointer-events: auto; }
+
+/* ═══ TYPOGRAPHY ════════════════════════════════════════════════════════════
+   Tracking is size-specific. Large display text reads too loose as it grows, so
+   it gets progressively more negative tracking; small caps labels get positive
+   tracking to stay legible. A single letter-spacing value would be wrong at one
+   end or the other. Leading tightens as size grows. */
+
+.wv2 .t-display {
+  font-size: clamp(3.75rem, 15vw, 5.5rem);
+  line-height: 0.88;
+  letter-spacing: -0.045em;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.wv2 .t-figure {
+  font-size: clamp(2.25rem, 8vw, 3rem);
+  line-height: 0.95;
+  letter-spacing: -0.035em;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.wv2 .t-title1 {
+  font-size: 1.6875rem;
+  line-height: 1.12;
+  letter-spacing: -0.028em;
+  font-weight: 700;
+}
+.wv2 .t-title2 {
+  font-size: 1.25rem;
+  line-height: 1.2;
+  letter-spacing: -0.021em;
+  font-weight: 700;
+}
+.wv2 .t-body {
+  font-size: 1.0625rem;
+  line-height: 1.45;
+  letter-spacing: -0.011em;
+  font-weight: 400;
+}
+.wv2 .t-sub {
+  font-size: 0.9375rem;
+  line-height: 1.4;
+  letter-spacing: -0.006em;
+  font-weight: 500;
+}
+.wv2 .t-foot {
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  letter-spacing: 0;
+  font-weight: 500;
+}
+/* The only uppercase style in the system. Used for section labels, never for
+   values — uppercase everywhere is what made v1 read as shouting. */
+.wv2 .t-caps {
+  font-size: 0.6875rem;
+  line-height: 1.2;
+  letter-spacing: 0.065em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.wv2 .ink-2 { color: var(--ink-2); }
+.wv2 .ink-3 { color: var(--ink-3); }
+.wv2 .accent { color: var(--accent); }
+
+/* ═══ PRIMITIVES ═══════════════════════════════════════════════════════════ */
+
+/* ── Card: the regular material, floating above content ── */
+.wv2-card {
+  position: relative;
+  border-radius: var(--r-card);
+  padding: var(--s5);
+  background: var(--mat-regular);
+  border: 1px solid var(--sep);
+  backdrop-filter: blur(var(--mat-blur-md)) saturate(var(--mat-sat));
+  -webkit-backdrop-filter: blur(var(--mat-blur-md)) saturate(var(--mat-sat));
+  box-shadow: 0 12px 34px -18px rgba(0, 0, 0, 0.9);
+}
+/* A bright top edge reads as light catching the material's leading edge. */
+.wv2-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 1px;
+  border-radius: inherit;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.16), transparent);
+  pointer-events: none;
+}
+.wv2-card.accented {
+  border-color: rgba(var(--accent-rgb), 0.34);
+  box-shadow:
+    0 12px 34px -18px rgba(0, 0, 0, 0.9),
+    inset 0 0 0 1px rgba(var(--accent-rgb), 0.06);
+}
+
+.wv2-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+.wv2-section-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding: 0 var(--s2);
+  color: var(--ink-3);
+}
+
+/* ── Pill: the only button shape. Feedback lands on pointer-DOWN. ── */
+.wv2-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  min-height: 44px;
+  padding: 0 var(--s5);
+  border-radius: var(--r-pill);
+  border: 1px solid var(--sep-strong);
+  background: var(--mat-thin);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: -0.006em;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 100ms ease-out, background 160ms ease-out, border-color 160ms ease-out;
+}
+.wv2-pill:active { transform: scale(0.96); }
+.wv2-pill:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+  transform: none;
+}
+.wv2-pill.primary {
+  background: var(--accent);
+  border-color: transparent;
+  color: var(--accent-ink);
+  font-weight: 700;
+}
+.wv2-pill.wide { width: 100%; }
+
+/* ── Glass icon button: floating map control (Apple Maps style) ── */
+.wv2-iconbtn {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--sep);
+  background: var(--mat-thick);
+  backdrop-filter: blur(var(--mat-blur-sm)) saturate(var(--mat-sat));
+  -webkit-backdrop-filter: blur(var(--mat-blur-sm)) saturate(var(--mat-sat));
+  color: var(--ink);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: 0 8px 22px -12px rgba(0, 0, 0, 0.9);
+  transition: transform 100ms ease-out, background 160ms ease-out;
+}
+.wv2-iconbtn:active { transform: scale(0.92); }
+.wv2-iconbtn.on { color: var(--accent); }
+
+/* ── Stat tile: thin fill inside a card. Never a third glass layer. ── */
+.wv2-tile {
+  min-width: 0;
+  padding: var(--s3) var(--s4);
+  border-radius: var(--r-tile);
+  background: var(--fill-2);
+}
+.wv2-tile > span {
+  display: block;
+  color: var(--ink-3);
+}
+.wv2-tile > strong {
+  display: block;
+  margin-top: 2px;
+  color: var(--ink);
+  font-size: 1.125rem;
+  font-weight: 650;
+  letter-spacing: -0.018em;
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wv2-tilegrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s2);
+}
+
+/* ── Reserve bar: label, value, track. Status is carried by BOTH the fill
+   proportion and the label, never by colour alone. ── */
+.wv2-bar {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--s1) var(--s3);
+  align-items: baseline;
+}
+.wv2-bar > .track {
+  grid-column: 1 / -1;
+  height: 6px;
+  border-radius: var(--r-pill);
+  background: var(--fill-1);
+  overflow: hidden;
+}
+.wv2-bar > .track > i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transform-origin: left center;
+}
+.wv2-bar.low > .track > i { background: var(--ink-3); }
+
+/* ── Status capsule: the always-visible answer to "where am I, how bad is it" ── */
+.wv2-capsule {
+  position: absolute;
+  top: calc(var(--edge) + env(safe-area-inset-top));
+  left: var(--edge);
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  max-width: min(420px, calc(100vw - 2 * var(--edge) - 60px));
+  padding: var(--s2) var(--s4) var(--s2) var(--s3);
+  border-radius: var(--r-pill);
+  border: 1px solid var(--sep);
+  background: var(--mat-thick);
+  backdrop-filter: blur(var(--mat-blur-sm)) saturate(var(--mat-sat));
+  -webkit-backdrop-filter: blur(var(--mat-blur-sm)) saturate(var(--mat-sat));
+  box-shadow: 0 10px 26px -14px rgba(0, 0, 0, 0.9);
+  color: inherit;
+  text-decoration: none;
+}
+.wv2-capsule .dot {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-pill);
+  background: rgba(var(--accent-rgb), 0.18);
+  color: var(--accent);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.wv2-capsule .txt { min-width: 0; }
+.wv2-capsule .txt b {
+  display: block;
+  font-size: 0.9375rem;
+  font-weight: 650;
+  letter-spacing: -0.008em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wv2-capsule .txt span {
+  display: block;
+  color: var(--ink-2);
+  font-size: 0.75rem;
+  letter-spacing: 0;
+}
+
+/* Map controls sit BELOW the app-wide AppActions row (fixed, top-right,
+   z-index 200) — overlapping it hid this cluster's first button entirely.
+   Grouped into one capsule with hairline separators so they read as "controls
+   for the map", not as more loose circles competing with the global chrome. */
+.wv2-mapcontrols {
+  position: absolute;
+  top: calc(max(16px, env(safe-area-inset-top, 0px) + 8px) + 50px);
+  right: 16px;
+  display: flex;
+  flex-direction: column;
+  border-radius: 22px;
+  overflow: hidden;
+  border: 1px solid var(--sep);
+  background: var(--mat-thick);
+  backdrop-filter: blur(var(--mat-blur-sm)) saturate(var(--mat-sat));
+  -webkit-backdrop-filter: blur(var(--mat-blur-sm)) saturate(var(--mat-sat));
+  box-shadow: 0 10px 26px -14px rgba(0, 0, 0, 0.95);
+}
+.wv2-mapcontrols .wv2-iconbtn {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+}
+.wv2-mapcontrols .wv2-iconbtn + .wv2-iconbtn { border-top: 1px solid var(--sep); }
+/* Inside a group, a scaling button reads as broken. Flash the fill instead. */
+.wv2-mapcontrols .wv2-iconbtn:active {
+  transform: none;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+/* ── Provenance footnote: what is measured vs. what is inferred (§ honesty) ── */
+.wv2-provenance {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: 0 var(--s2);
+  color: var(--ink-3);
+}
+
+/* ═══ BOTTOM SHEET ══════════════════════════════════════════════════════════
+   Height never animates — only `transform: translateY`, driven by a spring on a
+   motion value, so the surface can be grabbed and reversed at any frame. */
+
+.wv2-sheet-layer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 88px;
+  bottom: var(--nav-inset);
+  z-index: 3;
+  pointer-events: none;
+}
+
+.wv2-sheet {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--r-sheet) var(--r-sheet) 0 0;
+  background: var(--mat-thick);
+  border: 1px solid var(--sep);
+  border-bottom: 0;
+  backdrop-filter: blur(var(--mat-blur-lg)) saturate(var(--mat-sat));
+  -webkit-backdrop-filter: blur(var(--mat-blur-lg)) saturate(var(--mat-sat));
+  box-shadow: 0 -24px 60px -30px rgba(0, 0, 0, 1);
+  pointer-events: auto;
+  will-change: transform;
+}
+
+.wv2-grabber {
+  flex: none;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s3) var(--s5) var(--s2);
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.wv2-grabber:active { cursor: grabbing; }
+.wv2-grabber .grip {
+  width: 40px;
+  height: 5px;
+  border-radius: var(--r-pill);
+  background: rgba(235, 235, 245, 0.32);
+}
+.wv2-grabber .summary {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  min-width: 0;
+}
+.wv2-grabber .summary .lead {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--s2);
+}
+.wv2-grabber .summary .lead > strong { color: var(--accent); }
+.wv2-grabber .summary .lead > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wv2-sheet-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: var(--s2) var(--edge) var(--s8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+}
+.wv2-sheet[data-detent='peek'] .wv2-sheet-scroll {
+  overflow: hidden;
+  /* Content below the fold fades rather than being cut by a hard edge. */
+  mask-image: linear-gradient(180deg, #000 40%, transparent 100%);
+  -webkit-mask-image: linear-gradient(180deg, #000 40%, transparent 100%);
+}
+
+/* ═══ DESKTOP PANEL ═════════════════════════════════════════════════════════
+   Same content, same primitives — a parallel, non-blocking side panel. No
+   scrim: the map stays live, so the flow is never interrupted. */
+
+.wv2-panel {
+  position: absolute;
+  top: calc(var(--edge) + env(safe-area-inset-top) + 60px);
+  left: var(--edge);
+  bottom: calc(var(--nav-inset) + var(--edge));
+  width: clamp(320px, 25vw, 396px);
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--r-sheet);
+  background: var(--mat-thick);
+  border: 1px solid var(--sep);
+  backdrop-filter: blur(var(--mat-blur-lg)) saturate(var(--mat-sat));
+  -webkit-backdrop-filter: blur(var(--mat-blur-lg)) saturate(var(--mat-sat));
+  box-shadow: 0 30px 70px -34px rgba(0, 0, 0, 1);
+  overflow: hidden;
+  will-change: transform;
+}
+.wv2-panel-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--s5) var(--s4) var(--s6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+}
+/* The panel hides toward the same edge it lives on and returns along that same
+   path — enter and exit are never different routes. */
+
+.wv2 ::-webkit-scrollbar { width: 0; height: 0; }
+.wv2 * { scrollbar-width: none; }
+
+/* ═══ FOCUS ════════════════════════════════════════════════════════════════ */
+.wv2 :is(a, button, [tabindex]):focus-visible {
+  outline: 2.5px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 14px;
+}
+
+.wv2-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ═══ ACCESSIBILITY SIGNALS ════════════════════════════════════════════════
+   Three independent user settings, all honoured. Reduced motion is not "no
+   feedback" — it is a gentler, non-vestibular equivalent. */
+
+@media (prefers-reduced-motion: reduce) {
+  .wv2 *,
+  .wv2 *::before,
+  .wv2 *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+  .wv2-pill:active,
+  .wv2-iconbtn:active { transform: none; }
+  .wv2-chrome { transition: opacity 150ms linear; }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .wv2 {
+    --mat-thick: rgb(22, 22, 24);
+    --mat-regular: rgb(30, 30, 33);
+    --mat-thin: rgb(52, 52, 56);
+    --fill-1: rgb(58, 58, 62);
+    --fill-2: rgb(44, 44, 48);
+  }
+  .wv2-sheet,
+  .wv2-panel,
+  .wv2-card,
+  .wv2-capsule,
+  .wv2-iconbtn {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .wv2 {
+    --ink-2: rgba(255, 255, 255, 0.88);
+    --ink-3: rgba(255, 255, 255, 0.7);
+    --sep: rgba(255, 255, 255, 0.42);
+    --sep-strong: rgba(255, 255, 255, 0.6);
+    --mat-thick: rgb(16, 16, 18);
+    --mat-regular: rgb(26, 26, 29);
+  }
+  .wv2-card,
+  .wv2-capsule,
+  .wv2-sheet,
+  .wv2-panel {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .wv2-tile { outline: 1px solid var(--sep); }
+}
+
+/* ═══ LARGE-SCREEN COMPOSITION ═════════════════════════════════════════════ */
+@media (min-width: 900px) {
+  .wv2 { --edge: 20px; }
+  .wv2-scrim {
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.45) 0%, transparent 16%);
+  }
+  .wv2-tilegrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PILOT — "liquid glass fumê"
+   ───────────────────────────────────────────────────────────────────────────
+   Smoked glass: a dark, heavily blurred, over-saturated pane with a bright
+   leading edge and a single specular sweep that runs ONCE as the surface
+   arrives. No looping shimmer — a slow oscillating background is exactly the
+   thing that makes an interface tiring, and it would be a permanent moving
+   distraction on a screen people open when something is wrong.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.wv2-fume {
+  position: relative;
+  isolation: isolate;
+  background:
+    linear-gradient(158deg, rgba(255, 255, 255, 0.11) 0%, rgba(255, 255, 255, 0.02) 44%, rgba(0, 0, 0, 0.22) 100%),
+    radial-gradient(130% 110% at 18% -10%, rgba(var(--accent-rgb), 0.18), transparent 58%),
+    rgba(16, 16, 20, 0.58);
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  backdrop-filter: blur(48px) saturate(200%) brightness(1.05);
+  -webkit-backdrop-filter: blur(48px) saturate(200%) brightness(1.05);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.45),
+    0 30px 80px -34px rgba(0, 0, 0, 1);
+}
+/* The specular pass: light travelling across the pane as it materialises. */
+.wv2-fume::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: linear-gradient(102deg, transparent 32%, rgba(255, 255, 255, 0.10) 47%, transparent 63%);
+  animation: wv2-fume-sweep 1100ms cubic-bezier(0.2, 0.8, 0.2, 1) 1 both;
+  pointer-events: none;
+}
+@keyframes wv2-fume-sweep {
+  from { transform: translateX(-58%); opacity: 0; }
+  35%  { opacity: 1; }
+  to   { transform: translateX(58%); opacity: 0; }
+}
+
+/* ── Orb: the always-ready affordance ── */
+.wv2-pilot-orb {
+  position: absolute;
+  z-index: 6;
+  right: var(--edge);
+  bottom: calc(var(--nav-inset) + 104px);
+  width: 60px;
+  height: 60px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-pill);
+  color: var(--accent);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 110ms ease-out;
+}
+.wv2-pilot-orb:active { transform: scale(0.92); }
+.wv2-pilot-orb[data-open='true'] { color: var(--ink); }
+
+/* A critical state is the one case where a looping pulse earns its place: it is
+   a status signal, not decoration. Fast enough (0.55Hz) to read as an alarm. */
+.wv2[data-risk='critical'] .wv2-pilot-orb[data-open='false'] {
+  animation: wv2-pilot-alert 1800ms ease-in-out infinite;
+}
+@keyframes wv2-pilot-alert {
+  0%, 100% { box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 0 0 0 rgba(var(--accent-rgb), 0.45); }
+  50%      { box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 0 0 12px rgba(var(--accent-rgb), 0); }
+}
+
+/* ── Scrim: dim to focus. The Pilot is a decision, so the map steps back. ── */
+.wv2-pilot-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  border: 0;
+  padding: 0;
+  background: rgba(0, 0, 0, 0.32);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  cursor: pointer;
+}
+
+/* ── Console ── */
+.wv2-pilot-console {
+  position: absolute;
+  z-index: 6;
+  right: var(--edge);
+  left: var(--edge);
+  bottom: calc(var(--nav-inset) + 176px);
+  max-height: 62dvh;
+  display: flex;
+  flex-direction: column;
+  border-radius: 30px;
+  /* Anchored to the orb it came from, so the spatial relationship is obvious. */
+  transform-origin: bottom right;
+  overflow: hidden;
+}
+
+.pilot-head {
+  flex: none;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding: var(--s4) var(--s5) var(--s2);
+  color: var(--ink-2);
+}
+
+.pilot-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 var(--s5) var(--s4);
+}
+
+.pilot-answer { --verdict: var(--accent); }
+.pilot-answer[data-verdict='ready'] { --verdict: #30d158; }
+.pilot-answer[data-verdict='watch'] { --verdict: #ffd60a; }
+.pilot-answer[data-verdict='hold']  { --verdict: #ff9f0a; }
+.pilot-answer[data-verdict='act']   { --verdict: #ff453a; }
+
+.pilot-verdict {
+  display: inline-block;
+  margin-bottom: var(--s2);
+  padding: 4px 10px;
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--verdict);
+  color: var(--verdict);
+}
+.pilot-headline {
+  margin: 0 0 var(--s2);
+  color: var(--ink);
+  text-wrap: balance;
+}
+
+.pilot-factors {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s2);
+  margin-top: var(--s4);
+}
+.pilot-factor {
+  min-width: 0;
+  padding: var(--s2) var(--s3);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.06);
+}
+.pilot-factor > strong {
+  display: block;
+  margin-top: 2px;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pilot-caveat {
+  margin: var(--s4) 0 0;
+  padding: var(--s3);
+  border-left: 3px solid var(--ink-3);
+  border-radius: 0 10px 10px 0;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--ink-2);
+}
+
+.pilot-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin-top: var(--s4);
+}
+
+.pilot-intents {
+  flex: none;
+  display: flex;
+  gap: var(--s2);
+  overflow-x: auto;
+  padding: var(--s3) var(--s5) var(--s4);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.pilot-chip {
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: 0 var(--s4);
+  border-radius: var(--r-pill);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: -0.006em;
+  white-space: nowrap;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 100ms ease-out, background 160ms ease-out, color 160ms ease-out;
+}
+.pilot-chip:active { transform: scale(0.96); }
+.pilot-chip.on {
+  background: var(--accent);
+  border-color: transparent;
+  color: var(--accent-ink);
+}
+
+@media (min-width: 900px) {
+  .wv2-pilot-orb { bottom: calc(var(--nav-inset) + var(--edge)); }
+  .wv2-pilot-console {
+    left: auto;
+    width: 424px;
+    bottom: calc(var(--nav-inset) + var(--edge) + 74px);
+    max-height: 70dvh;
+  }
+  .pilot-factors { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wv2-fume::after { animation: none; opacity: 0; }
+  .wv2[data-risk='critical'] .wv2-pilot-orb[data-open='false'] { animation: none; }
+  .wv2-pilot-orb:active { transform: none; }
+  .pilot-chip:active { transform: none; }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .wv2-fume {
+    background: rgb(20, 20, 24);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .wv2-fume::after { display: none; }
+  .wv2-pilot-scrim {
+    background: rgba(0, 0, 0, 0.62);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .wv2-fume {
+    background: rgb(12, 12, 14);
+    border-color: rgba(255, 255, 255, 0.5);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .wv2-fume::after { display: none; }
+  .pilot-chip { border-color: rgba(255, 255, 255, 0.5); }
+}

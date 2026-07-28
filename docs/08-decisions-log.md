@@ -4,6 +4,43 @@
 
 ---
 
+## D-063 — Promoção do World v2 a `/dashboard` e rollout em produção
+
+**Date**: 2026-07-27
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: Com o World v2 pronto (D-062), o dono determinou que essa passa a ser a **primeira e principal tela do app**, e autorizou o lançamento em produção. Até então a entrada real do app era `/scenario`, e `/dashboard` era rota órfã (fora do BottomNav, linkada apenas pelo `RiskIslandPro`, que o layout não monta).
+
+**Decision**:
+1. **URL canônica** `/dashboard`. O dashboard anterior foi preservado em `/dashboard-legacy` (protegido no middleware); o protótipo HWD v1 permanece em `/dashboard-world`. Reverter = trocar o redirect e renomear duas pastas.
+2. **Três entradas convergem** no dashboard: `app/page.tsx` (usuário logado), `signIn` e `updatePassword` em `lib/auth/actions.ts`. **As duas últimas eram a causa real** de o app abrir no cenário — o redirect de `/` sozinho não bastava. O `start_url` do PWA é `/`, então o app instalado também cai no dashboard.
+3. **BottomNav**: o dashboard sai da fila de abas e vira **botão elevado central** (`.nb-home`), com 3 destinos de cada lado. Sem isso o usuário sairia da tela principal sem caminho de volta, e 7 abas em fila davam ~52px por alvo.
+
+**Rollout — o que NÃO foi validado**: os gates abertos do HWD-06 (`docs/17`) **não foram fechados** para esta superfície. Não houve E2E de navegador na v2, nem medição de a11y/perf, nem revisão de custo de provider. O rollout é **decisão direta do dono**, com o histórico preservado nas rotas legacy como caminho de volta. Gates registrados em WV2-T05.
+
+**Consequence**: EOS passa a abrir na pergunta "quão ruim está e o que eu faço", em vez de num seletor de cenário. O risco assumido é uma superfície de produção sem validação formal.
+
+---
+
+## D-062 — World v2: design system Apple substitui o HUD do HWD
+
+**Date**: 2026-07-27
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: Reavaliação do `/dashboard-world` (HWD v1) sob a skill `apple-design` encontrou problemas estruturais, não cosméticos: o bottom sheet exibia um grabber que parecia arrastável mas era um botão animando `height`; o colapso por wheel no desktop era disparado ao rolar dentro da própria rail, que então fugia da tela; tracking tipográfico fixo em todos os tamanhos; dois numerais gigantes competindo; e apenas 1 dos 3 sinais de acessibilidade implementado.
+
+**Decision**: reconstruir toda a superfície acima do mapa como design system próprio em `components/world-v2`, **reaproveitando o `WorldMap` sem alteração** (travado em base dark). Referência de forma: Runna. Referência de comportamento: Apple.
+1. `motion.ts` — fonte única de física: springs em termos Apple (damping ratio + response) mapeados sobre Framer Motion, projeção de momentum exponencial (a curva que o iOS usa, não `v²/2a`), rubber-banding e hápticos.
+2. `DetentSheet.tsx` — sheet com gesto real: tracking 1:1 via Pointer Events + capture, histórico de velocidade, handoff de velocidade para a spring, **interrompível a qualquer frame** (o pointer-down para a animação e a próxima parte do valor de apresentação), e apenas `transform` animado.
+3. `world-v2.css` — materiais iOS por peso hierárquico, escala tipográfica com **tracking específico por tamanho** (-0.045em no display, +0.065em nos micro-labels), spacing em `rem`, e os **três** sinais: `prefers-reduced-motion`, `prefers-reduced-transparency`, `prefers-contrast`.
+4. `Pilot` — ver D-062.1 abaixo.
+
+**D-062.1 — Pilot local-first**: o Pilot responde de forma **pura, síncrona e offline** (`pilot-engine.ts`), a partir de dados já no cliente. Justificativa: quando a situação piora, a rede é a primeira coisa a cair; um copiloto que precisa de round-trip está ausente exatamente quando existe para servir. Um modelo pode enriquecer depois, mas **estritamente aditivo** — nunca quem decide. Regras de domicílio vêm do `RulesEngine` canônico, para o Pilot não discordar do resto do app. Duas travas de responsabilidade: **evacuação nunca é inferida** (só ordem oficial no alerta), e o Pilot **declara o que não sabe** quando a ficha da família ou o inventário não carregaram, em vez de assumir ausência de vulnerabilidade.
+
+**Consequence**: o HUD do HWD v1 (rail, cápsula Pilot, painel de camadas) deixa de ser o caminho de produção. As features do v1 serão reconstruídas sobre a v2 conforme demanda, não portadas em bloco.
+
+---
+
 ## D-061 — Códigos presente sem Stripe (gift codes) + criação owner-only
 
 **Date**: 2026-07-22
