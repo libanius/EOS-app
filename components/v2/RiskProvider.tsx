@@ -7,6 +7,8 @@ import {
 import { usePathname } from 'next/navigation'
 import type { WeatherSnapshot, HourlyForecast } from '@/lib/weather/types'
 import { riskToState, type RiskState } from './tokens'
+import { useSimulation } from '@/components/SimulationProvider'
+import { synthesizeSnapshot } from '@/lib/simulation'
 
 /**
  * RiskProvider — the app-wide risk state machine.
@@ -216,9 +218,26 @@ export default function RiskProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(id)
   }, [coords, fetchSnapshot])
 
-  const derived = snapshot ? deriveRisk(snapshot) : null
+  // ── Simulation injection (D-067 / doc 19 §3) ────────────────────────────
+  // The single point of indirection that puts the WHOLE app in simulation:
+  // every screen already reads useRisk(), so swapping the snapshot here is
+  // enough. Same instruments, injected inputs.
+  const simulation = useSimulation()
+
+  // SAFETY (doc 19 §5): a genuine CRITICAL alert aborts the session at once. A
+  // real threat never shares the screen with a fictional one.
+  const realCritical = snapshot?.alerts.some(a => a.severity === 'CRITICAL') ?? false
+  useEffect(() => {
+    if (simulation.active && realCritical) simulation.abortForRealAlert()
+  }, [simulation, realCritical])
+
+  const effectiveSnapshot = simulation.config
+    ? synthesizeSnapshot(simulation.config, snapshot, true)
+    : snapshot
+
+  const derived = effectiveSnapshot ? deriveRisk(effectiveSnapshot) : null
   const state: RiskState = forced ?? (derived ? riskToState(derived.score) : 'safe')
-  const escalation = forcedEsc ?? (snapshot && state !== 'critical' ? projectEscalation(snapshot, state) : null)
+  const escalation = forcedEsc ?? (effectiveSnapshot && state !== 'critical' ? projectEscalation(effectiveSnapshot, state) : null)
 
   const requestGps = useCallback(() => {
     navigator.geolocation?.getCurrentPosition(p =>
@@ -233,7 +252,7 @@ export default function RiskProvider({ children }: { children: ReactNode }) {
   return (
     <Ctx.Provider
       value={{
-        snapshot,
+        snapshot: effectiveSnapshot,
         score: derived?.score ?? null,
         factors: derived?.factors ?? [],
         state,

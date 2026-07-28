@@ -106,7 +106,7 @@
 | WV2-T02 | `DetentSheet`: sheet com gesto real — tracking 1:1, handoff de velocidade, projeção de momentum, rubber-banding, interrompível, só `transform` | ✅ COMPLETE | 2026-07-27 — substitui o sheet do HWD-06 que animava `height` por clique |
 | WV2-T03 | Pilot copiloto: orbe "liquid glass fumê" + console; motor determinístico local (`pilot-engine.ts`) sobre RiskProvider, inventário, ficha e `RulesEngine` | ✅ COMPLETE | 2026-07-27 — D-062.1; 5 intenções; evacuação nunca inferida; declara o que não sabe |
 | WV2-T04 | Promoção a `/dashboard`: redirects de entrada, botão central no BottomNav, legacy preservado | ✅ COMPLETE | 2026-07-27 — D-063 |
-| WV2-T05 | Validação de produção da v2: E2E de navegador, a11y/perf medidos, custo de provider, revisão de privacidade/proveniência | PENDING | Herda os gates abertos do HWD-06. **Rollout ocorreu antes destes gates**, por decisão do dono (D-063). |
+| WV2-T05 | Validação de produção da v2: E2E de navegador, a11y/perf medidos, custo de provider, revisão de privacidade/proveniência | 🔵 EM CURSO | `scripts/browser-walkthrough.mjs` (Playwright) percorre login→dashboard→sheet→Pilot→busca→simulação com prints. Falta a11y/perf medidos e custo. | Herda os gates abertos do HWD-06. **Rollout ocorreu antes destes gates**, por decisão do dono (D-063). |
 | WV2-T06 | Rótulos dos controles de mapa no toque | PENDING | `aria-label`/`title` cobrem leitor de tela e hover; no toque não há hover. Alternativas: legenda curta ou mover as ações para dentro do sheet. |
 | WV2-T07 | Reconstruir features do HWD v1 sobre a v2 conforme demanda | PENDING | Camadas ao vivo, toggle de base, notificar círculo. Marcadores de família saíram daqui para a seção FAM. |
 
@@ -143,8 +143,8 @@
 | Task ID | Task | Status | Notes |
 |---|---|---|---|
 | SIM-T00 | Spec + decisão do simulador | ✅ COMPLETE | 2026-07-27 — D-067 / doc 19 |
-| SIM-T01 | `SimulationProvider` + injeção no `RiskProvider` + cromo persistente + travas de segurança | PENDING | **Primeiro e sozinho.** As travas precisam existir antes de a simulação alcançar o app |
-| SIM-T02 | Painéis de configuração (ameaça, clima, recursos, saúde, infraestrutura, posição) | PENDING | Linguagem natural traduz para os painéis, sempre revisável antes de rodar |
+| SIM-T01 | `SimulationProvider` + injeção no `RiskProvider` + cromo persistente + travas de segurança | ✅ COMPLETE | 2026-07-28 — verificado em navegador: risco real 11 → simulado 81, Pilot muda para "Aja agora", faixa some ao encerrar |
+| SIM-T02 | Painéis de configuração (ameaça, clima, recursos, saúde, infraestrutura, posição) | ✅ COMPLETE (MVP) | 2026-07-28 — ameaça, severidade, chegada, infraestrutura, mobilidade/medicação, reservas. **Falta**: traduzir o texto livre para os painéis (hoje é só descrição) |
 | SIM-T03 | Sessão: briefing pelo Pilot com RAG, rodar, sair a um toque | PENDING | Reusa `/api/analyze` + `getRelevantChunks`; regra crítica vence o modelo |
 | SIM-T04 | Injeção de eventos e avanço de tempo ("+6h", "a energia caiu") | PENDING | É o que separa simulador de cenário estático |
 | SIM-T05 | Debrief com lacunas quantificadas + escrita confirmada no checklist | PENDING | "Faltaram 40 L", não "melhore suas reservas" |

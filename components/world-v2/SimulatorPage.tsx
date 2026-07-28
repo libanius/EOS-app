@@ -1,0 +1,257 @@
+'use client'
+
+/**
+ * Simulator — the Cenário page, rebuilt on the World v2 design system (D-067).
+ *
+ * Framed as a flight-sim briefing rather than a form: you set the environment,
+ * you start the session, and the WHOLE app flies in it. The old page was a
+ * one-shot question box in a different visual language; this one is the cockpit.
+ *
+ * It reuses `.wv2` tokens by wrapping in that scope, so the simulator and the
+ * dashboard cannot drift apart.
+ */
+
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { motion } from 'framer-motion'
+import { useLanguage } from '@/lib/i18n'
+import { useSimulation } from '@/components/SimulationProvider'
+import {
+  DEFAULT_SIMULATION,
+  THREATS,
+  type ReserveLevel,
+  type Severity,
+  type SimulationConfig,
+  type ThreatType,
+} from '@/lib/simulation'
+import { Card, Pill, SectionLabel } from './primitives'
+import { SPRING, haptic } from './motion'
+import './world-v2.css'
+
+const COPY = {
+  pt: {
+    eyebrow: 'Simulador',
+    title: 'Treine antes que seja real',
+    lead: 'Configure a situação. O EOS inteiro passa a se comportar como se fosse verdade — índice de risco, Pilot, autonomia e mapa.',
+    describe: 'Descreva a situação',
+    placeholder: 'Ex.: furacão categoria 3 chegando em 12 horas. Minha filha machucou o joelho e não consegue andar rápido.',
+    threat: 'Ameaça',
+    severity: 'Severidade',
+    arrival: 'Chegada',
+    now: 'agora',
+    hours: 'h',
+    conditions: 'O que já falhou',
+    powerOut: 'Energia cortada',
+    networkDown: 'Sem rede',
+    roadsBlocked: 'Vias bloqueadas',
+    household: 'A família nesta simulação',
+    mobility: 'Alguém não consegue se locomover',
+    medical: 'Alguém precisa de medicação',
+    reserves: 'Reservas',
+    reserveReal: 'Reais',
+    reserveHalf: 'Metade',
+    reserveCritical: 'No limite',
+    start: 'Iniciar simulação',
+    running: 'Simulação em andamento',
+    runningHint: 'Abra o Mundo, o Pilot e o Checklist — tudo responde ao cenário agora.',
+    goWorld: 'Ir para o Mundo',
+    stop: 'Encerrar',
+    safety: 'Nada é gravado no seu dado real. Ao recarregar o app, a simulação some. Se um alerta real chegar, a sessão é encerrada na hora.',
+    sevLabel: ['', 'Leve', 'Moderada', 'Séria', 'Grave', 'Catastrófica'],
+  },
+  en: {
+    eyebrow: 'Simulator',
+    title: 'Train before it is real',
+    lead: 'Set the situation. The whole of EOS starts behaving as if it were true — risk index, Pilot, autonomy and map.',
+    describe: 'Describe the situation',
+    placeholder: 'e.g. category 3 hurricane arriving in 12 hours. My daughter hurt her knee and cannot walk fast.',
+    threat: 'Threat',
+    severity: 'Severity',
+    arrival: 'Arrival',
+    now: 'now',
+    hours: 'h',
+    conditions: 'What has already failed',
+    powerOut: 'Power is out',
+    networkDown: 'No network',
+    roadsBlocked: 'Roads blocked',
+    household: 'The household in this simulation',
+    mobility: 'Someone cannot move freely',
+    medical: 'Someone needs medication',
+    reserves: 'Reserves',
+    reserveReal: 'Real',
+    reserveHalf: 'Half',
+    reserveCritical: 'At the limit',
+    start: 'Start simulation',
+    running: 'Simulation running',
+    runningHint: 'Open World, the Pilot and the Checklist — everything responds to the scenario now.',
+    goWorld: 'Go to World',
+    stop: 'End',
+    safety: 'Nothing is written to your real data. Reloading the app ends the simulation. If a real alert arrives, the session ends immediately.',
+    sevLabel: ['', 'Mild', 'Moderate', 'Serious', 'Severe', 'Catastrophic'],
+  },
+} as const
+
+const ARRIVALS = [0, 3, 6, 12, 24, 48]
+
+export default function SimulatorPage() {
+  const { language } = useLanguage()
+  const router = useRouter()
+  const c = COPY[language]
+  const pt = language === 'pt'
+  const { config: active, start, stop } = useSimulation()
+
+  const [draft, setDraft] = useState<SimulationConfig>(DEFAULT_SIMULATION)
+  const set = (patch: Partial<SimulationConfig>) => setDraft(current => ({ ...current, ...patch }))
+
+  const launch = () => {
+    haptic.impact()
+    start(draft)
+    router.push('/dashboard')
+  }
+
+  return (
+    <div className="wv2 wv2-sim-page" data-risk="watch" data-ready="true">
+      <div className="sim-scroll">
+        <header className="sim-header">
+          <p className="t-caps ink-3">{c.eyebrow}</p>
+          <h1 className="t-display sim-title">{c.title}</h1>
+          <p className="t-body ink-2">{c.lead}</p>
+        </header>
+
+        {active ? (
+          <Card accented>
+            <SectionLabel>{c.running}</SectionLabel>
+            <p className="t-body" style={{ marginTop: '0.25rem' }}>{c.runningHint}</p>
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', flexWrap: 'wrap' }}>
+              <Pill primary onClick={() => router.push('/dashboard')}>{c.goWorld}</Pill>
+              <Pill onClick={stop}>{c.stop}</Pill>
+            </div>
+          </Card>
+        ) : (
+          <>
+            {/* ── Free text: the way the owner described it ── */}
+            <Card>
+              <SectionLabel>{c.describe}</SectionLabel>
+              <textarea
+                className="sim-textarea"
+                value={draft.description}
+                onChange={event => set({ description: event.target.value })}
+                placeholder={c.placeholder}
+                rows={3}
+              />
+            </Card>
+
+            {/* ── Threat ── */}
+            <Card>
+              <SectionLabel>{c.threat}</SectionLabel>
+              <div className="sim-chips">
+                {THREATS.map(threat => (
+                  <Chip
+                    key={threat.id}
+                    on={draft.threat === threat.id}
+                    onClick={() => set({ threat: threat.id as ThreatType })}
+                  >
+                    {pt ? threat.pt : threat.en}
+                  </Chip>
+                ))}
+              </div>
+
+              <div className="sim-row">
+                <span className="t-caps ink-3">{c.severity}</span>
+                <strong className="t-sub">{c.sevLabel[draft.severity]}</strong>
+              </div>
+              <div className="sim-scale" role="group" aria-label={c.severity}>
+                {([1, 2, 3, 4, 5] as Severity[]).map(level => (
+                  <button
+                    key={level}
+                    type="button"
+                    className={draft.severity >= level ? 'on' : ''}
+                    aria-pressed={draft.severity === level}
+                    onClick={() => { haptic.selection(); set({ severity: level }) }}
+                  >
+                    {level}
+                  </button>
+                ))}
+              </div>
+
+              <div className="sim-row">
+                <span className="t-caps ink-3">{c.arrival}</span>
+              </div>
+              <div className="sim-chips">
+                {ARRIVALS.map(hours => (
+                  <Chip key={hours} on={draft.arrivalHours === hours} onClick={() => set({ arrivalHours: hours })}>
+                    {hours === 0 ? c.now : `${hours}${c.hours}`}
+                  </Chip>
+                ))}
+              </div>
+            </Card>
+
+            {/* ── Infrastructure ── */}
+            <Card>
+              <SectionLabel>{c.conditions}</SectionLabel>
+              <Toggle label={c.powerOut} on={draft.powerOut} onChange={v => set({ powerOut: v })} />
+              <Toggle label={c.networkDown} on={draft.networkDown} onChange={v => set({ networkDown: v })} />
+              <Toggle label={c.roadsBlocked} on={draft.roadsBlocked} onChange={v => set({ roadsBlocked: v })} />
+            </Card>
+
+            {/* ── Household: the knee-injury case lives here ── */}
+            <Card>
+              <SectionLabel>{c.household}</SectionLabel>
+              <Toggle label={c.mobility} on={draft.mobilityLimited} onChange={v => set({ mobilityLimited: v })} />
+              <Toggle label={c.medical} on={draft.medicalNeed} onChange={v => set({ medicalNeed: v })} />
+
+              <div className="sim-row" style={{ marginTop: '0.75rem' }}>
+                <span className="t-caps ink-3">{c.reserves}</span>
+              </div>
+              <div className="sim-chips">
+                {([
+                  ['real', c.reserveReal],
+                  ['half', c.reserveHalf],
+                  ['critical', c.reserveCritical],
+                ] as Array<[ReserveLevel, string]>).map(([value, label]) => (
+                  <Chip key={value} on={draft.reserves === value} onClick={() => set({ reserves: value })}>
+                    {label}
+                  </Chip>
+                ))}
+              </div>
+            </Card>
+
+            <motion.div whileTap={{ scale: 0.98 }} transition={SPRING.quick}>
+              <Pill primary wide onClick={launch}>{c.start}</Pill>
+            </motion.div>
+
+            <p className="sim-safety t-foot ink-3">{c.safety}</p>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function Chip({ children, on, onClick }: { children: React.ReactNode; on: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      className={`sim-chip${on ? ' on' : ''}`}
+      aria-pressed={on}
+      onClick={() => { haptic.selection(); onClick() }}
+    >
+      {children}
+    </button>
+  )
+}
+
+function Toggle({ label, on, onChange }: { label: string; on: boolean; onChange: (value: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      className={`sim-toggle${on ? ' on' : ''}`}
+      role="switch"
+      aria-checked={on}
+      onClick={() => { haptic.selection(); onChange(!on) }}
+    >
+      <span className="t-body">{label}</span>
+      <span className="track" aria-hidden="true"><i /></span>
+    </button>
+  )
+}

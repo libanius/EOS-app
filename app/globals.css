@@ -385,3 +385,62 @@ hr { border: none; border-top: 1px solid var(--bd); }
 .text-xs         { font-size: 11px; }
 .font-bold       { font-weight: 700; }
 .truncate        { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ─── SIMULATION CHROME (D-067 / doc 19 §5.2) ─────────────────────────────
+   Deliberately loud and always on top. The failure mode this prevents — acting
+   on fictional data during a real emergency — is the worst the product has. */
+.sim-banner {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px calc(8px) 14px;
+  padding-top: max(8px, env(safe-area-inset-top, 0px));
+  background: linear-gradient(90deg, #7c3aed, #a855f7);
+  color: #fff;
+  box-shadow: 0 6px 18px -8px rgba(124, 58, 237, 0.9);
+}
+.sim-banner.aborted { background: linear-gradient(90deg, #b91c1c, #ef4444); }
+.sim-banner .sim-dot {
+  flex: none;
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 4px rgba(255,255,255,0.28);
+}
+.sim-banner .sim-text { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 8px; }
+.sim-banner .sim-text strong {
+  font-size: 11px; font-weight: 800; letter-spacing: 0.1em; white-space: nowrap;
+}
+.sim-banner .sim-text em {
+  font-style: normal; font-size: 12px; opacity: 0.92;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.sim-banner button {
+  flex: none;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.5);
+  background: rgba(255,255,255,0.14);
+  color: #fff;
+  font: inherit; font-size: 12px; font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.sim-banner button:active { transform: scale(0.96); }
+
+/* Everything else moves down so the banner never covers real chrome. */
+body:has(.sim-banner) .wv2 { top: 46px; }
+body:has(.sim-banner) .wv2-search,
+body:has(.sim-banner) .wv2-mapcontrols { top: 12px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .sim-banner button:active { transform: none; }
+}
+
+/* AppActions is inline-styled and fixed at the top, so it needs !important to
+   clear the simulation banner. */
+body:has(.sim-banner) .app-actions { top: 56px !important; }

@@ -10,7 +10,10 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Abrigos oficiais + planos da família (FAM/PLAN) + gates de validação da v2 abertos (WV2-T05) |
-| **Last Completed Task** | **D-067 / SIM-T00 — spec do Cenário como simulador (`docs/19-scenario-simulator.md`) (2026-07-27)** |
+| **Last Completed Task** | **D-067 / SIM-T01→T02 — simulador funcionando: o app inteiro responde ao cenário (2026-07-28)** |
+| | Redesign do `/scenario` no design system da v2; analisador antigo preservado em `/scenario-legacy` |
+| | `scripts/browser-walkthrough.mjs` — percurso real de navegador com prints (paga parte de WV2-T05) |
+| | D-067 / SIM-T00 — spec do Cenário como simulador (`docs/19-scenario-simulator.md`) (2026-07-27)** |
 | | Busca de lugares no mapa + puck do usuário com foto de perfil (2026-07-27) |
 | | Fix: `.w-mapmarker` não tinha estilo na v2 — pinos renderizavam como texto cru (2026-07-27) |
 | | D-065 / FAM-T05→T07 — abrigos oficiais do FEMA NSS, rumo/distância on-device e deep-link de navegação (2026-07-27)** |
@@ -43,7 +46,7 @@
 | | LA-T02: Stripe **Live** cutover — faturamento real ativo (2026-07-21) |
 | | LA-T01: Stripe test payment → webhook → `profiles.plan=family` (2026-07-20) |
 | **In Progress** | — |
-| **Next Task** | **SIM-T01** — `SimulationProvider` + injeção no `RiskProvider` + travas de segurança (D-067). Alternativa de mesma prioridade: **PLAN-T01** — modelo de dados + RLS por círculo + API dos Planos de Emergência da Família (`docs/18-family-plans.md`). Alternativas abertas: **WV2-T05** (gates de validação da v2, dívida assumida em D-063), **FAM-T08** (cache offline dos abrigos), **LA-T06** (códigos de afiliado, travado nos params do dono). |
+| **Next Task** | **SIM-T03** — briefing do Pilot com RAG dentro da simulação (reusar `/api/analyze`), e **SIM-T05** debrief. Alternativa: **PLAN-T01** — modelo de dados + RLS por círculo + API dos Planos de Emergência da Família (`docs/18-family-plans.md`). Alternativas abertas: **WV2-T05** (gates de validação da v2, dívida assumida em D-063), **FAM-T08** (cache offline dos abrigos), **LA-T06** (códigos de afiliado, travado nos params do dono). |
 | **Build** | ✅ Passing — type-check, ESLint e production build limpos (2026-07-27) |
 | **Vercel** | ✅ Deployed — domínio canônico `https://eos-app-fawn.vercel.app` |
 | **Supabase** | ✅ Healthy — project ref `alxurmgpyxjhvnliivbf` |

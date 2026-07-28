@@ -3,6 +3,8 @@ import AppActions from '@/components/AppActions'
 import SyncStatus from '@/components/SyncStatus'
 import FichaFirstRun from '@/components/FichaFirstRun'
 import LocationReporter from '@/components/LocationReporter'
+import SimulationProvider from '@/components/SimulationProvider'
+import SimulationBanner from '@/components/SimulationBanner'
 
 // NOTE: V2Shell (components/v2 — the "Prévia Viva" risk state machine) is WIP and
 // NOT on the roadmap yet (see D-045 / P3-T07). It was shipped to production
@@ -11,7 +13,8 @@ import LocationReporter from '@/components/LocationReporter'
 // The v2/ files stay in the repo for when P3-T07 is picked up.
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <>
+    <SimulationProvider>
+      <SimulationBanner />
       <FichaFirstRun />
       {/* D-064: silent unless the user consented AND already granted GPS. */}
       <LocationReporter />
@@ -19,6 +22,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {children}
       <SyncStatus />
       <BottomNav />
-    </>
+    </SimulationProvider>
   )
 }

@@ -10,6 +10,7 @@ const PROTECTED_ROUTES = [
   '/family',
   '/inventory',
   '/scenario',
+  '/scenario-legacy',
   '/checklist',
   '/circles',
   '/settings',

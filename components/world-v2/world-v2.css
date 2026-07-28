@@ -1160,3 +1160,170 @@
     -webkit-backdrop-filter: none;
   }
 }
+
+/* ═══ SIMULATOR PAGE ═══════════════════════════════════════════════════════
+   Scrolling page rather than a fixed HUD, so `.wv2` loses its fixed position
+   here. Everything else — materials, type scale, springs — is inherited. */
+
+.wv2.wv2-sim-page {
+  position: static;
+  inset: auto;
+  overflow: visible;
+  min-height: 100dvh;
+  background: #000;
+}
+.wv2-sim-page .sim-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+  max-width: 720px;
+  margin: 0 auto;
+  padding: calc(var(--s8) + env(safe-area-inset-top)) var(--edge) calc(var(--nav-inset) + var(--s8));
+}
+
+.wv2-sim-page .sim-header { padding: 0 var(--s2); }
+.wv2-sim-page .sim-title {
+  margin: var(--s2) 0 var(--s3);
+  /* The display size is tuned for a numeral on the dashboard; as a sentence it
+     needs to come down or it eats the whole screen. */
+  font-size: clamp(2rem, 8vw, 2.75rem);
+  line-height: 1.03;
+  letter-spacing: -0.032em;
+  text-wrap: balance;
+}
+
+.wv2-sim-page .sim-textarea {
+  width: 100%;
+  margin-top: var(--s3);
+  padding: var(--s3) var(--s4);
+  border-radius: var(--r-tile);
+  border: 1px solid var(--sep);
+  background: var(--fill-2);
+  color: var(--ink);
+  font: inherit;
+  font-size: 1rem;
+  line-height: 1.45;
+  letter-spacing: -0.008em;
+  resize: vertical;
+}
+.wv2-sim-page .sim-textarea:focus {
+  outline: none;
+  border-color: rgba(var(--accent-rgb), 0.55);
+}
+.wv2-sim-page .sim-textarea::placeholder { color: var(--ink-3); }
+
+.wv2-sim-page .sim-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin-top: var(--s3);
+}
+.wv2-sim-page .sim-chip {
+  min-height: 40px;
+  padding: 0 var(--s4);
+  border-radius: var(--r-pill);
+  border: 1px solid var(--sep-strong);
+  background: var(--mat-thin);
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: -0.006em;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform 100ms ease-out, background 160ms ease-out, color 160ms ease-out;
+}
+.wv2-sim-page .sim-chip:active { transform: scale(0.96); }
+.wv2-sim-page .sim-chip.on {
+  background: var(--accent);
+  border-color: transparent;
+  color: var(--accent-ink);
+  font-weight: 700;
+}
+
+.wv2-sim-page .sim-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s3);
+  margin-top: var(--s5);
+  padding: 0 var(--s1);
+}
+
+/* Severity reads as a filling gauge, not five loose buttons — the shape says
+   "more", which is what severity means. */
+.wv2-sim-page .sim-scale {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+  margin-top: var(--s2);
+}
+.wv2-sim-page .sim-scale button {
+  min-height: 44px;
+  border: 1px solid var(--sep);
+  border-radius: 12px;
+  background: var(--fill-2);
+  color: var(--ink-3);
+  font: inherit;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background 160ms ease-out, color 160ms ease-out;
+}
+.wv2-sim-page .sim-scale button.on {
+  background: rgba(var(--accent-rgb), 0.22);
+  border-color: rgba(var(--accent-rgb), 0.5);
+  color: var(--ink);
+}
+
+.wv2-sim-page .sim-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding: var(--s3) 0;
+  border: 0;
+  border-bottom: 1px solid var(--sep);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.wv2-sim-page .sim-toggle:last-of-type { border-bottom: 0; padding-bottom: 0; }
+.wv2-sim-page .sim-toggle .track {
+  flex: none;
+  width: 50px;
+  height: 30px;
+  padding: 3px;
+  border-radius: var(--r-pill);
+  background: var(--fill-1);
+  transition: background 200ms ease-out;
+}
+.wv2-sim-page .sim-toggle .track > i {
+  display: block;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.wv2-sim-page .sim-toggle.on .track { background: var(--accent); }
+.wv2-sim-page .sim-toggle.on .track > i { transform: translateX(20px); }
+
+.wv2-sim-page .sim-safety {
+  margin: var(--s2) 0 0;
+  padding: var(--s4);
+  border-radius: var(--r-tile);
+  border-left: 3px solid var(--ink-3);
+  background: rgba(255, 255, 255, 0.04);
+  line-height: 1.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wv2-sim-page .sim-chip:active { transform: none; }
+  .wv2-sim-page .sim-toggle .track > i { transition: none; }
+}

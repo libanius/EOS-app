@@ -22,7 +22,7 @@ export default function AppActions() {
   const { t } = useLanguage()
 
   return (
-    <div style={{ position: 'fixed', top: 'max(16px, calc(env(safe-area-inset-top, 0px) + 8px))', right: 16, zIndex: 200, display: 'flex', gap: 8 }}>
+    <div className="app-actions" style={{ position: 'fixed', top: 'max(16px, calc(env(safe-area-inset-top, 0px) + 8px))', right: 16, zIndex: 200, display: 'flex', gap: 8 }}>
       <Link href="/settings" aria-label={t('actions.settings')} style={buttonStyle}>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="12" cy="12" r="3" />
