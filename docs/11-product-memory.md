@@ -1,7 +1,18 @@
 # 11 — Product Memory
 
 > Non-obvious facts that don't belong in code comments but must survive across sessions.
-> Last updated: 2026-07-21
+> Last updated: 2026-07-27
+
+---
+
+## World v2 / entrada do app (2026-07-27)
+
+- **A entrada real do app não é só `app/page.tsx`.** `signIn` e `updatePassword` em `lib/auth/actions.ts` fazem `redirect()` próprio depois de autenticar. Mudar apenas o redirect de `/` não muda onde o usuário cai ao logar — foi exatamente o que aconteceu ao promover o dashboard. Ao trocar a tela inicial, os três pontos precisam ser alterados juntos.
+- **`AppActions` é `position: fixed`, canto superior direito, `z-index: 200`**, e é montado pelo layout `(app)` em todas as telas. Qualquer superfície full-screen que coloque controles nesse canto fica **por baixo** dele. Foi assim que o botão de GPS do World v2 sumiu — não estava quebrado, estava oculto.
+- **O Pilot é local-first por decisão, não por limitação** (D-062.1). `pilot-engine.ts` é puro e síncrono de propósito: a premissa do produto é responder quando a rede caiu. Se algum dia um modelo entrar ali, tem de ser camada aditiva — nunca no caminho crítico da resposta.
+- **O Pilot nunca infere evacuação.** Só repassa ordem oficial presente no alerta. E declara explicitamente quando a ficha da família ou o inventário não carregaram, em vez de assumir ausência de vulnerabilidade. Não "simplifique" isso depois.
+- `WorldMap` (`components/world-dashboard/`) é compartilhado entre `/dashboard` (v2) e `/dashboard-world` (v1). Alterá-lo afeta as duas telas.
+- **`next dev` e `next build` compartilham `.next/`.** Rodar o build de produção com o dev server ligado corrompe os chunks do dev (`Cannot find module './XXXX.js'`). Parar o dev antes, ou apagar `.next/` depois.
 
 ---
 

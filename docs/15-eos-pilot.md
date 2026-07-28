@@ -1,8 +1,12 @@
 # 15 — EOS Pilot
 
-> Status: SPEC / CONCEPT DECIDED
+> Status: SPEC / CONCEPT DECIDED — **IMPLEMENTADO em produção (2026-07-27)**
 > Date: 2026-07-20
-> Decision: D-046
+> Decision: D-046 · implementação: **D-062.1** (WV2-T03)
+>
+> **Casa definitiva:** o Pilot deixou de ser "complicação do dashboard" (PILOT-T01, ON HOLD) e deixou de ser a Pilot Capsule do HWD-05. Agora é o **orbe + console** do World v2 (`components/world-v2/Pilot.tsx`), sempre a um toque em `/dashboard`.
+> **Desvio relevante desta spec:** o motor é **determinístico, local e síncrono** (`pilot-engine.ts`), não um fluxo assistido por modelo. Razão: a promessa do produto é responder quando a rede caiu. As 5 atividades da PILOT-T02 foram substituídas por **5 intenções** de decisão ("o que faço agora", "ficar ou sair", "quanto tempo aguentamos", "o que está faltando", "dá para sair"). Os estados GO/LIMITED/WAIT/AVOID/PRIORITY OVERRIDE (PILOT-T03) viraram os vereditos `ready`/`watch`/`hold`/`act`, com as regras de domicílio vindo do `RulesEngine` canônico.
+> **PILOT-T04 (métricas) segue PENDING.**
 
 ---
 

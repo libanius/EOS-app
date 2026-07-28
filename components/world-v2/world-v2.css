@@ -389,13 +389,39 @@
   letter-spacing: 0;
 }
 
+/* Map controls sit BELOW the app-wide AppActions row (fixed, top-right,
+   z-index 200) — overlapping it hid this cluster's first button entirely.
+   Grouped into one capsule with hairline separators so they read as "controls
+   for the map", not as more loose circles competing with the global chrome. */
 .wv2-mapcontrols {
   position: absolute;
-  top: calc(var(--edge) + env(safe-area-inset-top));
-  right: var(--edge);
+  top: calc(max(16px, env(safe-area-inset-top, 0px) + 8px) + 50px);
+  right: 16px;
   display: flex;
   flex-direction: column;
-  gap: var(--s2);
+  border-radius: 22px;
+  overflow: hidden;
+  border: 1px solid var(--sep);
+  background: var(--mat-thick);
+  backdrop-filter: blur(var(--mat-blur-sm)) saturate(var(--mat-sat));
+  -webkit-backdrop-filter: blur(var(--mat-blur-sm)) saturate(var(--mat-sat));
+  box-shadow: 0 10px 26px -14px rgba(0, 0, 0, 0.95);
+}
+.wv2-mapcontrols .wv2-iconbtn {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+}
+.wv2-mapcontrols .wv2-iconbtn + .wv2-iconbtn { border-top: 1px solid var(--sep); }
+/* Inside a group, a scaling button reads as broken. Flash the fill instead. */
+.wv2-mapcontrols .wv2-iconbtn:active {
+  transform: none;
+  background: rgba(255, 255, 255, 0.14);
 }
 
 /* ── Provenance footnote: what is measured vs. what is inferred (§ honesty) ── */

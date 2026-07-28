@@ -1,7 +1,7 @@
 # 09 — Build Status
 
 > The single most important file for resuming a session. Read this first after AGENTS.md.
-> Last updated: 2026-07-21
+> Last updated: 2026-07-27
 
 ---
 
@@ -9,8 +9,11 @@
 
 | Field | Value |
 |---|---|
-| **Current Phase** | Monetização/promo + UPP + open HWD-06 gates |
-| **Last Completed Task** | Fix: Alertas Push não usa mais bundle stale de `/settings`; páginas autenticadas em SW passam a NetworkFirst + espera robusta de ativação (2026-07-22) |
+| **Current Phase** | World v2 em produção (WV2) + gates de validação abertos (WV2-T05) |
+| **Last Completed Task** | **D-063 / WV2-T04 — World v2 promovido a `/dashboard` e lançado em produção (2026-07-27)** |
+| | D-062 / WV2-T01→T03 — design system Apple, `DetentSheet` com gesto real e Pilot copiloto local-first (2026-07-27) |
+| | Fix: controles do mapa colidiam com `AppActions` (fixed, z-index 200) — botão de localização ficava oculto (2026-07-27) |
+| | Fix: Alertas Push não usa mais bundle stale de `/settings`; páginas autenticadas em SW passam a NetworkFirst + espera robusta de ativação (2026-07-22) |
 | | Fix: botão "Alertas Push" não fica mais preso em loading; timeout, permissão explícita e VAPID Uint8Array (2026-07-22) |
 | | D-061 / gift codes sem Stripe + criação owner-only (`/admin/gift-codes`) (2026-07-22) |
 | | Fix: banner 'migration pendente' era falso (faltava `avatar_path`); migration photo storage aplicada no banco (2026-07-22) |

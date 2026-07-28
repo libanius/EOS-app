@@ -1,3 +1,11 @@
+> **STATUS (2026-07-27) — o HUD desta spec foi substituído.**
+> O caminho de produção agora é o **World v2** (`components/world-v2/`, rota `/dashboard`), decidido em **D-062** e lançado em **D-063**.
+> **O que continua valendo desta spec:** o `WorldMap` (§6, §11, §23) foi reaproveitado sem alteração e segue sendo a camada de mapa da v2; os princípios de produto (§36), proveniência/honestidade (§28.3) e o equivalente textual de acessibilidade (§22) continuam vinculantes.
+> **O que foi substituído:** linguagem visual (§19), linguagem de movimento (§20), estratégia responsiva (§21), Status Rail (§17) e a Pilot Capsule (HWD-05) — todos reconstruídos sobre o design system da v2.
+> `/dashboard-world` permanece no repositório como referência histórica do v1.
+
+---
+
 # 16 — Hybrid World Dashboard
 
 > **Status:** SPEC / PRODUCT-ARCHITECTURE DECIDED — **IMPLEMENTATION AUTHORIZED 2026-07-21 (D-050)**; HWD-01→HWD-05 complete for isolated prototype scope; HWD-06 validation in progress
