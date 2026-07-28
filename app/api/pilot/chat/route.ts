@@ -95,6 +95,70 @@ type Body = {
 /** A place the Pilot considers worth travelling to. */
 export type PilotDestination = { label: string; lat: number; lng: number }
 
+/**
+ * Look up real places near the user for the question being asked.
+ *
+ * Without this the Pilot can only ever name shelters and family — so "a Home
+ * Depot near me" got the honest but useless answer that no such place was in the
+ * data. The specialist has to be able to look things up.
+ *
+ * Runs BEFORE the model and hands it real coordinates, so the model never
+ * invents an address. Nominatim's policy allows this: one request per user
+ * message is not typeahead.
+ */
+const FILLER = /\b(onde|tem|uma?|um|perto|de|mim|aqui|qual|é|o|a|mais|proxim[oa]|próxim[oa]|me|leve|até|como|chego|na|no|em|encontrar|achar|buscar|procur\w*|where|is|the|a|an|near|me|closest|nearest|find|to|get|how|do|i)\b/gi
+
+async function findPlaces(question: string, at: { lat: number; lng: number } | null) {
+  const query = question.replace(FILLER, ' ').replace(/[?!.,]/g, ' ').replace(/\s+/g, ' ').trim()
+  if (query.length < 3 || !at) return [] as Array<{ label: string; lat: number; lng: number; distanceKm: number }>
+
+  const d = 0.6 // degrees — a metro-area window, not the whole state
+  const params = new URLSearchParams({
+    q: query,
+    format: 'json',
+    limit: '5',
+    viewbox: `${at.lng - d},${at.lat + d},${at.lng + d},${at.lat - d}`,
+    bounded: '1',
+  })
+
+  try {
+    const response = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
+      headers: { 'User-Agent': 'EOS Emergency Operating System / 1.0 (brightscalegroup@gmail.com)' },
+      signal: AbortSignal.timeout(6000),
+      next: { revalidate: 3600 },
+    })
+    if (!response.ok) return []
+    const raw = (await response.json()) as Array<{ display_name?: string; lat?: string; lon?: string }>
+    return raw
+      .map(item => {
+        const lat = Number(item.lat)
+        const lng = Number(item.lon)
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null
+        return {
+          label: (item.display_name ?? '').split(',').slice(0, 2).join(',').trim(),
+          lat,
+          lng,
+          distanceKm: haversineKm(at, { lat, lng }),
+        }
+      })
+      .filter((p): p is { label: string; lat: number; lng: number; distanceKm: number } => p !== null)
+      .sort((a, b) => a.distanceKm - b.distanceKm)
+  } catch {
+    return []
+  }
+}
+
+/** Same maths as the client, kept server-side so the model never computes it. */
+function haversineKm(from: { lat: number; lng: number }, to: { lat: number; lng: number }) {
+  const R = 6371
+  const rad = (d: number) => (d * Math.PI) / 180
+  const dLat = rad(to.lat - from.lat)
+  const dLng = rad(to.lng - from.lng)
+  const a =
+    Math.sin(dLat / 2) ** 2 + Math.cos(rad(from.lat)) * Math.cos(rad(to.lat)) * Math.sin(dLng / 2) ** 2
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)))
+}
+
 const toC = (f: number) => Math.round(((f - 32) * 5) / 9)
 const toKmh = (mph: number) => Math.round(mph * 1.609)
 const toKm = (mi: number) => (mi * 1.609).toFixed(1)
@@ -224,9 +288,30 @@ const TONE: Record<Body['context']['riskState'], { pt: string; en: string }> = {
   },
 }
 
+/**
+ * Salvage a readable answer from a truncated or malformed payload.
+ *
+ * This exists because the raw JSON once reached the user's screen: the model hit
+ * the token ceiling mid-object, JSON.parse threw, and the fallback printed the
+ * source. Whatever happens, the person on the other side must never see braces.
+ */
+function salvageReply(raw: string): string {
+  const field = raw.match(/"reply"\s*:\s*"((?:[^"\\]|\\.)*)/)
+  if (field?.[1]) {
+    try {
+      return JSON.parse(`"${field[1]}"`) as string
+    } catch {
+      return field[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').trim()
+    }
+  }
+  // No recognisable reply field: strip anything JSON-shaped rather than show it.
+  const cleaned = raw.replace(/[{}[\]]/g, ' ').replace(/"\w+"\s*:/g, ' ').replace(/\s+/g, ' ').trim()
+  return cleaned.length > 20 ? cleaned : ''
+}
+
 function extractJson(raw: string): { reply: string; tasks: PilotTask[]; destinations: PilotDestination[] } {
   const match = raw.match(/\{[\s\S]*\}/)
-  if (!match) return { reply: raw.trim(), tasks: [], destinations: [] }
+  if (!match) return { reply: salvageReply(raw), tasks: [], destinations: [] }
   try {
     const parsed = JSON.parse(match[0]) as { reply?: string; tasks?: unknown; destinations?: unknown }
     const tasks = Array.isArray(parsed.tasks)
@@ -256,9 +341,9 @@ function extractJson(raw: string): { reply: string; tasks: PilotTask[]; destinat
           .slice(0, 4)
           .map(d => ({ label: String(d.label ?? '').trim().slice(0, 60) || 'Destino', lat: d.lat, lng: d.lng }))
       : []
-    return { reply: String(parsed.reply ?? raw).trim(), tasks, destinations }
+    return { reply: String(parsed.reply ?? salvageReply(raw)).trim(), tasks, destinations }
   } catch {
-    return { reply: raw.trim(), tasks: [], destinations: [] }
+    return { reply: salvageReply(raw), tasks: [], destinations: [] }
   }
 }
 
@@ -309,10 +394,23 @@ export async function POST(request: NextRequest) {
     ? `Autonomia ${context.autonomyDays.toFixed(1)} dias (água ${context.waterDays.toFixed(1)}d, comida ${context.foodDays.toFixed(1)}d, energia ${context.powerDays.toFixed(1)}d, combustível ${context.fuelDays.toFixed(1)}d). Checklist ${context.checklistPct}%.`
     : `Autonomy ${context.autonomyDays.toFixed(1)} days (water ${context.waterDays.toFixed(1)}d, food ${context.foodDays.toFixed(1)}d, power ${context.powerDays.toFixed(1)}d, fuel ${context.fuelDays.toFixed(1)}d). Checklist ${context.checklistPct}%.`
 
+  // Real places matching what was asked, with real coordinates.
+  const places = await findPlaces(question, context.selfCoords)
+  const placesBlock = places.length
+    ? (pt
+        ? `LUGARES REAIS ENCONTRADOS PERTO DO USUÁRIO para esta pergunta (coordenadas verificadas — copie-as, não invente):\n` +
+          places.map(p => `- ${p.label} (${p.lat.toFixed(5)},${p.lng.toFixed(5)}) a ${p.distanceKm.toFixed(1)} km`).join('\n')
+        : `REAL PLACES FOUND NEAR THE USER for this question (verified coordinates — copy them, do not invent):\n` +
+          places.map(p => `- ${p.label} (${p.lat.toFixed(5)},${p.lng.toFixed(5)}) ${p.distanceKm.toFixed(1)} km away`).join('\n'))
+    : ''
+
   const system = [
     pt
       ? 'Você é o EOS Pilot: um especialista em preparação e resposta a emergências, falando com o chefe de uma família. Você instrui, não conversa fiado.'
       : 'You are the EOS Pilot: an emergency preparedness and response specialist speaking to the head of a household. You instruct; you do not chat.',
+    pt
+      ? 'IDIOMA: responda SEMPRE no mesmo idioma da última mensagem do usuário. Se ele escreveu em português, responda em português.'
+      : 'LANGUAGE: always answer in the language of the user last message.',
     TONE[context.riskState][pt ? 'pt' : 'en'],
     pt
       ? `SITUAÇÃO: índice de risco ${context.score ?? '—'} (${context.riskState}). ${context.headline}`
@@ -330,6 +428,7 @@ export async function POST(request: NextRequest) {
         ? 'ATENÇÃO: isto é uma SIMULAÇÃO de treino. Trate como real para efeito de instrução, mas nunca diga que há uma emergência de verdade.'
         : 'NOTE: this is a training SIMULATION. Treat it as real for instruction, but never claim a real emergency is happening.'
       : '',
+    placesBlock,
     knowledge
       ? (pt ? `BASE DE CONHECIMENTO (use e cite quando útil):\n${knowledge}` : `KNOWLEDGE BASE (use and cite when useful):\n${knowledge}`)
       : '',
@@ -344,15 +443,27 @@ export async function POST(request: NextRequest) {
     .join('\n\n')
 
   try {
-    const completion = await openai.chat.completions.create({
+    const payload = {
       model: getOpenAIModel(),
       messages: [
-        { role: 'system', content: system },
+        { role: 'system' as const, content: system },
         ...messages.slice(-8).map(m => ({ role: m.role, content: m.content })),
       ],
       temperature: context.riskState === 'critical' ? 0.2 : 0.5,
-      max_tokens: 700,
-    })
+      // Raised because a truncated object is what leaked raw JSON to the screen.
+      max_tokens: 1400,
+    }
+
+    let completion
+    try {
+      // Provider-enforced JSON beats hoping the model closes its own braces.
+      completion = await openai.chat.completions.create({
+        ...payload,
+        response_format: { type: 'json_object' },
+      })
+    } catch {
+      completion = await openai.chat.completions.create(payload)
+    }
 
     const raw = completion.choices[0]?.message?.content ?? ''
     const { reply, tasks, destinations } = extractJson(raw)

@@ -218,12 +218,14 @@ async function main() {
     log('\n   RESPOSTA SOBRE TEMPERATURA:\n   ' + last.replace(/\n/g, '\n   '))
 
     // D-068: posições e navegação
-    await page.locator('.chat-compose input').fill('onde estou exatamente? me dê as coordenadas e como chegar no abrigo oficial aberto mais próximo')
+    await page.locator('.chat-compose input').fill('home depot perto de mim')
     await page.locator('.chat-compose button[type=submit]').click()
     await page.waitForTimeout(25000)
     await shot('15-pilot-coordenadas')
     const geo = await page.locator('.chat-pilot').last().innerText().catch(() => '?')
-    log('\n   RESPOSTA SOBRE POSIÇÃO:\n   ' + geo.replace(/\n/g, '\n   '))
+    log('\n   RESPOSTA (home depot):\n   ' + geo.replace(/\n/g, '\n   '))
+    log('   JSON cru vazou?', /\{\s*"reply"|"tasks"\s*:/.test(geo) ? 'SIM ❌' : 'não ✅')
+    log('   respondeu em português?', /\b(está|fica|você|mais próxim|km)\b/i.test(geo) ? 'sim ✅' : 'verificar')
     log('   destinos propostos:', await page.locator('.chat-destination').count())
     log('   ações por destino:', (await page.locator('.chat-destination .go > *').allTextContents()).join(' | '))
 

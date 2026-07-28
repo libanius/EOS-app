@@ -10,6 +10,8 @@
 - **O Pilot só sabe o que o cliente envia em `context`.** Ele não lê o banco nem chama provedores. Quando perguntado a temperatura, respondeu "não tenho acesso a dados em tempo real" — não era alucinação nem fase faltante: eu simplesmente não estava mandando o snapshot de clima. Ao adicionar campo novo ao app, lembrar de estendê-lo em `app/api/pilot/chat/route.ts` **e** no `Pilot.tsx`, senão o especialista fica cego para ele.
 - O system prompt agora contém uma instrução explícita **proibindo** o disclaimer padrão de "sem acesso em tempo real" e mandando responder com os números do bloco DADOS AO VIVO.
 - **Posições da família VÃO ao modelo desde D-068**, mas apenas as que `/api/circles` já liberou pelo consentimento de D-064. O gate é único: quem não ativou o toggle não aparece nem no mapa nem para a IA.
+- **O fallback do parser NUNCA pode mostrar JSON.** Uma resposta truncada pelo teto de tokens fez `JSON.parse` falhar e o fallback despejou `{"reply":...}` na conversa do usuário. Hoje: `response_format: json_object`, teto de 1400 tokens e `salvageReply()` que resgata o campo ou limpa o texto — nunca imprime a fonte.
+- **O Pilot busca lugares reais antes de responder** (`findPlaces` com Nominatim, uma chamada por mensagem, limitada à área do usuário). Sem isso ele só conhecia abrigos e família, e respondia "não há Home Depot nos dados" — honesto e inútil.
 - **O modelo nunca calcula geometria.** Distância e rumo são computados no aparelho (`lib/world/shelters.ts`) e enviados prontos; o prompt proíbe o modelo de calcular. Rumo errado em emergência aponta a família para o lado errado.
 
 ---
