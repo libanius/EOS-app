@@ -5,6 +5,20 @@
 
 ---
 
+## Armadilha recorrente: estender só um lado (2026-07-28)
+
+Três bugs desta sessão são o **mesmo erro**: adicionar um campo em uma ponta e esquecer a outra.
+
+1. O Pilot respondia "não tenho acesso a dados em tempo real" — eu não mandava o clima no `context`.
+2. **`shared_fields` aceitava `location` na UI e no gate de leitura, mas o `VALID_FIELDS` do `PATCH /api/circles/[id]/share` filtrava a string fora.** Resultado: ninguém num círculo conseguia ver ninguém. O toggle ligava, o servidor descartava, e voltava desligado no reload — uma feature que parecia funcionar e era no-op.
+3. O campo de conversa do Pilot ficava sob o BottomNav (`fixed`, z-index 100).
+
+**Antes de dar por pronta qualquer feature com whitelist, gate ou contexto: procure TODAS as listas que mencionam os irmãos do campo novo.** `grep` pelo nome de um campo vizinho (ex.: `emergency_contact`) encontra as listas que precisam do novo.
+
+Teste de regressão: `scripts/circle-location-test.mjs` — dois navegadores, um círculo, prova que o toggle persiste e que o outro vê o pino.
+
+---
+
 ## Pilot conversacional (2026-07-28)
 
 - **O Pilot só sabe o que o cliente envia em `context`.** Ele não lê o banco nem chama provedores. Quando perguntado a temperatura, respondeu "não tenho acesso a dados em tempo real" — não era alucinação nem fase faltante: eu simplesmente não estava mandando o snapshot de clima. Ao adicionar campo novo ao app, lembrar de estendê-lo em `app/api/pilot/chat/route.ts` **e** no `Pilot.tsx`, senão o especialista fica cego para ele.

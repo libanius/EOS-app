@@ -1,7 +1,12 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
-const VALID_FIELDS = ['water', 'food', 'medical', 'comms', 'emergency_contact'] as const
+// 'location' MUST be here. D-064 added the toggle to the UI and the consent gate
+// to the read path, but not to this write whitelist — so every attempt to share
+// location was silently filtered out on save, the switch reverted on reload, and
+// no one in a circle could ever see anyone. Extend BOTH sides or the feature is
+// a no-op that looks like it works.
+const VALID_FIELDS = ['water', 'food', 'medical', 'comms', 'emergency_contact', 'location'] as const
 type SharedField = typeof VALID_FIELDS[number]
 
 interface Ctx { params: { id: string } }

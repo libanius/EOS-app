@@ -444,3 +444,7 @@ body:has(.sim-banner) .wv2-mapcontrols { top: 12px; }
 /* AppActions is inline-styled and fixed at the top, so it needs !important to
    clear the simulation banner. */
 body:has(.sim-banner) .app-actions { top: 56px !important; }
+
+/* The Pilot conversation is a focused surface: the global AppActions buttons
+   would otherwise sit on top of its close button. */
+body:has(.wv2-pilot-chat) .app-actions { display: none; }

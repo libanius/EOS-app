@@ -1349,6 +1349,7 @@
 }
 @media (min-width: 900px) {
   .wv2-pilot-chat {
+    bottom: calc(var(--nav-inset) + var(--edge) + 74px);
     left: auto;
     right: var(--edge);
     width: 460px;
@@ -1915,8 +1916,10 @@
   animation: wv2-pilot-alert 1800ms ease-in-out infinite;
 }
 
-/* The conversation lifts above the on-screen keyboard. */
-.wv2-pilot-chat { bottom: var(--wv2-keyboard, 0px); }
+/* The compose field was rendering UNDER the bottom nav (fixed, z-index 100),
+   which is why it was invisible on a real phone. `max()` keeps the sheet above
+   whichever is taller at the time: the nav, or the on-screen keyboard. */
+.wv2-pilot-chat { bottom: max(var(--nav-inset), var(--wv2-keyboard, 0px)); }
 
 @media (prefers-reduced-motion: reduce) {
   .wv2-pilotbar .bar-orb:active { transform: none; }
