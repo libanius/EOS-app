@@ -9,11 +9,9 @@
  */
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { useLanguage } from '@/lib/i18n'
 
 export default function SimJoinPage({ params }: { params: { token: string } }) {
-  const router = useRouter()
   const { language } = useLanguage()
   const pt = language === 'pt'
   const [message, setMessage] = useState<string | null>(null)
@@ -25,7 +23,10 @@ export default function SimJoinPage({ params }: { params: { token: string } }) {
       .then((d: { ok?: boolean; error?: string; message?: string }) => {
         if (cancelled) return
         if (d.ok) {
-          router.replace('/dashboard')
+          // A FULL navigation, not router.replace: the invite poller lives in the
+          // app layout, which a client-side navigation does not remount — the
+          // guest would sit on the dashboard waiting up to 20s for the pop-up.
+          window.location.assign('/dashboard')
           return
         }
         setMessage(
@@ -37,7 +38,7 @@ export default function SimJoinPage({ params }: { params: { token: string } }) {
         if (!cancelled) setMessage(pt ? 'Não foi possível abrir o convite.' : 'Could not open the invite.')
       })
     return () => { cancelled = true }
-  }, [params.token, router, pt])
+  }, [params.token, pt])
 
   return (
     <div className="wv2 wv2-list-page" data-risk="safe" data-ready="true">

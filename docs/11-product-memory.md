@@ -15,6 +15,16 @@ Consequência de produto: enquanto o ponto for de perfil, todo mundo da mesma ci
 
 ---
 
+## Navegação client-side não remonta o layout (2026-07-28)
+
+O convidado que entrava por link ficava até **20 segundos** olhando o dashboard sem o pop-up. Causa: o poller de convites vive no layout `(app)`, e `router.replace()` é navegação client-side — o layout não remonta, então o efeito não roda de novo e só o intervalo salvava. A página de convite agora usa `window.location.assign()` de propósito.
+
+**Regra**: quando um fluxo depende de um efeito que mora no layout, uma navegação client-side não o dispara. Ou force navegação completa, ou exponha um gatilho no provider.
+
+Também: `circles.invite_code` é `character(6)` — gerar 7 caracteres estoura com `22001`.
+
+---
+
 ## Armadilha recorrente: estender só um lado (2026-07-28)
 
 Três bugs desta sessão são o **mesmo erro**: adicionar um campo em uma ponta e esquecer a outra.
