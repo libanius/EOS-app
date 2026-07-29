@@ -26,15 +26,23 @@ type CircleMember = {
 
 type CircleRow = { id: string; members?: CircleMember[] }
 
-/** How often the map re-reads circle positions while the screen is open. */
-const REFRESH_MS = 90_000
+/**
+ * How often the map re-reads circle positions.
+ *
+ * 90 seconds felt broken: the owner watched a stationary dot while his wife
+ * moved. A family looking for each other during an event needs this to feel
+ * live (D-073), so it polls while the screen is visible and backs off when not.
+ */
+const REFRESH_MS = 15_000
 
 function freshnessLabel(member: CircleMember, pt: boolean): string {
   if (member.location_source === 'profile') return pt ? 'perfil' : 'profile'
   if (!member.location_at) return pt ? 'agora' : 'now'
 
-  const ageMinutes = Math.floor((Date.now() - Date.parse(member.location_at)) / 60_000)
-  if (!Number.isFinite(ageMinutes) || ageMinutes < 2) return pt ? 'agora' : 'now'
+  const ageSeconds = Math.floor((Date.now() - Date.parse(member.location_at)) / 1000)
+  if (!Number.isFinite(ageSeconds)) return pt ? 'agora' : 'now'
+  if (ageSeconds < 75) return pt ? 'agora' : 'now'
+  const ageMinutes = Math.floor(ageSeconds / 60)
   if (ageMinutes < 60) return pt ? `há ${ageMinutes} min` : `${ageMinutes} min ago`
   const hours = Math.floor(ageMinutes / 60)
   return pt ? `há ${hours} h` : `${hours} h ago`

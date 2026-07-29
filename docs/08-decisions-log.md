@@ -4,6 +4,30 @@
 
 ---
 
+## D-073 — Localização em tempo real e interação a partir do marcador
+
+**Date**: 2026-07-29
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: O dono relatou que ele e a esposa continuavam sem se localizar, e pediu comportamento **igual ao Life360** — tempo real —, além de poder **tocar na foto de alguém no mapa** e agir: rota até a pessoa, mensagem pré-configurada.
+
+Diagnóstico nos dados de produção: ele tinha ponto ao vivo de 2 minutos; ela, nenhum. O `LocationReporter` tinha dois defeitos:
+1. **Checava a permissão UMA vez ao montar.** O flag de permissão é gravado quando o dashboard obtém a primeira posição — o que acontece *depois* do componente montar. Ele já havia desistido e nunca tentava de novo na sessão.
+2. **`getCurrentPosition` a cada 2 minutos não é tempo real.** Uma família se procurando durante um evento não espera dois minutos por atualização.
+
+**Decision**:
+1. **`watchPosition` contínuo**, publicando quando a pessoa **se move ≥ 25 m** ou quando o último envio passa de 45 s. Movimento, não jitter; e quem está parado continua fresco.
+2. **Prontidão é reavaliada a cada 10 s** até ser possível começar. Checar uma vez foi o bug.
+3. **Cadência de leitura**: 90 s → **15 s**, e o rótulo "agora" passa a valer até 75 s (antes eram 2 min, o que fazia "agora" mentir).
+4. **Piso de escrita no servidor**: 15 s → **8 s**. Baixo o bastante para parecer vivo, alto o bastante para um GPS tremido não martelar a linha.
+5. **Tocar num rosto abre o `MemberSheet`**: leitura e distância, **rota até a pessoa desenhada no mapa do EOS** (D-069), handoff para o app de mapas, e **mensagens pré-configuradas**.
+6. **Mensagens são presets, não texto livre.** Sob estresse ninguém compõe — escolhe. E vocabulário fixo é reconhecido instantaneamente por quem recebe. Só chega a quem compartilha um círculo, e nunca anônimo: o nome do remetente vai na notificação.
+7. **Falha de entrega é dita.** Se o destinatário não tem aparelho registrado para notificações, a UI diz isso em vez de deixar o remetente acreditar que a mensagem chegou.
+
+**Consequence**: o mapa deixa de ser um retrato e passa a ser uma superfície de ação. O custo é GPS contínuo enquanto o app está aberto — mitigado pelo limite de movimento, que evita envio a cada fix.
+
+---
+
 ## D-072 — Escolher com quem treinar, e convidar de fora por link
 
 **Date**: 2026-07-28

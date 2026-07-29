@@ -2063,3 +2063,103 @@
   color: var(--ink-3);
 }
 .wv2-mapcontrols .wv2-iconbtn.on .cap { color: var(--accent); }
+
+/* ═══ MEMBER SHEET (D-073) ═════════════════════════════════════════════════
+   Tap a face, act on that person. A marker that only says where someone is
+   answers half the question. */
+
+.wv2-member {
+  position: absolute;
+  z-index: 7;
+  left: 0;
+  right: 0;
+  bottom: var(--nav-inset);
+  max-height: 74dvh;
+  overflow-y: auto;
+  padding: var(--s5) var(--s5) calc(var(--s6) + env(safe-area-inset-bottom));
+  border-radius: var(--r-sheet) var(--r-sheet) 0 0;
+}
+@media (min-width: 900px) {
+  .wv2-member {
+    left: auto;
+    right: var(--edge);
+    width: 420px;
+    bottom: calc(var(--nav-inset) + var(--edge));
+    border-radius: 30px;
+  }
+}
+.wv2-member header { display: flex; align-items: center; gap: var(--s3); }
+.wv2-member .face {
+  flex: none;
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: var(--r-pill);
+  border: 2px solid var(--accent);
+  background: #0b0d12;
+  color: var(--ink);
+  font-size: 0.9375rem;
+  font-weight: 700;
+}
+.wv2-member .face img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.wv2-member .who { min-width: 0; }
+.wv2-member .who em { display: block; font-style: normal; margin-top: 2px; }
+
+.wv2-member .go { display: flex; gap: var(--s2); margin-top: var(--s4); }
+.wv2-member .go > * {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 0 var(--s3);
+  border: 1px solid var(--sep-strong);
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.wv2-member .go > .primary {
+  border-color: transparent;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 700;
+}
+.wv2-member .go > *:active { transform: scale(0.97); }
+
+.wv2-member .label { margin: var(--s5) 0 var(--s2); }
+.wv2-member .presets { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s2); }
+.wv2-member .presets button {
+  min-height: 44px;
+  padding: 0 var(--s3);
+  border: 1px solid var(--sep);
+  border-radius: 14px;
+  background: var(--fill-2);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.wv2-member .presets button.done {
+  background: rgba(var(--accent-rgb), 0.2);
+  border-color: rgba(var(--accent-rgb), 0.45);
+  color: var(--ink);
+}
+.wv2-member .presets button:active:not(:disabled) { transform: scale(0.97); }
+.wv2-member .warn { margin: var(--s3) 0 0; color: #ff9f0a; }
+.wv2-member .note { margin: var(--s4) 0 0; line-height: 1.5; }
+
+@media (prefers-reduced-motion: reduce) {
+  .wv2-member .go > *:active,
+  .wv2-member .presets button:active:not(:disabled) { transform: none; }
+}

@@ -1,69 +1,82 @@
 'use client'
 
 /**
- * LocationReporter — reports the user's live position while the app is open (D-064).
+ * LocationReporter — continuous live location for the circle (D-064 / D-073).
  *
- * Three rules keep this from becoming a surveillance component:
+ * REWRITTEN because the first version had two defects that made it useless in
+ * practice:
  *
- *  1. CONSENT FIRST. It reports only if the user turned the location toggle on
- *     in at least one circle. No consent anywhere → it never reads the GPS.
- *  2. IT NEVER RAISES A PERMISSION PROMPT. It checks the Permissions API and
- *     stays silent unless geolocation is ALREADY granted. Asking for location
- *     from an invisible background component, with no context for why, is
- *     exactly the pattern that trains people to deny. The prompt belongs to a
- *     deliberate action — the GPS button on the dashboard.
- *  3. IT STOPS WHEN THE APP IS NOT VISIBLE. "Live while the app is open" is the
- *     decision; a hidden tab is not open.
+ *  1. It checked readiness ONCE on mount. The permission flag is written when the
+ *     dashboard first obtains a position — which happens *after* this component
+ *     mounts — so the reporter had already given up and never tried again for the
+ *     rest of the session. One member reported, the other never did.
+ *  2. A `getCurrentPosition` every two minutes is not live. The owner asked for
+ *     Life360 behaviour, and a family looking for each other during an event
+ *     cannot wait two minutes per update.
  *
- * Server-side, /api/location keeps only the latest point.
+ * Now it WATCHES position continuously and posts when the person has actually
+ * moved, or when the last report is getting old. Still bounded by the same two
+ * rules: consent per circle, and never a permission prompt from the background.
  */
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 
-/** Battery matters more than seconds of precision for a family map. */
-const REPORT_INTERVAL_MS = 120_000
+/** Post when the person moved at least this far — movement, not jitter. */
+const MOVE_THRESHOLD_M = 25
+/** …or when the last report is this old, so a stationary person stays fresh. */
+const HEARTBEAT_MS = 45_000
+/** How often to re-check whether we are allowed to start. */
+const READY_POLL_MS = 10_000
+
 const GPS_OPTIONS: PositionOptions = {
-  enableHighAccuracy: false,
-  timeout: 15_000,
-  maximumAge: 60_000,
+  enableHighAccuracy: true,
+  timeout: 20_000,
+  maximumAge: 10_000,
+}
+
+function metresBetween(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
+  const R = 6371000
+  const rad = (d: number) => (d * Math.PI) / 180
+  const dLat = rad(b.lat - a.lat)
+  const dLng = rad(b.lng - a.lng)
+  const h =
+    Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)))
 }
 
 export default function LocationReporter() {
+  const lastSent = useRef<{ lat: number; lng: number; at: number } | null>(null)
+
   useEffect(() => {
     let cancelled = false
-    let timer: ReturnType<typeof setInterval> | undefined
+    let watchId: number | null = null
+    let readyTimer: ReturnType<typeof setInterval> | null = null
 
-    const report = (position: GeolocationPosition) => {
+    const post = (position: GeolocationPosition) => {
       if (cancelled) return
+      const point = { lat: position.coords.latitude, lng: position.coords.longitude }
+      const previous = lastSent.current
+      const moved = previous ? metresBetween(previous, point) : Infinity
+      const stale = previous ? Date.now() - previous.at > HEARTBEAT_MS : true
+
+      // Movement or staleness — never both required, never every single fix.
+      if (moved < MOVE_THRESHOLD_M && !stale) return
+
+      lastSent.current = { ...point, at: Date.now() }
       void fetch('/api/location', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-          accuracy_m: position.coords.accuracy,
-        }),
+        body: JSON.stringify({ ...point, accuracy_m: position.coords.accuracy }),
       }).catch(() => {
-        /* Reporting is additive. A failed post must never surface to the user. */
+        // Let the next fix try again rather than losing the position entirely.
+        lastSent.current = previous
       })
     }
 
-    const tick = () => {
-      if (cancelled) return
-      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
-      navigator.geolocation.getCurrentPosition(report, () => {}, GPS_OPTIONS)
-    }
+    /** Consent + an already-granted permission. Both required, neither prompted. */
+    const canReport = async () => {
+      if (typeof navigator === 'undefined' || !('geolocation' in navigator)) return false
 
-    const start = async () => {
-      if (typeof navigator === 'undefined' || !('geolocation' in navigator)) return
-
-      // Rule 2: only proceed on an already-granted permission.
-      //
-      // iOS Safari does not implement navigator.permissions for geolocation, so
-      // the strict version of this check silently disabled live location on
-      // every iPhone. The flag is written by RiskProvider the first time the app
-      // actually receives a position — evidence of a grant that already
-      // happened, which keeps the "never prompt from the background" rule.
       let granted = false
       try {
         granted = localStorage.getItem('eos-geo-ok') === '1'
@@ -78,29 +91,39 @@ export default function LocationReporter() {
           granted = false
         }
       }
-      if (!granted) return
-      if (cancelled) return
+      if (!granted) return false
 
-      // Rule 1: consent, read from the circles the user actually belongs to.
       const response = await fetch('/api/circles').catch(() => null)
-      if (!response?.ok || cancelled) return
+      if (!response?.ok) return false
       const data = (await response.json().catch(() => null)) as
         | { circles?: Array<{ shared_fields?: string[] }> }
         | null
-      const consented = (data?.circles ?? []).some(circle =>
-        (circle.shared_fields ?? []).includes('location'),
-      )
-      if (!consented || cancelled) return
-
-      tick()
-      timer = setInterval(tick, REPORT_INTERVAL_MS)
+      return (data?.circles ?? []).some(circle => (circle.shared_fields ?? []).includes('location'))
     }
 
-    void start()
+    const startWatching = () => {
+      if (cancelled || watchId !== null) return
+      watchId = navigator.geolocation.watchPosition(post, () => {}, GPS_OPTIONS)
+      if (readyTimer) {
+        clearInterval(readyTimer)
+        readyTimer = null
+      }
+    }
+
+    // Keep asking until allowed. The permission flag arrives when the dashboard
+    // first gets a fix, which is after this mounts — checking once was the bug.
+    const attempt = async () => {
+      if (cancelled || watchId !== null) return
+      if (await canReport()) startWatching()
+    }
+
+    void attempt()
+    readyTimer = setInterval(() => void attempt(), READY_POLL_MS)
 
     return () => {
       cancelled = true
-      if (timer) clearInterval(timer)
+      if (watchId !== null) navigator.geolocation.clearWatch(watchId)
+      if (readyTimer) clearInterval(readyTimer)
     }
   }, [])
 

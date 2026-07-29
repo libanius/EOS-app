@@ -229,7 +229,7 @@ function markerEl(className: string, pin: string, label: string, color?: string,
   return el
 }
 
-export default function WorldMap({ plateUrl, family = [], shelters = [], guidance = null, mapBase = 'hybrid', routeFocusNonce = 0, focus = null, courseTo = null, recenterNonce = 0, onMapInteraction }: {
+export default function WorldMap({ plateUrl, family = [], shelters = [], guidance = null, mapBase = 'hybrid', routeFocusNonce = 0, focus = null, courseTo = null, recenterNonce = 0, onMemberTap, onMapInteraction }: {
   state: string
   plateUrl: string
   family?: WorldFamilyMember[]
@@ -247,6 +247,8 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
   courseTo?: { lat: number; lng: number; label: string; nonce: number } | null
   /** Bump to re-centre on the user. Nothing else ever moves the camera to them. */
   recenterNonce?: number
+  /** Tapping a face is how the user acts on a person, not just sees them (D-073). */
+  onMemberTap?: (id: string) => void
   onMapInteraction?: () => void
 }) {
   const { coords } = useRisk()
@@ -302,6 +304,11 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
       if (m.isMe) {
         // Centred, unlabelled: a presence, not a marker (see selfPuckEl).
         const puck = selfPuckEl(m.avatarUrl, m.live !== false)
+        if (onMemberTap) {
+          puck.style.pointerEvents = 'auto'
+          puck.style.cursor = 'pointer'
+          puck.addEventListener('click', () => onMemberTap(m.id))
+        }
         markersRef.current.push(
           new maplibregl.Marker({ element: puck, anchor: 'center', offset: offsetFor(m, i) })
             .setLngLat([m.lng, m.lat])
@@ -320,6 +327,10 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
         color,
         m.avatarUrl,
       )
+      if (onMemberTap) {
+        el.style.cursor = 'pointer'
+        el.addEventListener('click', () => onMemberTap(m.id))
+      }
       markersRef.current.push(
         new maplibregl.Marker({ element: el, anchor: 'bottom', offset: offsetFor(m, i) })
           .setLngLat([m.lng, m.lat])
@@ -566,7 +577,7 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
   useEffect(() => {
     if (readyRef.current) void placeOverlays()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [family, shelters, guidance])
+  }, [family, shelters, guidance, onMemberTap])
 
   useEffect(() => {
     const map = mapRef.current

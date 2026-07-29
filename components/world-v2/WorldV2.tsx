@@ -22,6 +22,7 @@ import WorldMap from '@/components/world-dashboard/WorldMap'
 import DetentSheet, { type Detent } from './DetentSheet'
 import Pilot from './Pilot'
 import PilotBar from './PilotBar'
+import MemberSheet from './MemberSheet'
 import type { PilotContext } from './pilot-engine'
 import type { ShelterSnapshot } from '@/lib/world/shelters'
 import { Bar, Card, IconButton, Pill, PillLink, SectionLabel, Tile, TileGrid } from './primitives'
@@ -155,6 +156,7 @@ export default function WorldV2() {
   const [pilotOpen, setPilotOpen] = useState(false)
   const [pilotAsk, setPilotAsk] = useState<{ text: string; nonce: number } | null>(null)
   const [recenterNonce, setRecenterNonce] = useState(0)
+  const [tappedMember, setTappedMember] = useState<string | null>(null)
   const familyRaw = useCircleFamily(language === 'pt', coords, avatarUrl)
   // A failed instrument must actually be blind, not quietly still working.
   const familyBlind = isSourceDown(simulation.config, 'family')
@@ -274,6 +276,7 @@ export default function WorldV2() {
           family={family}
           courseTo={course}
           recenterNonce={recenterNonce}
+          onMemberTap={setTappedMember}
           shelters={(shelterSnapshot?.shelters ?? []).map(s => ({ id: s.id, name: s.name, lat: s.lat, lng: s.lng, distanceKm: s.distanceKm }))}
           onMapInteraction={() => setDetent('peek')}
         />
@@ -359,6 +362,17 @@ export default function WorldV2() {
           </DetentSheet>
         )}
       </div>
+
+      <MemberSheet
+        member={family.find(m => m.id === tappedMember) ?? null}
+        pt={metric}
+        myCoords={coords}
+        onClose={() => setTappedMember(null)}
+        onShowCourse={destination => {
+          setCourse({ ...destination, nonce: Date.now() })
+          setDetent('peek')
+        }}
+      />
 
       {/* Always reachable, above every other surface — that is the whole point. */}
       <div className="wv2-chrome">
