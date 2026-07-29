@@ -2003,3 +2003,18 @@
 @media (prefers-reduced-motion: reduce) {
   .wv2-sim-page .sim-stepper button:active { transform: none; }
 }
+
+/* The guest invite link: monospaced and selectable, because people do read and
+   retype these out loud. */
+.wv2-sim-page .sim-link {
+  margin: 0;
+  padding: var(--s3);
+  border-radius: var(--r-tile);
+  background: var(--fill-2);
+  border: 1px solid var(--sep);
+  color: var(--ink);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8125rem;
+  word-break: break-all;
+  user-select: all;
+}

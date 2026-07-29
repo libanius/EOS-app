@@ -24,6 +24,13 @@ const VAPID_SUBJECT = process.env.VAPID_SUBJECT ?? 'mailto:brightscalegroup@gmai
 /** A drill nobody ended is over after this — no one inherits a stale scenario. */
 const MAX_AGE_MINUTES = 90
 
+/** Opaque, unguessable, and short enough to share out loud if needed. */
+function randomToken() {
+  const bytes = new Uint8Array(12)
+  crypto.getRandomValues(bytes)
+  return Array.from(bytes, b => b.toString(36).padStart(2, '0')).join('').slice(0, 18)
+}
+
 function tableMissing(error: { code?: string } | null) {
   return error?.code === '42P01'
 }
@@ -89,39 +96,42 @@ export async function POST(request: NextRequest) {
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 })
 
-  let body: { circleId?: string; config?: unknown }
+  let body: { circleIds?: string[]; circleId?: string; config?: unknown }
   try {
     body = await request.json()
   } catch {
     return NextResponse.json({ error: 'Corpo inválido.' }, { status: 400 })
   }
-  if (!body.circleId || !body.config) {
-    return NextResponse.json({ error: 'circleId e config são obrigatórios.' }, { status: 400 })
+  // Accepts a list; the old single-circle shape still works.
+  const circleIds = (body.circleIds ?? (body.circleId ? [body.circleId] : [])).filter(Boolean)
+  if (!circleIds.length || !body.config) {
+    return NextResponse.json({ error: 'circleIds e config são obrigatórios.' }, { status: 400 })
   }
 
   const admin = createAdminClient()
   if (!admin) return NextResponse.json({ error: 'Indisponível.' }, { status: 503 })
 
-  // Only a member may start a drill in a circle.
-  const { data: membership } = await admin
+  // Only a member may start a drill in a circle — checked for every circle asked.
+  const { data: myMemberships } = await admin
     .from('circle_members')
-    .select('user_id')
-    .eq('circle_id', body.circleId)
+    .select('circle_id')
     .eq('user_id', user.id)
-    .maybeSingle()
-  if (!membership) return NextResponse.json({ error: 'Não é membro deste círculo.' }, { status: 403 })
+    .in('circle_id', circleIds)
+  const allowed = (myMemberships ?? []).map(m => m.circle_id as string)
+  if (!allowed.length) return NextResponse.json({ error: 'Não é membro destes círculos.' }, { status: 403 })
 
   // One active drill per circle: two competing scenarios on the same family is
   // exactly the confusion this feature must not create.
   await admin
     .from('simulation_sessions')
     .update({ status: 'ended', ended_at: new Date().toISOString(), ended_reason: 'owner' })
-    .eq('circle_id', body.circleId)
+    .in('circle_id', allowed)
     .eq('status', 'active')
 
+  const joinToken = randomToken()
   const { data: created, error } = await admin
     .from('simulation_sessions')
-    .insert({ circle_id: body.circleId, owner_id: user.id, config: body.config })
+    .insert({ circle_id: allowed[0], owner_id: user.id, config: body.config, join_token: joinToken })
     .select('id')
     .single()
 
@@ -135,9 +145,11 @@ export async function POST(request: NextRequest) {
   const { data: members } = await admin
     .from('circle_members')
     .select('user_id')
-    .eq('circle_id', body.circleId)
+    .in('circle_id', allowed)
 
-  const participants = (members ?? []).map(m => ({
+  // A person in two selected circles is still one participant.
+  const uniqueMembers = Array.from(new Set((members ?? []).map(m => m.user_id as string)))
+  const participants = uniqueMembers.map(id => ({ user_id: id })).map(m => ({
     session_id: created.id,
     user_id: m.user_id,
     // The starter is in by definition; everyone else must accept.
@@ -148,7 +160,7 @@ export async function POST(request: NextRequest) {
 
   // Push is best-effort: the in-app poll shows the invite even if it fails.
   if (VAPID_PUBLIC && VAPID_PRIVATE) {
-    const others = (members ?? []).map(m => m.user_id).filter(id => id !== user.id)
+    const others = uniqueMembers.filter(id => id !== user.id)
     if (others.length) {
       const { data: subs } = await admin
         .from('push_subscriptions')
@@ -174,5 +186,5 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ sessionId: created.id, invited: participants.length - 1 })
+  return NextResponse.json({ sessionId: created.id, joinToken, invited: participants.length - 1 })
 }

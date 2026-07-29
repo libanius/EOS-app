@@ -4,6 +4,24 @@
 
 ---
 
+## D-072 — Escolher com quem treinar, e convidar de fora por link
+
+**Date**: 2026-07-28
+**Status**: DECIDED / IMPLEMENTADO — depende da migration `20260728010000_simulation_join_token.sql`
+
+**Context**: A D-071 convidava "o círculo", mas o código usava `circles[0]` — o primeiro da lista, sem o dono escolher. Quem tem mais de um círculo não conseguia decidir, e não havia como chamar alguém de fora (um vizinho, um parente que ainda não está no círculo).
+
+**Decision**:
+1. **Seleção múltipla de círculos** na tela do Cenário, todos pré-marcados: o caso comum é "treinar com a minha família". Uma pessoa que está em dois círculos selecionados entra uma vez só.
+2. **Link de convite** (`/sim/[token]`) para quem está fora. O token é opaco e concede **exatamente uma coisa**: ser adicionado como `invited`.
+3. **O link é campainha, não chave.** Quem abre ainda precisa de conta no EOS (o middleware protege a rota) e ainda precisa aceitar o mesmo pop-up de todo mundo (D-071). Um link nunca coloca ninguém num cenário em silêncio — nem família, nem convidado.
+4. **Idempotente**: abrir o link duas vezes não reseta uma resposta já dada, e um treino encerrado responde que acabou em vez de ressuscitar.
+5. O link aparece **depois** de iniciar, na própria tela do Cenário, porque só existe quando a sessão existe — e é ali que o dono ainda está decidindo quem mais chamar.
+
+**Consequence**: o treino deixa de ser "o meu primeiro círculo" e passa a ser um exercício que o dono compõe. O custo é uma superfície de convite por link, mitigada por exigir conta e aceite explícito.
+
+---
+
 ## D-071 — Simulação compartilhada com o círculo
 
 **Date**: 2026-07-28

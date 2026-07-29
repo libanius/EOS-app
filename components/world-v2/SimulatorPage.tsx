@@ -56,8 +56,13 @@ const COPY = {
     reserveHalf: 'Metade',
     reserveCritical: 'No limite',
     start: 'Iniciar simulação',
-    inviteCircle: 'Convidar meu círculo',
-    inviteHint: 'Cada um recebe um convite e decide se entra. Quem aceitar vê o mesmo cenário.',
+    shareWith: 'Compartilhar com',
+    shareHint: 'Cada pessoa recebe um convite e decide se entra. Quem aceitar vê o mesmo cenário.',
+    guestLink: 'Convidar alguém de fora',
+    guestHint: 'Qualquer pessoa com conta no EOS pode entrar por este link. Ela também precisa aceitar o convite.',
+    copyLink: 'Copiar link',
+    copied: 'Link copiado',
+    noCircles: 'Você ainda não tem um círculo. A simulação roda só no seu aparelho.',
     people: 'pessoas',
     instruments: 'Instrumentos',
     instrumentsHint: 'Cada fonte pode ficar ao vivo, simulada, ou fora do ar. Treinar com a fonte caída é o cenário que mais importa — é para isso que o EOS existe.',
@@ -103,8 +108,13 @@ const COPY = {
     reserveHalf: 'Half',
     reserveCritical: 'At the limit',
     start: 'Start simulation',
-    inviteCircle: 'Invite my circle',
-    inviteHint: 'Each person gets an invite and decides. Whoever accepts sees the same scenario.',
+    shareWith: 'Share with',
+    shareHint: 'Each person gets an invite and decides. Whoever accepts sees the same scenario.',
+    guestLink: 'Invite someone outside',
+    guestHint: 'Anyone with an EOS account can join through this link. They still have to accept the invite.',
+    copyLink: 'Copy link',
+    copied: 'Link copied',
+    noCircles: 'You do not have a circle yet. The simulation runs on your device only.',
     people: 'people',
     instruments: 'Instruments',
     instrumentsHint: 'Each source can be live, simulated, or off the air. Training with a dead feed is the scenario that matters most — it is what EOS exists for.',
@@ -138,13 +148,18 @@ export default function SimulatorPage() {
   const pt = language === 'pt'
   const { config: active, start, stop, setSharedSession } = useSimulation()
   const [circles, setCircles] = useState<Array<{ id: string; name: string; members: number }>>([])
-  const [invite, setInvite] = useState(true)
+  const [selected, setSelected] = useState<string[]>([])
+  const [joinLink, setJoinLink] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     fetch('/api/circles')
       .then(r => (r.ok ? r.json() : null))
       .then((d: { circles?: Array<{ id: string; name: string; members?: unknown[] }> } | null) => {
-        setCircles((d?.circles ?? []).map(c => ({ id: c.id, name: c.name, members: (c.members ?? []).length })))
+        const list = (d?.circles ?? []).map(c => ({ id: c.id, name: c.name, members: (c.members ?? []).length }))
+        setCircles(list)
+        // Pre-select everything: the common case is "train with my family".
+        setSelected(list.map(c => c.id))
       })
       .catch(() => setCircles([]))
   }, [])
@@ -158,17 +173,24 @@ export default function SimulatorPage() {
 
     // D-071: invite the circle. Everyone gets a pop-up asking to join; nobody is
     // placed in the drill without answering it.
-    if (invite && circles[0]) {
-      await fetch('/api/simulation', {
+    if (selected.length) {
+      const created = await fetch('/api/simulation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ circleId: circles[0].id, config: draft }),
+        body: JSON.stringify({ circleIds: selected, config: draft }),
       })
         .then(r => (r.ok ? r.json() : null))
-        .then((d: { sessionId?: string } | null) => {
-          if (d?.sessionId) setSharedSession(d.sessionId)
-        })
-        .catch(() => {})
+        .catch(() => null)
+
+      if (created?.sessionId) {
+        setSharedSession(created.sessionId)
+        if (created.joinToken) {
+          // Kept on this screen instead of navigating away: the link is only
+          // useful while the owner is still deciding who else to pull in.
+          setJoinLink(`${window.location.origin}/sim/${created.joinToken}`)
+          return
+        }
+      }
     }
 
     router.push('/dashboard')
@@ -183,7 +205,30 @@ export default function SimulatorPage() {
           <p className="t-body ink-2">{c.lead}</p>
         </header>
 
-        {active ? (
+        {joinLink ? (
+          <Card accented>
+            <SectionLabel>{c.guestLink}</SectionLabel>
+            <p className="t-body ink-2" style={{ margin: '0.25rem 0 0.75rem' }}>{c.guestHint}</p>
+            <p className="sim-link">{joinLink}</p>
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', flexWrap: 'wrap' }}>
+              <Pill
+                primary
+                onClick={async () => {
+                  try {
+                    if (navigator.share) await navigator.share({ url: joinLink, title: 'EOS' })
+                    else await navigator.clipboard.writeText(joinLink)
+                    setCopied(true)
+                  } catch {
+                    /* the user dismissed the share sheet */
+                  }
+                }}
+              >
+                {copied ? c.copied : c.copyLink}
+              </Pill>
+              <Pill onClick={() => router.push('/dashboard')}>{c.goWorld}</Pill>
+            </div>
+          </Card>
+        ) : active ? (
           <Card accented>
             <SectionLabel>{c.running}</SectionLabel>
             <p className="t-body" style={{ marginTop: '0.25rem' }}>{c.runningHint}</p>
@@ -337,13 +382,29 @@ export default function SimulatorPage() {
               </Card>
             )}
 
-            {circles.length > 0 && (
-              <Card>
-                <SectionLabel trailing={`${circles[0].members} ${c.people}`}>{circles[0].name}</SectionLabel>
-                <Toggle label={c.inviteCircle} on={invite} onChange={setInvite} />
-                <p className="t-foot ink-3" style={{ marginTop: '0.5rem' }}>{c.inviteHint}</p>
-              </Card>
-            )}
+            {/* ── Who trains with you ── */}
+            <Card>
+              <SectionLabel>{c.shareWith}</SectionLabel>
+              {circles.length === 0 ? (
+                <p className="t-body ink-2" style={{ marginTop: '0.25rem' }}>{c.noCircles}</p>
+              ) : (
+                <>
+                  <p className="t-foot ink-3" style={{ margin: '0 0 0.5rem' }}>{c.shareHint}</p>
+                  {circles.map(circle => (
+                    <Toggle
+                      key={circle.id}
+                      label={`${circle.name} · ${circle.members} ${c.people}`}
+                      on={selected.includes(circle.id)}
+                      onChange={on =>
+                        setSelected(current =>
+                          on ? [...current, circle.id] : current.filter(id => id !== circle.id),
+                        )
+                      }
+                    />
+                  ))}
+                </>
+              )}
+            </Card>
 
             <motion.div whileTap={{ scale: 0.98 }} transition={SPRING.quick}>
               <Pill primary wide onClick={launch}>{c.start}</Pill>

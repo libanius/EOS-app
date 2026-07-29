@@ -147,6 +147,7 @@
 | SIM-T02 | Painéis de configuração (ameaça, clima, recursos, saúde, infraestrutura, posição) | ✅ COMPLETE | 2026-07-28 — ameaça, severidade, chegada, infraestrutura, mobilidade/medicação, reservas |
 | SIM-T08 | Painel de instrumentos: cada fonte ao vivo / simulada / fora do ar + leituras ajustáveis | ✅ COMPLETE | 2026-07-28 — 7 fontes em 3 modos, 8 leituras com stepper. O Pilot recebe as fontes caídas e nomeia a cegueira. Verificado em navegador |
 | SIM-T09 | Traduzir o texto livre do cenário para os painéis, revisável antes de rodar | PENDING | Hoje o texto livre alimenta só o briefing do Pilot |
+| SIM-T10 | Escolher círculos e convidar de fora por link | ✅ COMPLETE (código) | 2026-07-28 — D-072. **Falta aplicar** `20260728010000_simulation_join_token.sql` |
 | SIM-T03 | Sessão: briefing pelo Pilot com RAG, rodar, sair a um toque | ✅ COMPLETE | 2026-07-28 — `/api/pilot/chat` com RAG; o Pilot sabe quando está em simulação |
 | SIM-T04 | Injeção de eventos e avanço de tempo ("+6h", "a energia caiu") | ✅ COMPLETE | 2026-07-28 — a faixa de simulação abre controles: +3h, +6h, Impacto, e cortar luz/rede/vias em tempo real |
 | SIM-T05 | Debrief com lacunas quantificadas + escrita confirmada no checklist | ✅ COMPLETE | 2026-07-28 — `lib/simulation-debrief.ts`. Verificado: veredito, exigia 6 dias vs tinha 0.9, 5 lacunas, e adicionar gravou no checklist real |
