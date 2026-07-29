@@ -210,6 +210,7 @@
 | WV2-T09 | Prontidão pareada ao índice de risco no dashboard | ✅ COMPLETE | 2026-07-28 — os dois números só significam algo juntos: risco 9 lê diferente a 20% e a 90% de prontidão |
 | WV2-T10 | Responsividade no celular: câmera do usuário, teclado e entrada única | ✅ COMPLETE | 2026-07-28 — D-070. A recentragem automática recolhia o sheet em uso; agora a câmera segue só na 1ª leitura e apenas gestos reais recolhem o HUD |
 | WV2-T11 | PilotBar substitui a busca — o Pilot vira a entrada única | ✅ COMPLETE | 2026-07-28 — D-070; `MapSearch` aposentado |
+| WV2-T12 | PilotBar abre a conversa no Enter, não no toque | ✅ COMPLETE | 2026-07-29 — D-073; tocar na barra deixa digitar, só o Enter submete ao Pilot |
 | PILOT-T03 | Rule-backed recommendation states: GO, LIMITED, WAIT, AVOID, PRIORITY OVERRIDE | BLOCKED | Critical rules must override AI |
 | PILOT-T04 | Metrics instrumentation for discovery, trust, retention, personalization, safety | BLOCKED | Needed before production rollout |
 

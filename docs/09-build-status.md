@@ -10,7 +10,8 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Abrigos oficiais + planos da família (FAM/PLAN) + gates de validação da v2 abertos (WV2-T05) |
-| **Last Completed Task** | **PLAN-T01 — modelo de dados e API do plano de voo (2026-07-29)** |
+| **Last Completed Task** | **WV2-T12 / D-073 — a PilotBar abre a conversa no Enter, não no toque (2026-07-29)** |
+| | PLAN-T01 — modelo de dados e API do plano de voo (2026-07-29)** |
 | | WV2-T06 rótulos nos controles do mapa · FAM-T08 cache offline dos abrigos |
 | | Fix: localização ao vivo travada no iOS; ponto de perfil agora parece aproximado |
 | | D-072 / SIM-T10 — escolher círculos e convidar de fora por link (2026-07-28)** |

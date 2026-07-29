@@ -4,6 +4,23 @@
 
 ---
 
+## D-073 — A PilotBar abre a conversa no Enter, não no toque
+
+**Date**: 2026-07-29
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: A PilotBar (D-070) abria o Pilot no `onFocus` do campo. Tocar na barra — o gesto natural de quem vai *digitar* — já subia a folha da conversa sobre o mapa antes de existir um único caractere. A pessoa não tinha perguntado nada e a tela já estava coberta; no celular ainda ficava escrevendo numa barra escondida atrás da conversa que ela mesma abriu.
+
+**Decision**:
+1. **Foco é intenção de digitar; Enter é intenção de perguntar.** O `onFocus` some. A barra fica sendo só uma barra até a pergunta ser submetida.
+2. **Enter com o campo vazio não faz nada.** Antes abria o Pilot; um Enter sem texto é escorregão, não pedido.
+3. **O orb continua a porta de entrada** para quem quer o Pilot sem ter uma pergunta pronta — a entrada única de D-070 fica intacta, só deixa de ser acidental.
+4. **Submeter tira o foco do campo**, para o teclado do celular baixar e a resposta aparecer inteira.
+
+**Consequence**: o mapa continua visível enquanto se formula a pergunta, e a conversa só cobre a tela quando há de fato uma pergunta para responder. Custo: um toque a mais (o orb) para quem só queria abrir o Pilot — aceito, porque abrir sem pergunta é o caso raro.
+
+---
+
 ## D-072 — Escolher com quem treinar, e convidar de fora por link
 
 **Date**: 2026-07-28

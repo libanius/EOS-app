@@ -5,6 +5,12 @@
 
 ---
 
+## `onFocus` numa barra que abre folha é armadilha no celular (2026-07-29)
+
+A PilotBar abria a conversa no foco do campo. Parecia atalho e era o contrário: tocar na barra é o gesto de quem vai **digitar**, e a folha subia sobre o mapa antes de existir texto. Pior no telefone — o campo em foco continuava embaixo da conversa recém-aberta, com o teclado por cima.
+
+Regra que fica (D-073): **foco não é submit**. Superfície que cobre a tela abre no Enter (ou num toque explícito, como o orb), nunca no foco. E ao submeter, dar `blur()` no campo: sem isso o teclado do celular fica de pé escondendo a resposta.
+
 ## iOS Safari não responde `navigator.permissions` para geolocation (2026-07-29)
 
 O `LocationReporter` exigia `permissions.query({name:'geolocation'}).state === 'granted'` antes de enviar. No iPhone isso lança ou devolve nada, e o `catch` fazia `return` — **a localização ao vivo ficava desligada em todo iPhone, em silêncio**. O mapa então caía no ponto de perfil, quilômetros longe.
