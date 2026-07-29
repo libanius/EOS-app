@@ -34,6 +34,9 @@ type SimulationCtx = {
   setSharedSession: (id: string | null) => void
   /** Set when the session was ended by a real alert, so the UI can explain why. */
   abortedByRealAlert: boolean
+  /** The config of a drill that just ENDED deliberately — drives the debrief. */
+  debriefFor: SimulationConfig | null
+  clearDebrief: () => void
   start: (config: SimulationConfig) => void
   update: (patch: Partial<SimulationConfig>) => void
   stop: () => void
@@ -52,6 +55,8 @@ export function useSimulation(): SimulationCtx {
       sharedSessionId: null,
       setSharedSession: () => {},
       abortedByRealAlert: false,
+      debriefFor: null,
+      clearDebrief: () => {},
       start: () => {},
       update: () => {},
       stop: () => {},
@@ -65,6 +70,7 @@ export default function SimulationProvider({ children }: { children: ReactNode }
   const [config, setConfig] = useState<SimulationConfig | null>(null)
   const [abortedByRealAlert, setAborted] = useState(false)
   const [sharedSessionId, setSharedSessionId] = useState<string | null>(null)
+  const [debriefFor, setDebriefFor] = useState<SimulationConfig | null>(null)
   const lastTouch = useRef<number>(0)
 
   // Ending a SHARED drill ends it for the whole circle (D-071). A family split
@@ -84,7 +90,12 @@ export default function SimulationProvider({ children }: { children: ReactNode }
 
   const stop = useCallback(() => {
     endShared('owner')
-    setConfig(null)
+    // A deliberate end earns a debrief; the value of a simulator is what you
+    // learn afterwards, not the run itself (doc 19 §8).
+    setConfig(current => {
+      if (current) setDebriefFor(current)
+      return null
+    })
     lastTouch.current = 0
   }, [endShared])
 
@@ -104,6 +115,8 @@ export default function SimulationProvider({ children }: { children: ReactNode }
       if (!current) return current
       setAborted(true)
       endShared('real_alert')
+      // NO debrief here. A genuine threat owns the screen; a training report is
+      // exactly the wrong thing to show at that moment.
       return null
     })
   }, [endShared])
@@ -135,13 +148,15 @@ export default function SimulationProvider({ children }: { children: ReactNode }
       sharedSessionId,
       setSharedSession: setSharedSessionId,
       abortedByRealAlert,
+      debriefFor,
+      clearDebrief: () => setDebriefFor(null),
       start,
       update,
       stop,
       abortForRealAlert,
       clearAbortNotice,
     }),
-    [config, sharedSessionId, abortedByRealAlert, start, update, stop, abortForRealAlert, clearAbortNotice],
+    [config, sharedSessionId, abortedByRealAlert, debriefFor, start, update, stop, abortForRealAlert, clearAbortNotice],
   )
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>

@@ -6,6 +6,7 @@ import LocationReporter from '@/components/LocationReporter'
 import SimulationProvider from '@/components/SimulationProvider'
 import SimulationBanner from '@/components/SimulationBanner'
 import SimulationInvite from '@/components/SimulationInvite'
+import SimulationDebrief from '@/components/SimulationDebrief'
 
 // NOTE: V2Shell (components/v2 — the "Prévia Viva" risk state machine) is WIP and
 // NOT on the roadmap yet (see D-045 / P3-T07). It was shipped to production
@@ -18,6 +19,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <SimulationBanner />
       {/* D-071: a família é convidada, nunca colocada no treino sem aceitar. */}
       <SimulationInvite />
+      {/* SIM-T05: o que o treino ensinou, em números. */}
+      <SimulationDebrief />
       <FichaFirstRun />
       {/* D-064: silent unless the user consented AND already granted GPS. */}
       <LocationReporter />

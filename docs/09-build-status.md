@@ -10,7 +10,8 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Abrigos oficiais + planos da família (FAM/PLAN) + gates de validação da v2 abertos (WV2-T05) |
-| **Last Completed Task** | **D-071 — simulação compartilhada: o círculo recebe convite e treina junto (2026-07-28)** |
+| **Last Completed Task** | **SIM-T04 + SIM-T05 — avanço de tempo e debrief com lacunas quantificadas (2026-07-28)** |
+| | D-071 — simulação compartilhada: o círculo recebe convite e treina junto (2026-07-28)** |
 | | Fix: marcadores de família no mesmo ponto se escondiam |
 | | D-070 — mapa para de brigar com o usuário; PilotBar vira a entrada única (2026-07-28)** |
 | | `/weather` no design system da v2 + prontidão pareada ao risco no dashboard (2026-07-28)** |
@@ -56,7 +57,7 @@
 | | LA-T02: Stripe **Live** cutover — faturamento real ativo (2026-07-21) |
 | | LA-T01: Stripe test payment → webhook → `profiles.plan=family` (2026-07-20) |
 | **In Progress** | — |
-| **Next Task** | **SIM-T05** — debrief da simulação com lacunas quantificadas. Alternativas: **SIM-T04** (injeção de eventos/avanço de tempo), **PLAN-T01** (modelo de dados do plano de voo) — modelo de dados + RLS por círculo + API dos Planos de Emergência da Família (`docs/18-family-plans.md`). Alternativas abertas: **WV2-T05** (gates de validação da v2, dívida assumida em D-063), **FAM-T08** (cache offline dos abrigos), **LA-T06** (códigos de afiliado, travado nos params do dono). |
+| **Next Task** | **PLAN-T01** — modelo de dados + RLS + API dos Planos de Emergência da Família (`docs/18-family-plans.md`), que destrava SIM-T06 e os mapas offline. Antes disso: **SIM-T05** — debrief da simulação com lacunas quantificadas. Alternativas: **SIM-T04** (injeção de eventos/avanço de tempo), **PLAN-T01** (modelo de dados do plano de voo) — modelo de dados + RLS por círculo + API dos Planos de Emergência da Família (`docs/18-family-plans.md`). Alternativas abertas: **WV2-T05** (gates de validação da v2, dívida assumida em D-063), **FAM-T08** (cache offline dos abrigos), **LA-T06** (códigos de afiliado, travado nos params do dono). |
 | **Build** | ✅ Passing — type-check, ESLint e production build limpos (2026-07-28) |
 | **Vercel** | ✅ Produção em 2026-07-28 (`050399e`) — abrigos FEMA, busca no mapa, puck com foto, simulador, Pilot conversacional com navegação, checklist v2. Verificado: `/api/shelters` retorna 4 abrigos reais perto de Bend/OR. |
 | **Supabase** | ✅ Healthy — project ref `alxurmgpyxjhvnliivbf` |

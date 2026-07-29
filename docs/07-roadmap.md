@@ -146,8 +146,8 @@
 | SIM-T01 | `SimulationProvider` + injeção no `RiskProvider` + cromo persistente + travas de segurança | ✅ COMPLETE | 2026-07-28 — verificado em navegador: risco real 11 → simulado 81, Pilot muda para "Aja agora", faixa some ao encerrar |
 | SIM-T02 | Painéis de configuração (ameaça, clima, recursos, saúde, infraestrutura, posição) | ✅ COMPLETE (MVP) | 2026-07-28 — ameaça, severidade, chegada, infraestrutura, mobilidade/medicação, reservas. **Falta**: traduzir o texto livre para os painéis (hoje é só descrição) |
 | SIM-T03 | Sessão: briefing pelo Pilot com RAG, rodar, sair a um toque | ✅ COMPLETE | 2026-07-28 — `/api/pilot/chat` com RAG; o Pilot sabe quando está em simulação |
-| SIM-T04 | Injeção de eventos e avanço de tempo ("+6h", "a energia caiu") | PENDING | É o que separa simulador de cenário estático |
-| SIM-T05 | Debrief com lacunas quantificadas + escrita confirmada no checklist | PENDING | "Faltaram 40 L", não "melhore suas reservas" |
+| SIM-T04 | Injeção de eventos e avanço de tempo ("+6h", "a energia caiu") | ✅ COMPLETE | 2026-07-28 — a faixa de simulação abre controles: +3h, +6h, Impacto, e cortar luz/rede/vias em tempo real |
+| SIM-T05 | Debrief com lacunas quantificadas + escrita confirmada no checklist | ✅ COMPLETE | 2026-07-28 — `lib/simulation-debrief.ts`. Verificado: veredito, exigia 6 dias vs tinha 0.9, 5 lacunas, e adicionar gravou no checklist real |
 | SIM-T06 | Execução contra o Plano da Família | PENDING | Depende de PLAN-T01. É o que vira ensaio de família |
 | SIM-T07 | Drills compartilhados no círculo + registro de treino | ✅ COMPLETE | 2026-07-28 — D-071. Migration aplicada e verificada com dois navegadores: convite chega, aceite entra na simulação, encerrar propaga para todos. |
 
