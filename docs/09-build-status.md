@@ -34,7 +34,7 @@
 | | D-065 / FAM-T05→T07 — abrigos oficiais do FEMA NSS, rumo/distância on-device e deep-link de navegação (2026-07-27)** |
 | | D-066 / PLAN-T00 — spec dos Planos de Emergência da Família (`docs/18-family-plans.md`) (2026-07-27) |
 | | D-064 / FAM-T01→T04 — localização familiar ao vivo, consentimento próprio e remoção dos mocks do mapa (2026-07-27) |
-| **⚠️ Migration pendente** | `20260729000000_family_plans.sql` — Planos de Emergência da Família (PLAN-T01). Até aplicar, `/api/plans` responde `migration_pending` e nada quebra. |
+| **Migration** | ✅ `20260729000000_family_plans.sql` aplicada pelo dono em 2026-07-29 e verificada (5 tabelas + índice de plano ativo único). |
 | **Migration** | ✅ `20260728010000_simulation_join_token.sql` aplicada pelo dono em 2026-07-28 e verificada. |
 | **Migration** | ✅ `20260728000000_shared_simulation.sql` aplicada pelo dono em 2026-07-28. Tabelas e colunas verificadas por REST service-role. |
 | **Migration** | ✅ `20260727000000_live_location.sql` aplicada pelo dono em 2026-07-27. Verificado via REST service-role: as 4 colunas `last_location_*` respondem 200 em `profiles`. |

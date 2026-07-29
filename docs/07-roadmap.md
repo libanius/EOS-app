@@ -167,7 +167,7 @@
 | Task ID | Task | Status | Notes |
 |---|---|---|---|
 | PLAN-T00 | Spec + decisão do conceito de plano de voo familiar | ✅ COMPLETE | 2026-07-27 — D-066 / doc 18 |
-| PLAN-T01 | Modelo de dados + RLS por círculo + API autenticada | ✅ COMPLETE (código) | 2026-07-29 — 5 tabelas com RLS deny-all, `GET/PUT /api/plans` (documento inteiro, versão incrementada a cada save + push ao círculo) e `POST /api/plans/[id]/ack`. **Falta aplicar** `20260729000000_family_plans.sql` |
+| PLAN-T01 | Modelo de dados + RLS por círculo + API autenticada | ✅ COMPLETE | 2026-07-29 — migration aplicada. Verificado com 2 contas: v1 salva e lida, membro reconhece, autor salva v2 e **o ack da v1 não é carregado adiante**, e reconhecer versão antiga é recusado (`stale`). |
 | PLAN-T02 | Editor: pontos de encontro (1/2/3), lugares conhecidos, papéis, gatilhos | PENDING | Ponto de encontro e papéis são obrigatórios; o resto é opcional |
 | PLAN-T03 | Desenho de rotas no mapa + edição de traçado | PENDING | Rotas são autorais, não roteadas (D-066 §2) |
 | PLAN-T04 | Versionamento, push ao círculo e reconhecimento explícito | PENDING | **Parte difícil, não adiável.** Duas versões diferentes = famílias em lugares diferentes |

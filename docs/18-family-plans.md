@@ -210,8 +210,8 @@ círculo (Admin/Editor). Endpoints públicos de ficha **nunca** tocam estas tabe
 
 | Fase | Entrega |
 |---|---|
-| **PLAN-T00** | Esta spec + decisão (D-066) |
-| **PLAN-T01** | Modelo de dados + RLS + API autenticada de leitura/escrita |
+| **PLAN-T00** | ✅ Esta spec + decisão (D-066) |
+| **PLAN-T01** | ✅ Modelo de dados + RLS + API autenticada de leitura/escrita — `GET/PUT /api/plans` (documento inteiro), `POST /api/plans/[id]/ack`. Versão incrementa a cada save, acks antigos NÃO são carregados adiante, e push avisa o círculo. |
 | **PLAN-T02** | Editor: pontos de encontro, lugares conhecidos, papéis, gatilhos |
 | **PLAN-T03** | Desenho de rotas no mapa + edição de traçado |
 | **PLAN-T04** | Versionamento, push ao círculo e reconhecimento (§6) |
