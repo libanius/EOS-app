@@ -4,6 +4,26 @@
 
 ---
 
+## D-071 — Simulação compartilhada com o círculo
+
+**Date**: 2026-07-28
+**Status**: DECIDED / IMPLEMENTADO — depende da migration `20260728000000_shared_simulation.sql`
+**Spec**: `docs/19-scenario-simulator.md` §11 (SIM-T07)
+
+**Context**: O dono pediu que, ao rodar uma simulação, todos do círculo recebam um pop-up instantâneo perguntando se querem participar — e que os parâmetros passem a valer na tela de quem aceitar. A simulação até então era local ao aparelho (D-067 §5.3: nunca persiste).
+
+**Decision**:
+1. **A sessão ganha uma linha** (`simulation_sessions` + `simulation_participants`). Uma simulação local continua efêmera; uma **compartilhada** precisa existir tempo suficiente para chegar ao telefone dos outros.
+2. **Ninguém é colocado num treino que não aceitou.** Participantes nascem `invited`; só uma resposta explícita move para `joined`. O pop-up é central e bloqueante, não um aviso descartável — entrar numa simulação muda todos os números que a pessoa vai ver na próxima hora.
+3. **Alerta real crítico encerra para TODOS** (escolha do dono). Qualquer participante pode encerrar com `reason: real_alert`, porque uma família dividida entre realidade e ficção é a falha que esta feature poderia criar. Encerrar nunca é destrutivo, então o caminho permissivo é o seguro.
+4. **Um treino ativo por círculo.** Iniciar um novo encerra o anterior; dois cenários competindo sobre a mesma família é exatamente a confusão a evitar.
+5. **Expira em 90 min** no servidor, além da expiração local por inatividade. Ninguém herda um cenário parado.
+6. **Push é best-effort**: o convite também aparece pelo poll no app, então uma notificação perdida não impede o treino.
+
+**Consequence**: o EOS deixa de treinar uma pessoa e passa a treinar uma família — que é a unidade que o produto sempre disse proteger. O custo é a primeira persistência de estado de simulação; mitigado por expiração curta, aceite explícito e encerramento coletivo.
+
+---
+
 ## D-070 — O Pilot é a única entrada; a câmera pertence ao usuário
 
 **Date**: 2026-07-28

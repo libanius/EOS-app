@@ -448,3 +448,78 @@ body:has(.sim-banner) .app-actions { top: 56px !important; }
 /* The Pilot conversation is a focused surface: the global AppActions buttons
    would otherwise sit on top of its close button. */
 body:has(.wv2-pilot-chat) .app-actions { display: none; }
+
+/* ─── SHARED SIMULATION INVITE (D-071) ────────────────────────────────────
+   Centre of screen and blocking: joining a drill changes every number the
+   person sees for the next hour, so it earns a decision, not a banner. */
+.sim-invite-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.62);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.sim-invite {
+  width: 100%;
+  max-width: 380px;
+  padding: 22px;
+  border-radius: 26px;
+  background: rgba(24, 24, 28, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 30px 70px -24px rgba(0, 0, 0, 1);
+  color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+}
+.sim-invite .tag {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #7c3aed, #a855f7);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.sim-invite h2 {
+  margin: 12px 0 6px;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.024em;
+  line-height: 1.2;
+}
+.sim-invite .scenario {
+  margin: 0 0 10px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #c4b5fd;
+}
+.sim-invite .note {
+  margin: 0 0 18px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: rgba(235, 235, 245, 0.66);
+}
+.sim-invite .actions { display: flex; gap: 8px; }
+.sim-invite .actions button {
+  flex: 1;
+  min-height: 46px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: transparent;
+  color: #fff;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.sim-invite .actions button.primary {
+  border-color: transparent;
+  background: linear-gradient(90deg, #7c3aed, #a855f7);
+  font-weight: 700;
+}
+.sim-invite .actions button:disabled { opacity: 0.5; }

@@ -149,7 +149,7 @@
 | SIM-T04 | Injeção de eventos e avanço de tempo ("+6h", "a energia caiu") | PENDING | É o que separa simulador de cenário estático |
 | SIM-T05 | Debrief com lacunas quantificadas + escrita confirmada no checklist | PENDING | "Faltaram 40 L", não "melhore suas reservas" |
 | SIM-T06 | Execução contra o Plano da Família | PENDING | Depende de PLAN-T01. É o que vira ensaio de família |
-| SIM-T07 | Drills compartilhados no círculo + registro de treino | PENDING | — |
+| SIM-T07 | Drills compartilhados no círculo + registro de treino | ✅ COMPLETE (código) | 2026-07-28 — D-071. Pop-up central de convite, aceite explícito, alerta real encerra para todos. **Falta aplicar** `20260728000000_shared_simulation.sql` |
 
 ---
 

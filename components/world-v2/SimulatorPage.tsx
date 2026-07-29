@@ -11,7 +11,7 @@
  * dashboard cannot drift apart.
  */
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { useLanguage } from '@/lib/i18n'
@@ -52,6 +52,9 @@ const COPY = {
     reserveHalf: 'Metade',
     reserveCritical: 'No limite',
     start: 'Iniciar simulação',
+    inviteCircle: 'Convidar meu círculo',
+    inviteHint: 'Cada um recebe um convite e decide se entra. Quem aceitar vê o mesmo cenário.',
+    people: 'pessoas',
     running: 'Simulação em andamento',
     runningHint: 'Abra o Mundo, o Pilot e o Checklist — tudo responde ao cenário agora.',
     goWorld: 'Ir para o Mundo',
@@ -82,6 +85,9 @@ const COPY = {
     reserveHalf: 'Half',
     reserveCritical: 'At the limit',
     start: 'Start simulation',
+    inviteCircle: 'Invite my circle',
+    inviteHint: 'Each person gets an invite and decides. Whoever accepts sees the same scenario.',
+    people: 'people',
     running: 'Simulation running',
     runningHint: 'Open World, the Pilot and the Checklist — everything responds to the scenario now.',
     goWorld: 'Go to World',
@@ -98,14 +104,41 @@ export default function SimulatorPage() {
   const router = useRouter()
   const c = COPY[language]
   const pt = language === 'pt'
-  const { config: active, start, stop } = useSimulation()
+  const { config: active, start, stop, setSharedSession } = useSimulation()
+  const [circles, setCircles] = useState<Array<{ id: string; name: string; members: number }>>([])
+  const [invite, setInvite] = useState(true)
+
+  useEffect(() => {
+    fetch('/api/circles')
+      .then(r => (r.ok ? r.json() : null))
+      .then((d: { circles?: Array<{ id: string; name: string; members?: unknown[] }> } | null) => {
+        setCircles((d?.circles ?? []).map(c => ({ id: c.id, name: c.name, members: (c.members ?? []).length })))
+      })
+      .catch(() => setCircles([]))
+  }, [])
 
   const [draft, setDraft] = useState<SimulationConfig>(DEFAULT_SIMULATION)
   const set = (patch: Partial<SimulationConfig>) => setDraft(current => ({ ...current, ...patch }))
 
-  const launch = () => {
+  const launch = async () => {
     haptic.impact()
     start(draft)
+
+    // D-071: invite the circle. Everyone gets a pop-up asking to join; nobody is
+    // placed in the drill without answering it.
+    if (invite && circles[0]) {
+      await fetch('/api/simulation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ circleId: circles[0].id, config: draft }),
+      })
+        .then(r => (r.ok ? r.json() : null))
+        .then((d: { sessionId?: string } | null) => {
+          if (d?.sessionId) setSharedSession(d.sessionId)
+        })
+        .catch(() => {})
+    }
+
     router.push('/dashboard')
   }
 
@@ -215,6 +248,14 @@ export default function SimulatorPage() {
                 ))}
               </div>
             </Card>
+
+            {circles.length > 0 && (
+              <Card>
+                <SectionLabel trailing={`${circles[0].members} ${c.people}`}>{circles[0].name}</SectionLabel>
+                <Toggle label={c.inviteCircle} on={invite} onChange={setInvite} />
+                <p className="t-foot ink-3" style={{ marginTop: '0.5rem' }}>{c.inviteHint}</p>
+              </Card>
+            )}
 
             <motion.div whileTap={{ scale: 0.98 }} transition={SPRING.quick}>
               <Pill primary wide onClick={launch}>{c.start}</Pill>

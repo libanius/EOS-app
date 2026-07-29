@@ -29,6 +29,9 @@ const IDLE_TIMEOUT_MS = 45 * 60 * 1000
 type SimulationCtx = {
   config: SimulationConfig | null
   active: boolean
+  /** Set when this drill is shared with a circle (D-071), so ending propagates. */
+  sharedSessionId: string | null
+  setSharedSession: (id: string | null) => void
   /** Set when the session was ended by a real alert, so the UI can explain why. */
   abortedByRealAlert: boolean
   start: (config: SimulationConfig) => void
@@ -46,6 +49,8 @@ export function useSimulation(): SimulationCtx {
     useContext(Ctx) ?? {
       config: null,
       active: false,
+      sharedSessionId: null,
+      setSharedSession: () => {},
       abortedByRealAlert: false,
       start: () => {},
       update: () => {},
@@ -59,12 +64,29 @@ export function useSimulation(): SimulationCtx {
 export default function SimulationProvider({ children }: { children: ReactNode }) {
   const [config, setConfig] = useState<SimulationConfig | null>(null)
   const [abortedByRealAlert, setAborted] = useState(false)
+  const [sharedSessionId, setSharedSessionId] = useState<string | null>(null)
   const lastTouch = useRef<number>(0)
 
+  // Ending a SHARED drill ends it for the whole circle (D-071). A family split
+  // between reality and fiction is the failure this feature must not create.
+  const endShared = useCallback((reason: 'owner' | 'real_alert') => {
+    setSharedSessionId(current => {
+      if (current) {
+        void fetch(`/api/simulation/${current}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'end', reason }),
+        }).catch(() => {})
+      }
+      return null
+    })
+  }, [])
+
   const stop = useCallback(() => {
+    endShared('owner')
     setConfig(null)
     lastTouch.current = 0
-  }, [])
+  }, [endShared])
 
   const start = useCallback((next: SimulationConfig) => {
     setAborted(false)
@@ -81,9 +103,10 @@ export default function SimulationProvider({ children }: { children: ReactNode }
     setConfig(current => {
       if (!current) return current
       setAborted(true)
+      endShared('real_alert')
       return null
     })
-  }, [])
+  }, [endShared])
 
   const clearAbortNotice = useCallback(() => setAborted(false), [])
 
@@ -109,6 +132,8 @@ export default function SimulationProvider({ children }: { children: ReactNode }
     () => ({
       config,
       active: config !== null,
+      sharedSessionId,
+      setSharedSession: setSharedSessionId,
       abortedByRealAlert,
       start,
       update,
@@ -116,7 +141,7 @@ export default function SimulationProvider({ children }: { children: ReactNode }
       abortForRealAlert,
       clearAbortNotice,
     }),
-    [config, abortedByRealAlert, start, update, stop, abortForRealAlert, clearAbortNotice],
+    [config, sharedSessionId, abortedByRealAlert, start, update, stop, abortForRealAlert, clearAbortNotice],
   )
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
