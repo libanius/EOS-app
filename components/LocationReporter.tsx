@@ -58,14 +58,27 @@ export default function LocationReporter() {
       if (typeof navigator === 'undefined' || !('geolocation' in navigator)) return
 
       // Rule 2: only proceed on an already-granted permission.
+      //
+      // iOS Safari does not implement navigator.permissions for geolocation, so
+      // the strict version of this check silently disabled live location on
+      // every iPhone. The flag is written by RiskProvider the first time the app
+      // actually receives a position — evidence of a grant that already
+      // happened, which keeps the "never prompt from the background" rule.
+      let granted = false
       try {
-        const status = await navigator.permissions?.query({ name: 'geolocation' as PermissionName })
-        if (status && status.state !== 'granted') return
+        granted = localStorage.getItem('eos-geo-ok') === '1'
       } catch {
-        // Permissions API unavailable (older Safari). Without a way to check
-        // silently, do nothing rather than risk an out-of-context prompt.
-        return
+        /* private mode */
       }
+      if (!granted) {
+        try {
+          const status = await navigator.permissions?.query({ name: 'geolocation' as PermissionName })
+          granted = status?.state === 'granted'
+        } catch {
+          granted = false
+        }
+      }
+      if (!granted) return
       if (cancelled) return
 
       // Rule 1: consent, read from the circles the user actually belongs to.

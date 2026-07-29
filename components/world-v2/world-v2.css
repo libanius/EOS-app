@@ -2018,3 +2018,29 @@
   word-break: break-all;
   user-select: all;
 }
+
+/* Faces on the map: the photo fills the pin, initials are the fallback. */
+.wv2 .w-mapmarker .pin img {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+  display: block;
+}
+
+/* An APPROXIMATE point — a geocoded address, not a position. It can be
+   kilometres off, so it is drawn as unresolved on purpose: dashed ring, muted,
+   and no solid fill. A profile point that looks like a live fix is how a family
+   ends up believing someone is somewhere they are not. */
+.wv2 .w-mapmarker.approximate .pin {
+  background: rgba(120, 120, 128, 0.5) !important;
+  border-style: dashed;
+  border-color: rgba(255, 255, 255, 0.6);
+  color: var(--ink);
+  box-shadow: none;
+}
+.wv2 .w-mapmarker.approximate .pin img { opacity: 0.55; }
+.wv2 .w-mapmarker.approximate .lab {
+  border-style: dashed;
+  color: var(--ink-2);
+}

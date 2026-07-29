@@ -53,6 +53,9 @@ if (await toggle.count()) {
 }
 await wife.screenshot({path:'/tmp/eos-shots/20-esposa-toggle.png'})
 
+// ponto ao vivo dela, 2 km ao norte — a situação real do dono
+await admin(`/rest/v1/profiles?id=eq.${esposa.id}`,{method:'PATCH',body:JSON.stringify({last_location_lat:26.3281,last_location_lng:-80.2373,last_location_at:new Date().toISOString()})})
+
 const saved = await admin(`/rest/v1/circle_members?circle_id=eq.${cid}&user_id=eq.${esposa.id}&select=shared_fields`).then(r=>r.json())
 const fields = saved[0]?.shared_fields ?? []
 console.log('shared_fields gravado:', JSON.stringify(fields))
@@ -70,6 +73,12 @@ console.log('  /api/circles devolveu:', JSON.stringify(api))
 const markers = await p.locator('.w-mapmarker.real .lab').allTextContents()
 const boxes = await p.locator('.w-mapmarker.real, .w-selfpuck').evaluateAll(els => els.map(e => { const r = e.getBoundingClientRect(); return [Math.round(r.x), Math.round(r.y)] }))
 console.log('  posições dos marcadores:', JSON.stringify(boxes))
+const info = await p.evaluate(async () => {
+  const r = await fetch('/api/circles'); const d = await r.json()
+  return (d.circles?.[0]?.members ?? []).map(m => ({ n: m.name, src: m.location_source, foto: !!m.avatar_url }))
+})
+console.log('  API por membro:', JSON.stringify(info))
+console.log('  marcador aproximado (tracejado):', await p.locator('.w-mapmarker.approximate').count())
 console.log('  marcadores SOBREPOSTOS:', new Set(boxes.map(b => b.join(','))).size < boxes.length ? 'SIM ❌' : 'não ✅')
 console.log('marcadores de família no mapa do Paulo:', markers.length ? markers.join(' | ') : '(nenhum)')
 console.log('PAULO VÊ A ESPOSA:', markers.some(m => /esposa/i.test(m)) ? 'sim ✅' : 'NÃO ❌')
@@ -86,6 +95,15 @@ console.log('campo ACIMA da barra inferior:', box && nav && (box.y + box.height)
 await input.fill('teste')
 console.log('consegue digitar:', (await input.inputValue()) === 'teste' ? 'sim ✅' : 'NÃO ❌')
 await p.screenshot({path:'/tmp/eos-shots/22-pilot-campo-celular.png'})
+
+// ── e sem ponto ao vivo, ela precisa PARECER aproximada ──
+await admin(`/rest/v1/profiles?id=eq.${esposa.id}`,{method:'PATCH',body:JSON.stringify({last_location_lat:null,last_location_lng:null,last_location_at:null})})
+await p.reload({waitUntil:'networkidle'})
+await p.waitForTimeout(12000)
+const approx = await p.locator('.w-mapmarker.approximate').count()
+const lab = await p.locator('.w-mapmarker.real .lab').allTextContents()
+console.log('  sem ponto ao vivo → marcador tracejado:', approx ? 'sim ✅' : 'NÃO ❌', '| rótulo:', lab.join(' | '))
+await p.screenshot({path:'/tmp/eos-shots/31-ponto-aproximado.png'})
 
 await browser.close()
 await admin(`/auth/v1/admin/users/${paulo.id}`,{method:'DELETE'})

@@ -21,6 +21,7 @@ type CircleMember = {
   location_lng: number | null
   location_source: 'live' | 'profile' | null
   location_at: string | null
+  avatar_url: string | null
 }
 
 type CircleRow = { id: string; members?: CircleMember[] }
@@ -63,9 +64,10 @@ export function useCircleFamily(
           lng: member.location_lng,
           isMe: member.is_me,
           freshness: freshnessLabel(member, pt),
-          avatarUrl: member.is_me ? selfAvatarUrl : null,
+          avatarUrl: member.is_me ? selfAvatarUrl : member.avatar_url,
           // Only a live GPS fix pulses; a profile point is a place, not a presence.
           live: member.location_source === 'live',
+          approximate: member.location_source === 'profile',
         })
       }
     }

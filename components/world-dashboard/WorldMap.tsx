@@ -55,6 +55,13 @@ export type WorldFamilyMember = {
   avatarUrl?: string | null
   /** Drives the "live signal" halo — a stale point does not pulse. */
   live?: boolean
+  /**
+   * True for a profile point: a geocoded address, not a position. It can be
+   * kilometres from where the person actually is, so it must NOT look like a
+   * live fix — an approximate point drawn with the confidence of a real one is
+   * how a family ends up looking in the wrong place.
+   */
+  approximate?: boolean
 }
 /** Official FEMA shelters (D-065). Rendered distinctly from family points. */
 export type WorldShelter = { id: string; name: string; lat: number; lng: number; distanceKm: number }
@@ -197,14 +204,22 @@ function eosGlyph() {
   return svg
 }
 
-function markerEl(className: string, pin: string, label: string, color?: string) {
+function markerEl(className: string, pin: string, label: string, color?: string, photo?: string | null) {
   const el = document.createElement('div')
   el.className = className
-  if (pin) {
+  if (pin || photo) {
     const p = document.createElement('span')
     p.className = 'pin'
     if (color) p.style.background = color
-    p.textContent = pin
+    if (photo) {
+      const img = document.createElement('img')
+      img.src = photo
+      img.alt = ''
+      img.onerror = () => { img.remove(); p.textContent = pin }
+      p.appendChild(img)
+    } else {
+      p.textContent = pin
+    }
     el.appendChild(p)
   }
   const lab = document.createElement('span')
@@ -298,7 +313,13 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
       const color = ['#ffb347', '#9aa0ad', '#7c6bff', '#35d7f2'][i % 4]
       // Freshness is part of the label by contract: a stale point presented as
       // a current one is worse than no point at all.
-      const el = markerEl('w-mapmarker real', initials, `${short(m.name, 18)} · ${m.freshness}`, color)
+      const el = markerEl(
+        `w-mapmarker real${m.approximate ? ' approximate' : ''}`,
+        initials,
+        `${short(m.name, 18)} · ${m.freshness}`,
+        color,
+        m.avatarUrl,
+      )
       markersRef.current.push(
         new maplibregl.Marker({ element: el, anchor: 'bottom', offset: offsetFor(m, i) })
           .setLngLat([m.lng, m.lat])

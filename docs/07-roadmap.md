@@ -129,6 +129,7 @@
 | FAM-T05 | Fonte de rota/abrigo (dívida D-051 §5) | ✅ COMPLETE (decisão) | 2026-07-27 — **D-065**: FEMA NSS para abrigo; navegação entregue ao app de mapas; rumo/distância on-device. Dívida D-051 §5 resolvida. |
 | FAM-T06 | Provider FEMA NSS: proxy `/api/shelters` com cache + camada no mapa v2 | ✅ COMPLETE | 2026-07-27 — `lib/world/shelters.ts`; verificado ao vivo: 4 abrigos reais perto de Bend/OR, `empty:true` em Parkland |
 | FAM-T07 | Rumo/distância on-device + botão "Como chegar" (deep-link) + adaptador de rotas | ✅ COMPLETE | 2026-07-27 — `lib/world/navigation.ts`; Pilot passa a citar abrigo aberto em "ficar ou sair" |
+| FAM-T09 | Foto dos membros no mapa + ponto de perfil visualmente aproximado | ✅ COMPLETE | 2026-07-29 — avatar por URL assinada; marcador tracejado quando é endereço e não posição. Corrigido também o bloqueio do reporter em iOS |
 | FAM-T08 | Cache offline dos abrigos (`lib/offline-storage.ts`) | PENDING | Destino precisa estar no aparelho quando a torre cair |
 
 ---

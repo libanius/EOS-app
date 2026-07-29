@@ -186,7 +186,14 @@ export default function RiskProvider({ children }: { children: ReactNode }) {
       .catch(() => setLoading(false))
     if (typeof navigator !== 'undefined' && navigator.geolocation) {
       watchRef.current = navigator.geolocation.watchPosition(
-        pos => setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        pos => {
+          // Evidence that this device has granted geolocation. iOS Safari does
+          // not answer navigator.permissions for geolocation, so without this
+          // the background reporter stayed silent forever on iPhone — and the
+          // map fell back to the profile point, kilometres from the truth.
+          try { localStorage.setItem('eos-geo-ok', '1') } catch { /* private mode */ }
+          setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+        },
         () => {},
         { enableHighAccuracy: false, timeout: 10000, maximumAge: 120000 },
       )

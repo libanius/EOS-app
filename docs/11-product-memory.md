@@ -5,6 +5,20 @@
 
 ---
 
+## iOS Safari não responde `navigator.permissions` para geolocation (2026-07-29)
+
+O `LocationReporter` exigia `permissions.query({name:'geolocation'}).state === 'granted'` antes de enviar. No iPhone isso lança ou devolve nada, e o `catch` fazia `return` — **a localização ao vivo ficava desligada em todo iPhone, em silêncio**. O mapa então caía no ponto de perfil, quilômetros longe.
+
+Hoje o `RiskProvider` grava `localStorage['eos-geo-ok']` na primeira posição recebida, e o reporter aceita esse indício. A regra "nunca pedir permissão a partir do background" continua valendo: o flag só existe porque uma concessão já aconteceu.
+
+## Ponto de perfil precisa PARECER aproximado (2026-07-29)
+
+O dono viu a esposa 2 km fora do lugar. Estava correto: sem ponto ao vivo, o mapa mostra o endereço geocodificado, e o centroide da cidade fica longe da casa. O rótulo dizia "perfil", mas o marcador era **idêntico** a um ponto real.
+
+Um ponto aproximado desenhado com a confiança de um ponto real é como uma família acredita que alguém está onde não está. Agora ele é tracejado, apagado e sem preenchimento sólido — a imprecisão está na forma, não só na legenda.
+
+---
+
 ## Localização familiar: o centroide da cidade empilha todo mundo (2026-07-28)
 
 Quando dois membros cadastram só o nome da cidade ("Parkland, Florida"), o geocoding devolve **o mesmo centroide** para os dois. Os marcadores caem no mesmo pixel e um esconde o outro — o mapa passa a mentir sobre quantas pessoas ele conhece, e o usuário conclui que a feature não funciona.

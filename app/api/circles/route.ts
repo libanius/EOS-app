@@ -12,6 +12,7 @@ type MemberProfile = {
   last_location_at?: string | null
   emergency_contact_name?: string
   emergency_contact_phone?: string
+  avatar_url?: string | null
 }
 
 type CircleRole = 'Admin' | 'Editor' | 'Viewer'
@@ -101,6 +102,21 @@ export async function GET() {
         )
         .in('id', memberIds)
       for (const p of profs ?? []) profileById.set(p.id, p as MemberProfile)
+
+      // Faces make a family map readable at a glance. The avatar lives in a
+      // private bucket, so each one becomes a short-lived signed URL — the
+      // storage path itself never leaves the server.
+      const { data: personas } = await admin
+        .from('profile_personalization')
+        .select('profile_id, avatar_path')
+        .in('profile_id', memberIds)
+      for (const persona of personas ?? []) {
+        const path = (persona as { avatar_path?: string }).avatar_path
+        if (!path) continue
+        const { data: signed } = await admin.storage.from('profile-photos').createSignedUrl(path, 60 * 60)
+        const existing = profileById.get(persona.profile_id as string)
+        if (existing && signed?.signedUrl) existing.avatar_url = signed.signedUrl
+      }
       // Migration 20260727000000_live_location.sql not applied yet: the live
       // columns are unknown, so re-read without them. Circles must keep working.
       if (!profs) {
@@ -142,6 +158,7 @@ export async function GET() {
           user_id: m.user_id,
           role: m.role as CircleRole,
           name: p?.name ?? '—',
+          avatar_url: p?.avatar_url ?? null,
           location_lat: location.lat,
           location_lng: location.lng,
           /** 'live' | 'profile' | null — the UI must label the point with this. */
