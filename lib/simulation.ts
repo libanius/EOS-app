@@ -17,6 +17,38 @@ export type ThreatType = 'hurricane' | 'flood' | 'wildfire' | 'earthquake' | 'wi
 export type Severity = 1 | 2 | 3 | 4 | 5
 export type ReserveLevel = 'real' | 'half' | 'critical'
 
+/**
+ * Every data source can be flown live, faked, or FAILED.
+ *
+ * 'down' is the point of this panel. EOS exists for degraded operation, so the
+ * drill that matters most is not "a storm is coming" but "a storm is coming and
+ * the weather feed is dead". A flight simulator lets you fail an instrument;
+ * so does this.
+ */
+export type SourceMode = 'live' | 'sim' | 'down'
+
+export type SimulationSources = {
+  weather: SourceMode
+  alerts: SourceMode
+  airQuality: SourceMode
+  earthquakes: SourceMode
+  radar: SourceMode
+  shelters: SourceMode
+  family: SourceMode
+}
+
+/** Values used when a source is set to 'sim'. Metric — converted on the way in. */
+export type SimulationValues = {
+  tempC: number
+  windKmh: number
+  gustKmh: number
+  rainPct: number
+  humidityPct: number
+  uvIndex: number
+  visibilityKm: number
+  aqi: number
+}
+
 export type SimulationConfig = {
   threat: ThreatType
   /** 1 = nuisance, 5 = catastrophic. Maps to hurricane category when relevant. */
@@ -32,6 +64,8 @@ export type SimulationConfig = {
   mobilityLimited: boolean
   medicalNeed: boolean
   reserves: ReserveLevel
+  sources: SimulationSources
+  values: SimulationValues
 }
 
 export const DEFAULT_SIMULATION: SimulationConfig = {
@@ -45,6 +79,42 @@ export const DEFAULT_SIMULATION: SimulationConfig = {
   mobilityLimited: false,
   medicalNeed: false,
   reserves: 'real',
+  // Default: the scenario drives the weather, everything else stays live. The
+  // owner turns instruments off deliberately.
+  sources: {
+    weather: 'sim',
+    alerts: 'sim',
+    airQuality: 'live',
+    earthquakes: 'live',
+    radar: 'live',
+    shelters: 'live',
+    family: 'live',
+  },
+  values: {
+    tempC: 28,
+    windKmh: 45,
+    gustKmh: 80,
+    rainPct: 90,
+    humidityPct: 88,
+    uvIndex: 3,
+    visibilityKm: 2,
+    aqi: 60,
+  },
+}
+
+export const SOURCE_LABELS: Array<{ key: keyof SimulationSources; pt: string; en: string }> = [
+  { key: 'weather', pt: 'Clima', en: 'Weather' },
+  { key: 'alerts', pt: 'Alertas oficiais', en: 'Official alerts' },
+  { key: 'radar', pt: 'Radar de chuva', en: 'Rain radar' },
+  { key: 'airQuality', pt: 'Qualidade do ar', en: 'Air quality' },
+  { key: 'earthquakes', pt: 'Sismos', en: 'Earthquakes' },
+  { key: 'shelters', pt: 'Abrigos oficiais', en: 'Official shelters' },
+  { key: 'family', pt: 'Posição da família', en: 'Family position' },
+]
+
+/** True when the drill has deliberately taken this source off the air. */
+export function isSourceDown(config: SimulationConfig | null, key: keyof SimulationSources): boolean {
+  return config?.sources?.[key] === 'down'
 }
 
 export const THREATS: Array<{ id: ThreatType; pt: string; en: string }> = [
@@ -89,7 +159,41 @@ export function synthesizeSnapshot(config: SimulationConfig, base: WeatherSnapsh
   const wind = WIND_BY_SEVERITY[config.severity]
   const imminent = config.arrivalHours <= 6
 
-  const current = {
+  const v = config.values
+  const toF = (c: number) => c * 9 / 5 + 32
+  const toMph = (kmh: number) => kmh / 1.609
+  const toMi = (km: number) => km / 1.609
+  const weatherMode = config.sources?.weather ?? 'sim'
+
+  // 'live' hands back the real reading untouched: the drill can put a hurricane
+  // on the map while the thermometer still tells the truth.
+  const current = weatherMode === 'live' && base?.current
+    ? base.current
+    : weatherMode === 'sim'
+    ? ({
+        ...(base?.current ?? {}),
+        temp_f: toF(v.tempC),
+        feels_like_f: toF(v.tempC + 2),
+        humidity_pct: v.humidityPct,
+        dew_point_f: base?.current?.dew_point_f ?? 70,
+        pressure_hpa: config.threat === 'hurricane' ? 985 - config.severity * 8 : 1010,
+        wind_mph: toMph(v.windKmh),
+        wind_gust_mph: toMph(v.gustKmh),
+        wind_dir_deg: base?.current?.wind_dir_deg ?? 90,
+        wind_dir_label: base?.current?.wind_dir_label ?? 'E',
+        precip_in: (v.rainPct / 100) * 1.5,
+        precip_prob_pct: v.rainPct,
+        uv_index: v.uvIndex,
+        cloud_cover_pct: v.rainPct > 50 ? 95 : 40,
+        visibility_mi: toMi(v.visibilityKm),
+        weather_code: v.rainPct > 80 ? 99 : 80,
+        condition: threatHeadline(config, pt),
+        condition_icon: base?.current?.condition_icon ?? '⛈',
+        is_daytime: base?.current?.is_daytime ?? true,
+        sunrise_iso: base?.current?.sunrise_iso ?? now.toISOString(),
+        sunset_iso: base?.current?.sunset_iso ?? now.toISOString(),
+      } as WeatherSnapshot['current'])
+    : ({
     ...(base?.current ?? {}),
     temp_f: base?.current?.temp_f ?? 78,
     feels_like_f: base?.current?.feels_like_f ?? 80,
@@ -111,7 +215,7 @@ export function synthesizeSnapshot(config: SimulationConfig, base: WeatherSnapsh
     is_daytime: base?.current?.is_daytime ?? true,
     sunrise_iso: base?.current?.sunrise_iso ?? now.toISOString(),
     sunset_iso: base?.current?.sunset_iso ?? now.toISOString(),
-  } as WeatherSnapshot['current']
+  } as WeatherSnapshot['current'])
 
   // The forecast ramps toward impact, so "+6 horas" means something.
   const hourly: HourlyForecast[] = Array.from({ length: 24 }, (_, i) => {
@@ -134,7 +238,12 @@ export function synthesizeSnapshot(config: SimulationConfig, base: WeatherSnapsh
     }
   })
 
-  const alerts: WeatherAlert[] = [
+  const alertsMode = config.sources?.alerts ?? 'sim'
+  const alerts: WeatherAlert[] = alertsMode === 'live'
+    ? (base?.alerts ?? [])
+    : alertsMode === 'down'
+    ? []
+    : [
     {
       id: 'sim-primary',
       source: pt ? 'SIMULAÇÃO' : 'SIMULATION',
@@ -145,14 +254,14 @@ export function synthesizeSnapshot(config: SimulationConfig, base: WeatherSnapsh
       url: null,
     },
   ]
-  if (config.powerOut) {
+  if (config.powerOut && alertsMode === 'sim') {
     alerts.push({
       id: 'sim-power', source: pt ? 'SIMULAÇÃO' : 'SIMULATION', type: 'POWER_OUTAGE',
       severity: 'HIGH', headline: pt ? 'Energia elétrica cortada na região' : 'Power is out in the area',
       expires: null, url: null,
     })
   }
-  if (config.roadsBlocked) {
+  if (config.roadsBlocked && alertsMode === 'sim') {
     alerts.push({
       id: 'sim-roads', source: pt ? 'SIMULAÇÃO' : 'SIMULATION', type: 'ROAD_CLOSURE',
       severity: 'HIGH', headline: pt ? 'Vias principais bloqueadas' : 'Main roads are blocked',
@@ -165,15 +274,32 @@ export function synthesizeSnapshot(config: SimulationConfig, base: WeatherSnapsh
     current,
     hourly,
     daily: base?.daily ?? [],
-    air_quality: config.threat === 'wildfire'
+    air_quality: config.sources?.airQuality === 'down'
+      ? null
+      : config.sources?.airQuality === 'sim'
+      ? { us_aqi: v.aqi, pm25: null, pm10: null, ozone: null, dust: null, category: pt ? 'Simulado' : 'Simulated', source: pt ? 'SIMULAÇÃO' : 'SIMULATION' }
+      : config.threat === 'wildfire'
       ? { us_aqi: 210, pm25: 160, pm10: 190, ozone: null, dust: null, category: pt ? 'Muito insalubre' : 'Very unhealthy', source: pt ? 'SIMULAÇÃO' : 'SIMULATION' }
       : base?.air_quality ?? null,
     alerts,
-    earthquakes: config.threat === 'earthquake'
+    earthquakes: config.sources?.earthquakes === 'down'
+      ? []
+      : config.sources?.earthquakes === 'live'
+      ? (base?.earthquakes ?? [])
+      : config.threat === 'earthquake'
       ? [{ magnitude: 4 + config.severity * 0.5, place: pt ? 'Próximo à sua área' : 'Near your area', time_iso: now.toISOString(), severity: alertSeverity(config) }]
       : [],
     fetched_at: now.toISOString(),
-    providers: { simulation: 'ok' },
+    // Providers reflect what the drill switched off, so any screen that reads
+    // provider health tells the truth about the simulated outage too.
+    providers: {
+      simulation: 'ok',
+      weather: weatherMode === 'down' ? 'unavailable' : 'ok',
+      alerts: alertsMode === 'down' ? 'unavailable' : 'ok',
+      air_quality: config.sources?.airQuality === 'down' ? 'unavailable' : 'ok',
+      earthquakes: config.sources?.earthquakes === 'down' ? 'unavailable' : 'ok',
+      radar: config.sources?.radar === 'down' ? 'unavailable' : 'ok',
+    },
   }
 }
 

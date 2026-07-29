@@ -1925,3 +1925,81 @@
   .wv2-pilotbar .bar-orb:active { transform: none; }
   .wv2[data-risk='critical'] .wv2-pilotbar .bar-orb { animation: none; }
 }
+
+/* Instrument panel: each source live, simulated, or failed. */
+.wv2-sim-page .sim-source {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding: var(--s2) 0;
+  border-bottom: 1px solid var(--sep);
+}
+.wv2-sim-page .sim-source:last-of-type { border-bottom: 0; }
+.wv2-sim-page .sim-source-modes {
+  flex: none;
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  gap: 3px;
+  padding: 3px;
+  border-radius: 12px;
+  background: var(--fill-2);
+}
+.wv2-sim-page .sim-source-modes button {
+  min-height: 32px;
+  padding: 0 var(--s3);
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ink-3);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+  white-space: nowrap;
+}
+.wv2-sim-page .sim-source-modes button.on { color: var(--ink); background: var(--fill-1); }
+.wv2-sim-page .sim-source-modes button.on.sim { background: rgba(var(--accent-rgb), 0.24); color: var(--ink); }
+/* A failed instrument is red on purpose — it should look wrong. */
+.wv2-sim-page .sim-source-modes button.on.down { background: rgba(255, 69, 58, 0.28); color: #ffd9d6; }
+
+.wv2-sim-page .sim-stepper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding: var(--s2) 0;
+  border-bottom: 1px solid var(--sep);
+}
+.wv2-sim-page .sim-stepper:last-of-type { border-bottom: 0; }
+.wv2-sim-page .sim-stepper > div {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+.wv2-sim-page .sim-stepper strong {
+  min-width: 68px;
+  text-align: center;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.wv2-sim-page .sim-stepper button {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--sep-strong);
+  border-radius: 11px;
+  background: var(--fill-2);
+  color: var(--ink);
+  font: inherit;
+  font-size: 1.05rem;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.wv2-sim-page .sim-stepper button:active { transform: scale(0.94); }
+
+@media (prefers-reduced-motion: reduce) {
+  .wv2-sim-page .sim-stepper button:active { transform: none; }
+}

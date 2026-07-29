@@ -10,7 +10,8 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Abrigos oficiais + planos da família (FAM/PLAN) + gates de validação da v2 abertos (WV2-T05) |
-| **Last Completed Task** | **SIM-T04 + SIM-T05 — avanço de tempo e debrief com lacunas quantificadas (2026-07-28)** |
+| **Last Completed Task** | **SIM-T08 — painel de instrumentos: cada fonte ao vivo, simulada ou fora do ar (2026-07-28)** |
+| | SIM-T04 + SIM-T05 — avanço de tempo e debrief com lacunas quantificadas (2026-07-28)** |
 | | D-071 — simulação compartilhada: o círculo recebe convite e treina junto (2026-07-28)** |
 | | Fix: marcadores de família no mesmo ponto se escondiam |
 | | D-070 — mapa para de brigar com o usuário; PilotBar vira a entrada única (2026-07-28)** |

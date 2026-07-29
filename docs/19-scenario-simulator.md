@@ -66,6 +66,27 @@ o valor real da família.
 | **Saúde** | Membro ferido, medicação acabando, mobilidade reduzida |
 | **Infraestrutura** | Luz cortada, sem rede, estrada bloqueada, sem combustível |
 | **Posição** | "E se estivéssemos na casa da praia?" |
+| **Instrumentos** | Cada fonte de dados: **ao vivo**, **simulada** ou **fora do ar** |
+
+### 4.1 O painel de instrumentos
+
+Toda fonte que o EOS consome — clima, alertas oficiais, radar, qualidade do ar,
+sismos, abrigos e posição da família — pode ser voada em três modos:
+
+| Modo | O que acontece |
+|---|---|
+| **Ao vivo** | O dado real continua passando, mesmo com o cenário rodando |
+| **Simulado** | O valor configurado substitui o real |
+| **Fora do ar** | A fonte some, e o app fica genuinamente cego para ela |
+
+**"Fora do ar" é o motivo deste painel existir.** O EOS é um produto de operação
+degradada; o treino que mais importa não é "vem um furacão", é **"vem um furacão
+e o feed de clima morreu"**. Um simulador de voo deixa você falhar um
+instrumento — este também.
+
+Quando uma fonte cai, o Pilot recebe a lista de instrumentos mortos e é
+instruído a **nomear a cegueira** e orientar sem ela (rádio a pilha, vizinhos,
+sinais físicos), nunca a inventar o que a fonte diria.
 
 Entrada em **linguagem natural também é válida** ("furacão categoria 3 chegando
 em 12 horas") — o Pilot traduz para os painéis, e o usuário vê e ajusta o que foi

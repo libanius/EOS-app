@@ -17,6 +17,7 @@ import { motion, useReducedMotion } from 'framer-motion'
 import { useLanguage } from '@/lib/i18n'
 import { useRisk } from '@/components/v2/RiskProvider'
 import { useSimulation } from '@/components/SimulationProvider'
+import { SOURCE_LABELS, isSourceDown } from '@/lib/simulation'
 import WorldMap from '@/components/world-dashboard/WorldMap'
 import DetentSheet, { type Detent } from './DetentSheet'
 import Pilot from './Pilot'
@@ -148,8 +149,13 @@ export default function WorldV2() {
   const [pilotOpen, setPilotOpen] = useState(false)
   const [pilotAsk, setPilotAsk] = useState<{ text: string; nonce: number } | null>(null)
   const [recenterNonce, setRecenterNonce] = useState(0)
-  const family = useCircleFamily(language === 'pt', coords, avatarUrl)
-  const shelterSnapshot = useShelters(coords)
+  const familyRaw = useCircleFamily(language === 'pt', coords, avatarUrl)
+  // A failed instrument must actually be blind, not quietly still working.
+  const familyBlind = isSourceDown(simulation.config, 'family')
+  const family = useMemo(() => (familyBlind ? [] : familyRaw), [familyBlind, familyRaw])
+  const shelterSnapshotRaw = useShelters(coords)
+  // A failed instrument must actually be blind, not quietly still working.
+  const shelterSnapshot = isSourceDown(simulation.config, 'shelters') ? null : shelterSnapshotRaw
 
   const [detent, setDetent] = useState<Detent>('peek')
   const [isDesktop, setIsDesktop] = useState(false)
@@ -218,6 +224,9 @@ export default function WorldV2() {
         : null,
       sheltersKnown: Boolean(shelterSnapshot),
       simulated: simulation.active,
+      downSources: simulation.config
+        ? SOURCE_LABELS.filter(x => isSourceDown(simulation.config, x.key)).map(x => (metric ? x.pt : x.en))
+        : [],
       locationLabel: hasCoords ? (metric ? 'Sua área' : 'Your area') : null,
       coords,
       family: family.map(m => ({ name: m.name, lat: m.lat, lng: m.lng, freshness: m.freshness, isMe: m.isMe })),
@@ -228,7 +237,7 @@ export default function WorldV2() {
         distanceKm: s.distanceKm,
       })),
     }),
-    [metric, state, score, snapshot, hasCoords, coords, data, shelterSnapshot, simulation.active, family],
+    [metric, state, score, snapshot, hasCoords, coords, data, shelterSnapshot, simulation.active, simulation.config, family],
   )
 
   const sections = (

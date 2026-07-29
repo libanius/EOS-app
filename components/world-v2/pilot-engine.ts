@@ -66,6 +66,8 @@ export type PilotContext = {
   sheltersKnown: boolean
   /** True while a training simulation is running (D-067). */
   simulated?: boolean
+  /** Sources the drill deliberately took off the air — the Pilot must reason about the blindness. */
+  downSources?: string[]
   /** Human-readable place, so the Pilot can name where it is talking about. */
   locationLabel?: string | null
   /** Where the user is, so distances can be computed on-device. */

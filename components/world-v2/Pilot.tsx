@@ -269,6 +269,7 @@ export default function Pilot({
             hasMedicalConditions: ctx.household.hasMedicalConditions,
             mobilityImpaired: ctx.household.mobilityImpaired,
             simulated: ctx.simulated ?? false,
+            downSources: ctx.downSources ?? [],
             // Everything the app already knows. Withholding this is what made
             // the Pilot answer "I have no real-time access" while the dashboard
             // was showing the temperature two centimetres away.

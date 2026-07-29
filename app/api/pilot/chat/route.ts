@@ -47,6 +47,8 @@ type Body = {
     hasMedicalConditions: boolean
     mobilityImpaired: number
     simulated: boolean
+    /** Sources the drill switched off. The Pilot must name the blindness. */
+    downSources: string[]
     /** Live conditions. Without these the model correctly says it cannot know. */
     weather: {
       tempF: number
@@ -427,6 +429,11 @@ export async function POST(request: NextRequest) {
     pt
       ? 'VOCÊ TEM ACESSO A DADOS EM TEMPO REAL. Eles estão acima. NUNCA diga que não tem acesso a dados em tempo real nem mande o usuário consultar outra fonte de meteorologia — responda com os números acima e cite a hora da leitura quando fizer sentido. Se um dado específico não estiver na lista, diga exatamente qual falta.'
       : 'YOU DO HAVE REAL-TIME DATA. It is above. NEVER say you lack real-time access, and never tell the user to check another weather source — answer with the numbers above and cite the reading time when it matters. If one specific figure is missing from the list, say exactly which one.',
+    context.downSources?.length
+      ? pt
+        ? `INSTRUMENTOS FORA DO AR neste treino: ${context.downSources.join(', ')}. Você está CEGO para esses dados — diga isso explicitamente e oriente o que fazer sem eles (rádio a pilha, vizinhos, sinais físicos). Nunca invente o que a fonte caída diria.`
+        : `INSTRUMENTS OFF THE AIR in this drill: ${context.downSources.join(', ')}. You are BLIND to that data — say so explicitly and advise how to cope without it (battery radio, neighbours, physical signs). Never invent what the dead source would have said.`
+      : '',
     context.simulated
       ? pt
         ? 'ATENÇÃO: isto é uma SIMULAÇÃO de treino. Trate como real para efeito de instrução, mas nunca diga que há uma emergência de verdade.'

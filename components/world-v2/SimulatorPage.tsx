@@ -18,10 +18,14 @@ import { useLanguage } from '@/lib/i18n'
 import { useSimulation } from '@/components/SimulationProvider'
 import {
   DEFAULT_SIMULATION,
+  SOURCE_LABELS,
   THREATS,
   type ReserveLevel,
   type Severity,
   type SimulationConfig,
+  type SimulationSources,
+  type SimulationValues,
+  type SourceMode,
   type ThreatType,
 } from '@/lib/simulation'
 import { Card, Pill, SectionLabel } from './primitives'
@@ -55,6 +59,20 @@ const COPY = {
     inviteCircle: 'Convidar meu círculo',
     inviteHint: 'Cada um recebe um convite e decide se entra. Quem aceitar vê o mesmo cenário.',
     people: 'pessoas',
+    instruments: 'Instrumentos',
+    instrumentsHint: 'Cada fonte pode ficar ao vivo, simulada, ou fora do ar. Treinar com a fonte caída é o cenário que mais importa — é para isso que o EOS existe.',
+    live: 'Ao vivo',
+    simulated: 'Simulado',
+    down: 'Fora do ar',
+    readings: 'Leituras simuladas',
+    temp: 'Temperatura',
+    wind: 'Vento',
+    gust: 'Rajada',
+    rain: 'Chuva',
+    humidity: 'Umidade',
+    uv: 'UV',
+    visibility: 'Visibilidade',
+    aqi: 'AQI',
     running: 'Simulação em andamento',
     runningHint: 'Abra o Mundo, o Pilot e o Checklist — tudo responde ao cenário agora.',
     goWorld: 'Ir para o Mundo',
@@ -88,6 +106,20 @@ const COPY = {
     inviteCircle: 'Invite my circle',
     inviteHint: 'Each person gets an invite and decides. Whoever accepts sees the same scenario.',
     people: 'people',
+    instruments: 'Instruments',
+    instrumentsHint: 'Each source can be live, simulated, or off the air. Training with a dead feed is the scenario that matters most — it is what EOS exists for.',
+    live: 'Live',
+    simulated: 'Simulated',
+    down: 'Off the air',
+    readings: 'Simulated readings',
+    temp: 'Temperature',
+    wind: 'Wind',
+    gust: 'Gust',
+    rain: 'Rain',
+    humidity: 'Humidity',
+    uv: 'UV',
+    visibility: 'Visibility',
+    aqi: 'AQI',
     running: 'Simulation running',
     runningHint: 'Open World, the Pilot and the Checklist — everything responds to the scenario now.',
     goWorld: 'Go to World',
@@ -249,6 +281,62 @@ export default function SimulatorPage() {
               </div>
             </Card>
 
+            {/* ── Instruments: live, simulated, or failed ── */}
+            <Card>
+              <SectionLabel>{c.instruments}</SectionLabel>
+              <p className="t-foot ink-3" style={{ margin: '0 0 0.75rem' }}>{c.instrumentsHint}</p>
+              {SOURCE_LABELS.map(source => (
+                <div key={source.key} className="sim-source">
+                  <span className="t-sub">{pt ? source.pt : source.en}</span>
+                  <div className="sim-source-modes" role="group" aria-label={pt ? source.pt : source.en}>
+                    {(['live', 'sim', 'down'] as SourceMode[]).map(mode => (
+                      <button
+                        key={mode}
+                        type="button"
+                        className={draft.sources[source.key] === mode ? `on ${mode}` : ''}
+                        aria-pressed={draft.sources[source.key] === mode}
+                        onClick={() => {
+                          haptic.selection()
+                          set({ sources: { ...draft.sources, [source.key]: mode } as SimulationSources })
+                        }}
+                      >
+                        {mode === 'live' ? c.live : mode === 'sim' ? c.simulated : c.down}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </Card>
+
+            {/* ── Values, only when something is actually simulated ── */}
+            {(draft.sources.weather === 'sim' || draft.sources.airQuality === 'sim') && (
+              <Card>
+                <SectionLabel>{c.readings}</SectionLabel>
+                {draft.sources.weather === 'sim' && (
+                  <>
+                    <Stepper label={c.temp} value={draft.values.tempC} unit="°C" step={1} min={-20} max={50}
+                      onChange={n => set({ values: { ...draft.values, tempC: n } as SimulationValues })} />
+                    <Stepper label={c.wind} value={draft.values.windKmh} unit="km/h" step={5} min={0} max={250}
+                      onChange={n => set({ values: { ...draft.values, windKmh: n } as SimulationValues })} />
+                    <Stepper label={c.gust} value={draft.values.gustKmh} unit="km/h" step={5} min={0} max={300}
+                      onChange={n => set({ values: { ...draft.values, gustKmh: n } as SimulationValues })} />
+                    <Stepper label={c.rain} value={draft.values.rainPct} unit="%" step={5} min={0} max={100}
+                      onChange={n => set({ values: { ...draft.values, rainPct: n } as SimulationValues })} />
+                    <Stepper label={c.humidity} value={draft.values.humidityPct} unit="%" step={5} min={0} max={100}
+                      onChange={n => set({ values: { ...draft.values, humidityPct: n } as SimulationValues })} />
+                    <Stepper label={c.uv} value={draft.values.uvIndex} unit="" step={1} min={0} max={12}
+                      onChange={n => set({ values: { ...draft.values, uvIndex: n } as SimulationValues })} />
+                    <Stepper label={c.visibility} value={draft.values.visibilityKm} unit="km" step={1} min={0} max={30}
+                      onChange={n => set({ values: { ...draft.values, visibilityKm: n } as SimulationValues })} />
+                  </>
+                )}
+                {draft.sources.airQuality === 'sim' && (
+                  <Stepper label={c.aqi} value={draft.values.aqi} unit="" step={10} min={0} max={500}
+                    onChange={n => set({ values: { ...draft.values, aqi: n } as SimulationValues })} />
+                )}
+              </Card>
+            )}
+
             {circles.length > 0 && (
               <Card>
                 <SectionLabel trailing={`${circles[0].members} ${c.people}`}>{circles[0].name}</SectionLabel>
@@ -264,6 +352,36 @@ export default function SimulatorPage() {
             <p className="sim-safety t-foot ink-3">{c.safety}</p>
           </>
         )}
+      </div>
+    </div>
+  )
+}
+
+function Stepper({
+  label,
+  value,
+  unit,
+  step,
+  min,
+  max,
+  onChange,
+}: {
+  label: string
+  value: number
+  unit: string
+  step: number
+  min: number
+  max: number
+  onChange: (value: number) => void
+}) {
+  const clamp = (n: number) => Math.max(min, Math.min(max, n))
+  return (
+    <div className="sim-stepper">
+      <span className="t-sub">{label}</span>
+      <div>
+        <button type="button" aria-label="-" onClick={() => { haptic.selection(); onChange(clamp(value - step)) }}>−</button>
+        <strong className="t-sub">{value}{unit}</strong>
+        <button type="button" aria-label="+" onClick={() => { haptic.selection(); onChange(clamp(value + step)) }}>+</button>
       </div>
     </div>
   )
