@@ -1,8 +1,10 @@
 # 19 — Cenário: o Simulador do EOS
 
-> Status: SPEC / CONCEPT DECIDED
-> Date: 2026-07-27
-> Decision: **D-067**. Planos da família: **D-066** / doc 18. Pilot: **D-046** / doc 15.
+> Status: **IMPLEMENTADO E EM PRODUÇÃO** (SIM-T00→T05, T07, T08, T10)
+> Date: 2026-07-27 · última atualização 2026-07-29
+> Decisões: **D-067** (simulador), **D-071** (treino compartilhado), **D-072** (escolher círculos + link de convite).
+> Planos da família: **D-066** / doc 18. Pilot: **D-046** / doc 15.
+> Aberto: **SIM-T06** (executar contra o plano, bloqueado por PLAN-T01) e **SIM-T09** (traduzir o texto livre para os painéis).
 
 ---
 
@@ -203,14 +205,17 @@ família — e é aí que o EOS deixa de ser informação e vira preparo.
 
 | Task | Entrega |
 |---|---|
-| **SIM-T00** | Esta spec + decisão (D-067) |
-| **SIM-T01** | `SimulationProvider` + injeção no `RiskProvider` + cromo persistente + travas de segurança (§5) |
-| **SIM-T02** | Painéis de configuração (§4) + tradução de linguagem natural revisável |
-| **SIM-T03** | Sessão: briefing pelo Pilot com RAG, rodar, sair a um toque |
-| **SIM-T04** | Injeção de eventos e avanço de tempo |
-| **SIM-T05** | Debrief com lacunas quantificadas + escrita confirmada no checklist |
-| **SIM-T06** | Execução contra o plano da família (doc 18) |
-| **SIM-T07** | Drills compartilhados no círculo + registro de que a família treinou |
+| **SIM-T00** | ✅ Esta spec + decisão (D-067) |
+| **SIM-T01** | ✅ `SimulationProvider` + injeção no `RiskProvider` + cromo persistente + travas de segurança (§5) |
+| **SIM-T02** | ✅ Painéis de configuração (§4) |
+| **SIM-T03** | ✅ Briefing pelo Pilot com RAG, rodar, sair a um toque |
+| **SIM-T04** | ✅ Injeção de eventos e avanço de tempo (+3h, +6h, Impacto, cortar luz/rede/vias) |
+| **SIM-T05** | ✅ Debrief com lacunas quantificadas + escrita confirmada no checklist |
+| **SIM-T06** | ⏳ Execução contra o plano da família (doc 18) — bloqueado por PLAN-T01 |
+| **SIM-T07** | ✅ Drills compartilhados no círculo (D-071) |
+| **SIM-T08** | ✅ Painel de instrumentos: cada fonte ao vivo / simulada / fora do ar (§4.1) |
+| **SIM-T09** | ⏳ Traduzir o texto livre para os painéis, revisável antes de rodar |
+| **SIM-T10** | ✅ Escolher círculos e convidar de fora por link (D-072) |
 
 SIM-T01 primeiro e sozinho: as travas de segurança precisam existir **antes** de
 a simulação alcançar o app inteiro, não depois.

@@ -1,7 +1,7 @@
 # 11 — Product Memory
 
 > Non-obvious facts that don't belong in code comments but must survive across sessions.
-> Last updated: 2026-07-27
+> Last updated: 2026-07-29
 
 ---
 
@@ -12,6 +12,32 @@ Quando dois membros cadastram só o nome da cidade ("Parkland, Florida"), o geoc
  agora agrupa por coordenada arredondada e espalha os co-locados num anel, em **pixels** (para o espalhamento sobreviver ao zoom). Se voltar a empilhar, é aqui.
 
 Consequência de produto: enquanto o ponto for de perfil, todo mundo da mesma cidade fica no mesmo lugar. Só o ponto **ao vivo** distingue de verdade — mais um motivo para o GPS consentido importar.
+
+---
+
+## Onde as coisas moram agora (2026-07-29)
+
+Depois da reconstrução, o mapa mental do app mudou. Para quem retomar:
+
+| Superfície | Código | Rota |
+|---|---|---|
+| Dashboard (porta de entrada) | `components/world-v2/WorldV2.tsx` | `/dashboard` |
+| Design system da v2 | `components/world-v2/world-v2.css` + `primitives.tsx` | — |
+| Física de movimento | `components/world-v2/motion.ts` | — |
+| Pilot (conversa) | `components/world-v2/Pilot.tsx` + `app/api/pilot/chat` | orbe na PilotBar |
+| Pilot (motor local) | `components/world-v2/pilot-engine.ts` | — |
+| Simulador | `components/world-v2/SimulatorPage.tsx` + `lib/simulation.ts` | `/scenario` |
+| Estado global da simulação | `components/SimulationProvider.tsx` | montado no layout `(app)` |
+| Debrief | `lib/simulation-debrief.ts` | modal pós-encerramento |
+| Checklist | `components/world-v2/ChecklistPage.tsx` | `/checklist` |
+| Mapa (compartilhado) | `components/world-dashboard/WorldMap.tsx` | usado por `/dashboard` e `/dashboard-world` |
+
+Telas antigas preservadas: `/dashboard-legacy`, `/scenario-legacy`,
+`/checklist-legacy`, `/dashboard-world`. Nenhuma está no nav; existem para
+comparação e rollback.
+
+**A simulação injeta no `RiskProvider`**, não nas telas. Se uma tela nova precisa
+responder ao cenário, basta ela ler `useRisk()` — não há nada a ligar.
 
 ---
 

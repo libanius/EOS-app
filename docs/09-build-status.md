@@ -1,7 +1,7 @@
 # 09 — Build Status
 
 > The single most important file for resuming a session. Read this first after AGENTS.md.
-> Last updated: 2026-07-27
+> Last updated: 2026-07-29
 
 ---
 
@@ -65,6 +65,63 @@
 | **Vercel** | ✅ Produção em 2026-07-28 (`050399e`) — abrigos FEMA, busca no mapa, puck com foto, simulador, Pilot conversacional com navegação, checklist v2. Verificado: `/api/shelters` retorna 4 abrigos reais perto de Bend/OR. |
 | **Supabase** | ✅ Healthy — project ref `alxurmgpyxjhvnliivbf` |
 | **⚠️ Segurança** | Rotacionar segredos expostos em chat: Vercel token (`vcp_…`), Supabase PAT (`sbp_…`), Stripe test/Live keys, MapTiler. |
+
+---
+
+## Sessão 2026-07-27→29 — World v2, Pilot copiloto, Simulador, localização familiar
+
+Sessão longa e de reconstrução. Começou como uma reavaliação de design do
+`/dashboard-world` sob a skill `apple-design` e terminou com o EOS abrindo numa
+tela nova, um copiloto conversacional e um simulador que treina a família
+inteira. **11 decisões (D-062→D-072), 2 specs novas (docs 18 e 19), 3 migrations.**
+
+### O arco
+
+1. **World v2 (D-062, D-063)** — reconstrução completa da superfície acima do
+   mapa sobre um design system Apple (`components/world-v2/`), promovida a
+   `/dashboard` e lançada em produção. O `WorldMap` foi reaproveitado sem
+   alteração. Dashboard anterior preservado em `/dashboard-legacy`.
+2. **Localização familiar ao vivo (D-064)** — consentimento com toggle próprio,
+   só o último ponto, freshness obrigatória na UI.
+3. **Abrigos e navegação (D-065, D-068, D-069)** — FEMA National Shelter System
+   como fonte oficial, geometria calculada no aparelho, trajeto desenhado como
+   camada do EOS com o app de mapas como segundo passo.
+4. **Plano de voo da família (D-066 / doc 18)** — spec escrita, implementação
+   pendente (PLAN-T01→T07).
+5. **Simulador (D-067, D-071, D-072 / doc 19)** — o Cenário virou simulador
+   aeronáutico: o app inteiro responde ao ambiente configurado, o círculo é
+   convidado por pop-up, e o debrief devolve lacunas em números.
+6. **Pilot conversacional (D-068, D-070)** — deixou de ser um cartão com veredito
+   e virou o especialista com quem se conversa; virou também a entrada única do
+   app, absorvendo a barra de busca.
+
+### Bugs de produção encontrados e corrigidos
+
+Vale registrar porque **cinco deles eram o mesmo erro**: estender uma ponta e
+esquecer a outra.
+
+| Bug | Causa |
+|---|---|
+| Marcadores mock ("Paulo/Isadora/Ana", `SHELTER · mock`) na tela principal | `WorldMap` inventava overlays quando não recebia dados |
+| Coordenadas de todo membro vazando sem consentimento | `/api/circles` não gateava `location_lat/lng` |
+| **Ninguém num círculo via ninguém** | `VALID_FIELDS` do PATCH descartava `location` no salvamento |
+| Família no mesmo ponto invisível | Dois perfis com o mesmo centroide de cidade, marcadores empilhados |
+| Pilot "sem acesso a dados em tempo real" | O clima não era enviado no `context` |
+| JSON cru na conversa | Resposta truncada + fallback que imprimia a fonte |
+| Impossível digitar no Pilot no celular | Campo sob o BottomNav (`fixed`, z-index 100) |
+| Mapa recentralizando e travando o scroll | `flyTo` programático disparava os eventos que recolhiam o HUD |
+| `.w-mapmarker` sem estilo na v2 | CSS vivia só em `world-dashboard.css`, que a v2 não importa |
+| Convidado esperando 20s pelo pop-up | `router.replace` não remonta o layout onde vive o poller |
+
+### Validação
+
+Sessão em que a verificação em navegador real passou a existir:
+`scripts/browser-walkthrough.mjs`, `scripts/circle-location-test.mjs` e
+`scripts/simulation-share-test.mjs` (Playwright). **Todos criam e apagam contas
+no Supabase de produção** — é o único projeto configurado no `.env.local`.
+
+Os três primeiros bugs da tabela acima foram encontrados **lendo código**; os
+sete últimos, **rodando o app**. A diferença é o argumento para WV2-T05.
 
 ---
 

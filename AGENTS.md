@@ -38,6 +38,8 @@ Before writing any code, read these files in order:
 Read the relevant feature spec if working on a specific feature:
 - `docs/03-requirements.md` — functional requirements
 - `docs/06-data-model.md` — schema and field names
+- `docs/18-family-plans.md` — Planos de Emergência da Família (plano de voo)
+- `docs/19-scenario-simulator.md` — o Simulador do Cenário
 
 ---
 
