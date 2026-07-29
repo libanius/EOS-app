@@ -7,6 +7,7 @@
  *   - inventory       (single row)
  *   - recent plans    (last 5 action plans)
  *   - checklist       (latest generated items)
+ *   - shelters        (last known official shelters + when they were read)
  *
  * Only runs in the browser. All helpers are no-ops on the server.
  *
@@ -15,6 +16,7 @@
  *   saveInventory / getInventory
  *   savePlan      / getRecentPlans
  *   saveChecklist / getChecklist
+ *   saveShelters  / getShelters
  *   clearAll
  */
 
@@ -105,6 +107,42 @@ export async function getProfile(): Promise<StoredProfile | null> {
   if (!db) return null
   const v = await db.get('kv', 'profile')
   return (v as StoredProfile | undefined) ?? null
+}
+
+/**
+ * Official shelters, kept on the device (FAM-T08).
+ *
+ * The destination has to be known when the tower is down — that is the whole
+ * argument of D-065 §1. The cached copy carries its own timestamp so the UI can
+ * say how old it is: shelters open and close during an event, and a stale list
+ * presented as current is the same lie as a stale position.
+ */
+export interface StoredShelters {
+  shelters: Array<{
+    id: string
+    name: string
+    lat: number
+    lng: number
+    address: string | null
+    city: string | null
+    state: string | null
+  }>
+  /** Where the user was when this list was fetched — distances are recomputed. */
+  origin: { lat: number; lng: number } | null
+  fetchedAt: string
+}
+
+export async function saveShelters(s: StoredShelters): Promise<void> {
+  const db = await getDB()
+  if (!db) return
+  await db.put('kv', s, 'shelters')
+}
+
+export async function getShelters(): Promise<StoredShelters | null> {
+  const db = await getDB()
+  if (!db) return null
+  const v = await db.get('kv', 'shelters')
+  return (v as StoredShelters | undefined) ?? null
 }
 
 export async function saveInventory(i: StoredInventory): Promise<void> {

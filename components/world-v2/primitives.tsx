@@ -78,17 +78,31 @@ export function PillLink({
   )
 }
 
+/**
+ * `caption` renders a visible label under the glyph.
+ *
+ * `aria-label` and `title` cover screen readers and hover — but touch has no
+ * hover, so on a phone an icon-only control is a guess. The rule from the design
+ * foundations is blunt: if you need a label to explain a control, the mapping is
+ * weak. Here the label is simply present.
+ */
 export function IconButton({
   children,
   label,
+  caption,
   active = false,
   onClick,
   ...rest
-}: { children: ReactNode; label: string; active?: boolean } & ComponentProps<'button'>) {
+}: {
+  children: ReactNode
+  label: string
+  caption?: string
+  active?: boolean
+} & ComponentProps<'button'>) {
   return (
     <button
       type="button"
-      className={`wv2-iconbtn${active ? ' on' : ''}`}
+      className={`wv2-iconbtn${active ? ' on' : ''}${caption ? ' with-caption' : ''}`}
       aria-label={label}
       title={label}
       onClick={event => {
@@ -98,6 +112,7 @@ export function IconButton({
       {...rest}
     >
       {children}
+      {caption && <span className="cap">{caption}</span>}
     </button>
   )
 }

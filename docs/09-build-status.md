@@ -10,7 +10,10 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Abrigos oficiais + planos da família (FAM/PLAN) + gates de validação da v2 abertos (WV2-T05) |
-| **Last Completed Task** | **D-072 / SIM-T10 — escolher círculos e convidar de fora por link (2026-07-28)** |
+| **Last Completed Task** | **PLAN-T01 — modelo de dados e API do plano de voo (2026-07-29)** |
+| | WV2-T06 rótulos nos controles do mapa · FAM-T08 cache offline dos abrigos |
+| | Fix: localização ao vivo travada no iOS; ponto de perfil agora parece aproximado |
+| | D-072 / SIM-T10 — escolher círculos e convidar de fora por link (2026-07-28)** |
 | | SIM-T08 — painel de instrumentos: cada fonte ao vivo, simulada ou fora do ar (2026-07-28)** |
 | | SIM-T04 + SIM-T05 — avanço de tempo e debrief com lacunas quantificadas (2026-07-28)** |
 | | D-071 — simulação compartilhada: o círculo recebe convite e treina junto (2026-07-28)** |
@@ -31,6 +34,7 @@
 | | D-065 / FAM-T05→T07 — abrigos oficiais do FEMA NSS, rumo/distância on-device e deep-link de navegação (2026-07-27)** |
 | | D-066 / PLAN-T00 — spec dos Planos de Emergência da Família (`docs/18-family-plans.md`) (2026-07-27) |
 | | D-064 / FAM-T01→T04 — localização familiar ao vivo, consentimento próprio e remoção dos mocks do mapa (2026-07-27) |
+| **⚠️ Migration pendente** | `20260729000000_family_plans.sql` — Planos de Emergência da Família (PLAN-T01). Até aplicar, `/api/plans` responde `migration_pending` e nada quebra. |
 | **Migration** | ✅ `20260728010000_simulation_join_token.sql` aplicada pelo dono em 2026-07-28 e verificada. |
 | **Migration** | ✅ `20260728000000_shared_simulation.sql` aplicada pelo dono em 2026-07-28. Tabelas e colunas verificadas por REST service-role. |
 | **Migration** | ✅ `20260727000000_live_location.sql` aplicada pelo dono em 2026-07-27. Verificado via REST service-role: as 4 colunas `last_location_*` respondem 200 em `profiles`. |
@@ -60,7 +64,7 @@
 | | LA-T02: Stripe **Live** cutover — faturamento real ativo (2026-07-21) |
 | | LA-T01: Stripe test payment → webhook → `profiles.plan=family` (2026-07-20) |
 | **In Progress** | — |
-| **Next Task** | **PLAN-T01** — modelo de dados + RLS + API dos Planos de Emergência da Família (`docs/18-family-plans.md`), que destrava SIM-T06 e os mapas offline. Antes disso: **SIM-T05** — debrief da simulação com lacunas quantificadas. Alternativas: **SIM-T04** (injeção de eventos/avanço de tempo), **PLAN-T01** (modelo de dados do plano de voo) — modelo de dados + RLS por círculo + API dos Planos de Emergência da Família (`docs/18-family-plans.md`). Alternativas abertas: **WV2-T05** (gates de validação da v2, dívida assumida em D-063), **FAM-T08** (cache offline dos abrigos), **LA-T06** (códigos de afiliado, travado nos params do dono). |
+| **Next Task** | **PLAN-T02** — editor do plano (pontos de encontro, lugares, papéis, gatilhos). Depois **PLAN-T04** (versionamento e reconhecimento na UI) e **SIM-T06**. Antes disso: **PLAN-T01** — modelo de dados + RLS + API dos Planos de Emergência da Família (`docs/18-family-plans.md`), que destrava SIM-T06 e os mapas offline. Antes disso: **SIM-T05** — debrief da simulação com lacunas quantificadas. Alternativas: **SIM-T04** (injeção de eventos/avanço de tempo), **PLAN-T01** (modelo de dados do plano de voo) — modelo de dados + RLS por círculo + API dos Planos de Emergência da Família (`docs/18-family-plans.md`). Alternativas abertas: **WV2-T05** (gates de validação da v2, dívida assumida em D-063), **FAM-T08** (cache offline dos abrigos), **LA-T06** (códigos de afiliado, travado nos params do dono). |
 | **Build** | ✅ Passing — type-check, ESLint e production build limpos (2026-07-28) |
 | **Vercel** | ✅ Produção em 2026-07-28 (`050399e`) — abrigos FEMA, busca no mapa, puck com foto, simulador, Pilot conversacional com navegação, checklist v2. Verificado: `/api/shelters` retorna 4 abrigos reais perto de Bend/OR. |
 | **Supabase** | ✅ Healthy — project ref `alxurmgpyxjhvnliivbf` |

@@ -2044,3 +2044,22 @@
   border-style: dashed;
   color: var(--ink-2);
 }
+
+/* Touch has no hover, so the map controls carry their name (WV2-T06). */
+.wv2-mapcontrols .wv2-iconbtn.with-caption {
+  height: auto;
+  padding: 7px 0 6px;
+  gap: 2px;
+  flex-direction: column;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.wv2-mapcontrols .wv2-iconbtn .cap {
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  color: var(--ink-3);
+}
+.wv2-mapcontrols .wv2-iconbtn.on .cap { color: var(--accent); }

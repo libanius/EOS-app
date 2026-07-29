@@ -107,7 +107,7 @@
 | WV2-T03 | Pilot copiloto: orbe "liquid glass fumê" + console; motor determinístico local (`pilot-engine.ts`) sobre RiskProvider, inventário, ficha e `RulesEngine` | ✅ COMPLETE | 2026-07-27 — D-062.1; 5 intenções; evacuação nunca inferida; declara o que não sabe |
 | WV2-T04 | Promoção a `/dashboard`: redirects de entrada, botão central no BottomNav, legacy preservado | ✅ COMPLETE | 2026-07-27 — D-063 |
 | WV2-T05 | Validação de produção da v2: E2E de navegador, a11y/perf medidos, custo de provider, revisão de privacidade/proveniência | 🔵 EM CURSO | `scripts/browser-walkthrough.mjs` (Playwright) percorre login→dashboard→sheet→Pilot→busca→simulação com prints. Falta a11y/perf medidos e custo. | Herda os gates abertos do HWD-06. **Rollout ocorreu antes destes gates**, por decisão do dono (D-063). |
-| WV2-T06 | Rótulos dos controles de mapa no toque | PENDING | `aria-label`/`title` cobrem leitor de tela e hover; no toque não há hover. Alternativas: legenda curta ou mover as ações para dentro do sheet. |
+| WV2-T06 | Rótulos dos controles de mapa no toque | ✅ COMPLETE | 2026-07-29 — legenda visível sob cada ícone (Você / Atualizar / Painel). Toque não tem hover, então o rótulo passou a existir. |
 | WV2-T07 | Reconstruir features do HWD v1 sobre a v2 conforme demanda | PENDING | Camadas ao vivo, toggle de base, notificar círculo. Marcadores de família saíram daqui para a seção FAM. |
 
 ---
@@ -130,7 +130,7 @@
 | FAM-T06 | Provider FEMA NSS: proxy `/api/shelters` com cache + camada no mapa v2 | ✅ COMPLETE | 2026-07-27 — `lib/world/shelters.ts`; verificado ao vivo: 4 abrigos reais perto de Bend/OR, `empty:true` em Parkland |
 | FAM-T07 | Rumo/distância on-device + botão "Como chegar" (deep-link) + adaptador de rotas | ✅ COMPLETE | 2026-07-27 — `lib/world/navigation.ts`; Pilot passa a citar abrigo aberto em "ficar ou sair" |
 | FAM-T09 | Foto dos membros no mapa + ponto de perfil visualmente aproximado | ✅ COMPLETE | 2026-07-29 — avatar por URL assinada; marcador tracejado quando é endereço e não posição. Corrigido também o bloqueio do reporter em iOS |
-| FAM-T08 | Cache offline dos abrigos (`lib/offline-storage.ts`) | PENDING | Destino precisa estar no aparelho quando a torre cair |
+| FAM-T08 | Cache offline dos abrigos (`lib/offline-storage.ts`) | ✅ COMPLETE | 2026-07-29 — última lista boa guardada em IndexedDB e servida quando a rede cai; distâncias recalculadas contra a posição atual, `fetchedAt` original preservado |
 
 ---
 
@@ -167,7 +167,7 @@
 | Task ID | Task | Status | Notes |
 |---|---|---|---|
 | PLAN-T00 | Spec + decisão do conceito de plano de voo familiar | ✅ COMPLETE | 2026-07-27 — D-066 / doc 18 |
-| PLAN-T01 | Modelo de dados + RLS por círculo + API autenticada | PENDING | 5 tabelas; endpoints públicos de ficha nunca tocam nelas |
+| PLAN-T01 | Modelo de dados + RLS por círculo + API autenticada | ✅ COMPLETE (código) | 2026-07-29 — 5 tabelas com RLS deny-all, `GET/PUT /api/plans` (documento inteiro, versão incrementada a cada save + push ao círculo) e `POST /api/plans/[id]/ack`. **Falta aplicar** `20260729000000_family_plans.sql` |
 | PLAN-T02 | Editor: pontos de encontro (1/2/3), lugares conhecidos, papéis, gatilhos | PENDING | Ponto de encontro e papéis são obrigatórios; o resto é opcional |
 | PLAN-T03 | Desenho de rotas no mapa + edição de traçado | PENDING | Rotas são autorais, não roteadas (D-066 §2) |
 | PLAN-T04 | Versionamento, push ao círculo e reconhecimento explícito | PENDING | **Parte difícil, não adiável.** Duas versões diferentes = famílias em lugares diferentes |

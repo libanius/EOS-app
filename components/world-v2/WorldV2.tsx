@@ -59,6 +59,9 @@ const COPY = {
     yourArea: 'Sua área',
     locating: 'Sem localização',
     useGps: 'Usar GPS',
+    gpsCap: 'Você',
+    refreshCap: 'Atualizar',
+    panelCap: 'Painel',
     refresh: 'Atualizar dados',
     panel: 'Mostrar ou ocultar o painel',
     open: 'Abrir',
@@ -106,6 +109,9 @@ const COPY = {
     yourArea: 'Your area',
     locating: 'No location',
     useGps: 'Use GPS',
+    gpsCap: 'You',
+    refreshCap: 'Refresh',
+    panelCap: 'Panel',
     refresh: 'Refresh data',
     panel: 'Show or hide the panel',
     open: 'Open',
@@ -298,6 +304,7 @@ export default function WorldV2() {
         <div className="wv2-mapcontrols">
           <IconButton
             label={c.useGps}
+            caption={c.gpsCap}
             active={hasCoords}
             onClick={() => {
               requestGps()
@@ -306,11 +313,11 @@ export default function WorldV2() {
           >
             <LocationIcon />
           </IconButton>
-          <IconButton label={c.refresh} onClick={() => { refresh(); data.refresh() }}>
+          <IconButton label={c.refresh} caption={c.refreshCap} onClick={() => { refresh(); data.refresh() }}>
             <RefreshIcon />
           </IconButton>
           {isDesktop && (
-            <IconButton label={c.panel} active={panelOpen} onClick={() => setPanelOpen(open => !open)}>
+            <IconButton label={c.panel} caption={c.panelCap} active={panelOpen} onClick={() => setPanelOpen(open => !open)}>
               <PanelIcon />
             </IconButton>
           )}

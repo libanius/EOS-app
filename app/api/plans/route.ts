@@ -1,0 +1,233 @@
+import { type NextRequest, NextResponse } from 'next/server'
+import webpush from 'web-push'
+import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+
+/**
+ * /api/plans — the family's emergency plan (D-066 / doc 18, PLAN-T01).
+ *
+ * GET  ?circleId=…  reads the whole plan as one document.
+ * PUT               saves the whole plan as one document and bumps the version.
+ *
+ * Whole-document reads and writes on purpose: a plan is small, and its parts are
+ * only meaningful together. A rendezvous point saved without the role that says
+ * who goes there is not half a plan — it is a wrong one.
+ *
+ * VERSIONING IS THE SAFETY FEATURE (doc 18 §6). Every save increments `version`
+ * and clears nothing: acks from older versions stay, so the UI can show exactly
+ * who has and has not seen the change. A save also pushes the circle, because
+ * moving a meeting point is a safety event, not a profile edit.
+ */
+
+const VAPID_PUBLIC = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? ''
+const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY ?? ''
+const VAPID_SUBJECT = process.env.VAPID_SUBJECT ?? 'mailto:brightscalegroup@gmail.com'
+
+type Waypoint = { kind: string; name: string; lat: number; lng: number; notes?: string | null; sort_order?: number }
+type Route = { label: string; geometry: unknown; mode?: string; notes?: string | null }
+type Role = { member_user_id: string; responsibility: string }
+
+const KINDS = ['rendezvous_1', 'rendezvous_2', 'rendezvous_3', 'home', 'school', 'work', 'custom']
+
+function tableMissing(error: { code?: string } | null) {
+  return error?.code === '42P01'
+}
+
+async function assertMember(admin: NonNullable<ReturnType<typeof createAdminClient>>, circleId: string, userId: string) {
+  const { data } = await admin
+    .from('circle_members')
+    .select('user_id')
+    .eq('circle_id', circleId)
+    .eq('user_id', userId)
+    .maybeSingle()
+  return Boolean(data)
+}
+
+export async function GET(request: NextRequest) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 })
+
+  const circleId = request.nextUrl.searchParams.get('circleId')
+  if (!circleId) return NextResponse.json({ error: 'circleId é obrigatório.' }, { status: 400 })
+
+  const admin = createAdminClient()
+  if (!admin) return NextResponse.json({ error: 'Indisponível.' }, { status: 503 })
+  if (!(await assertMember(admin, circleId, user.id))) {
+    return NextResponse.json({ error: 'Não é membro deste círculo.' }, { status: 403 })
+  }
+
+  const { data: plan, error } = await admin
+    .from('family_plans')
+    .select('*')
+    .eq('circle_id', circleId)
+    .neq('status', 'archived')
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error && tableMissing(error)) {
+    return NextResponse.json({ plan: null, migrationPending: true })
+  }
+  if (!plan) return NextResponse.json({ plan: null })
+
+  const [{ data: waypoints }, { data: routes }, { data: roles }, { data: acks }] = await Promise.all([
+    admin.from('family_plan_waypoints').select('*').eq('plan_id', plan.id).order('sort_order'),
+    admin.from('family_plan_routes').select('*').eq('plan_id', plan.id),
+    admin.from('family_plan_roles').select('*').eq('plan_id', plan.id),
+    admin.from('family_plan_acks').select('member_user_id, acked_version, acked_at').eq('plan_id', plan.id),
+  ])
+
+  // Who has seen THIS version — the answer that separates a plan from an intention.
+  const acknowledged = (acks ?? []).filter(a => a.acked_version === plan.version).map(a => a.member_user_id)
+
+  return NextResponse.json({
+    plan,
+    waypoints: waypoints ?? [],
+    routes: routes ?? [],
+    roles: roles ?? [],
+    acknowledgedBy: acknowledged,
+    myAck: (acks ?? []).find(a => a.member_user_id === user.id)?.acked_version ?? null,
+  })
+}
+
+export async function PUT(request: NextRequest) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 })
+
+  let body: {
+    circleId?: string
+    name?: string
+    status?: string
+    waypoints?: Waypoint[]
+    routes?: Route[]
+    roles?: Role[]
+  }
+  try { body = await request.json() } catch { return NextResponse.json({ error: 'Corpo inválido.' }, { status: 400 }) }
+  if (!body.circleId) return NextResponse.json({ error: 'circleId é obrigatório.' }, { status: 400 })
+
+  const admin = createAdminClient()
+  if (!admin) return NextResponse.json({ error: 'Indisponível.' }, { status: 503 })
+  if (!(await assertMember(admin, body.circleId, user.id))) {
+    return NextResponse.json({ error: 'Não é membro deste círculo.' }, { status: 403 })
+  }
+
+  const { data: existing, error: readError } = await admin
+    .from('family_plans')
+    .select('id, version')
+    .eq('circle_id', body.circleId)
+    .neq('status', 'archived')
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (readError && tableMissing(readError)) {
+    return NextResponse.json({ error: 'migration_pending' }, { status: 200 })
+  }
+
+  let planId = existing?.id as string | undefined
+  let version = (existing?.version ?? 0) + 1
+
+  if (planId) {
+    await admin
+      .from('family_plans')
+      .update({
+        name: body.name ?? undefined,
+        status: body.status ?? undefined,
+        version,
+        updated_by: user.id,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', planId)
+  } else {
+    const { data: created, error } = await admin
+      .from('family_plans')
+      .insert({
+        circle_id: body.circleId,
+        name: body.name ?? 'Plano da família',
+        status: body.status ?? 'active',
+        created_by: user.id,
+        updated_by: user.id,
+        version: 1,
+      })
+      .select('id, version')
+      .single()
+    if (error || !created) return NextResponse.json({ error: error?.message ?? 'Falha ao criar.' }, { status: 500 })
+    planId = created.id
+    version = created.version
+  }
+
+  // The document is replaced wholesale; acks are NOT touched, so the UI can
+  // still show who was on the previous version and has not seen this one.
+  await Promise.all([
+    admin.from('family_plan_waypoints').delete().eq('plan_id', planId),
+    admin.from('family_plan_routes').delete().eq('plan_id', planId),
+    admin.from('family_plan_roles').delete().eq('plan_id', planId),
+  ])
+
+  const waypoints = (body.waypoints ?? [])
+    .filter(w => w?.name?.trim() && Number.isFinite(w.lat) && Number.isFinite(w.lng) && KINDS.includes(w.kind))
+    .map((w, index) => ({
+      plan_id: planId,
+      kind: w.kind,
+      name: w.name.trim().slice(0, 80),
+      lat: w.lat,
+      lng: w.lng,
+      notes: w.notes?.slice(0, 300) ?? null,
+      sort_order: w.sort_order ?? index,
+    }))
+  if (waypoints.length) await admin.from('family_plan_waypoints').insert(waypoints)
+
+  const routes = (body.routes ?? [])
+    .filter(r => r?.label?.trim() && r.geometry)
+    .map(r => ({
+      plan_id: planId,
+      label: r.label.trim().slice(0, 80),
+      geometry: r.geometry,
+      mode: r.mode === 'foot' ? 'foot' : 'car',
+      notes: r.notes?.slice(0, 300) ?? null,
+    }))
+  if (routes.length) await admin.from('family_plan_routes').insert(routes)
+
+  const roles = (body.roles ?? [])
+    .filter(r => r?.member_user_id && r?.responsibility?.trim())
+    .map(r => ({
+      plan_id: planId,
+      member_user_id: r.member_user_id,
+      responsibility: r.responsibility.trim().slice(0, 200),
+    }))
+  if (roles.length) await admin.from('family_plan_roles').insert(roles)
+
+  // The author is on the version they just wrote.
+  await admin
+    .from('family_plan_acks')
+    .upsert({ plan_id: planId, member_user_id: user.id, acked_version: version, acked_at: new Date().toISOString() })
+
+  // Moving a meeting point is a safety event, not a profile edit (doc 18 §6.3).
+  if (VAPID_PUBLIC && VAPID_PRIVATE) {
+    const { data: members } = await admin.from('circle_members').select('user_id').eq('circle_id', body.circleId)
+    const others = (members ?? []).map(m => m.user_id).filter(id => id !== user.id)
+    if (others.length) {
+      const { data: subs } = await admin
+        .from('push_subscriptions')
+        .select('endpoint, p256dh, auth')
+        .in('profile_id', others)
+      if (subs?.length) {
+        webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE)
+        const payload = JSON.stringify({
+          title: 'EOS · Plano da família mudou',
+          body: `O plano foi atualizado (v${version}). Abra para confirmar que você viu.`,
+          url: '/family',
+        })
+        await Promise.allSettled(
+          subs.map(sub =>
+            webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } }, payload),
+          ),
+        )
+      }
+    }
+  }
+
+  return NextResponse.json({ ok: true, planId, version })
+}
