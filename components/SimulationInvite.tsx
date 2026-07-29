@@ -33,7 +33,7 @@ export default function SimulationInvite() {
   const { language } = useLanguage()
   const pt = language === 'pt'
   const reduceMotion = useReducedMotion()
-  const { start, stop, active, setSharedSession } = useSimulation()
+  const { start, stop, active, sharedSessionId, setSharedSession } = useSimulation()
   const [session, setSession] = useState<Session | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -49,7 +49,11 @@ export default function SimulationInvite() {
 
       // The drill ended somewhere else (owner, or a real alert): leave it here
       // too. Nobody keeps flying a scenario the family already left.
-      if (!data?.session && active) {
+      //
+      // Gated on `sharedSessionId` — a LOCAL simulation has no server session
+      // either, and without this guard the poll killed every solo drill within
+      // twenty seconds, including the starter's own.
+      if (!data?.session && active && sharedSessionId) {
         setSharedSession(null)
         stop()
       }
@@ -60,7 +64,7 @@ export default function SimulationInvite() {
       cancelled = true
       clearInterval(timer)
     }
-  }, [active, stop, setSharedSession])
+  }, [active, sharedSessionId, stop, setSharedSession])
 
   // Already accepted elsewhere (another device): mirror it without asking again.
   useEffect(() => {

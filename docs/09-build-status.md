@@ -28,7 +28,7 @@
 | | D-065 / FAM-T05→T07 — abrigos oficiais do FEMA NSS, rumo/distância on-device e deep-link de navegação (2026-07-27)** |
 | | D-066 / PLAN-T00 — spec dos Planos de Emergência da Família (`docs/18-family-plans.md`) (2026-07-27) |
 | | D-064 / FAM-T01→T04 — localização familiar ao vivo, consentimento próprio e remoção dos mocks do mapa (2026-07-27) |
-| **⚠️ Migration pendente** | `20260728000000_shared_simulation.sql` — simulação compartilhada (D-071). Até aplicar, o convite ao círculo degrada em silêncio e a simulação continua local. |
+| **Migration** | ✅ `20260728000000_shared_simulation.sql` aplicada pelo dono em 2026-07-28. Tabelas e colunas verificadas por REST service-role. |
 | **Migration** | ✅ `20260727000000_live_location.sql` aplicada pelo dono em 2026-07-27. Verificado via REST service-role: as 4 colunas `last_location_*` respondem 200 em `profiles`. |
 | | D-063 / WV2-T04 — World v2 promovido a `/dashboard` e lançado em produção (2026-07-27) |
 | | D-062 / WV2-T01→T03 — design system Apple, `DetentSheet` com gesto real e Pilot copiloto local-first (2026-07-27) |
