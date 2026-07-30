@@ -15,7 +15,9 @@
  *   8. a família desenha uma rota no mapa e ela vira LineString no banco (§5)
  *   9. o SIMULADOR cobra o plano: com as vias bloqueadas, um ponto de encontro
  *      longe demais para ir a pé vira lacuna no debrief (SIM-T06)
- *  10. sem rede, o plano continua na tela, rotulado como cópia local (doc 18 §13)
+ *  10. sem rede, o plano continua na tela, rotulado como cópia local, E a carta
+ *      do plano é DESENHADA — pinos, traçado, norte e escala, sem tile nenhum
+ *      (doc 18 §13: seguir as rotas com o avião no chão)
  *
  * O item 6 é o que separa um plano de um desenho: se um ack antigo fosse
  * carregado adiante, o autor acreditaria que a família viu uma mudança que
@@ -285,6 +287,23 @@ const offlinePoint = await b.locator('text=Praça do quarteirão').count()
 offlineLabel && offlinePoint
   ? ok('sem rede: plano na tela, rotulado como cópia local')
   : no('plano não sobreviveu offline', `rótulo=${offlineLabel} ponto=${offlinePoint}`)
+
+// A carta precisa existir com a rede caída: é o único "mapa" que sobrevive ao
+// avião no chão, porque é desenhado das coordenadas que já estão no aparelho.
+const chart = await b.evaluate(() => {
+  const svg = document.querySelector('.wv2-chart svg')
+  if (!svg) return null
+  return {
+    pinos: svg.querySelectorAll('.chart-pin').length,
+    tracados: svg.querySelectorAll('.chart-route').length,
+    norte: svg.querySelectorAll('.chart-north').length,
+    escala: svg.querySelectorAll('.chart-scale text').length,
+    rotulo: svg.getAttribute('aria-label') ?? '',
+  }
+})
+chart && chart.pinos >= 3 && chart.tracados >= 1 && chart.norte === 1 && chart.escala === 1
+  ? ok('carta do plano desenhada offline', `${chart.pinos} pinos, ${chart.tracados} traçado(s) · "${chart.rotulo.slice(0, 60)}…"`)
+  : no('carta não desenhou offline', JSON.stringify(chart))
 await bctx.setOffline(false)
 
 // ─── limpeza ────────────────────────────────────────────────────────────────

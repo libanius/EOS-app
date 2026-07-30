@@ -25,6 +25,7 @@ import { useLanguage } from '@/lib/i18n'
 import { distanceKm, bearing, compassPoint } from '@/lib/world/shelters'
 import { formatDistance, walkingMinutes } from '@/lib/world/navigation'
 import { getFamilyPlan, saveFamilyPlan } from '@/lib/offline-storage'
+import { planEnvelope } from '@/lib/plan-envelope'
 import {
   PLACE_KINDS,
   RENDEZVOUS,
@@ -39,6 +40,7 @@ import {
   type PlanWaypoint,
   type WaypointKind,
 } from '@/lib/family-plan'
+import PlanChart from './PlanChart'
 import RouteDraw, { routeSummary } from './RouteDraw'
 import { Card, Pill, SectionLabel } from './primitives'
 import { FADE, SPRING, haptic } from './motion'
@@ -56,6 +58,8 @@ const COPY = {
     noCircle: 'Você ainda não tem um círculo.',
     noCircleHint: 'O plano pertence ao círculo — é o que faz todo mundo enxergar a mesma coisa. Crie um círculo e convide sua família.',
     goCircles: 'Ir para Círculos',
+    chart: 'A carta do plano',
+    chartNote: 'Desenhada a partir das coordenadas guardadas no aparelho. Não depende de rede, de mapa nem de GPS — é o que fica na tela quando nada mais funciona. Não tem ruas: tem norte, escala e as distâncias reais.',
     homeTitle: 'Endereço de casa',
     homeWhy: 'Toda distância desta tela é medida daqui: quanto falta até cada ponto de encontro, e quantos minutos a pé.',
     homeNone: 'Ainda não definido — por isso as distâncias não aparecem.',
@@ -127,6 +131,8 @@ const COPY = {
     noCircle: 'You do not have a circle yet.',
     noCircleHint: 'The plan belongs to the circle — that is what makes everyone see the same thing. Create a circle and invite your family.',
     goCircles: 'Go to Circles',
+    chart: 'The plan chart',
+    chartNote: 'Drawn from the coordinates stored on this device. It needs no network, no map service and no GPS — it is what stays on screen when nothing else works. It has no streets: it has north, a scale bar and the real distances.',
     homeTitle: 'Home address',
     homeWhy: 'Every distance on this screen is measured from here: how far each meeting point is, and how many minutes on foot.',
     homeNone: 'Not set yet — that is why distances are missing.',
@@ -328,6 +334,7 @@ export default function PlanPage() {
   )
 
   const gaps = useMemo(() => planGaps({ waypoints, roles }, pt), [waypoints, roles, pt])
+  const envelope = useMemo(() => planEnvelope(waypoints, routes), [waypoints, routes])
   // A casa tem cartão próprio no topo; repeti-la aqui faria parecer que são
   // dois endereços diferentes.
   const places = waypoints.filter(w => !isRendezvous(w.kind) && w.kind !== 'home')
@@ -496,6 +503,19 @@ export default function PlanPage() {
                 {gaps.map(g => <li key={g} className="t-foot ink-2">{g}</li>)}
               </ul>
             </Card>
+          )}
+
+          {/* ── the chart: the plan drawn from its own coordinates ─────── */}
+          {waypoints.length > 0 && (
+            <>
+              <SectionLabel trailing={envelope ? `${envelope.spanKm.toFixed(1)} km` : undefined}>
+                {c.chart}
+              </SectionLabel>
+              <Card>
+                <PlanChart waypoints={waypoints} routes={routes} pt={pt} />
+                <p className="t-foot ink-3 chart-note">{c.chartNote}</p>
+              </Card>
+            </>
           )}
 
           {/* ── home: the origin of every distance on this screen ──────── */}

@@ -197,6 +197,31 @@ família vai operar em degradação.
 **O plano é o que torna o download offline finito e certo.** Por isso ele vem
 antes dos mapas offline no roadmap, não depois.
 
+### O que foi entregue, e o que NÃO foi (PLAN-T06)
+
+`lib/plan-envelope.ts` calcula a caixa: bounds com margem, centro, maior
+dimensão em km e área — corrigindo a longitude pelo cosseno da latitude, sem o
+que a área sairia ~11% maior na Flórida.
+
+**Baixar tiles não foi feito, e não por esquecimento.** O basemap padrão é o
+CARTO keyless, cujos termos não autorizam download em massa; o MapTiler, que tem
+oferta offline explícita, exige uma chave que não está configurada. Prometer
+"mapa offline" e entregar um cache que viola o provedor seria pior que não
+entregar.
+
+O que resolve o §13.4 hoje é outra coisa, e melhor para o caso: **a carta do
+plano** (`components/world-v2/PlanChart.tsx`). Ela não é um mapa de tiles — é o
+desenho do próprio plano, projetado das coordenadas que já estão no aparelho.
+Não depende de rede, de chave, de WebGL nem de biblioteca de mapa.
+
+E ela deliberadamente **não finge ser um mapa**: sem ruas, sem prédios, sem
+rótulo de bairro. Tem norte, barra de escala e as distâncias reais escritas. Uma
+carta que insinuasse detalhe que não tem seria pior que nenhuma — a família
+seguiria um contorno inventado.
+
+Quando houver chave de provedor com direito a cache, o envelope já está pronto
+para recortar o download; a carta continua como o piso que nunca falha.
+
 ---
 
 ## 11. Modelo de dados (proposto — MVP)
@@ -247,7 +272,7 @@ círculo (Admin/Editor). Endpoints públicos de ficha **nunca** tocam estas tabe
 | **PLAN-T03** | ✅ `RouteDraw`: mapa plano (pitch 0) com os lugares do plano como âncoras nomeadas. A rota começa e termina em pontos que já existem — a família desenha o MEIO. Comprimento e tempo a pé calculados no traçado real; desfazer, limpar e reabrir para editar. Nenhum motor de roteamento, por decisão (§5). |
 | **PLAN-T04** | ✅ Versão e idade da cópia sempre na tela; mudança dispara push ao círculo; membro precisa reconhecer explicitamente, e o autor vê quem já viu. Uma nova versão **invalida** o reconhecimento anterior — provado em teste. |
 | **PLAN-T05** | ✅ Documento inteiro em IndexedDB por círculo, com versão e instante da sincronização. `GET /api/plans` é NetworkOnly de propósito (D-075): sem isso o service worker devolvia cópia velha como se fosse ao vivo. |
-| **PLAN-T06** | Envelope do plano como recorte de download de mapas offline (§10) |
+| **PLAN-T06** | ✅ Envelope calculado (`lib/plan-envelope.ts`) + **carta do plano** em SVG que desenha lugares, escada numerada, traçados, norte e escala **sem tile nenhum**. Download de tiles segue fora por termos de provedor (§10). |
 | **PLAN-T07** | Pilot propõe/revisa planos com confirmação explícita (§9) |
 
 ---
@@ -260,7 +285,8 @@ conseguir:
 1. Abrir o EOS e ver o plano completo, com sua versão e idade.
 2. Ler quem busca quem, sem ambiguidade.
 3. Ver os três pontos de encontro com rumo e distância desde onde está.
-4. Seguir as rotas desenhadas sobre um mapa cacheado.
+4. Seguir as rotas desenhadas na carta do plano — desenhada das coordenadas
+   locais, sem depender de tiles.
 5. Saber que está executando a mesma versão que o resto da família.
 
 O item 5 é o que separa um plano de um desenho bonito.

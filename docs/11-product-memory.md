@@ -5,6 +5,16 @@
 
 ---
 
+## "Mapa offline" quase nunca é sobre baixar tiles (2026-07-30)
+
+Baixar tiles de basemap parece o caminho óbvio e esbarra em duas paredes: o CARTO keyless (nosso padrão) não autoriza cache em massa nos termos, e o MapTiler, que tem oferta offline explícita, precisa de uma chave que não está configurada. Entregar um cache que viola o provedor seria pior que não entregar.
+
+O que resolve o caso de uso é mais simples e mais robusto: **desenhar o próprio plano** a partir das coordenadas que já estão no aparelho — `PlanChart.tsx`, SVG puro, sem rede, sem chave, sem WebGL, sem biblioteca de mapa.
+
+E a regra que ficou junto: **a carta não finge ser um mapa**. Sem ruas, sem prédios, sem rótulo de bairro. Tem norte, barra de escala e as distâncias escritas. Uma carta que insinuasse detalhe que não tem seria pior que nenhuma — a família seguiria um contorno inventado. É a mesma disciplina de [[Ausência de número parece "está tudo bem"]], do outro lado: não inventar o que não se sabe.
+
+O envelope (`lib/plan-envelope.ts`) fica pronto para recortar um download no dia em que houver provedor com direito a cache.
+
 ## O endereço que o app tem é a CIDADE, não a casa (2026-07-30)
 
 `profiles.location` é texto livre com placeholder "Cidade, Estado", e `geocodeLocation` devolve o **centroide**. O do dono é `"Parkland, FL"` → `26.3101, -80.2373`, que é o centro de Parkland e não a casa dele.

@@ -173,7 +173,7 @@
 | PLAN-T03 | Desenho de rotas no mapa + edição de traçado | ✅ COMPLETE | 2026-07-30 — `components/world-v2/RouteDraw.tsx`. Mapa plano para precisão, âncoras nomeadas, traçado ancorado em dois lugares do plano, comprimento/tempo a pé reais, notas de conhecimento local. Provado no navegador: 5 pontos viraram LineString no banco. |
 | PLAN-T04 | Versionamento, push ao círculo e reconhecimento explícito | ✅ COMPLETE | 2026-07-30 — versão e idade sempre visíveis; push ao salvar; reconhecimento explícito e lista de quem já viu. Teste prova que a v2 **invalida** o ack da v1. |
 | PLAN-T05 | Cache offline do plano + execução sem rede | ✅ COMPLETE | 2026-07-30 — D-075. IndexedDB por círculo com versão e sincronização; `GET /api/plans` NetworkOnly para o cache do SW não mentir idade. Verificado com a rede derrubada no navegador. |
-| PLAN-T06 | Envelope do plano como recorte do download de mapas offline | PENDING | É o que torna o download finito e certo |
+| PLAN-T06 | Envelope do plano + carta offline | ✅ COMPLETE | 2026-07-30 — `lib/plan-envelope.ts` (bounds com margem, área corrigida pelo cosseno da latitude, projeção e barra de escala; 11 testes) + `PlanChart.tsx`, desenho SVG do plano **sem tile nenhum**. Download de tiles fica fora por termos de provedor: CARTO keyless não autoriza cache em massa e não há chave MapTiler. |
 | PLAN-T07 | Pilot propõe/revisa planos com confirmação elemento a elemento | PENDING | Depende de UPP-03; sem escrita silenciosa |
 
 ---
