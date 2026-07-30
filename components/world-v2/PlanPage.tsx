@@ -34,10 +34,12 @@ import {
   planGaps,
   type PlanDocument,
   type PlanRole,
+  type PlanRoute,
   type PlanTrigger,
   type PlanWaypoint,
   type WaypointKind,
 } from '@/lib/family-plan'
+import RouteDraw, { routeSummary } from './RouteDraw'
 import { Card, Pill, SectionLabel } from './primitives'
 import { FADE, SPRING, haptic } from './motion'
 import './world-v2.css'
@@ -59,6 +61,11 @@ const COPY = {
     roles: 'Quem busca quem',
     triggers: 'Quando executar',
     routes: 'Rotas',
+    routesHint: 'Nenhuma rota desenhada. A rota da família carrega o que roteador nenhum sabe: qual ponte alaga, qual portão fica aberto.',
+    drawRoute: 'Desenhar rota',
+    needTwoPlaces: 'Defina pelo menos dois lugares antes de desenhar uma rota.',
+    byCar: 'Carro',
+    onFootShort: 'A pé',
     define: 'Definir',
     change: 'Trocar',
     remove: 'Remover',
@@ -116,6 +123,11 @@ const COPY = {
     roles: 'Who fetches whom',
     triggers: 'When to execute',
     routes: 'Routes',
+    routesHint: 'No route drawn yet. A family route carries what no routing engine knows: which bridge floods, which gate stays open.',
+    drawRoute: 'Draw route',
+    needTwoPlaces: 'Set at least two places before drawing a route.',
+    byCar: 'Car',
+    onFootShort: 'On foot',
     define: 'Set',
     change: 'Change',
     remove: 'Remove',
@@ -184,6 +196,7 @@ export default function PlanPage() {
   const [triggersPending, setTriggersPending] = useState(false)
 
   const [waypoints, setWaypoints] = useState<PlanWaypoint[]>([])
+  const [routes, setRoutes] = useState<PlanRoute[]>([])
   const [roles, setRoles] = useState<PlanRole[]>([])
   const [triggers, setTriggers] = useState<PlanTrigger[]>([])
 
@@ -191,6 +204,7 @@ export default function PlanPage() {
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [picker, setPicker] = useState<PickerTarget | null>(null)
+  const [drawing, setDrawing] = useState<{ index: number | null } | null>(null)
 
   const circle = circles.find(x => x.id === circleId) ?? null
   const members = circle?.members ?? []
@@ -217,6 +231,7 @@ export default function PlanPage() {
     setVersion(doc.plan?.version ?? 0)
     setUpdatedAt(doc.plan?.updated_at ?? null)
     setWaypoints(doc.waypoints ?? [])
+    setRoutes(doc.routes ?? [])
     setRoles(doc.roles ?? [])
     setTriggers(doc.triggers ?? [])
     setAckedBy(doc.acknowledgedBy ?? [])
@@ -309,7 +324,7 @@ export default function PlanPage() {
       const response = await fetch('/api/plans', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ circleId, waypoints, roles, triggers, status: 'active' }),
+        body: JSON.stringify({ circleId, waypoints, routes, roles, triggers, status: 'active' }),
       })
       const data = await response.json().catch(() => null)
       if (!response.ok || data?.error) throw new Error(data?.error ?? 'save')
@@ -503,6 +518,32 @@ export default function PlanPage() {
             </div>
           </Card>
 
+          {/* ── routes: author-drawn, never routed (§5) ────────────────── */}
+          <SectionLabel trailing={routes.length ? String(routes.length) : undefined}>{c.routes}</SectionLabel>
+          <Card>
+            {routes.length === 0 && <p className="t-foot ink-3">{c.routesHint}</p>}
+            {routes.map((route, index) => (
+              <div key={index} className="wv2-plan-row">
+                <span className="t-caps ink-3">{route.mode === 'car' ? c.byCar : c.onFootShort}</span>
+                <span className="t-body">
+                  {route.label}
+                  <em className="t-foot ink-3 route-meta">{routeSummary(route, pt)}</em>
+                  {route.notes && <em className="t-foot ink-2 route-meta">{route.notes}</em>}
+                </span>
+                <span className="route-acts">
+                  <button type="button" className="wv2-plan-x" onClick={() => setDrawing({ index })} aria-label={c.change}>✎</button>
+                  <button type="button" className="wv2-plan-x" onClick={() => { setDirty(true); setRoutes(list => list.filter((_, i) => i !== index)) }} aria-label={c.remove}>×</button>
+                </span>
+              </div>
+            ))}
+            <div className="wv2-plan-addrow">
+              <Pill onClick={() => setDrawing({ index: null })} disabled={waypoints.length < 2}>
+                + {c.drawRoute}
+              </Pill>
+            </div>
+            {waypoints.length < 2 && <p className="t-foot ink-3">{c.needTwoPlaces}</p>}
+          </Card>
+
           {/* ── roles ──────────────────────────────────────────────────── */}
           <SectionLabel>{c.roles}</SectionLabel>
           <Card>
@@ -622,6 +663,21 @@ export default function PlanPage() {
           </div>
         </>
       )}
+
+      <RouteDraw
+        open={Boolean(drawing)}
+        pt={pt}
+        waypoints={waypoints}
+        existing={drawing?.index != null ? routes[drawing.index] ?? null : null}
+        onClose={() => setDrawing(null)}
+        onSave={route => {
+          setDirty(true)
+          setRoutes(list =>
+            drawing?.index != null ? list.map((r, i) => (i === drawing.index ? route : r)) : [...list, route],
+          )
+          setDrawing(null)
+        }}
+      />
 
       <PointPicker
         target={picker}

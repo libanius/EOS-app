@@ -221,7 +221,7 @@ círculo (Admin/Editor). Endpoints públicos de ficha **nunca** tocam estas tabe
 | **PLAN-T00** | ✅ Esta spec + decisão (D-066) |
 | **PLAN-T01** | ✅ Modelo de dados + RLS + API autenticada de leitura/escrita — `GET/PUT /api/plans` (documento inteiro), `POST /api/plans/[id]/ack`. Versão incrementa a cada save, acks antigos NÃO são carregados adiante, e push avisa o círculo. |
 | **PLAN-T02** | ✅ Editor em `/plan`: escada de pontos de encontro nomeada pelo caso que resolve, lugares conhecidos, papéis e gatilhos. Ponto de encontro e papel são obrigatórios e a tela diz o que falta antes de deixar salvar. Distância, rumo e tempo a pé desde a casa em cada ponto (§4). |
-| **PLAN-T03** | Desenho de rotas no mapa + edição de traçado |
+| **PLAN-T03** | ✅ `RouteDraw`: mapa plano (pitch 0) com os lugares do plano como âncoras nomeadas. A rota começa e termina em pontos que já existem — a família desenha o MEIO. Comprimento e tempo a pé calculados no traçado real; desfazer, limpar e reabrir para editar. Nenhum motor de roteamento, por decisão (§5). |
 | **PLAN-T04** | ✅ Versão e idade da cópia sempre na tela; mudança dispara push ao círculo; membro precisa reconhecer explicitamente, e o autor vê quem já viu. Uma nova versão **invalida** o reconhecimento anterior — provado em teste. |
 | **PLAN-T05** | ✅ Documento inteiro em IndexedDB por círculo, com versão e instante da sincronização. `GET /api/plans` é NetworkOnly de propósito (D-075): sem isso o service worker devolvia cópia velha como se fosse ao vivo. |
 | **PLAN-T06** | Envelope do plano como recorte de download de mapas offline (§10) |

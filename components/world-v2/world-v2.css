@@ -2376,3 +2376,61 @@
 @media (prefers-reduced-transparency: reduce) {
   .wv2-picker { background: #101014; backdrop-filter: none; }
 }
+
+/* ── Rotas desenhadas pela família (PLAN-T03 / doc 18 §5) ── */
+
+.wv2-plan-page .route-meta { display: block; font-style: normal; margin-top: 2px; }
+.wv2-plan-page .route-acts { display: flex; gap: var(--s2); }
+
+.wv2.wv2-draw {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  background: #000;
+  display: flex;
+  flex-direction: column;
+}
+.wv2-draw .wv2-draw-map { flex: 1; min-height: 0; }
+
+/* O painel é a única superfície translúcida da tela: o mapa embaixo é o
+   conteúdo, e empilhar vidro sobre vidro mataria a legibilidade. */
+.wv2-draw .wv2-draw-panel {
+  flex: none;
+  max-height: 52dvh;
+  overflow-y: auto;
+  display: grid;
+  gap: var(--s3);
+  padding: var(--s5) var(--edge) calc(var(--s5) + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--sep-strong);
+  border-radius: var(--r-sheet) var(--r-sheet) 0 0;
+  margin-top: calc(var(--r-sheet) * -1);
+}
+.wv2-draw .wv2-draw-head { display: grid; gap: var(--s1); }
+.wv2-draw .wv2-draw-ends { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s3); }
+.wv2-draw .wv2-draw-mode { display: flex; gap: var(--s2); }
+.wv2-draw .wv2-draw-acts { display: flex; gap: var(--s2); flex-wrap: wrap; justify-content: flex-end; }
+
+/* Pino nomeado: durante o desenho o nome importa mais que o ícone — a família
+   está procurando "a praça", não um alfinete. */
+.wv2-drawpin {
+  padding: 4px 9px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--sep-strong);
+  background: rgba(20, 20, 24, 0.86);
+  backdrop-filter: blur(var(--mat-blur-sm));
+  color: var(--ink-2);
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  transform: translateY(-6px);
+}
+.wv2-drawpin.from { border-color: rgba(var(--accent-rgb), 0.8); color: var(--ink); }
+.wv2-drawpin.to { border-color: rgba(255, 214, 10, 0.8); color: var(--ink); }
+
+@media (min-width: 760px) {
+  .wv2-draw .wv2-draw-panel { max-height: 46dvh; padding-inline: var(--s8); }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .wv2-draw .wv2-draw-panel { background: #101014; backdrop-filter: none; }
+  .wv2-drawpin { background: #101014; backdrop-filter: none; }
+}

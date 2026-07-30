@@ -26,11 +26,24 @@ export type PlanWaypoint = {
 }
 
 export type PlanRole = { member_user_id: string; responsibility: string }
+
+/**
+ * Rota autoral (doc 18 §5). `geometry` é uma LineString GeoJSON desenhada pela
+ * família — nunca calculada por motor de roteamento, porque o valor está no
+ * acordo e no conhecimento local, não na otimização.
+ */
+export type PlanRoute = {
+  label: string
+  geometry: unknown
+  mode?: 'foot' | 'car'
+  notes?: string | null
+}
 export type PlanTrigger = { condition: string; action: string; sort_order?: number }
 
 export type PlanDocument = {
   plan: { id: string; name: string; version: number; status: string; updated_at: string } | null
   waypoints: PlanWaypoint[]
+  routes: PlanRoute[]
   roles: PlanRole[]
   triggers: PlanTrigger[]
   acknowledgedBy: string[]

@@ -9,7 +9,9 @@
  *   4. reconhecer registra, e o autor passa a ver quem já viu (doc 18 §6.4)
  *   5. uma nova versão INVALIDA o reconhecimento antigo — quem já tinha visto
  *      volta para "ainda não viram", que é o ponto inteiro do versionamento
- *   6. sem rede, o plano continua na tela, rotulado como cópia local (doc 18 §13)
+ *   6. um gatilho sugerido vira linha no banco, com condição e ação
+ *   7. a família desenha uma rota no mapa e ela vira LineString no banco (§5)
+ *   8. sem rede, o plano continua na tela, rotulado como cópia local (doc 18 §13)
  *
  * O item 5 é o que separa um plano de um desenho: se um ack antigo fosse
  * carregado adiante, o autor acreditaria que a família viu uma mudança que
@@ -30,7 +32,8 @@ const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
 const PORT = Number(process.env.PORT || 3011)
 const B = `http://localhost:${PORT}`
 const PASS = 'EosTest#2026!'
-const HOME = { latitude: 26.3106, longitude: -80.2456 } // Parkland, FL
+const HOME = { latitude: 26.3106, longitude: -80.2456 }   // Parkland, FL
+const SQUARE = { latitude: 26.3168, longitude: -80.2381 } // ~1 km a nordeste
 
 const admin = (p, o = {}) => fetch(`${URL}${p}`, {
   ...o,
@@ -107,12 +110,16 @@ await admin('/rest/v1/circle_members', { method: 'POST', body: JSON.stringify([
 console.log('— duas contas num círculo\n')
 
 const browser = await chromium.launch({ args: ['--no-sandbox'] })
-const { page: a } = await login(browser, author)
+const { page: a, ctx: actx } = await login(browser, author)
 
 // ── 1. sem ponto e sem papel, não salva ──────────────────────────────────────
 await a.goto(`${B}/plan`, { waitUntil: 'networkidle' })
-await a.waitForTimeout(1500)
+// A PRIMEIRA carga registra o service worker, que faz precache de ~110 arquivos
+// e disputa a rede com as chamadas de API. Esperar o editor aparecer, em vez de
+// um tempo fixo, é a diferença entre um teste estável e um teste que às vezes
+// acusa um bug que não existe.
 const saveBtn = a.locator('button:has-text("Salvar plano")')
+await saveBtn.waitFor({ timeout: 60000 })
 const gapsShown = await a.locator('text=Falta para o plano ficar executável').count()
 const disabled = await saveBtn.isDisabled().catch(() => null)
 gapsShown && disabled
@@ -168,7 +175,58 @@ v2?.[0]?.version === 2 && stillOn === 0
   ? ok('v2 invalidou o reconhecimento da v1', `${member.name} voltou para "ainda não viram"`)
   : no('ack antigo foi carregado adiante', `versão=${v2?.[0]?.version} aindaMarcado=${stillOn}`)
 
-// ── 6. sem rede, o plano continua legível (doc 18 §13) ───────────────────────
+// ── 6. gatilhos: da sugestão à linha no banco ────────────────────────────────
+// Este caminho degrada sozinho quando a migration não foi aplicada, então o
+// teste precisa saber diferenciar "degradou" de "funcionou".
+const suggestion = a.locator('button:has-text("+ Sem contato com alguém da família")')
+if (await suggestion.count()) {
+  await suggestion.click()
+  await a.locator('.wv2-plan-trigger input').nth(1).fill('Ir para a praça do quarteirão')
+  await a.waitForTimeout(300)
+  await a.locator('button:has-text("Salvar plano")').click()
+  await a.waitForTimeout(4000)
+  const rows = await admin(`/rest/v1/family_plan_triggers?plan_id=eq.${v1?.[0]?.id}&select=condition,action`).then(r => r.json())
+  rows?.[0]?.condition?.includes('Sem contato') && rows[0].action.includes('praça')
+    ? ok('gatilho gravado com condição e ação', JSON.stringify(rows[0]))
+    : no('gatilho não gravou', JSON.stringify(rows).slice(0, 200))
+} else {
+  const pending = await a.locator('text=espera uma migração no banco').count()
+  pending
+    ? no('gatilhos indisponíveis: migration 20260730000000 não aplicada')
+    : no('seção de gatilhos não apareceu nem como pendente')
+}
+
+// ── 7. rota desenhada pela família (§5) ─────────────────────────────────────
+// Precisa de DOIS lugares distintos, então a posição do navegador muda entre um
+// ponto e outro — com um só ponto a rota teria comprimento zero e não provaria
+// nada sobre a geometria.
+await actx.setGeolocation(SQUARE)
+await setPoint(a, '+ Casa', 'Casa')
+await a.waitForTimeout(400)
+
+await a.locator('button:has-text("+ Desenhar rota")').click()
+const draw = a.locator('[role="dialog"][aria-label="Desenhar rota"]')
+await draw.waitFor({ timeout: 15000 })
+await a.locator('.wv2-draw-map canvas').waitFor({ timeout: 20000 })
+await a.waitForTimeout(2500)                       // o estilo do mapa precisa carregar
+for (const [x, y] of [[140, 160], [200, 220], [260, 180]]) {
+  await a.locator('.wv2-draw-map').click({ position: { x, y } })
+  await a.waitForTimeout(250)
+}
+await draw.locator('label:has-text("Nome da rota") input').fill('De casa até a praça')
+await draw.locator('label:has-text("O que a família precisa saber") input').fill('não pegue a ponte baixa, ela alaga')
+await draw.locator('button:has-text("Salvar rota")').click()
+await draw.waitFor({ state: 'detached', timeout: 10000 })
+await a.locator('button:has-text("Salvar plano")').click()
+await a.waitForTimeout(4000)
+
+const drawn = await admin(`/rest/v1/family_plan_routes?plan_id=eq.${v1?.[0]?.id}&select=label,mode,notes,geometry`).then(r => r.json())
+const coords = drawn?.[0]?.geometry?.coordinates ?? []
+drawn?.[0]?.label === 'De casa até a praça' && coords.length >= 4 && drawn[0].notes?.includes('ponte baixa')
+  ? ok('rota desenhada virou LineString no banco', `${coords.length} pontos · ${drawn[0].mode}`)
+  : no('rota não gravou', JSON.stringify(drawn).slice(0, 220))
+
+// ── 8. sem rede, o plano continua legível (doc 18 §13) ───────────────────────
 await b.reload({ waitUntil: 'networkidle' })
 await b.waitForTimeout(2500)          // garante que a cópia local foi gravada
 await bctx.setOffline(true)
