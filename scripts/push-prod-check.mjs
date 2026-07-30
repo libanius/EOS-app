@@ -31,10 +31,34 @@ const sw = await fetch(`${B}/sw.js`).then(r => (r.ok ? r.text() : null))
 if (!sw) { console.error('sw.js não respondeu 200'); process.exit(1) }
 
 const urls = [...sw.matchAll(/url:"([^"]+)"/g)].map(m => m[1])
-const bad = []
-for (const u of urls) {
+const fetchOk = async u => {
   const r = await fetch(`${B}${u.startsWith('/') ? u : `/${u}`}`).catch(() => null)
-  if (!r?.ok) bad.push(`${r?.status ?? 'ERR'} ${u}`)
+  return { ok: Boolean(r?.ok), status: r?.status ?? 'ERR' }
+}
+
+let bad = []
+for (const u of urls) {
+  const r = await fetchOk(u)
+  if (!r.ok) bad.push(`${r.status} ${u}`)
+}
+
+/**
+ * Logo depois de um deploy existe uma janela em que o `sw.js` já é o novo e
+ * alguns chunks ainda resolvem contra o anterior. Isso produz 404 REAL e
+ * transitório, e reportá-lo como falha ensina a ignorar o teste. Uma segunda
+ * passada só nos que falharam separa propagação de defeito.
+ */
+if (bad.length) {
+  console.log(`   ${bad.length} url(s) falharam; repetindo em 25 s para separar propagação de defeito…`)
+  await new Promise(r => setTimeout(r, 25000))
+  const retry = []
+  for (const entry of bad) {
+    const u = entry.slice(entry.indexOf(' ') + 1)
+    const r = await fetchOk(u)
+    if (!r.ok) retry.push(`${r.status} ${u}`)
+  }
+  if (!retry.length) console.log('   resolveram na segunda passada: era propagação do deploy.')
+  bad = retry
 }
 const handlerOk = await fetch(`${B}/push-sw.js`).then(r => r.ok).catch(() => false)
 urls.length && !bad.length && sw.includes('importScripts("/push-sw.js")') && handlerOk
