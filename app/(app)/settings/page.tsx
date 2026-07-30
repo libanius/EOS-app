@@ -457,7 +457,10 @@ export default function SettingsPage() {
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return new Promise((resolve, reject) => {
-    const id = window.setTimeout(() => reject(new Error('Service Worker timeout. Recarregue a página e tente de novo.')), ms)
+    const id = window.setTimeout(
+      () => reject(new Error('Service Worker demorou demais. Recarregue a página e tente de novo.')),
+      ms,
+    )
     promise.then(
       value => { window.clearTimeout(id); resolve(value) },
       error => { window.clearTimeout(id); reject(error) },
@@ -465,48 +468,44 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   })
 }
 
-async function getPushServiceWorkerRegistration() {
-  let reg = await navigator.serviceWorker.getRegistration('/')
-  if (!reg) reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' })
-  await reg.update().catch(() => {})
-  if (reg.active) return reg
-  return withTimeout(Promise.race([waitForActiveServiceWorker(reg), navigator.serviceWorker.ready]), 10000)
-}
+/**
+ * Get a registration that HAS an active service worker (D-074).
+ *
+ * This used to hand-roll the wait by watching `installing`/`waiting` state and
+ * rejecting the moment the watched worker went `redundant`. That was wrong twice
+ * over: redundant is a NORMAL outcome — it means the worker was superseded,
+ * usually by a good one — and the worker being watched is not necessarily the
+ * one that ends up serving the page. The toggle therefore failed with "Service
+ * Worker ficou redundante" while a perfectly healthy worker was activating.
+ *
+ * `navigator.serviceWorker.ready` is the canonical wait: it resolves with a
+ * registration that has an active worker, regardless of the churn on the way
+ * there. Do not replace it with bespoke state watching again.
+ */
+async function getPushServiceWorkerRegistration(): Promise<ServiceWorkerRegistration> {
+  // `updateViaCache: 'none'` forces sw.js to come from the network instead of the
+  // browser's HTTP cache. Without it, a stale sw.js cached before a deploy keeps
+  // failing to install and the user is stuck with no way out.
+  const register = () =>
+    navigator.serviceWorker.register('/sw.js', { scope: '/', updateViaCache: 'none' })
 
-function waitForActiveServiceWorker(reg: ServiceWorkerRegistration): Promise<ServiceWorkerRegistration> {
-  return new Promise((resolve, reject) => {
-    const cleanup: Array<() => void> = []
+  const existing = await navigator.serviceWorker.getRegistration('/')
+  if (existing?.active) {
+    void existing.update().catch(() => {})
+    return existing
+  }
 
-    const watchWorker = (worker: ServiceWorker | null) => {
-      if (!worker) return
-      const onStateChange = () => {
-        if (reg.active || worker.state === 'activated') {
-          cleanup.forEach(fn => fn())
-          resolve(reg)
-        }
-        if (worker.state === 'redundant') {
-          cleanup.forEach(fn => fn())
-          reject(new Error('Service Worker ficou redundante. Recarregue a página e tente de novo.'))
-        }
-      }
-      worker.addEventListener('statechange', onStateChange)
-      cleanup.push(() => worker.removeEventListener('statechange', onStateChange))
-      onStateChange()
-    }
-
-    const onUpdateFound = () => watchWorker(reg.installing)
-    reg.addEventListener('updatefound', onUpdateFound)
-    cleanup.push(() => reg.removeEventListener('updatefound', onUpdateFound))
-
-    if (reg.active) {
-      cleanup.forEach(fn => fn())
-      resolve(reg)
-      return
-    }
-
-    watchWorker(reg.installing)
-    watchWorker(reg.waiting)
-  })
+  await register()
+  try {
+    return await withTimeout(navigator.serviceWorker.ready, 15000)
+  } catch {
+    // A broken registration never heals on its own: tear every one down and
+    // start from scratch. This is the escape hatch the user did not have.
+    const all = await navigator.serviceWorker.getRegistrations().catch(() => [])
+    await Promise.all(all.map(r => r.unregister().catch(() => {})))
+    await register()
+    return withTimeout(navigator.serviceWorker.ready, 20000)
+  }
 }
 
 function urlBase64ToUint8Array(base64String: string) {

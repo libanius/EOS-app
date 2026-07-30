@@ -10,7 +10,8 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Abrigos oficiais + planos da família (FAM/PLAN) + gates de validação da v2 abertos (WV2-T05) |
-| **Last Completed Task** | **D-073 — localização em tempo real e interação no marcador (2026-07-29)** |
+| **Last Completed Task** | **D-074 — push funcionando: precache do SW corrigido + teste real 6/6 (2026-07-29)** |
+| | D-073 — localização em tempo real e interação no marcador (2026-07-29)** |
 | | PLAN-T01 — modelo de dados e API do plano de voo (2026-07-29)** |
 | | WV2-T06 rótulos nos controles do mapa · FAM-T08 cache offline dos abrigos |
 | | Fix: localização ao vivo travada no iOS; ponto de perfil agora parece aproximado |
@@ -66,8 +67,9 @@
 | | LA-T01: Stripe test payment → webhook → `profiles.plan=family` (2026-07-20) |
 | **In Progress** | — |
 | **Next Task** | **PLAN-T02** — editor do plano (pontos de encontro, lugares, papéis, gatilhos). Depois **PLAN-T04** (versionamento e reconhecimento na UI) e **SIM-T06**. Antes disso: **PLAN-T01** — modelo de dados + RLS + API dos Planos de Emergência da Família (`docs/18-family-plans.md`), que destrava SIM-T06 e os mapas offline. Antes disso: **SIM-T05** — debrief da simulação com lacunas quantificadas. Alternativas: **SIM-T04** (injeção de eventos/avanço de tempo), **PLAN-T01** (modelo de dados do plano de voo) — modelo de dados + RLS por círculo + API dos Planos de Emergência da Família (`docs/18-family-plans.md`). Alternativas abertas: **WV2-T05** (gates de validação da v2, dívida assumida em D-063), **FAM-T08** (cache offline dos abrigos), **LA-T06** (códigos de afiliado, travado nos params do dono). |
-| **Build** | ✅ Passing — type-check, ESLint e production build limpos (2026-07-28) |
-| **Vercel** | ✅ Produção em 2026-07-28 (`050399e`) — abrigos FEMA, busca no mapa, puck com foto, simulador, Pilot conversacional com navegação, checklist v2. Verificado: `/api/shelters` retorna 4 abrigos reais perto de Bend/OR. |
+| **Build** | ✅ Passing — type-check e production build limpos (2026-07-29) |
+| **Push** | ✅ `npm run test:push` 6/6 em Chrome real (2026-07-29). Validado com controle negativo: reverter o `buildExcludes` faz o teste falhar. Exige Google Chrome instalado. |
+| **Vercel** | ⚠️ A correção do push (D-074) está commitada mas **não deployada** — em produção o service worker continua morrendo no install, então nenhum push chega. Último deploy: 2026-07-28 (`050399e`) — abrigos FEMA, busca no mapa, puck com foto, simulador, Pilot conversacional com navegação, checklist v2. Verificado: `/api/shelters` retorna 4 abrigos reais perto de Bend/OR. |
 | **Supabase** | ✅ Healthy — project ref `alxurmgpyxjhvnliivbf` |
 | **⚠️ Segurança** | Rotacionar segredos expostos em chat: Vercel token (`vcp_…`), Supabase PAT (`sbp_…`), Stripe test/Live keys, MapTiler. |
 
@@ -78,7 +80,7 @@
 Sessão longa e de reconstrução. Começou como uma reavaliação de design do
 `/dashboard-world` sob a skill `apple-design` e terminou com o EOS abrindo numa
 tela nova, um copiloto conversacional e um simulador que treina a família
-inteira. **11 decisões (D-062→D-072), 2 specs novas (docs 18 e 19), 3 migrations.**
+inteira. **13 decisões (D-062→D-074), 2 specs novas (docs 18 e 19), 4 migrations.**
 
 ### O arco
 
@@ -117,16 +119,52 @@ esquecer a outra.
 | Mapa recentralizando e travando o scroll | `flyTo` programático disparava os eventos que recolhiam o HUD |
 | `.w-mapmarker` sem estilo na v2 | CSS vivia só em `world-dashboard.css`, que a v2 não importa |
 | Convidado esperando 20s pelo pop-up | `router.replace` não remonta o layout onde vive o poller |
+| Push nunca chegava em produção | Metadado de build 404 no precache → install do SW rejeitado → worker `redundant` (D-074) |
+| Senders de push falhando em silêncio | Liam `profile_id`; a coluna é `user_id` (3 endpoints) |
+
+### Push: o bug que nenhuma leitura de código ia achar (D-074)
+
+`/api/family/ping`, o convite de simulação e o aviso de mudança de plano nunca
+entregaram nada. O sintoma era um botão em Ajustes que não mudava de estado.
+
+A causa não estava em nada relacionado a push: o `next-pwa` colocava
+`/_next/app-build-manifest.json` no manifesto de precache do Workbox, o Next não
+serve esse arquivo, e **precache é atômico** — um 404 rejeita o `waitUntil` do
+`install`, o worker vira `redundant` e nunca ativa. Sem worker ativo não existe
+push, em nenhum lugar do produto.
+
+Só apareceu com `ServiceWorker.workerErrorReported` do CDP num Chrome real. Três
+hipóteses minhas antes disso estavam erradas — inclusive uma em que eu "corrigi"
+o nome hasheado do worker, o que era um problema real mas não *o* problema.
+
+Detalhe que vale guardar: o helper que esperava o worker **rejeitava ao ver
+`redundant`**, e `redundant` é estado normal (significa substituído). Havia um
+segundo bug reportando falha por cima de um worker saudável. A correção é não
+escrever essa espera à mão: `navigator.serviceWorker.ready` é a espera canônica.
 
 ### Validação
 
 Sessão em que a verificação em navegador real passou a existir:
-`scripts/browser-walkthrough.mjs`, `scripts/circle-location-test.mjs` e
-`scripts/simulation-share-test.mjs` (Playwright). **Todos criam e apagam contas
-no Supabase de produção** — é o único projeto configurado no `.env.local`.
+`scripts/browser-walkthrough.mjs`, `scripts/circle-location-test.mjs`,
+`scripts/simulation-share-test.mjs`, `scripts/family-plan-test.mjs` e
+`scripts/push-test.mjs` (Playwright). **Todos criam e apagam contas no Supabase
+de produção** — é o único projeto configurado no `.env.local`.
+
+`npm run test:push` — **6/6**. Prova os 6 elos do push num Chrome real: precache
+100% buscável → SW instala e ativa → `/api/push/subscribe` grava as chaves →
+`/api/family/ping` emite Web Push assinado em VAPID → o payload **descriptografa**
+(RFC 8291) para o texto exato → o handler real do `push-sw.js` **exibe** a
+notificação, lida de `getNotifications()`. Sobe o próprio `next start` na 3010,
+porque precisa confiar no CA do serviço de push falso (o `web-push` só fala
+HTTPS; a verificação de certificado fica ligada, via `NODE_EXTRA_CA_CERTS`).
+
+O teste foi validado com **controle negativo**: removendo o `buildExcludes` e
+reconstruindo, ele falha apontando `404 /_next/app-build-manifest.json`. Um teste
+que passa mas não falharia com o bug de volta não vale nada.
 
 Os três primeiros bugs da tabela acima foram encontrados **lendo código**; os
-sete últimos, **rodando o app**. A diferença é o argumento para WV2-T05.
+sete seguintes, **rodando o app**; e o do push, só **instrumentando o navegador**.
+A diferença é o argumento para WV2-T05.
 
 ---
 

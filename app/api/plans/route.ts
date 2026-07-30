@@ -210,9 +210,11 @@ export async function PUT(request: NextRequest) {
     const others = (members ?? []).map(m => m.user_id).filter(id => id !== user.id)
     if (others.length) {
       const { data: subs } = await admin
-        .from('push_subscriptions')
+        // A coluna é user_id. profile_id não existe — escrevi errado três vezes e
+    // todo push que eu adicionei falhava em silêncio.
+    .from('push_subscriptions')
         .select('endpoint, p256dh, auth')
-        .in('profile_id', others)
+        .in('user_id', others)
       if (subs?.length) {
         webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE)
         const payload = JSON.stringify({

@@ -5,6 +5,36 @@
 
 ---
 
+## Precache do Workbox é atômico: um 404 desliga o service worker inteiro (2026-07-29)
+
+O `next-pwa` varre `.next/` e coloca **todo** arquivo que encontra no manifesto de precache — inclusive metadados de build que o Next **não serve por HTTP**. Como o precache é atômico, um único 404 rejeita a promessa do `install`, o worker vira `redundant`, e o navegador tenta de novo para sempre.
+
+Efeito prático: `/_next/app-build-manifest.json` retornando 404 fez **todo o push do produto** nunca funcionar. Nada disso aparece como erro de push. Aparece como um botão em Ajustes que não muda de estado.
+
+Duas coisas para lembrar:
+
+1. **`buildExcludes` não é otimização, é correção.** Todo metadado de build tem que sair do precache. Ao subir a versão do Next ou do next-pwa, rodar `npm run test:push` — arquivos novos de metadado aparecem entre versões.
+2. **Bug de service worker não se depura pelo console da página.** O erro de install não aparece lá. Só apareceu com `ServiceWorker.workerErrorReported` do CDP num Chrome real. Eu errei três hipóteses antes de instrumentar.
+
+## `redundant` é estado normal de service worker — não é falha (2026-07-29)
+
+O helper de Ajustes vigiava `installing`/`waiting` e **rejeitava ao ver `redundant`**, mostrando "Service Worker ficou redundante". Mas `redundant` só significa *substituído*, em geral por um worker bom; e o worker que se está vigiando não é necessariamente o que vai servir a página. Havia portanto um segundo bug, reportando falha por cima de um worker saudável — que mascarou o primeiro.
+
+**Não escreva essa espera à mão.** `navigator.serviceWorker.ready` resolve com um registro que tem worker ativo, qualquer que seja a confusão no caminho. Ver [[D-074]].
+
+## Web push não é automatizável contra o FCM (2026-07-29)
+
+`pushManager.subscribe()` falha com `AbortError: Registration failed - permission denied` em **qualquer** Chrome ou Chromium automatizado — com permissão concedida e service worker ativo. No Chromium empacotado do Playwright é pior: `Notification.permission` fica `denied` mesmo com `grantPermissions`. Por isso `scripts/push-test.mjs` exige o **Google Chrome** instalado.
+
+O contorno que mantém o teste real: fabricar a inscrição com as mesmas primitivas do navegador (ECDH P-256 + 16 bytes de auth), apontar o endpoint para um serviço de push local, e entregar ao worker com `ServiceWorker.deliverPushMessage` do CDP. Duas armadilhas dentro disso:
+
+- O `web-push` **só fala HTTPS** — endpoint `http://` morre com `EPROTO`. O serviço falso precisa de TLS de verdade; o teste faz o `next start` confiar no CA por `NODE_EXTRA_CA_CERTS`, sem desligar verificação de certificado.
+- O teste sobe o próprio servidor justamente por causa disso, na porta 3010.
+
+## Um teste de regressão precisa do controle negativo (2026-07-29)
+
+Depois de o `push-test.mjs` passar 6/6, reverti o `buildExcludes`, reconstruí e rodei de novo: falhou apontando `404 /_next/app-build-manifest.json`. Só então o teste valia algo. Um teste escrito depois da correção passa por construção; o que ele precisa provar é que **falharia com o bug de volta**.
+
 ## iOS Safari não responde `navigator.permissions` para geolocation (2026-07-29)
 
 O `LocationReporter` exigia `permissions.query({name:'geolocation'}).state === 'granted'` antes de enviar. No iPhone isso lança ou devolve nada, e o `catch` fazia `return` — **a localização ao vivo ficava desligada em todo iPhone, em silêncio**. O mapa então caía no ponto de perfil, quilômetros longe.
@@ -67,15 +97,17 @@ Também: `circles.invite_code` é `character(6)` — gerar 7 caracteres estoura 
 
 ## Armadilha recorrente: estender só um lado (2026-07-28)
 
-Três bugs desta sessão são o **mesmo erro**: adicionar um campo em uma ponta e esquecer a outra.
+Cinco bugs desta sessão são o **mesmo erro**: adicionar um campo em uma ponta e esquecer a outra.
 
 1. O Pilot respondia "não tenho acesso a dados em tempo real" — eu não mandava o clima no `context`.
 2. **`shared_fields` aceitava `location` na UI e no gate de leitura, mas o `VALID_FIELDS` do `PATCH /api/circles/[id]/share` filtrava a string fora.** Resultado: ninguém num círculo conseguia ver ninguém. O toggle ligava, o servidor descartava, e voltava desligado no reload — uma feature que parecia funcionar e era no-op.
 3. O campo de conversa do Pilot ficava sob o BottomNav (`fixed`, z-index 100).
+4. `.w-mapmarker` tinha estilo só em `world-dashboard.css`, que a v2 nunca importa.
+5. **Três endpoints de push liam `push_subscriptions.profile_id`; a coluna é `user_id`.** O `select` voltava vazio, o código concluía "nenhum dispositivo" e respondia `ok:false` sem erro nenhum no log. Escrevi o nome errado três vezes seguidas, em três arquivos.
 
 **Antes de dar por pronta qualquer feature com whitelist, gate ou contexto: procure TODAS as listas que mencionam os irmãos do campo novo.** `grep` pelo nome de um campo vizinho (ex.: `emergency_contact`) encontra as listas que precisam do novo.
 
-Teste de regressão: `scripts/circle-location-test.mjs` — dois navegadores, um círculo, prova que o toggle persiste e que o outro vê o pino.
+Teste de regressão: `scripts/circle-location-test.mjs` — dois navegadores, um círculo, prova que o toggle persiste e que o outro vê o pino. Para o caso 5: `scripts/push-test.mjs`, que lê a inscrição de volta do banco pelo mesmo caminho que os senders usam.
 
 ---
 

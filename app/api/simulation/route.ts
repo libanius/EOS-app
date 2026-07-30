@@ -163,9 +163,11 @@ export async function POST(request: NextRequest) {
     const others = uniqueMembers.filter(id => id !== user.id)
     if (others.length) {
       const { data: subs } = await admin
-        .from('push_subscriptions')
+        // A coluna é user_id. profile_id não existe — escrevi errado três vezes e
+    // todo push que eu adicionei falhava em silêncio.
+    .from('push_subscriptions')
         .select('endpoint, p256dh, auth')
-        .in('profile_id', others)
+        .in('user_id', others)
       if (subs?.length) {
         const { data: me } = await admin.from('profiles').select('name').eq('id', user.id).maybeSingle()
         webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE)

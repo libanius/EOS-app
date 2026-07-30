@@ -54,9 +54,11 @@ export async function POST(request: NextRequest) {
   }
 
   const { data: subs } = await admin
+    // A coluna é user_id. profile_id não existe — escrevi errado três vezes e
+    // todo push que eu adicionei falhava em silêncio.
     .from('push_subscriptions')
     .select('endpoint, p256dh, auth')
-    .eq('profile_id', body.toUserId)
+    .eq('user_id', body.toUserId)
 
   if (!subs?.length) {
     // Honest: the message had nowhere to go. The UI must say so rather than

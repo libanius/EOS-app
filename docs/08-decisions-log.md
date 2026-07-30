@@ -4,6 +4,68 @@
 
 ---
 
+## D-074 — Push só existe se o service worker instalar; e isso se prova, não se acredita
+
+**Date**: 2026-07-29
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: Nenhuma notificação push jamais chegou em produção. A tela de
+Ajustes dizia "Service Worker timeout" e depois "Service Worker ficou
+redundante". Duas hipóteses minhas estavam erradas antes de eu achar a causa:
+não era o `worker/index.ts` com nome hasheado, nem o cache do `sw.js`.
+
+A causa real só apareceu quando anexei `ServiceWorker.workerErrorReported` do
+CDP a um Chrome de verdade:
+
+```
+bad-precaching-response :: [{"url":".../_next/app-build-manifest.json","status":404}]
+```
+
+O `next-pwa` varre `.next/` e coloca **todo** arquivo que encontra no manifesto
+de precache do Workbox — inclusive metadados de build que o Next **não serve por
+HTTP**. E o precache é **atômico**: um único 404 rejeita a promessa do
+`install`, o worker vira `redundant`, e o navegador tenta de novo para sempre.
+
+Um arquivo de metadados de build, que navegador nenhum busca, desligava o
+service worker inteiro — e com ele **todo** o push do produto: ping da família,
+convite de simulação, aviso de mudança de plano.
+
+**Decision**:
+
+1. **Metadados de build nunca entram no precache.** `buildExcludes` remove
+   `app-build-manifest.json`, `build-manifest.json`, os manifests de middleware
+   e loadable, `_buildManifest.js`, `_ssgManifest.js` e `.map`.
+2. **O `push-sw.js` tem nome estável e é versionado no repositório.** Um worker
+   customizado com hash referenciado por um `sw.js` cacheado é a mesma armadilha
+   por outro caminho: o hash muda no deploy, o `importScripts` 404, o install
+   falha.
+3. **Ninguém mais escreve espera de service worker à mão.**
+   `navigator.serviceWorker.ready` é a espera canônica. A versão anterior vigiava
+   `installing`/`waiting` e **rejeitava ao ver `redundant`** — mas `redundant` é
+   estado NORMAL (significa substituído, em geral por um worker bom), e o worker
+   vigiado não é necessariamente o que serve a página. Ou seja: além do bug real,
+   havia um segundo bug que reportava falha em cima de um worker saudável.
+4. **`updateViaCache: 'none'`** e um caminho de recuperação que desregistra tudo
+   e registra de novo — porque um registro quebrado não se cura sozinho e o
+   usuário não tinha saída.
+5. **Push regride em silêncio, então tem teste.** `scripts/push-test.mjs`
+   (`npm run test:push`) prova os 6 elos num Chrome real, e o elo 1 é o
+   guarda-de-regressão direto desta causa: todo URL do precache tem que
+   responder 200.
+
+**Consequences**: o `web-push` só fala HTTPS, então o teste sobe um serviço de
+push falso **com TLS de verdade** e faz o `next start` confiar no CA via
+`NODE_EXTRA_CA_CERTS` — a verificação de certificado fica **ligada**. O único elo
+não exercitado é o transporte do Google: `pushManager.subscribe()` falha com
+"Registration failed - permission denied" em qualquer Chrome automatizado, então
+a inscrição é fabricada com as mesmas primitivas do navegador (ECDH P-256 + 16
+bytes de auth) e a entrega ao worker usa `ServiceWorker.deliverPushMessage`. O
+código do EOS exercitado é o real, ponta a ponta, incluindo descriptografar o
+payload (RFC 8291) e conferir a assinatura VAPID. O teste exige Google Chrome
+instalado — o Chromium empacotado do Playwright nega permissão de notificação.
+
+---
+
 ## D-073 — Localização em tempo real e interação a partir do marcador
 
 **Date**: 2026-07-29
