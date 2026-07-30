@@ -5,6 +5,22 @@
 
 ---
 
+## O endereço que o app tem é a CIDADE, não a casa (2026-07-30)
+
+`profiles.location` é texto livre com placeholder "Cidade, Estado", e `geocodeLocation` devolve o **centroide**. O do dono é `"Parkland, FL"` → `26.3101, -80.2373`, que é o centro de Parkland e não a casa dele.
+
+Isso serve para alerta meteorológico e para o mapa saber onde centralizar. **Não serve** para nada que afirme distância: "1,2 km até o ponto de encontro", "~16 min a pé". Apresentar as duas coisas com a mesma cara é como uma família conclui que chega num lugar aonde não chega — e é a mesma raiz de [[o centroide da cidade empilha todo mundo]].
+
+Por isso o plano tem endereço de casa próprio, marcado por GPS ou busca de endereço, e a UI que oferece o endereço do perfil diz na mesma frase que é o centro da cidade.
+
+## Ausência de número parece "está tudo bem" (2026-07-30)
+
+O dono perguntou como o app sabia onde ele mora — e a resposta era que não sabia. Pior: quando não sabia, a linha de distância **simplesmente não era renderizada**. Nenhum erro, nenhuma pergunta, nenhuma pista. Dava para montar um plano inteiro sem nunca ver uma distância e sem descobrir por quê.
+
+A regra que fica: **quando um cálculo não pode ser feito, a tela diz por que**, no lugar onde o número apareceria. Vale para o `plan-drill` também, que pula a checagem de alcance sem casa definida — o silêncio dele agora tem causa visível na tela do plano.
+
+Isto é o mesmo princípio de [[Cache de API não pode servir dado cuja idade a tela afirma]], por outro caminho: o que a UI não diz, o usuário preenche com otimismo.
+
 ## `next-pwa` com `register: true` não registra nada no App Router (2026-07-30)
 
 Essa opção injeta o script de registro no `_app` do **Pages Router**. Num app App Router, ela não faz absolutamente nada — e a configuração passa a impressão contrária.

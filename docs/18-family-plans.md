@@ -48,8 +48,9 @@ abaixo deriva daqui:
 
 | Elemento | O que é | Autoria |
 |---|---|---|
+| **Endereço de casa** | A ORIGEM de toda distância que a tela afirma. Cartão próprio, no topo. | Usuário |
 | **Pontos de encontro** | Primário, secundário, terciário. Onde a família se reúne. | Usuário |
-| **Lugares conhecidos** | Casa, escola, trabalho, casa de parente. | Usuário |
+| **Lugares importantes** | Escola, trabalho, casa de parente — onde alguém pode estar quando o plano começar. | Usuário |
 | **Rotas** | Traçados entre lugares conhecidos e pontos de encontro. | Usuário desenha |
 | **Papéis** | Quem busca quem. "Ana pega Isadora na escola." | Usuário |
 | **Gatilhos** | Quando executar. "Sem contato por 2h." "Ordem de evacuação." | Usuário |
@@ -57,6 +58,28 @@ abaixo deriva daqui:
 
 Um plano sem **ponto de encontro** e sem **papéis** não é um plano — é um mapa.
 A UI deve tratar esses dois como obrigatórios e o resto como opcional.
+
+### O endereço de casa não é "mais um lugar"
+
+Descoberto ao revisar PLAN-T03 com o dono, e vale como regra: **toda distância
+desta feature sai da casa** — quanto falta até cada ponto de encontro, quantos
+minutos a pé, se o terceiro ponto é alcançável sem carro.
+
+Enquanto a casa era um chip no fim da lista de lugares, dava para montar um
+plano inteiro e nunca ver nenhuma dessas contas, **sem que a tela dissesse por
+quê**. Ausência de número parece "está tudo bem". Hoje:
+
+- a casa tem cartão próprio, primeiro, dizendo que é a origem das contas;
+- quando ela falta, cada ponto de encontro **explica** a distância ausente em vez
+  de omiti-la;
+- o `plan-drill` (SIM-T06) só pula a checagem de alcance quando não há casa — e
+  esse silêncio agora tem causa visível na tela do plano.
+
+Precisão importa e é declarada. `profiles.location` é texto livre com
+placeholder "Cidade, Estado" e o geocoding devolve o **centroide da cidade**: bom
+para alerta meteorológico, inútil para "quanto tempo a pé". A UI oferece esse
+endereço como ponto de partida e diz, na mesma frase, que é o centro da cidade e
+não a casa. O caminho preciso é marcar com o GPS estando lá.
 
 ---
 

@@ -56,8 +56,16 @@ const COPY = {
     noCircle: 'Você ainda não tem um círculo.',
     noCircleHint: 'O plano pertence ao círculo — é o que faz todo mundo enxergar a mesma coisa. Crie um círculo e convide sua família.',
     goCircles: 'Ir para Círculos',
+    homeTitle: 'Endereço de casa',
+    homeWhy: 'Toda distância desta tela é medida daqui: quanto falta até cada ponto de encontro, e quantos minutos a pé.',
+    homeNone: 'Ainda não definido — por isso as distâncias não aparecem.',
+    homeSet: 'Definir endereço de casa',
+    homeFromProfile: 'Usar o do meu perfil',
+    homeProfileWarn: 'É o centro da cidade, não a sua casa. Serve para começar; ajuste depois com o GPS em casa.',
+    homeNeeded: 'Defina o endereço de casa para ver distância e tempo a pé.',
     rendezvous: 'Pontos de encontro',
-    places: 'Lugares conhecidos',
+    places: 'Lugares importantes',
+    placesHint: 'Escola, trabalho, casa de parente. É de onde alguém pode estar quando o plano começar.',
     roles: 'Quem busca quem',
     triggers: 'Quando executar',
     routes: 'Rotas',
@@ -66,7 +74,7 @@ const COPY = {
     needTwoPlaces: 'Defina pelo menos dois lugares antes de desenhar uma rota.',
     byCar: 'Carro',
     onFootShort: 'A pé',
-    define: 'Definir',
+    define: 'Marcar este ponto',
     change: 'Trocar',
     remove: 'Remover',
     add: 'Adicionar',
@@ -87,6 +95,7 @@ const COPY = {
     triggersPending: 'A seção de gatilhos espera uma migração no banco. O resto do plano funciona normalmente.',
     pickTitle: 'Onde fica?',
     useMyPosition: 'Usar minha posição',
+    positionHint: 'O jeito mais preciso — se você estiver no local agora. Buscar o endereço funciona de qualquer lugar.',
     searchPlaceholder: 'Buscar endereço ou lugar',
     search: 'Buscar',
     searching: 'Buscando…',
@@ -118,8 +127,16 @@ const COPY = {
     noCircle: 'You do not have a circle yet.',
     noCircleHint: 'The plan belongs to the circle — that is what makes everyone see the same thing. Create a circle and invite your family.',
     goCircles: 'Go to Circles',
+    homeTitle: 'Home address',
+    homeWhy: 'Every distance on this screen is measured from here: how far each meeting point is, and how many minutes on foot.',
+    homeNone: 'Not set yet — that is why distances are missing.',
+    homeSet: 'Set home address',
+    homeFromProfile: 'Use the one on my profile',
+    homeProfileWarn: 'That is the city centre, not your house. Fine to start with; refine it later with GPS at home.',
+    homeNeeded: 'Set the home address to see distance and time on foot.',
     rendezvous: 'Meeting points',
-    places: 'Known places',
+    places: 'Important places',
+    placesHint: 'School, work, a relative’s house. It is where someone might be when the plan starts.',
     roles: 'Who fetches whom',
     triggers: 'When to execute',
     routes: 'Routes',
@@ -128,7 +145,7 @@ const COPY = {
     needTwoPlaces: 'Set at least two places before drawing a route.',
     byCar: 'Car',
     onFootShort: 'On foot',
-    define: 'Set',
+    define: 'Mark this point',
     change: 'Change',
     remove: 'Remove',
     add: 'Add',
@@ -149,6 +166,7 @@ const COPY = {
     triggersPending: 'The triggers section is waiting on a database migration. The rest of the plan works normally.',
     pickTitle: 'Where is it?',
     useMyPosition: 'Use my position',
+    positionHint: 'The most precise way — if you are there right now. Searching the address works from anywhere.',
     searchPlaceholder: 'Search an address or place',
     search: 'Search',
     searching: 'Searching…',
@@ -205,9 +223,25 @@ export default function PlanPage() {
   const [message, setMessage] = useState<string | null>(null)
   const [picker, setPicker] = useState<PickerTarget | null>(null)
   const [drawing, setDrawing] = useState<{ index: number | null } | null>(null)
+  const [profilePlace, setProfilePlace] = useState<{ label: string; lat: number; lng: number } | null>(null)
 
   const circle = circles.find(x => x.id === circleId) ?? null
   const members = circle?.members ?? []
+  // O endereço do perfil serve de ponto de PARTIDA para a casa — nunca é adotado
+  // sozinho, porque é o centroide da cidade e a tela precisa dizer isso.
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/profile/ficha')
+      .then(r => (r.ok ? r.json() : null))
+      .then(data => {
+        const p = data?.profile
+        if (cancelled || !p?.location || !Number.isFinite(p.location_lat)) return
+        setProfilePlace({ label: p.location, lat: p.location_lat, lng: p.location_lng })
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [])
+
   // ── circles ────────────────────────────────────────────────────────────────
   useEffect(() => {
     let cancelled = false
@@ -294,22 +328,32 @@ export default function PlanPage() {
   )
 
   const gaps = useMemo(() => planGaps({ waypoints, roles }, pt), [waypoints, roles, pt])
-  const places = waypoints.filter(w => !isRendezvous(w.kind))
+  // A casa tem cartão próprio no topo; repeti-la aqui faria parecer que são
+  // dois endereços diferentes.
+  const places = waypoints.filter(w => !isRendezvous(w.kind) && w.kind !== 'home')
   const needsAck = Boolean(planId) && version > 0 && myAck !== version && !dirty
 
   // ── mutations ──────────────────────────────────────────────────────────────
+  /**
+   * `home` e os três pontos de encontro são ÚNICOS: existe uma casa e existe um
+   * ponto por degrau. Tratá-los como lista deixava "Trocar" adicionar um segundo
+   * endereço em vez de substituir o primeiro — e duas casas no plano é a mesma
+   * ambiguidade que o versionamento existe para eliminar.
+   */
   const setWaypoint = (kind: WaypointKind, index: number | null, patch: PlanWaypoint | null) => {
     setDirty(true)
     setWaypoints(current => {
-      if (isRendezvous(kind)) {
+      if (isRendezvous(kind) || kind === 'home') {
         const rest = current.filter(w => w.kind !== kind)
         return patch ? [...rest, patch] : rest
       }
       if (index === null) return patch ? [...current, patch] : current
-      const next = [...current]
-      const target = current.filter(w => !isRendezvous(w.kind))[index]
-      const at = current.indexOf(target)
+      // O índice vem da lista VISÍVEL de lugares, que não inclui a casa nem os
+      // pontos de encontro. Filtrar igual aqui é o que mantém os dois alinhados.
+      const target = current.filter(w => !isRendezvous(w.kind) && w.kind !== 'home')[index]
+      const at = target ? current.indexOf(target) : -1
       if (at < 0) return current
+      const next = [...current]
       if (patch) next[at] = patch
       else next.splice(at, 1)
       return next
@@ -454,6 +498,45 @@ export default function PlanPage() {
             </Card>
           )}
 
+          {/* ── home: the origin of every distance on this screen ──────── */}
+          <SectionLabel>{c.homeTitle}</SectionLabel>
+          <Card accented={!home} className="wv2-plan-step wv2-plan-home">
+            <p className="t-foot ink-3">{c.homeWhy}</p>
+            {home ? (
+              <>
+                <p className="t-body point">{home.name}</p>
+                {home.notes && <p className="t-foot ink-2">{home.notes}</p>}
+                <p className="t-foot ink-3">{home.lat.toFixed(5)}, {home.lng.toFixed(5)}</p>
+                <div className="acts">
+                  <Pill onClick={() => setPicker({ kind: 'home', index: null })}>{c.change}</Pill>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="t-foot warn">{c.homeNone}</p>
+                <div className="acts">
+                  <Pill primary onClick={() => setPicker({ kind: 'home', index: null })}>{c.homeSet}</Pill>
+                  {profilePlace && (
+                    <Pill
+                      onClick={() =>
+                        setWaypoint('home', null, {
+                          kind: 'home',
+                          name: profilePlace.label,
+                          lat: profilePlace.lat,
+                          lng: profilePlace.lng,
+                          notes: pt ? 'Centro da cidade — ajustar com o GPS em casa' : 'City centre — refine with GPS at home',
+                        })
+                      }
+                    >
+                      {c.homeFromProfile}
+                    </Pill>
+                  )}
+                </div>
+                {profilePlace && <p className="t-foot ink-3">{c.homeProfileWarn}</p>}
+              </>
+            )}
+          </Card>
+
           {/* ── meeting points ─────────────────────────────────────────── */}
           <SectionLabel>{c.rendezvous}</SectionLabel>
           {RENDEZVOUS.map((step, i) => {
@@ -474,11 +557,16 @@ export default function PlanPage() {
                   <>
                     <p className="t-body point">{point.name}</p>
                     {point.notes && <p className="t-foot ink-2">{point.notes}</p>}
-                    {info && (
+                    {info ? (
                       <p className={`t-foot ${info.far ? 'warn' : 'ink-3'}`}>
                         {info.distance} {c.from} · {info.course} · ~{info.minutes} min {c.onFoot}
                         {info.far && ` — ${c.reachCheck}`}
                       </p>
+                    ) : (
+                      // Antes, sem casa definida, esta linha simplesmente não
+                      // existia — e a ausência de um número parece "está tudo
+                      // bem". Dizer por que falta é a correção.
+                      <p className="t-foot ink-3">{c.homeNeeded}</p>
                     )}
                     <div className="acts">
                       <Pill onClick={() => setPicker({ kind: step.kind, index: null })}>{c.change}</Pill>
@@ -498,7 +586,7 @@ export default function PlanPage() {
           {/* ── known places ───────────────────────────────────────────── */}
           <SectionLabel trailing={places.length ? String(places.length) : undefined}>{c.places}</SectionLabel>
           <Card>
-            {places.length === 0 && <p className="t-foot ink-3">{c.empty}</p>}
+            <p className="t-foot ink-3">{c.placesHint}</p>
             {places.map((place, index) => {
               const kindLabel = PLACE_KINDS.find(k => k.kind === place.kind)?.[pt ? 'pt' : 'en'] ?? place.kind
               return (
@@ -786,6 +874,7 @@ function PointPicker({
             <strong className="t-title2">{copy.pickTitle}</strong>
 
             <Pill onClick={useMyPosition}>{copy.useMyPosition}</Pill>
+            <p className="t-foot ink-3">{copy.positionHint}</p>
 
             <form
               className="wv2-picker-search"

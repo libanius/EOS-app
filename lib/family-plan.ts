@@ -104,12 +104,37 @@ export const RENDEZVOUS: Array<{
   },
 ]
 
+/**
+ * Lugares importantes, SEM a casa.
+ *
+ * A casa saiu desta lista de propósito. Ela não é "mais um lugar": é a origem
+ * de toda distância que a tela afirma — quanto falta até o ponto de encontro,
+ * quantos minutos a pé, se o terceiro ponto é alcançável sem carro. Enquanto
+ * ela era um chip no fim da página, dava para montar um plano inteiro e nunca
+ * ver nenhuma dessas contas, sem que a tela dissesse por quê.
+ */
 export const PLACE_KINDS: Array<{ kind: WaypointKind; pt: string; en: string }> = [
-  { kind: 'home', pt: 'Casa', en: 'Home' },
   { kind: 'school', pt: 'Escola', en: 'School' },
   { kind: 'work', pt: 'Trabalho', en: 'Work' },
   { kind: 'custom', pt: 'Outro', en: 'Other' },
 ]
+
+/**
+ * Quão preciso é um ponto.
+ *
+ * `profiles.location` é texto livre com placeholder "Cidade, Estado", e o
+ * geocoding devolve o CENTROIDE da cidade. Para alerta meteorológico isso serve;
+ * para "quanto tempo a pé até o ponto de encontro" não serve, e apresentar as
+ * duas coisas com a mesma cara é como uma família conclui que consegue chegar
+ * num lugar aonde não consegue.
+ */
+export type PointPrecision = 'gps' | 'address' | 'city'
+
+export function precisionLabel(precision: PointPrecision, pt: boolean): string {
+  if (precision === 'gps') return pt ? 'marcado no local' : 'marked on site'
+  if (precision === 'address') return pt ? 'endereço buscado' : 'searched address'
+  return pt ? 'centro da cidade — impreciso' : 'city centre — imprecise'
+}
 
 /**
  * Gatilhos sugeridos — ponto de partida, não obrigação.
@@ -145,6 +170,10 @@ export const isRendezvous = (kind: WaypointKind) => kind.startsWith('rendezvous_
  * vez de deixar salvar algo que não se executa.
  */
 export function planGaps(doc: { waypoints: PlanWaypoint[]; roles: PlanRole[] }, pt: boolean): string[] {
+  // A casa NÃO entra aqui de propósito. Ela é a origem de toda distância e a
+  // tela grita isso no primeiro cartão — mas o doc 18 §3 define como obrigatório
+  // apenas ponto de encontro e papéis, e uma família que combinou os dois tem um
+  // plano válido. Bloquear o save por causa da casa seria eu inventando regra.
   const gaps: string[] = []
   if (!doc.waypoints.some(w => w.kind === 'rendezvous_1')) {
     gaps.push(pt ? 'Falta o ponto de encontro na porta de casa' : 'Missing the doorstep meeting point')

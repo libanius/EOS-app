@@ -4,18 +4,20 @@
  * Prova as coisas que só falham quando duas pessoas usam ao mesmo tempo:
  *
  *   1. o plano não deixa salvar sem ponto de encontro e sem papel (doc 18 §3)
- *   2. o autor define um ponto pelo GPS, atribui um papel e salva a v1
- *   3. o outro membro ABRE e vê o plano — e vê o aviso de que precisa reconhecer
- *   4. reconhecer registra, e o autor passa a ver quem já viu (doc 18 §6.4)
- *   5. uma nova versão INVALIDA o reconhecimento antigo — quem já tinha visto
+ *   2. sem endereço de casa, a tela DIZ por que não mostra distância — antes ela
+ *      simplesmente omitia o número, e ausência parece "está tudo bem"
+ *   3. o autor define casa e ponto pelo GPS, atribui um papel e salva a v1
+ *   4. o outro membro ABRE e vê o plano — e vê o aviso de que precisa reconhecer
+ *   5. reconhecer registra, e o autor passa a ver quem já viu (doc 18 §6.4)
+ *   6. uma nova versão INVALIDA o reconhecimento antigo — quem já tinha visto
  *      volta para "ainda não viram", que é o ponto inteiro do versionamento
- *   6. um gatilho sugerido vira linha no banco, com condição e ação
- *   7. a família desenha uma rota no mapa e ela vira LineString no banco (§5)
- *   8. o SIMULADOR cobra o plano: com as vias bloqueadas, um ponto de encontro
+ *   7. um gatilho sugerido vira linha no banco, com condição e ação
+ *   8. a família desenha uma rota no mapa e ela vira LineString no banco (§5)
+ *   9. o SIMULADOR cobra o plano: com as vias bloqueadas, um ponto de encontro
  *      longe demais para ir a pé vira lacuna no debrief (SIM-T06)
- *   9. sem rede, o plano continua na tela, rotulado como cópia local (doc 18 §13)
+ *  10. sem rede, o plano continua na tela, rotulado como cópia local (doc 18 §13)
  *
- * O item 5 é o que separa um plano de um desenho: se um ack antigo fosse
+ * O item 6 é o que separa um plano de um desenho: se um ack antigo fosse
  * carregado adiante, o autor acreditaria que a família viu uma mudança que
  * ninguém viu.
  *
@@ -86,9 +88,16 @@ async function login(browser, user) {
   return { page, ctx }
 }
 
-/** Define um ponto de encontro pelo GPS, no fluxo real do picker. */
-async function setPoint(page, buttonText, name) {
-  await page.locator(`button:has-text("${buttonText}")`).first().click()
+/**
+ * Define um ponto pelo GPS, no fluxo real do picker.
+ *
+ * `scope` existe porque a casa e os pontos de encontro compartilham o rótulo
+ * "Trocar". Sem escopo, o teste clicava no cartão da casa acreditando estar
+ * mexendo no ponto de encontro — passava, e testava outra coisa.
+ */
+async function setPoint(page, buttonText, name, scope = null) {
+  const root = scope ? page.locator(scope) : page
+  await root.locator(`button:has-text("${buttonText}")`).first().click()
   const dialog = page.locator('[role="dialog"][aria-label="Onde fica?"]')
   await dialog.waitFor({ timeout: 10000 })
   await dialog.locator('button:has-text("Usar minha posição")').click()
@@ -129,8 +138,20 @@ gapsShown && disabled
   ? ok('plano vazio não salva e diz o que falta')
   : no('plano vazio deixou salvar', `lacunas=${gapsShown} desabilitado=${disabled}`)
 
-// ── 2. autor define ponto + papel e salva a v1 ───────────────────────────────
-await setPoint(a, 'Definir', 'Portão da frente')
+// ── 2. a ausência de casa é DITA, não omitida ────────────────────────────────
+// A mensagem só faz sentido quando já existe um ponto de encontro: é aí que a
+// distância deveria aparecer e não aparece. Num plano vazio não há o que
+// explicar, então a checagem vem depois do primeiro ponto — que também é o
+// caminho real de quem começa marcando onde a família se encontra.
+await setPoint(a, 'Marcar este ponto', 'Portão da frente')
+await a.waitForTimeout(400)
+const explained = await a.locator('text=Defina o endereço de casa para ver distância').count()
+explained
+  ? ok('sem casa definida, a tela explica a distância ausente')
+  : no('a distância some sem explicação — falha silenciosa de volta')
+
+// ── 3. autor define a casa, atribui um papel e salva a v1 ────────────────────
+await setPoint(a, 'Definir endereço de casa', 'Nossa casa')
 await a.locator('button:has-text("+ Adicionar")').first().click()
 await a.locator('.wv2-plan-role input').first().fill('pega a Isadora na escola')
 await a.waitForTimeout(300)
@@ -143,7 +164,7 @@ v1?.[0]?.version === 1 && wps?.some(w => w.kind === 'rendezvous_1' && w.name ===
   ? ok('autor salvou a v1 com ponto e papel', JSON.stringify(wps))
   : no('v1 não gravou', `${JSON.stringify(v1)} ${JSON.stringify(wps)}`)
 
-// ── 3. o outro membro abre e é chamado a reconhecer ──────────────────────────
+// ── 4. o outro membro abre e é chamado a reconhecer ──────────────────────────
 const { page: b, ctx: bctx } = await login(browser, member)
 await b.goto(`${B}/plan`, { waitUntil: 'networkidle' })
 await b.waitForTimeout(2000)
@@ -153,7 +174,7 @@ seesPoint && seesAck
   ? ok('membro vê o plano e o aviso de reconhecimento')
   : no('membro não viu o plano/aviso', `ponto=${seesPoint} aviso=${seesAck}`)
 
-// ── 4. reconhecer registra, e o autor enxerga quem viu ───────────────────────
+// ── 5. reconhecer registra, e o autor enxerga quem viu ───────────────────────
 await b.locator('button:has-text("Vi a mudança")').click()
 await b.waitForTimeout(2500)
 const acks = await admin(`/rest/v1/family_plan_acks?plan_id=eq.${v1?.[0]?.id}&select=member_user_id,acked_version`).then(r => r.json())
@@ -166,8 +187,8 @@ memberAcked && authorSees
   ? ok('reconhecimento registrado e visível para o autor')
   : no('reconhecimento não fechou o ciclo', `banco=${memberAcked} tela=${authorSees}`)
 
-// ── 5. nova versão invalida o reconhecimento antigo ──────────────────────────
-await setPoint(a, 'Trocar', 'Praça do quarteirão')
+// ── 6. nova versão invalida o reconhecimento antigo ──────────────────────────
+await setPoint(a, 'Trocar', 'Praça do quarteirão', '.wv2-plan-step:not(.wv2-plan-home)')
 await a.waitForTimeout(500)
 await a.locator('button:has-text("Salvar plano")').click()
 await a.waitForTimeout(4000)
@@ -178,7 +199,7 @@ v2?.[0]?.version === 2 && stillOn === 0
   ? ok('v2 invalidou o reconhecimento da v1', `${member.name} voltou para "ainda não viram"`)
   : no('ack antigo foi carregado adiante', `versão=${v2?.[0]?.version} aindaMarcado=${stillOn}`)
 
-// ── 6. gatilhos: da sugestão à linha no banco ────────────────────────────────
+// ── 7. gatilhos: da sugestão à linha no banco ────────────────────────────────
 // Este caminho degrada sozinho quando a migration não foi aplicada, então o
 // teste precisa saber diferenciar "degradou" de "funcionou".
 const suggestion = a.locator('button:has-text("+ Sem contato com alguém da família")')
@@ -199,12 +220,12 @@ if (await suggestion.count()) {
     : no('seção de gatilhos não apareceu nem como pendente')
 }
 
-// ── 7. rota desenhada pela família (§5) ─────────────────────────────────────
+// ── 8. rota desenhada pela família (§5) ─────────────────────────────────────
 // Precisa de DOIS lugares distintos, então a posição do navegador muda entre um
 // ponto e outro — com um só ponto a rota teria comprimento zero e não provaria
 // nada sobre a geometria.
 await actx.setGeolocation(SQUARE)
-await setPoint(a, '+ Casa', 'Casa')
+await setPoint(a, '+ Escola', 'Escola da Isadora')
 await a.waitForTimeout(400)
 
 await a.locator('button:has-text("+ Desenhar rota")').click()
@@ -229,12 +250,12 @@ drawn?.[0]?.label === 'De casa até a praça' && coords.length >= 4 && drawn[0].
   ? ok('rota desenhada virou LineString no banco', `${coords.length} pontos · ${drawn[0].mode}`)
   : no('rota não gravou', JSON.stringify(drawn).slice(0, 220))
 
-// ── 8. o simulador cobra o plano (SIM-T06) ──────────────────────────────────
+// ── 9. o simulador cobra o plano (SIM-T06) ──────────────────────────────────
 // A prova de fiação: o debrief precisa BUSCAR o plano do círculo e medir a
 // distância real. Sem esta checagem, um erro de mapeamento de campo produziria
 // silêncio — e silêncio parece "está tudo certo".
 await actx.setGeolocation(FAR)
-await setPoint(a, 'Definir', 'Sítio do vô')   // rendezvous_2, ~24 km de casa
+await setPoint(a, 'Marcar este ponto', 'Sítio do vô')   // rendezvous_2, ~24 km de casa
 await a.waitForTimeout(400)
 await a.locator('button:has-text("Salvar plano")').click()
 await a.waitForTimeout(4000)
@@ -253,7 +274,7 @@ debrief.includes('longe demais a pé') && debrief.includes('Sítio do vô')
   ? ok('debrief cobrou o plano: ponto inalcançável a pé no cenário')
   : no('debrief não cobrou o plano', debrief.slice(0, 200).replace(/\n+/g, ' | '))
 
-// ── 9. sem rede, o plano continua legível (doc 18 §13) ───────────────────────
+// ── 10. sem rede, o plano continua legível (doc 18 §13) ───────────────────────
 await b.reload({ waitUntil: 'networkidle' })
 await b.waitForTimeout(2500)          // garante que a cópia local foi gravada
 await bctx.setOffline(true)
