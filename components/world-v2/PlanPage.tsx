@@ -1,0 +1,811 @@
+'use client'
+
+/**
+ * Plano da família — the "flight plan" (D-066 / doc 18, PLAN-T02/T04/T05).
+ *
+ * Three structural choices, each straight out of the spec:
+ *
+ *  - THE LADDER IS NAMED BY THE CASE IT SOLVES, not by its level. "Secondary"
+ *    means nothing to someone who is frightened; "the house is unreachable, but
+ *    the area is fine" tells them which point to walk to. (§4)
+ *  - THE PLAN DECLARES ITS OWN AGE AND VERSION, always, and asks for an explicit
+ *    acknowledgement when it changes. Two people running different versions go
+ *    to different places — that is the failure this screen exists to prevent. (§6)
+ *  - IT RENDERS FROM THE DEVICE WHEN THE NETWORK IS GONE. A plan that needs the
+ *    server is not a plan; it is a webpage. The cached copy is labelled as such,
+ *    with the version it holds and how old it is. (§2, §13)
+ *
+ * Meeting points and roles are REQUIRED and the UI says so before saving:
+ * without both, this is a map, not a plan (§3).
+ */
+
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
+import { useLanguage } from '@/lib/i18n'
+import { distanceKm, bearing, compassPoint } from '@/lib/world/shelters'
+import { formatDistance, walkingMinutes } from '@/lib/world/navigation'
+import { getFamilyPlan, saveFamilyPlan } from '@/lib/offline-storage'
+import {
+  PLACE_KINDS,
+  RENDEZVOUS,
+  TRIGGER_SUGGESTIONS,
+  ageLabel,
+  isRendezvous,
+  planGaps,
+  type PlanDocument,
+  type PlanRole,
+  type PlanTrigger,
+  type PlanWaypoint,
+  type WaypointKind,
+} from '@/lib/family-plan'
+import { Card, Pill, SectionLabel } from './primitives'
+import { FADE, SPRING, haptic } from './motion'
+import './world-v2.css'
+
+type Member = { user_id: string; name: string; is_me: boolean }
+type Circle = { id: string; name: string; role: string; members?: Member[] }
+
+const COPY = {
+  pt: {
+    eyebrow: 'Plano da família',
+    subtitle: 'Combinado agora, seguido sem discussão depois.',
+    version: 'Versão',
+    synced: 'sincronizado',
+    noCircle: 'Você ainda não tem um círculo.',
+    noCircleHint: 'O plano pertence ao círculo — é o que faz todo mundo enxergar a mesma coisa. Crie um círculo e convide sua família.',
+    goCircles: 'Ir para Círculos',
+    rendezvous: 'Pontos de encontro',
+    places: 'Lugares conhecidos',
+    roles: 'Quem busca quem',
+    triggers: 'Quando executar',
+    routes: 'Rotas',
+    define: 'Definir',
+    change: 'Trocar',
+    remove: 'Remover',
+    add: 'Adicionar',
+    save: 'Salvar plano',
+    saving: 'Salvando…',
+    saved: 'Plano salvo',
+    from: 'de casa',
+    onFoot: 'a pé',
+    missing: 'Falta para o plano ficar executável',
+    ackTitle: 'O plano mudou',
+    ackBody: (v: number) => `A versão ${v} foi salva por outra pessoa do círculo. Leia e confirme que você viu — é assim que a família sabe que todos estão no mesmo plano.`,
+    ackButton: 'Vi a mudança',
+    acked: 'Você está na versão atual',
+    seenBy: 'Já reconheceram',
+    waitingOn: 'Ainda não viram',
+    offline: 'Cópia deste aparelho',
+    offlineBody: 'Sem rede agora. Este é o plano que estava guardado aqui — pode não ser o mais novo.',
+    triggersPending: 'A seção de gatilhos espera uma migração no banco. O resto do plano funciona normalmente.',
+    pickTitle: 'Onde fica?',
+    useMyPosition: 'Usar minha posição',
+    searchPlaceholder: 'Buscar endereço ou lugar',
+    search: 'Buscar',
+    searching: 'Buscando…',
+    noResults: 'Nada encontrado. Tente com a cidade junto.',
+    nameLabel: 'Como a família chama esse lugar',
+    namePlaceholder: 'Ex.: praça da esquina',
+    notesLabel: 'Observação (opcional)',
+    notesPlaceholder: 'Ex.: entrar pelo portão de trás',
+    confirm: 'Confirmar',
+    cancel: 'Cancelar',
+    who: 'Quem',
+    responsibility: 'Faz o quê',
+    responsibilityPlaceholder: 'Ex.: pega a Isadora na escola',
+    condition: 'Se acontecer',
+    action: 'Então',
+    suggestions: 'Sugestões',
+    loadError: 'Não foi possível carregar o plano.',
+    retry: 'Tentar de novo',
+    saveError: 'Não foi possível salvar. Verifique a conexão.',
+    noPointYet: 'Sem ponto definido',
+    reachCheck: 'Confira se dá para chegar a pé',
+    empty: 'Nada aqui ainda.',
+  },
+  en: {
+    eyebrow: 'Family plan',
+    subtitle: 'Agreed now, followed without debate later.',
+    version: 'Version',
+    synced: 'synced',
+    noCircle: 'You do not have a circle yet.',
+    noCircleHint: 'The plan belongs to the circle — that is what makes everyone see the same thing. Create a circle and invite your family.',
+    goCircles: 'Go to Circles',
+    rendezvous: 'Meeting points',
+    places: 'Known places',
+    roles: 'Who fetches whom',
+    triggers: 'When to execute',
+    routes: 'Routes',
+    define: 'Set',
+    change: 'Change',
+    remove: 'Remove',
+    add: 'Add',
+    save: 'Save plan',
+    saving: 'Saving…',
+    saved: 'Plan saved',
+    from: 'from home',
+    onFoot: 'on foot',
+    missing: 'Missing before this plan is executable',
+    ackTitle: 'The plan changed',
+    ackBody: (v: number) => `Version ${v} was saved by someone in the circle. Read it and confirm you have seen it — that is how the family knows everyone is on the same plan.`,
+    ackButton: 'I have seen it',
+    acked: 'You are on the current version',
+    seenBy: 'Acknowledged',
+    waitingOn: 'Have not seen it',
+    offline: 'Copy on this device',
+    offlineBody: 'No network right now. This is the plan stored here — it may not be the newest.',
+    triggersPending: 'The triggers section is waiting on a database migration. The rest of the plan works normally.',
+    pickTitle: 'Where is it?',
+    useMyPosition: 'Use my position',
+    searchPlaceholder: 'Search an address or place',
+    search: 'Search',
+    searching: 'Searching…',
+    noResults: 'Nothing found. Try adding the city.',
+    nameLabel: 'What the family calls this place',
+    namePlaceholder: 'e.g. the corner square',
+    notesLabel: 'Note (optional)',
+    notesPlaceholder: 'e.g. use the back gate',
+    confirm: 'Confirm',
+    cancel: 'Cancel',
+    who: 'Who',
+    responsibility: 'Does what',
+    responsibilityPlaceholder: 'e.g. picks up Isadora at school',
+    condition: 'If this happens',
+    action: 'Then',
+    suggestions: 'Suggestions',
+    loadError: 'Could not load the plan.',
+    retry: 'Try again',
+    saveError: 'Could not save. Check your connection.',
+    noPointYet: 'No point set',
+    reachCheck: 'Check it is walkable',
+    empty: 'Nothing here yet.',
+  },
+} as const
+
+type PickerTarget = { kind: WaypointKind; index: number | null }
+
+export default function PlanPage() {
+  const { language } = useLanguage()
+  const pt = language === 'pt'
+  const c = COPY[language]
+  const reduceMotion = useReducedMotion()
+
+  const [circles, setCircles] = useState<Circle[]>([])
+  const [circleId, setCircleId] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [failed, setFailed] = useState(false)
+  const [fromCache, setFromCache] = useState<string | null>(null)
+
+  const [planId, setPlanId] = useState<string | null>(null)
+  const [version, setVersion] = useState<number>(0)
+  const [updatedAt, setUpdatedAt] = useState<string | null>(null)
+  const [myAck, setMyAck] = useState<number | null>(null)
+  const [ackedBy, setAckedBy] = useState<string[]>([])
+  const [triggersPending, setTriggersPending] = useState(false)
+
+  const [waypoints, setWaypoints] = useState<PlanWaypoint[]>([])
+  const [roles, setRoles] = useState<PlanRole[]>([])
+  const [triggers, setTriggers] = useState<PlanTrigger[]>([])
+
+  const [dirty, setDirty] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [message, setMessage] = useState<string | null>(null)
+  const [picker, setPicker] = useState<PickerTarget | null>(null)
+
+  const circle = circles.find(x => x.id === circleId) ?? null
+  const members = circle?.members ?? []
+  // ── circles ────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/circles')
+      .then(r => (r.ok ? r.json() : null))
+      .then((data: { circles?: Circle[] } | null) => {
+        if (cancelled) return
+        const list = data?.circles ?? []
+        setCircles(list)
+        let stored: string | null = null
+        try { stored = localStorage.getItem('eos-plan-circle') } catch { /* private mode */ }
+        setCircleId(list.find(x => x.id === stored)?.id ?? list[0]?.id ?? null)
+        if (!list.length) setLoading(false)
+      })
+      .catch(() => { if (!cancelled) { setFailed(true); setLoading(false) } })
+    return () => { cancelled = true }
+  }, [])
+
+  const applyDocument = useCallback((doc: PlanDocument) => {
+    setPlanId(doc.plan?.id ?? null)
+    setVersion(doc.plan?.version ?? 0)
+    setUpdatedAt(doc.plan?.updated_at ?? null)
+    setWaypoints(doc.waypoints ?? [])
+    setRoles(doc.roles ?? [])
+    setTriggers(doc.triggers ?? [])
+    setAckedBy(doc.acknowledgedBy ?? [])
+    setMyAck(doc.myAck ?? null)
+    setTriggersPending(Boolean(doc.triggersPending))
+    setDirty(false)
+  }, [])
+
+  // ── the plan, network first, device second ─────────────────────────────────
+  const load = useCallback(async (id: string) => {
+    setLoading(true)
+    setFailed(false)
+    try {
+      const response = await fetch(`/api/plans?circleId=${id}`, { cache: 'no-store' })
+      if (!response.ok) throw new Error('load')
+      const doc = (await response.json()) as PlanDocument
+      applyDocument(doc)
+      setFromCache(null)
+      // PLAN-T05: every successful read refreshes the copy that has to work
+      // when this fetch is the thing that fails.
+      void saveFamilyPlan({
+        circleId: id,
+        document: doc,
+        version: doc.plan?.version ?? 0,
+        syncedAt: new Date().toISOString(),
+      })
+    } catch {
+      const cached = await getFamilyPlan(id).catch(() => null)
+      if (cached?.document) {
+        applyDocument(cached.document as PlanDocument)
+        setFromCache(cached.syncedAt)
+      } else {
+        setFailed(true)
+      }
+    } finally {
+      setLoading(false)
+    }
+  }, [applyDocument])
+
+  useEffect(() => {
+    if (!circleId) return
+    try { localStorage.setItem('eos-plan-circle', circleId) } catch { /* private mode */ }
+    void load(circleId)
+  }, [circleId, load])
+
+  // ── geometry: is the third point actually walkable? (§4) ───────────────────
+  const home = waypoints.find(w => w.kind === 'home') ?? null
+  const reach = useCallback(
+    (w: PlanWaypoint) => {
+      if (!home || w.kind === 'home') return null
+      const km = distanceKm(home, w)
+      return {
+        distance: formatDistance(km, pt),
+        minutes: walkingMinutes(km),
+        course: compassPoint(bearing(home, w), pt),
+        far: km > 8,
+      }
+    },
+    [home, pt],
+  )
+
+  const gaps = useMemo(() => planGaps({ waypoints, roles }, pt), [waypoints, roles, pt])
+  const places = waypoints.filter(w => !isRendezvous(w.kind))
+  const needsAck = Boolean(planId) && version > 0 && myAck !== version && !dirty
+
+  // ── mutations ──────────────────────────────────────────────────────────────
+  const setWaypoint = (kind: WaypointKind, index: number | null, patch: PlanWaypoint | null) => {
+    setDirty(true)
+    setWaypoints(current => {
+      if (isRendezvous(kind)) {
+        const rest = current.filter(w => w.kind !== kind)
+        return patch ? [...rest, patch] : rest
+      }
+      if (index === null) return patch ? [...current, patch] : current
+      const next = [...current]
+      const target = current.filter(w => !isRendezvous(w.kind))[index]
+      const at = current.indexOf(target)
+      if (at < 0) return current
+      if (patch) next[at] = patch
+      else next.splice(at, 1)
+      return next
+    })
+  }
+
+  const save = async () => {
+    if (!circleId || gaps.length) return
+    setSaving(true)
+    setMessage(null)
+    try {
+      const response = await fetch('/api/plans', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ circleId, waypoints, roles, triggers, status: 'active' }),
+      })
+      const data = await response.json().catch(() => null)
+      if (!response.ok || data?.error) throw new Error(data?.error ?? 'save')
+      haptic.impact()
+      setMessage(c.saved)
+      await load(circleId)
+    } catch {
+      setMessage(c.saveError)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const acknowledge = async () => {
+    if (!planId) return
+    const response = await fetch(`/api/plans/${planId}/ack`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ version }),
+    }).then(r => r.json()).catch(() => null)
+    if (response?.ok) {
+      haptic.impact()
+      setMyAck(version)
+      setAckedBy(list => (list.includes('me') ? list : list))
+      if (circleId) void load(circleId)
+    } else if (response?.currentVersion) {
+      // Someone saved again while this screen was open. Reload rather than
+      // record agreement to a version nobody is running.
+      if (circleId) void load(circleId)
+    }
+  }
+
+  // ── render ─────────────────────────────────────────────────────────────────
+  if (!loading && !circles.length) {
+    return (
+      <main className="wv2 wv2-plan-page">
+        <div className="plan-scroll">
+        <header className="plan-head">
+          <p className="t-caps ink-3">{c.eyebrow}</p>
+          <h1 className="plan-title">{c.noCircle}</h1>
+          <p className="t-body ink-2">{c.noCircleHint}</p>
+        </header>
+        <Card>
+          <a className="wv2-pill primary" href="/circles">{c.goCircles}</a>
+        </Card>
+        </div>
+      </main>
+    )
+  }
+
+  return (
+    <main className="wv2 wv2-plan-page">
+      <div className="plan-scroll">
+      <header className="plan-head">
+        <p className="t-caps ink-3">{c.eyebrow}</p>
+        <h1 className="plan-title">{circle?.name ?? '—'}</h1>
+        <p className="t-body ink-2">{c.subtitle}</p>
+
+        <div className="wv2-plan-meta">
+          {version > 0 && (
+            <span className="wv2-plan-version">
+              {c.version} {version}
+            </span>
+          )}
+          <span className="t-foot ink-3">
+            {fromCache
+              ? `${c.offline} · ${ageLabel(fromCache, pt)}`
+              : `${c.synced} ${ageLabel(updatedAt, pt)}`}
+          </span>
+        </div>
+
+        {circles.length > 1 && (
+          <div className="wv2-plan-circles">
+            {circles.map(x => (
+              <button
+                key={x.id}
+                type="button"
+                className={`wv2-chip${x.id === circleId ? ' on' : ''}`}
+                onClick={() => { haptic.selection(); setCircleId(x.id) }}
+              >
+                {x.name}
+              </button>
+            ))}
+          </div>
+        )}
+      </header>
+
+      {fromCache && (
+        <Card className="wv2-plan-note warn">
+          <strong className="t-sub">{c.offline}</strong>
+          <p className="t-foot ink-2">{c.offlineBody}</p>
+        </Card>
+      )}
+
+      <AnimatePresence>
+        {needsAck && (
+          <motion.div
+            initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={reduceMotion ? { duration: 0.12 } : SPRING.pop}
+          >
+            <Card accented className="wv2-plan-ack">
+              <strong className="t-title2">{c.ackTitle}</strong>
+              <p className="t-body ink-2">{c.ackBody(version)}</p>
+              <Pill primary onClick={acknowledge}>{c.ackButton}</Pill>
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {loading ? (
+        <Card><p className="t-body ink-2">…</p></Card>
+      ) : failed ? (
+        <Card>
+          <p className="t-body">{c.loadError}</p>
+          <Pill onClick={() => circleId && load(circleId)}>{c.retry}</Pill>
+        </Card>
+      ) : (
+        <>
+          {gaps.length > 0 && (
+            <Card className="wv2-plan-note gaps">
+              <strong className="t-sub">{c.missing}</strong>
+              <ul>
+                {gaps.map(g => <li key={g} className="t-foot ink-2">{g}</li>)}
+              </ul>
+            </Card>
+          )}
+
+          {/* ── meeting points ─────────────────────────────────────────── */}
+          <SectionLabel>{c.rendezvous}</SectionLabel>
+          {RENDEZVOUS.map((step, i) => {
+            const point = waypoints.find(w => w.kind === step.kind) ?? null
+            const info = point ? reach(point) : null
+            const label = step[pt ? 'pt' : 'en']
+            return (
+              <Card key={step.kind} className="wv2-plan-step">
+                <div className="head">
+                  <span className="rung t-caps">{i + 1}</span>
+                  <div>
+                    <strong className="t-title2">{label.title}</strong>
+                    <p className="t-foot ink-3">{label.solves}</p>
+                  </div>
+                </div>
+
+                {point ? (
+                  <>
+                    <p className="t-body point">{point.name}</p>
+                    {point.notes && <p className="t-foot ink-2">{point.notes}</p>}
+                    {info && (
+                      <p className={`t-foot ${info.far ? 'warn' : 'ink-3'}`}>
+                        {info.distance} {c.from} · {info.course} · ~{info.minutes} min {c.onFoot}
+                        {info.far && ` — ${c.reachCheck}`}
+                      </p>
+                    )}
+                    <div className="acts">
+                      <Pill onClick={() => setPicker({ kind: step.kind, index: null })}>{c.change}</Pill>
+                      <Pill onClick={() => setWaypoint(step.kind, null, null)}>{c.remove}</Pill>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="t-foot ink-3">{label.hint}</p>
+                    <Pill primary onClick={() => setPicker({ kind: step.kind, index: null })}>{c.define}</Pill>
+                  </>
+                )}
+              </Card>
+            )
+          })}
+
+          {/* ── known places ───────────────────────────────────────────── */}
+          <SectionLabel trailing={places.length ? String(places.length) : undefined}>{c.places}</SectionLabel>
+          <Card>
+            {places.length === 0 && <p className="t-foot ink-3">{c.empty}</p>}
+            {places.map((place, index) => {
+              const kindLabel = PLACE_KINDS.find(k => k.kind === place.kind)?.[pt ? 'pt' : 'en'] ?? place.kind
+              return (
+                <div key={`${place.kind}-${index}`} className="wv2-plan-row">
+                  <span className="t-caps ink-3">{kindLabel}</span>
+                  <span className="t-body">{place.name}</span>
+                  <button type="button" className="wv2-plan-x" onClick={() => setWaypoint(place.kind, index, null)} aria-label={c.remove}>×</button>
+                </div>
+              )
+            })}
+            <div className="wv2-plan-addrow">
+              {PLACE_KINDS.map(k => (
+                <Pill key={k.kind} onClick={() => setPicker({ kind: k.kind, index: null })}>
+                  + {k[pt ? 'pt' : 'en']}
+                </Pill>
+              ))}
+            </div>
+          </Card>
+
+          {/* ── roles ──────────────────────────────────────────────────── */}
+          <SectionLabel>{c.roles}</SectionLabel>
+          <Card>
+            {roles.length === 0 && <p className="t-foot ink-3">{c.empty}</p>}
+            {roles.map((role, index) => (
+              <div key={index} className="wv2-plan-role">
+                <select
+                  className="wv2-input"
+                  value={role.member_user_id}
+                  onChange={e => {
+                    setDirty(true)
+                    setRoles(list => list.map((r, i) => (i === index ? { ...r, member_user_id: e.target.value } : r)))
+                  }}
+                >
+                  {members.map(m => <option key={m.user_id} value={m.user_id}>{m.name}</option>)}
+                </select>
+                <input
+                  className="wv2-input"
+                  value={role.responsibility}
+                  placeholder={c.responsibilityPlaceholder}
+                  onChange={e => {
+                    setDirty(true)
+                    setRoles(list => list.map((r, i) => (i === index ? { ...r, responsibility: e.target.value } : r)))
+                  }}
+                />
+                <button type="button" className="wv2-plan-x" onClick={() => { setDirty(true); setRoles(list => list.filter((_, i) => i !== index)) }} aria-label={c.remove}>×</button>
+              </div>
+            ))}
+            <Pill
+              onClick={() => {
+                setDirty(true)
+                setRoles(list => [...list, { member_user_id: members[0]?.user_id ?? '', responsibility: '' }])
+              }}
+              disabled={!members.length}
+            >
+              + {c.add}
+            </Pill>
+          </Card>
+
+          {/* ── triggers ───────────────────────────────────────────────── */}
+          <SectionLabel>{c.triggers}</SectionLabel>
+          <Card>
+            {triggersPending && <p className="t-foot warn">{c.triggersPending}</p>}
+            {!triggersPending && triggers.length === 0 && <p className="t-foot ink-3">{c.empty}</p>}
+            {triggers.map((trigger, index) => (
+              <div key={index} className="wv2-plan-trigger">
+                <input
+                  className="wv2-input"
+                  value={trigger.condition}
+                  placeholder={c.condition}
+                  onChange={e => {
+                    setDirty(true)
+                    setTriggers(list => list.map((t, i) => (i === index ? { ...t, condition: e.target.value } : t)))
+                  }}
+                />
+                <input
+                  className="wv2-input"
+                  value={trigger.action}
+                  placeholder={c.action}
+                  onChange={e => {
+                    setDirty(true)
+                    setTriggers(list => list.map((t, i) => (i === index ? { ...t, action: e.target.value } : t)))
+                  }}
+                />
+                <button type="button" className="wv2-plan-x" onClick={() => { setDirty(true); setTriggers(list => list.filter((_, i) => i !== index)) }} aria-label={c.remove}>×</button>
+              </div>
+            ))}
+            {!triggersPending && (
+              <>
+                <p className="t-caps ink-3 sugg-label">{c.suggestions}</p>
+                <div className="wv2-plan-addrow">
+                  {TRIGGER_SUGGESTIONS.map((s, i) => (
+                    <Pill
+                      key={i}
+                      onClick={() => {
+                        setDirty(true)
+                        setTriggers(list => [...list, { ...s[pt ? 'pt' : 'en'] }])
+                      }}
+                    >
+                      + {s[pt ? 'pt' : 'en'].condition}
+                    </Pill>
+                  ))}
+                </div>
+              </>
+            )}
+          </Card>
+
+          {/* ── who has seen it (§6.4) ─────────────────────────────────── */}
+          {planId && members.length > 1 && (
+            <>
+              <SectionLabel>{`${c.seenBy} · v${version}`}</SectionLabel>
+              <Card>
+                <div className="wv2-plan-acks">
+                  {members.map(m => {
+                    const seen = ackedBy.includes(m.user_id)
+                    return (
+                      <span key={m.user_id} className={`wv2-chip${seen ? ' on' : ''}`}>
+                        {seen ? '✓ ' : '· '}{m.name}
+                      </span>
+                    )
+                  })}
+                </div>
+                <p className="t-foot ink-3">
+                  {ackedBy.length === members.length
+                    ? pt ? 'Todo mundo está na versão atual.' : 'Everyone is on the current version.'
+                    : `${c.waitingOn}: ${members.filter(m => !ackedBy.includes(m.user_id)).map(m => m.name).join(', ')}`}
+                </p>
+              </Card>
+            </>
+          )}
+
+          <div className="wv2-plan-save">
+            {message && <p className={`t-foot ${message === c.saved ? 'ok' : 'warn'}`} role="status">{message}</p>}
+            <Pill primary wide onClick={save} disabled={saving || gaps.length > 0 || !dirty}>
+              {saving ? c.saving : c.save}
+            </Pill>
+          </div>
+        </>
+      )}
+
+      <PointPicker
+        target={picker}
+        copy={c}
+        existing={picker ? waypoints.find(w => w.kind === picker.kind) ?? null : null}
+        onClose={() => setPicker(null)}
+        onConfirm={point => {
+          if (!picker) return
+          setWaypoint(picker.kind, picker.index, point)
+          setPicker(null)
+        }}
+      />
+      </div>
+    </main>
+  )
+}
+
+/**
+ * PointPicker — a place becomes a coordinate.
+ *
+ * Search is SUBMIT-DRIVEN, never on keystroke: `/api/geocode/search` proxies
+ * Nominatim, whose usage policy forbids typeahead and would block the whole app.
+ */
+function PointPicker({
+  target,
+  copy,
+  existing,
+  onClose,
+  onConfirm,
+}: {
+  target: PickerTarget | null
+  copy: typeof COPY['pt'] | typeof COPY['en']
+  existing: PlanWaypoint | null
+  onClose: () => void
+  onConfirm: (point: PlanWaypoint) => void
+}) {
+  const reduceMotion = useReducedMotion()
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState<Array<{ id: string; name: string; label: string; lat: number; lng: number }>>([])
+  const [searching, setSearching] = useState(false)
+  const [searched, setSearched] = useState(false)
+  const [point, setPoint] = useState<{ lat: number; lng: number } | null>(null)
+  const [name, setName] = useState('')
+  const [notes, setNotes] = useState('')
+
+  useEffect(() => {
+    if (!target) return
+    setQuery('')
+    setResults([])
+    setSearched(false)
+    setPoint(existing ? { lat: existing.lat, lng: existing.lng } : null)
+    setName(existing?.name ?? '')
+    setNotes(existing?.notes ?? '')
+  }, [target, existing])
+
+  const runSearch = async () => {
+    if (query.trim().length < 2) return
+    setSearching(true)
+    try {
+      const data = await fetch(`/api/geocode/search?q=${encodeURIComponent(query.trim())}`)
+        .then(r => (r.ok ? r.json() : null))
+      setResults(data?.results ?? [])
+    } catch {
+      setResults([])
+    } finally {
+      setSearching(false)
+      setSearched(true)
+    }
+  }
+
+  const useMyPosition = () => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) return
+    navigator.geolocation.getCurrentPosition(
+      position => {
+        haptic.selection()
+        setPoint({ lat: position.coords.latitude, lng: position.coords.longitude })
+      },
+      () => {},
+      { enableHighAccuracy: true, timeout: 15000 },
+    )
+  }
+
+  return (
+    <AnimatePresence>
+      {target && (
+        <>
+          <motion.button
+            type="button"
+            className="wv2-pilot-scrim"
+            aria-label={copy.cancel}
+            onClick={onClose}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={FADE}
+          />
+          <motion.section
+            className="wv2-picker wv2-fume"
+            role="dialog"
+            aria-label={copy.pickTitle}
+            initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 40, filter: 'blur(12px)' }}
+            animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, filter: 'blur(0px)' }}
+            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 30 }}
+            transition={reduceMotion ? { duration: 0.12 } : SPRING.sheet}
+          >
+            <strong className="t-title2">{copy.pickTitle}</strong>
+
+            <Pill onClick={useMyPosition}>{copy.useMyPosition}</Pill>
+
+            <form
+              className="wv2-picker-search"
+              onSubmit={e => { e.preventDefault(); void runSearch() }}
+            >
+              <input
+                className="wv2-input"
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                placeholder={copy.searchPlaceholder}
+                enterKeyHint="search"
+              />
+              <Pill type="submit" disabled={searching}>{searching ? copy.searching : copy.search}</Pill>
+            </form>
+
+            {results.length > 0 && (
+              <ul className="wv2-picker-results">
+                {results.map(r => (
+                  <li key={r.id}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        haptic.selection()
+                        setPoint({ lat: r.lat, lng: r.lng })
+                        if (!name) setName(r.name)
+                      }}
+                    >
+                      <strong className="t-sub">{r.name}</strong>
+                      <span className="t-foot ink-3">{r.label}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {searched && !results.length && !searching && (
+              <p className="t-foot ink-3">{copy.noResults}</p>
+            )}
+
+            {point && (
+              <p className="t-foot ink-3">
+                {point.lat.toFixed(5)}, {point.lng.toFixed(5)}
+              </p>
+            )}
+
+            <label className="wv2-field">
+              <span className="t-caps ink-3">{copy.nameLabel}</span>
+              <input className="wv2-input" value={name} onChange={e => setName(e.target.value)} placeholder={copy.namePlaceholder} />
+            </label>
+
+            <label className="wv2-field">
+              <span className="t-caps ink-3">{copy.notesLabel}</span>
+              <input className="wv2-input" value={notes} onChange={e => setNotes(e.target.value)} placeholder={copy.notesPlaceholder} />
+            </label>
+
+            <div className="wv2-picker-acts">
+              <Pill onClick={onClose}>{copy.cancel}</Pill>
+              <Pill
+                primary
+                disabled={!point || !name.trim()}
+                onClick={() => {
+                  if (!point || !target) return
+                  onConfirm({
+                    kind: target.kind,
+                    name: name.trim(),
+                    lat: point.lat,
+                    lng: point.lng,
+                    notes: notes.trim() || null,
+                  })
+                }}
+              >
+                {copy.confirm}
+              </Pill>
+            </div>
+          </motion.section>
+        </>
+      )}
+    </AnimatePresence>
+  )
+}

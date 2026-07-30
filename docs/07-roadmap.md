@@ -169,10 +169,10 @@
 |---|---|---|---|
 | PLAN-T00 | Spec + decisão do conceito de plano de voo familiar | ✅ COMPLETE | 2026-07-27 — D-066 / doc 18 |
 | PLAN-T01 | Modelo de dados + RLS por círculo + API autenticada | ✅ COMPLETE | 2026-07-29 — migration aplicada. Verificado com 2 contas: v1 salva e lida, membro reconhece, autor salva v2 e **o ack da v1 não é carregado adiante**, e reconhecer versão antiga é recusado (`stale`). |
-| PLAN-T02 | Editor: pontos de encontro (1/2/3), lugares conhecidos, papéis, gatilhos | PENDING | Ponto de encontro e papéis são obrigatórios; o resto é opcional |
+| PLAN-T02 | Editor: pontos de encontro (1/2/3), lugares conhecidos, papéis, gatilhos | ✅ COMPLETE | 2026-07-30 — `/plan` no design system da v2. Escada nomeada pelo caso que resolve; distância/rumo/tempo a pé desde casa; ponto e papel obrigatórios com as lacunas ditas na tela. Gatilhos degradam sozinhos até a migration ser aplicada. |
 | PLAN-T03 | Desenho de rotas no mapa + edição de traçado | PENDING | Rotas são autorais, não roteadas (D-066 §2) |
-| PLAN-T04 | Versionamento, push ao círculo e reconhecimento explícito | PENDING | **Parte difícil, não adiável.** Duas versões diferentes = famílias em lugares diferentes |
-| PLAN-T05 | Cache offline do plano + execução sem rede | PENDING | Critério de aceitação: avião no chão (doc 18 §13) |
+| PLAN-T04 | Versionamento, push ao círculo e reconhecimento explícito | ✅ COMPLETE | 2026-07-30 — versão e idade sempre visíveis; push ao salvar; reconhecimento explícito e lista de quem já viu. Teste prova que a v2 **invalida** o ack da v1. |
+| PLAN-T05 | Cache offline do plano + execução sem rede | ✅ COMPLETE | 2026-07-30 — D-075. IndexedDB por círculo com versão e sincronização; `GET /api/plans` NetworkOnly para o cache do SW não mentir idade. Verificado com a rede derrubada no navegador. |
 | PLAN-T06 | Envelope do plano como recorte do download de mapas offline | PENDING | É o que torna o download finito e certo |
 | PLAN-T07 | Pilot propõe/revisa planos com confirmação elemento a elemento | PENDING | Depende de UPP-03; sem escrita silenciosa |
 

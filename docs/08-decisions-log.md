@@ -4,6 +4,47 @@
 
 ---
 
+## D-075 — O App Router não registrava service worker nenhum; e o plano tem cópia própria
+
+**Date**: 2026-07-30
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: Ao construir o cache offline do Plano da Família (PLAN-T05), o teste
+de navegador mostrou `getRegistrations()` devolvendo **0** em `/plan`,
+`/dashboard`, `/checklist` — em tudo. O `next.config.mjs` tem `register: true`,
+mas essa opção do `next-pwa` injeta o registro no `_app` do **Pages Router**.
+Este app é App Router inteiro.
+
+Ou seja: **o service worker só existia para quem abrisse `/settings`**, a única
+tela que registrava por conta própria, para o push. O app parecia ser PWA e não
+era — não havia cache offline em lugar nenhum, para ninguém.
+
+**Decision**:
+
+1. **`ServiceWorkerRegistrar` no layout autenticado.** Registra `/sw.js` após o
+   `load`, com `updateViaCache: 'none'` (a mesma trava de [D-074]). Fica no
+   layout autenticado e não na raiz: quem não entrou não tem o que usar offline.
+2. **`/plan` entra na lista explícita de páginas NetworkFirst.** Estava só no
+   catch-all. A tela cuja função é funcionar sem rede não pode depender de uma
+   regra genérica.
+3. **`GET /api/plans` é `NetworkOnly` — de propósito.** Esta é a decisão que
+   custou uma iteração para enxergar: com o worker ativo, o cache genérico de API
+   respondia `/api/plans` offline, `response.ok` vinha `true`, e a tela
+   apresentava um documento velho **como se fosse ao vivo**. É exatamente a falha
+   que o doc 18 §6 existe para evitar. O plano tem a **própria** cópia no
+   dispositivo (IndexedDB, com versão e instante da sincronização), e essa cópia
+   é rotulada na tela. Fazendo a rede falhar honestamente, a UI cai na cópia
+   local — e diz que é cópia local.
+
+**Consequences**: offline passa a existir de verdade no app inteiro, não só na
+tela de Ajustes. E fica a regra geral: **cache de API não pode servir dado cuja
+idade a tela afirma**. Sempre que a UI declarar frescor — posição da família,
+abrigos, plano — o dado precisa vir de um cache nosso, com carimbo, ou de uma
+rede que falhe de forma visível. Verificado por
+`scripts/plan-editor-test.mjs` (6/6), que derruba a rede e confere o rótulo.
+
+---
+
 ## D-074 — Push só existe se o service worker instalar; e isso se prova, não se acredita
 
 **Date**: 2026-07-29

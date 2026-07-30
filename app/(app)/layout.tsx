@@ -3,6 +3,7 @@ import AppActions from '@/components/AppActions'
 import SyncStatus from '@/components/SyncStatus'
 import FichaFirstRun from '@/components/FichaFirstRun'
 import LocationReporter from '@/components/LocationReporter'
+import ServiceWorkerRegistrar from '@/components/ServiceWorkerRegistrar'
 import SimulationProvider from '@/components/SimulationProvider'
 import SimulationBanner from '@/components/SimulationBanner'
 import SimulationInvite from '@/components/SimulationInvite'
@@ -21,6 +22,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <SimulationInvite />
       {/* SIM-T05: o que o treino ensinou, em números. */}
       <SimulationDebrief />
+      {/* D-075: sem isto o service worker só existia para quem abria /settings. */}
+      <ServiceWorkerRegistrar />
       <FichaFirstRun />
       {/* D-064: silent unless the user consented AND already granted GPS. */}
       <LocationReporter />

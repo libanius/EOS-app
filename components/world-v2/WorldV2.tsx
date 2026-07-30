@@ -54,6 +54,7 @@ const COPY = {
     seeAlerts: 'Ver alertas',
     scenario: 'Abrir cenário',
     checklist: 'Checklist',
+    plan: 'Plano da família',
     actions: 'Ações',
     offline: 'Offline',
     online: 'Online',
@@ -104,6 +105,7 @@ const COPY = {
     seeAlerts: 'See alerts',
     scenario: 'Open scenario',
     checklist: 'Checklist',
+    plan: 'Family plan',
     actions: 'Actions',
     offline: 'Offline',
     online: 'Online',
@@ -464,6 +466,7 @@ function WorldSections({
           {c.scenario}
         </PillLink>
         <PillLink href="/checklist">{c.checklist}</PillLink>
+        <PillLink href="/plan">{c.plan}</PillLink>
       </div>
 
       {/* ── Autonomy ── */}

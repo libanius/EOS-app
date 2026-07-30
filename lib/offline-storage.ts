@@ -145,6 +145,38 @@ export async function getShelters(): Promise<StoredShelters | null> {
   return (v as StoredShelters | undefined) ?? null
 }
 
+/**
+ * O plano de voo da família, no dispositivo (PLAN-T05).
+ *
+ * Este é o cache que justifica o produto: o plano precisa funcionar exatamente
+ * quando o EOS não funciona (doc 18 §2). Guarda o documento inteiro por círculo,
+ * com a versão e o instante da sincronização — porque uma cópia local exibida
+ * sem idade nem versão é a falha do doc 18 §6: duas pessoas executando planos
+ * diferentes vão para lugares diferentes.
+ */
+export interface StoredFamilyPlan {
+  circleId: string
+  /** O documento como veio de `GET /api/plans`. */
+  document: unknown
+  version: number
+  syncedAt: string
+}
+
+const planKey = (circleId: string) => `family-plan:${circleId}`
+
+export async function saveFamilyPlan(p: StoredFamilyPlan): Promise<void> {
+  const db = await getDB()
+  if (!db) return
+  await db.put('kv', p, planKey(p.circleId))
+}
+
+export async function getFamilyPlan(circleId: string): Promise<StoredFamilyPlan | null> {
+  const db = await getDB()
+  if (!db) return null
+  const v = await db.get('kv', planKey(circleId))
+  return (v as StoredFamilyPlan | undefined) ?? null
+}
+
 export async function saveInventory(i: StoredInventory): Promise<void> {
   const db = await getDB()
   if (!db) return

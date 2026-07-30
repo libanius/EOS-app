@@ -198,8 +198,16 @@ family_plan_acks
   plan_id, member_user_id, acked_version int, acked_at
 ```
 
+```
+family_plan_triggers
+  id, plan_id, condition, action, sort_order
+```
+
 `family_plan_acks` é o que torna a §6 real: sem ele não há como saber quem está
-executando qual versão.
+executando qual versão. `family_plan_triggers` (migration
+`20260730000000_family_plan_triggers.sql`) responde ao "quando": a condição
+precisa ser **observável**, nunca um julgamento. "Sem contato por 2 horas" é
+gatilho; "se ficar perigoso" exige que alguém decida no pior momento possível.
 
 RLS: leitura e escrita restritas a membros do `circle_id`. Edição por papel do
 círculo (Admin/Editor). Endpoints públicos de ficha **nunca** tocam estas tabelas.
@@ -212,10 +220,10 @@ círculo (Admin/Editor). Endpoints públicos de ficha **nunca** tocam estas tabe
 |---|---|
 | **PLAN-T00** | ✅ Esta spec + decisão (D-066) |
 | **PLAN-T01** | ✅ Modelo de dados + RLS + API autenticada de leitura/escrita — `GET/PUT /api/plans` (documento inteiro), `POST /api/plans/[id]/ack`. Versão incrementa a cada save, acks antigos NÃO são carregados adiante, e push avisa o círculo. |
-| **PLAN-T02** | Editor: pontos de encontro, lugares conhecidos, papéis, gatilhos |
+| **PLAN-T02** | ✅ Editor em `/plan`: escada de pontos de encontro nomeada pelo caso que resolve, lugares conhecidos, papéis e gatilhos. Ponto de encontro e papel são obrigatórios e a tela diz o que falta antes de deixar salvar. Distância, rumo e tempo a pé desde a casa em cada ponto (§4). |
 | **PLAN-T03** | Desenho de rotas no mapa + edição de traçado |
-| **PLAN-T04** | Versionamento, push ao círculo e reconhecimento (§6) |
-| **PLAN-T05** | Cache offline do plano + execução sem rede |
+| **PLAN-T04** | ✅ Versão e idade da cópia sempre na tela; mudança dispara push ao círculo; membro precisa reconhecer explicitamente, e o autor vê quem já viu. Uma nova versão **invalida** o reconhecimento anterior — provado em teste. |
+| **PLAN-T05** | ✅ Documento inteiro em IndexedDB por círculo, com versão e instante da sincronização. `GET /api/plans` é NetworkOnly de propósito (D-075): sem isso o service worker devolvia cópia velha como se fosse ao vivo. |
 | **PLAN-T06** | Envelope do plano como recorte de download de mapas offline (§10) |
 | **PLAN-T07** | Pilot propõe/revisa planos com confirmação explícita (§9) |
 

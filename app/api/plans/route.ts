@@ -26,6 +26,7 @@ const VAPID_SUBJECT = process.env.VAPID_SUBJECT ?? 'mailto:brightscalegroup@gmai
 type Waypoint = { kind: string; name: string; lat: number; lng: number; notes?: string | null; sort_order?: number }
 type Route = { label: string; geometry: unknown; mode?: string; notes?: string | null }
 type Role = { member_user_id: string; responsibility: string }
+type Trigger = { condition: string; action: string; sort_order?: number }
 
 const KINDS = ['rendezvous_1', 'rendezvous_2', 'rendezvous_3', 'home', 'school', 'work', 'custom']
 
@@ -71,12 +72,14 @@ export async function GET(request: NextRequest) {
   }
   if (!plan) return NextResponse.json({ plan: null })
 
-  const [{ data: waypoints }, { data: routes }, { data: roles }, { data: acks }] = await Promise.all([
-    admin.from('family_plan_waypoints').select('*').eq('plan_id', plan.id).order('sort_order'),
-    admin.from('family_plan_routes').select('*').eq('plan_id', plan.id),
-    admin.from('family_plan_roles').select('*').eq('plan_id', plan.id),
-    admin.from('family_plan_acks').select('member_user_id, acked_version, acked_at').eq('plan_id', plan.id),
-  ])
+  const [{ data: waypoints }, { data: routes }, { data: roles }, { data: acks }, triggerResult] =
+    await Promise.all([
+      admin.from('family_plan_waypoints').select('*').eq('plan_id', plan.id).order('sort_order'),
+      admin.from('family_plan_routes').select('*').eq('plan_id', plan.id),
+      admin.from('family_plan_roles').select('*').eq('plan_id', plan.id),
+      admin.from('family_plan_acks').select('member_user_id, acked_version, acked_at').eq('plan_id', plan.id),
+      admin.from('family_plan_triggers').select('*').eq('plan_id', plan.id).order('sort_order'),
+    ])
 
   // Who has seen THIS version — the answer that separates a plan from an intention.
   const acknowledged = (acks ?? []).filter(a => a.acked_version === plan.version).map(a => a.member_user_id)
@@ -86,6 +89,11 @@ export async function GET(request: NextRequest) {
     waypoints: waypoints ?? [],
     routes: routes ?? [],
     roles: roles ?? [],
+    triggers: triggerResult.data ?? [],
+    // Triggers arrived after the first four tables. Rather than 500 on a database
+    // that has not run the migration yet, the rest of the plan loads and the UI
+    // says that one section is waiting — the plan is useful without it.
+    triggersPending: tableMissing(triggerResult.error),
     acknowledgedBy: acknowledged,
     myAck: (acks ?? []).find(a => a.member_user_id === user.id)?.acked_version ?? null,
   })
@@ -103,6 +111,7 @@ export async function PUT(request: NextRequest) {
     waypoints?: Waypoint[]
     routes?: Route[]
     roles?: Role[]
+    triggers?: Trigger[]
   }
   try { body = await request.json() } catch { return NextResponse.json({ error: 'Corpo inválido.' }, { status: 400 }) }
   if (!body.circleId) return NextResponse.json({ error: 'circleId é obrigatório.' }, { status: 400 })
@@ -199,6 +208,25 @@ export async function PUT(request: NextRequest) {
     }))
   if (roles.length) await admin.from('family_plan_roles').insert(roles)
 
+  // Triggers degrade on their own: a database without the migration saves the
+  // rest of the plan instead of failing the whole write.
+  const { error: triggerWipe } = await admin.from('family_plan_triggers').delete().eq('plan_id', planId)
+  let triggersPending = tableMissing(triggerWipe)
+  if (!triggersPending) {
+    const triggers = (body.triggers ?? [])
+      .filter(t => t?.condition?.trim() && t?.action?.trim())
+      .map((t, index) => ({
+        plan_id: planId,
+        condition: t.condition.trim().slice(0, 200),
+        action: t.action.trim().slice(0, 200),
+        sort_order: t.sort_order ?? index,
+      }))
+    if (triggers.length) {
+      const { error } = await admin.from('family_plan_triggers').insert(triggers)
+      triggersPending = tableMissing(error)
+    }
+  }
+
   // The author is on the version they just wrote.
   await admin
     .from('family_plan_acks')
@@ -220,7 +248,7 @@ export async function PUT(request: NextRequest) {
         const payload = JSON.stringify({
           title: 'EOS · Plano da família mudou',
           body: `O plano foi atualizado (v${version}). Abra para confirmar que você viu.`,
-          url: '/family',
+          url: '/plan',
         })
         await Promise.allSettled(
           subs.map(sub =>
@@ -231,5 +259,5 @@ export async function PUT(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: true, planId, version })
+  return NextResponse.json({ ok: true, planId, version, triggersPending })
 }

@@ -32,8 +32,13 @@ const withPWA = nextPwa({
   runtimeCaching: [
     // Authenticated pages must refresh from the network so post-deploy fixes
     // like push registration are not trapped behind an old service worker cache.
+    //
+    // `/plan` is in this list deliberately and not by accident of the catch-all:
+    // the family plan is the one screen whose entire purpose is to render when
+    // the network is gone (doc 18 §2). NetworkFirst gives it the newest version
+    // when there is a connection and the last good document when there is not.
     {
-      urlPattern: /^https?.*\/(?:onboarding|family|inventory|scenario|checklist|circles|settings|login|signup)$/i,
+      urlPattern: /^https?.*\/(?:onboarding|family|inventory|scenario|checklist|circles|settings|login|signup|plan)$/i,
       handler: 'NetworkFirst',
       options: {
         cacheName: 'eos-pages',
@@ -49,6 +54,21 @@ const withPWA = nextPwa({
         cacheName: 'eos-assets',
         expiration: { maxEntries: 120, maxAgeSeconds: 60 * 60 * 24 * 30 },
       },
+    },
+    // The family plan is deliberately NOT served from the generic API cache.
+    //
+    // It has its own copy on the device (IndexedDB, `saveFamilyPlan`), and that
+    // copy carries the version and the moment it was synced — which the screen
+    // shows. If the service worker answered this request from cache instead, the
+    // page would receive a stale document indistinguishable from a live one and
+    // would present it as current. That is exactly the failure doc 18 §6 exists
+    // to prevent: an old plan shown as the current one sends the family to the
+    // wrong place. NetworkOnly makes the failure honest, so the UI falls back to
+    // the labelled local copy.
+    {
+      urlPattern: /\/api\/plans(?:\?|$|\/)/i,
+      handler: 'NetworkOnly',
+      method: 'GET',
     },
     // API → network-first with 10s timeout; fallback to cache
     {

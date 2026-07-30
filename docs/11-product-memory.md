@@ -1,9 +1,25 @@
 # 11 — Product Memory
 
 > Non-obvious facts that don't belong in code comments but must survive across sessions.
-> Last updated: 2026-07-29
+> Last updated: 2026-07-30
 
 ---
+
+## `next-pwa` com `register: true` não registra nada no App Router (2026-07-30)
+
+Essa opção injeta o script de registro no `_app` do **Pages Router**. Num app App Router, ela não faz absolutamente nada — e a configuração passa a impressão contrária.
+
+Medido em navegador: `getRegistrations()` devolvia **0** em `/dashboard`, `/plan`, `/checklist`. O service worker só existia para quem tivesse aberto `/settings`, a única tela que registrava por conta própria (para o push). O app parecia PWA e não tinha cache offline nenhum, para ninguém.
+
+Hoje quem registra é `components/ServiceWorkerRegistrar.tsx`, montado no layout autenticado. Ver [[D-075]].
+
+## Cache de API não pode servir dado cuja idade a tela afirma (2026-07-30)
+
+Com o service worker finalmente ativo, o cache genérico de API (`NetworkFirst`, 2 min) passou a responder `GET /api/plans` mesmo offline. `response.ok` vinha `true`, o código nunca caía no fallback, e a tela mostrava um plano velho **sem dizer que era velho** — a falha exata que o doc 18 §6 existe para evitar.
+
+A regra que ficou: **sempre que a UI declarar frescor — posição da família, abrigos, plano — o dado tem que vir de um cache nosso, com carimbo, ou de uma rede que falhe de forma visível.** `/api/plans` é `NetworkOnly` de propósito; a cópia offline é a nossa, em IndexedDB, com versão e instante da sincronização, e rotulada na tela.
+
+Isto vale como aviso ao adicionar qualquer regra de `runtimeCaching` nova: um cache silencioso é indistinguível de dado ao vivo para o código que o consome.
 
 ## Precache do Workbox é atômico: um 404 desliga o service worker inteiro (2026-07-29)
 
@@ -74,6 +90,8 @@ Depois da reconstrução, o mapa mental do app mudou. Para quem retomar:
 | Estado global da simulação | `components/SimulationProvider.tsx` | montado no layout `(app)` |
 | Debrief | `lib/simulation-debrief.ts` | modal pós-encerramento |
 | Checklist | `components/world-v2/ChecklistPage.tsx` | `/checklist` |
+| Plano da família | `components/world-v2/PlanPage.tsx` + `lib/family-plan.ts` | `/plan` |
+| Registro do service worker | `components/ServiceWorkerRegistrar.tsx` | layout `(app)` |
 | Mapa (compartilhado) | `components/world-dashboard/WorldMap.tsx` | usado por `/dashboard` e `/dashboard-world` |
 
 Telas antigas preservadas: `/dashboard-legacy`, `/scenario-legacy`,
