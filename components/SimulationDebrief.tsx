@@ -17,6 +17,16 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useLanguage } from '@/lib/i18n'
 import { useSimulation } from './SimulationProvider'
 import { buildDebrief, type Debrief, type DebriefGap } from '@/lib/simulation-debrief'
+import type { PlanRoute, PlanTrigger, PlanWaypoint } from '@/lib/family-plan'
+
+type PlanForDrill = {
+  hasPlan: boolean
+  waypoints: PlanWaypoint[]
+  routes: PlanRoute[]
+  triggers: PlanTrigger[]
+  planVersion: number
+  membersPending: number
+}
 import { simulationLabel } from '@/lib/simulation'
 
 type Member = { age: number | null; medical_conditions: string[] | null; mobility_impaired: boolean | null; is_infant: boolean | null }
@@ -36,15 +46,39 @@ export default function SimulationDebrief() {
     }
     let cancelled = false
     ;(async () => {
-      const [inv, fam, chk] = await Promise.all([
+      const [inv, fam, chk, circlesRes] = await Promise.all([
         fetch('/api/inventory').catch(() => null),
         fetch('/api/family-members').catch(() => null),
         fetch('/api/checklist').catch(() => null),
+        fetch('/api/circles').catch(() => null),
       ])
       const inventory = inv?.ok ? (await inv.json().catch(() => null))?.inventory ?? null : null
       const roster = fam?.ok ? (await fam.json().catch(() => null))?.members : null
       const members: Member[] = Array.isArray(roster) ? roster : []
       const items: Array<{ acquired: boolean }> = chk?.ok ? (await chk.json().catch(() => null))?.items ?? [] : []
+
+      // SIM-T06: o plano do círculo entra no debrief. Se a leitura falhar, `plan`
+      // fica null e o debrief simplesmente não fala do plano — nunca conclui que
+      // ele não existe, porque silêncio não é ausência.
+      let plan: PlanForDrill | null = null
+      const circles = circlesRes?.ok ? (await circlesRes.json().catch(() => null))?.circles ?? [] : []
+      const circle = circles[0]
+      if (circle?.id) {
+        const doc = await fetch(`/api/plans?circleId=${circle.id}`)
+          .then(r => (r.ok ? r.json() : null))
+          .catch(() => null)
+        if (doc) {
+          const memberCount = Array.isArray(circle.members) ? circle.members.length : 0
+          plan = {
+            hasPlan: Boolean(doc.plan),
+            waypoints: doc.waypoints ?? [],
+            routes: doc.routes ?? [],
+            triggers: doc.triggers ?? [],
+            planVersion: doc.plan?.version ?? 0,
+            membersPending: Math.max(0, memberCount - (doc.acknowledgedBy?.length ?? 0)),
+          }
+        }
+      }
       if (cancelled) return
 
       setReport(
@@ -57,6 +91,7 @@ export default function SimulationDebrief() {
           householdKnown: members.length > 0,
           checklistPct: items.length ? Math.round((items.filter(i => i.acquired).length / items.length) * 100) : 0,
           inventory,
+          plan,
           pt,
         }),
       )

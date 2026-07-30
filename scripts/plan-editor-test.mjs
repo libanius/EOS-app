@@ -11,7 +11,9 @@
  *      volta para "ainda não viram", que é o ponto inteiro do versionamento
  *   6. um gatilho sugerido vira linha no banco, com condição e ação
  *   7. a família desenha uma rota no mapa e ela vira LineString no banco (§5)
- *   8. sem rede, o plano continua na tela, rotulado como cópia local (doc 18 §13)
+ *   8. o SIMULADOR cobra o plano: com as vias bloqueadas, um ponto de encontro
+ *      longe demais para ir a pé vira lacuna no debrief (SIM-T06)
+ *   9. sem rede, o plano continua na tela, rotulado como cópia local (doc 18 §13)
  *
  * O item 5 é o que separa um plano de um desenho: se um ack antigo fosse
  * carregado adiante, o autor acreditaria que a família viu uma mudança que
@@ -34,6 +36,7 @@ const B = `http://localhost:${PORT}`
 const PASS = 'EosTest#2026!'
 const HOME = { latitude: 26.3106, longitude: -80.2456 }   // Parkland, FL
 const SQUARE = { latitude: 26.3168, longitude: -80.2381 } // ~1 km a nordeste
+const FAR = { latitude: 26.5265, longitude: -80.2456 }    // ~24 km: horas a pé
 
 const admin = (p, o = {}) => fetch(`${URL}${p}`, {
   ...o,
@@ -226,7 +229,31 @@ drawn?.[0]?.label === 'De casa até a praça' && coords.length >= 4 && drawn[0].
   ? ok('rota desenhada virou LineString no banco', `${coords.length} pontos · ${drawn[0].mode}`)
   : no('rota não gravou', JSON.stringify(drawn).slice(0, 220))
 
-// ── 8. sem rede, o plano continua legível (doc 18 §13) ───────────────────────
+// ── 8. o simulador cobra o plano (SIM-T06) ──────────────────────────────────
+// A prova de fiação: o debrief precisa BUSCAR o plano do círculo e medir a
+// distância real. Sem esta checagem, um erro de mapeamento de campo produziria
+// silêncio — e silêncio parece "está tudo certo".
+await actx.setGeolocation(FAR)
+await setPoint(a, 'Definir', 'Sítio do vô')   // rendezvous_2, ~24 km de casa
+await a.waitForTimeout(400)
+await a.locator('button:has-text("Salvar plano")').click()
+await a.waitForTimeout(4000)
+
+await a.goto(`${B}/scenario`, { waitUntil: 'networkidle' })
+await a.locator('button:has-text("Iniciar simulação")').waitFor({ timeout: 30000 })
+await a.locator('text=Vias bloqueadas').click()
+await a.waitForTimeout(300)
+await a.locator('button:has-text("Iniciar simulação")').click()
+await a.waitForTimeout(2500)
+await a.locator('button:has-text("Encerrar")').first().click()
+await a.waitForTimeout(6000)
+
+const debrief = await a.evaluate(() => document.body.innerText)
+debrief.includes('longe demais a pé') && debrief.includes('Sítio do vô')
+  ? ok('debrief cobrou o plano: ponto inalcançável a pé no cenário')
+  : no('debrief não cobrou o plano', debrief.slice(0, 200).replace(/\n+/g, ' | '))
+
+// ── 9. sem rede, o plano continua legível (doc 18 §13) ───────────────────────
 await b.reload({ waitUntil: 'networkidle' })
 await b.waitForTimeout(2500)          // garante que a cópia local foi gravada
 await bctx.setOffline(true)

@@ -14,6 +14,7 @@
 import type { ChecklistTier } from './checklist'
 import type { SimulationConfig } from './simulation'
 import { reserveFactor } from './simulation'
+import { drillPlan, type PlanDrillInput } from './plan-drill'
 
 export type GapSeverity = 'critical' | 'important' | 'advisory'
 
@@ -52,6 +53,14 @@ export type DebriefInput = {
     has_medical_kit: boolean
     has_communication_device: boolean
   } | null
+  /**
+   * O plano da família, quando existe (SIM-T06).
+   *
+   * Ausente quando a leitura falhou — e nesse caso o debrief NÃO inventa que o
+   * plano não existe. Silêncio é diferente de ausência, e acusar uma lacuna que
+   * pode não ser real é o tipo de alarme falso que faz o usuário parar de ler.
+   */
+  plan?: Omit<PlanDrillInput, 'config' | 'pt' | 'mobilityImpaired'> | null
   pt: boolean
 }
 
@@ -225,6 +234,20 @@ export function buildDebrief(input: DebriefInput): Debrief {
         ? 'O que está na lista e não foi adquirido é exatamente o que faltaria nesta situação.'
         : 'Whatever is on the list and not acquired is exactly what would have been missing here.',
     })
+  }
+
+  // ── O plano, cobrado contra este cenário (SIM-T06) ──
+  // Vem depois das faltas de estoque de propósito: primeiro o que acabaria,
+  // depois se a decisão combinada era executável. As duas coisas são o ensaio.
+  if (input.plan) {
+    gaps.push(
+      ...drillPlan({
+        ...input.plan,
+        config,
+        mobilityImpaired: input.mobilityImpaired > 0,
+        pt,
+      }),
+    )
   }
 
   const survived = inventory

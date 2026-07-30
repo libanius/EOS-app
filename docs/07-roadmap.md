@@ -153,7 +153,7 @@
 | SIM-T03 | Sessão: briefing pelo Pilot com RAG, rodar, sair a um toque | ✅ COMPLETE | 2026-07-28 — `/api/pilot/chat` com RAG; o Pilot sabe quando está em simulação |
 | SIM-T04 | Injeção de eventos e avanço de tempo ("+6h", "a energia caiu") | ✅ COMPLETE | 2026-07-28 — a faixa de simulação abre controles: +3h, +6h, Impacto, e cortar luz/rede/vias em tempo real |
 | SIM-T05 | Debrief com lacunas quantificadas + escrita confirmada no checklist | ✅ COMPLETE | 2026-07-28 — `lib/simulation-debrief.ts`. Verificado: veredito, exigia 6 dias vs tinha 0.9, 5 lacunas, e adicionar gravou no checklist real |
-| SIM-T06 | Execução contra o Plano da Família | PENDING | Depende de PLAN-T01. É o que vira ensaio de família |
+| SIM-T06 | Execução contra o Plano da Família | ✅ COMPLETE | 2026-07-30 — `lib/plan-drill.ts`. O debrief passou a cobrar a DECISÃO, não só o estoque: ponto de encontro inalcançável a pé no cenário, ausência de rota a pé com vias bloqueadas, plano sem gatilho, e quem não reconheceu a versão em vigor. Só checagem computável — nada de casar texto livre com cenário. 10 testes unitários + prova de ponta a ponta no navegador. |
 | SIM-T07 | Drills compartilhados no círculo + registro de treino | ✅ COMPLETE | 2026-07-28 — D-071. Migration aplicada e verificada com dois navegadores: convite chega, aceite entra na simulação, encerrar propaga para todos. |
 
 ---

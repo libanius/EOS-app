@@ -1,10 +1,10 @@
 # 19 — Cenário: o Simulador do EOS
 
-> Status: **IMPLEMENTADO E EM PRODUÇÃO** (SIM-T00→T05, T07, T08, T10)
-> Date: 2026-07-27 · última atualização 2026-07-29
+> Status: **IMPLEMENTADO E EM PRODUÇÃO** (SIM-T00→T08, T10)
+> Date: 2026-07-27 · última atualização 2026-07-30
 > Decisões: **D-067** (simulador), **D-071** (treino compartilhado), **D-072** (escolher círculos + link de convite).
 > Planos da família: **D-066** / doc 18. Pilot: **D-046** / doc 15.
-> Aberto: **SIM-T06** (executar contra o plano, bloqueado por PLAN-T01) e **SIM-T09** (traduzir o texto livre para os painéis).
+> Aberto: **SIM-T09** (traduzir o texto livre para os painéis).
 
 ---
 
@@ -211,7 +211,7 @@ família — e é aí que o EOS deixa de ser informação e vira preparo.
 | **SIM-T03** | ✅ Briefing pelo Pilot com RAG, rodar, sair a um toque |
 | **SIM-T04** | ✅ Injeção de eventos e avanço de tempo (+3h, +6h, Impacto, cortar luz/rede/vias) |
 | **SIM-T05** | ✅ Debrief com lacunas quantificadas + escrita confirmada no checklist |
-| **SIM-T06** | ⏳ Execução contra o plano da família (doc 18) — bloqueado por PLAN-T01 |
+| **SIM-T06** | ✅ Execução contra o plano da família (`lib/plan-drill.ts`, 2026-07-30). O debrief cobra a decisão e não só o estoque |
 | **SIM-T07** | ✅ Drills compartilhados no círculo (D-071) |
 | **SIM-T08** | ✅ Painel de instrumentos: cada fonte ao vivo / simulada / fora do ar (§4.1) |
 | **SIM-T09** | ⏳ Traduzir o texto livre para os painéis, revisável antes de rodar |

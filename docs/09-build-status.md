@@ -10,7 +10,8 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Abrigos oficiais + planos da família (FAM/PLAN) + gates de validação da v2 abertos (WV2-T05) |
-| **Last Completed Task** | **PLAN-T03 — rotas desenhadas pela família, ancoradas nos lugares do plano (2026-07-30)** |
+| **Last Completed Task** | **SIM-T06 — o simulador cobra o plano: a decisão vira parte do debrief (2026-07-30)** |
+| | PLAN-T03 — rotas desenhadas pela família, ancoradas nos lugares do plano (2026-07-30)** |
 | | PLAN-T02/T04/T05 — editor do plano de voo, versionamento com reconhecimento e execução offline (2026-07-30)** |
 | | D-075 — o App Router não registrava service worker nenhum; `/api/plans` vira NetworkOnly (2026-07-30)** |
 | | D-074 — push funcionando: precache do SW corrigido + teste real 6/6 (2026-07-29)** |
@@ -71,10 +72,10 @@
 | | LA-T01: Stripe test payment → webhook → `profiles.plan=family` (2026-07-20) |
 | **In Progress** | — |
 | **Next Task** | **PLAN-T02** — editor do plano (pontos de encontro, lugares, papéis, gatilhos). Depois **PLAN-T04** (versionamento e reconhecimento na UI) e **SIM-T06**. Antes disso: **PLAN-T01** — modelo de dados + RLS + API dos Planos de Emergência da Família (`docs/18-family-plans.md`), que destrava SIM-T06 e os mapas offline. Antes disso: **SIM-T05** — debrief da simulação com lacunas quantificadas. Alternativas: **SIM-T04** (injeção de eventos/avanço de tempo), **PLAN-T01** (modelo de dados do plano de voo) — modelo de dados + RLS por círculo + API dos Planos de Emergência da Família (`docs/18-family-plans.md`). Alternativas abertas: **WV2-T05** (gates de validação da v2, dívida assumida em D-063), **FAM-T08** (cache offline dos abrigos), **LA-T06** (códigos de afiliado, travado nos params do dono). |
-| **Build** | ✅ Passing — type-check e production build limpos (2026-07-29) |
-| **Plano** | ✅ `npm run test:plan` **8/8** em dois navegadores (2026-07-30): não salva sem ponto e papel, autor salva v1, membro reconhece, v2 **invalida** o ack anterior, gatilho grava, rota desenhada vira LineString, e com a rede derrubada o plano continua na tela rotulado como cópia local. |
+| **Build** | ✅ Passing — type-check, ESLint, Jest 55/55 e production build limpos (2026-07-30) |
+| **Plano** | ✅ `npm run test:plan` **9/9** em dois navegadores (2026-07-30): não salva sem ponto e papel, autor salva v1, membro reconhece, v2 **invalida** o ack anterior, gatilho grava, rota desenhada vira LineString, o debrief cobra um ponto de encontro inalcançável a pé, e com a rede derrubada o plano continua na tela rotulado como cópia local. |
 | **Push** | ✅ `npm run test:push` 6/6 em Chrome real + `npm run test:push:prod` 3/3 contra produção (2026-07-29). Validado com controle negativo: reverter o `buildExcludes` faz o teste falhar. Ambos exigem Google Chrome instalado. **Rodar o prod-check depois de todo deploy que toque `next.config.mjs`, o next-pwa ou a versão do Next.** |
-| **Vercel** | ✅ Produção em 2026-07-30 (`02fab31`) — rotas desenhadas pela família. `test:push:prod` 3/3 depois do deploy. Anterior: `023712a` — editor do plano em `/plan`, versionamento com reconhecimento, execução offline e registro do service worker em todo o app (D-075). `test:push:prod` 3/3 depois do deploy. Anterior: 2026-07-29 (`9a78935`) — correção do push (D-074). Verificado com `npm run test:push:prod` **3/3**: precache limpo (105 arquivos), service worker instala e ativa no deploy que está no ar, e o `push-sw.js` de lá exibe notificação. Deploy anterior: 2026-07-28 (`050399e`) — abrigos FEMA, busca no mapa, puck com foto, simulador, Pilot conversacional com navegação, checklist v2. Verificado: `/api/shelters` retorna 4 abrigos reais perto de Bend/OR. |
+| **Vercel** | ⚠️ SIM-T06 commitado, deploy a seguir. Produção anterior: 2026-07-30 (`02fab31`) — rotas desenhadas pela família. `test:push:prod` 3/3 depois do deploy. Anterior: `023712a` — editor do plano em `/plan`, versionamento com reconhecimento, execução offline e registro do service worker em todo o app (D-075). `test:push:prod` 3/3 depois do deploy. Anterior: 2026-07-29 (`9a78935`) — correção do push (D-074). Verificado com `npm run test:push:prod` **3/3**: precache limpo (105 arquivos), service worker instala e ativa no deploy que está no ar, e o `push-sw.js` de lá exibe notificação. Deploy anterior: 2026-07-28 (`050399e`) — abrigos FEMA, busca no mapa, puck com foto, simulador, Pilot conversacional com navegação, checklist v2. Verificado: `/api/shelters` retorna 4 abrigos reais perto de Bend/OR. |
 | **Supabase** | ✅ Healthy — project ref `alxurmgpyxjhvnliivbf` |
 | **⚠️ Segurança** | Rotacionar segredos expostos em chat: Vercel token (`vcp_…`), Supabase PAT (`sbp_…`), Stripe test/Live keys, MapTiler. |
 
