@@ -176,6 +176,7 @@
 | PLAN-T06 | Envelope do plano + carta offline | ✅ COMPLETE | 2026-07-30 — `lib/plan-envelope.ts` (bounds com margem, área corrigida pelo cosseno da latitude, projeção e barra de escala; 11 testes) + `PlanChart.tsx`, desenho SVG do plano **sem tile nenhum**. Download de tiles fica fora por termos de provedor: CARTO keyless não autoriza cache em massa e não há chave MapTiler. |
 | PLAN-T07 | Pilot propõe/revisa planos com confirmação elemento a elemento | PENDING | Depende de UPP-03; sem escrita silenciosa |
 | PLAN-T08 | Executar Plano: Pilot host situacional + painel de ação familiar | ✅ COMPLETE (MVP local) | 2026-07-31 — D-079. Tocar no próprio rosto no mapa abre ferramentas de comando; o host deriva passos da versão atual do plano e alerta o círculo para executar agora. Timeline compartilhada e `family_plan_executions` ficam como próxima evolução. |
+| PLAN-T09 | Múltiplos planos + cancelar execução | ✅ COMPLETE | 2026-07-31 — D-080. Remove a regra de um plano ativo por círculo, permite criar/alternar planos por situação e torna cancelamento/falso alarme explícito. Passos fixos do EOS saem da lista numerada editável. |
 
 ---
 

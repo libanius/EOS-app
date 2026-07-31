@@ -4,6 +4,35 @@
 
 ---
 
+## D-080 — Vários planos, execução cancelável e passos editáveis
+
+**Date**: 2026-07-31
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: Ao testar PLAN-T08, o dono encontrou três problemas de produto:
+
+1. uma família precisa de **vários planos** por situação ("sem luz", "sem
+   celular", "evento aglomerado", "escola");
+2. o passo "Pare e confirme a fonte" aparecia como etapa 1, mas não vinha do
+   plano editável — era uma trava fixa do EOS;
+3. executar plano precisa ter **cancelar / falso alarme**.
+
+**Decision**:
+
+1. O EOS passa a aceitar múltiplos planos ativos por círculo. O nome do plano é
+   o seletor operacional, até existir um campo estruturado de cenário.
+2. O executor mostra somente passos derivados do plano editável: gatilhos,
+   papéis, pontos, rotas e encerramento. Avisos fixos do EOS podem existir, mas
+   precisam ser rotulados como **aviso do sistema**, não como passo do plano.
+3. Execução local tem cancelamento explícito. Cancelar não apaga nem altera o
+   plano; apenas encerra aquela execução e pode avisar o círculo de falso alarme.
+
+**Consequences**: a migration remove o índice que obrigava um único plano ativo
+por círculo. A próxima camada ainda deve persistir execuções compartilhadas, mas
+o modelo de plano já não bloqueia múltiplos cenários.
+
+---
+
 ## D-079 — Executar plano: Pilot vira host situacional, não só chat
 
 **Date**: 2026-07-31

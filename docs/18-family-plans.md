@@ -59,6 +59,15 @@ abaixo deriva daqui:
 Um plano sem **ponto de encontro** e sem **papéis** não é um plano — é um mapa.
 A UI deve tratar esses dois como obrigatórios e o resto como opcional.
 
+### Vários planos por situação (D-080)
+
+Um círculo pode ter mais de um plano ativo. "Acabou a luz", "ficamos sem
+celular", "estamos em um evento aglomerado" e "incidente na escola" são planos
+diferentes porque têm gatilhos, papéis e pontos de decisão diferentes.
+
+O nome do plano é, no MVP, o seletor de cenário. A UI deve permitir criar e
+alternar planos dentro do mesmo círculo sem arquivar o anterior.
+
 ### O endereço de casa não é "mais um lugar"
 
 Descoberto ao revisar PLAN-T03 com o dono, e vale como regra: **toda distância
@@ -203,6 +212,10 @@ O Pilot neste modo é **host**, não autor. Ele instrui como um onboarding de
 crise: uma próxima ação por vez, confirmação visível, linguagem curta, sem
 escrever plano novo no meio do evento.
 
+Regra de autoria: a lista numerada da execução só pode conter passos derivados
+do plano editável. Avisos fixos do EOS, como "confirme a fonte" ou "siga
+autoridades", devem aparecer como aviso do sistema, não como etapa 1 do plano.
+
 ### Active shooting e eventos de segurança humana
 
 No exemplo de um active shooting perto da escola, o EOS pode coordenar presença,
@@ -310,6 +323,9 @@ executando qual versão. `family_plan_triggers` (migration
 precisa ser **observável**, nunca um julgamento. "Sem contato por 2 horas" é
 gatilho; "se ficar perigoso" exige que alguém decida no pior momento possível.
 
+Não há mais índice de "um plano ativo por círculo" desde D-080. Vários planos
+ativos são a forma correta de representar cenários distintos.
+
 RLS: leitura e escrita restritas a membros do `circle_id`. Edição por papel do
 círculo (Admin/Editor). Endpoints públicos de ficha **nunca** tocam estas tabelas.
 
@@ -328,6 +344,7 @@ círculo (Admin/Editor). Endpoints públicos de ficha **nunca** tocam estas tabe
 | **PLAN-T06** | ✅ Envelope calculado (`lib/plan-envelope.ts`) + **carta do plano** em SVG que desenha lugares, escada numerada, traçados, norte e escala **sem tile nenhum**. Download de tiles segue fora por termos de provedor (§10). |
 | **PLAN-T07** | Pilot propõe/revisa planos com confirmação explícita (§9) |
 | **PLAN-T08** | ✅ Executar Plano MVP: painel da pessoa no mapa abre um host situacional, deriva passos da versão atual do plano e permite alertar o círculo para executar agora. Persistência multiusuário fica para `family_plan_executions`. |
+| **PLAN-T09** | ✅ Múltiplos planos por círculo + execução cancelável: selecionar/criar planos por situação, cancelar falso alarme e remover passos fixos da lista editável. |
 
 ---
 

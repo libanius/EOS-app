@@ -27,6 +27,7 @@ type Waypoint = { kind: string; name: string; lat: number; lng: number; notes?: 
 type Route = { label: string; geometry: unknown; mode?: string; notes?: string | null }
 type Role = { member_user_id: string; responsibility: string }
 type Trigger = { condition: string; action: string; sort_order?: number }
+type PlanRow = { id: string; circle_id: string; name: string; version: number; status: string; updated_at: string }
 
 const KINDS = ['rendezvous_1', 'rendezvous_2', 'rendezvous_3', 'home', 'school', 'work', 'custom']
 
@@ -44,34 +45,11 @@ async function assertMember(admin: NonNullable<ReturnType<typeof createAdminClie
   return Boolean(data)
 }
 
-export async function GET(request: NextRequest) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 })
-
-  const circleId = request.nextUrl.searchParams.get('circleId')
-  if (!circleId) return NextResponse.json({ error: 'circleId é obrigatório.' }, { status: 400 })
-
-  const admin = createAdminClient()
-  if (!admin) return NextResponse.json({ error: 'Indisponível.' }, { status: 503 })
-  if (!(await assertMember(admin, circleId, user.id))) {
-    return NextResponse.json({ error: 'Não é membro deste círculo.' }, { status: 403 })
-  }
-
-  const { data: plan, error } = await admin
-    .from('family_plans')
-    .select('*')
-    .eq('circle_id', circleId)
-    .neq('status', 'archived')
-    .order('updated_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  if (error && tableMissing(error)) {
-    return NextResponse.json({ plan: null, migrationPending: true })
-  }
-  if (!plan) return NextResponse.json({ plan: null })
-
+async function readPlanDocument(
+  admin: NonNullable<ReturnType<typeof createAdminClient>>,
+  plan: PlanRow,
+  userId: string,
+) {
   const [{ data: waypoints }, { data: routes }, { data: roles }, { data: acks }, triggerResult] =
     await Promise.all([
       admin.from('family_plan_waypoints').select('*').eq('plan_id', plan.id).order('sort_order'),
@@ -81,22 +59,68 @@ export async function GET(request: NextRequest) {
       admin.from('family_plan_triggers').select('*').eq('plan_id', plan.id).order('sort_order'),
     ])
 
-  // Who has seen THIS version — the answer that separates a plan from an intention.
   const acknowledged = (acks ?? []).filter(a => a.acked_version === plan.version).map(a => a.member_user_id)
 
-  return NextResponse.json({
+  return {
     plan,
     waypoints: waypoints ?? [],
     routes: routes ?? [],
     roles: roles ?? [],
     triggers: triggerResult.data ?? [],
-    // Triggers arrived after the first four tables. Rather than 500 on a database
-    // that has not run the migration yet, the rest of the plan loads and the UI
-    // says that one section is waiting — the plan is useful without it.
     triggersPending: tableMissing(triggerResult.error),
     acknowledgedBy: acknowledged,
-    myAck: (acks ?? []).find(a => a.member_user_id === user.id)?.acked_version ?? null,
-  })
+    myAck: (acks ?? []).find(a => a.member_user_id === userId)?.acked_version ?? null,
+  }
+}
+
+export async function GET(request: NextRequest) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 })
+
+  const circleId = request.nextUrl.searchParams.get('circleId')
+  const planId = request.nextUrl.searchParams.get('planId')
+  const listOnly = request.nextUrl.searchParams.get('all') === '1'
+  if (!circleId) return NextResponse.json({ error: 'circleId é obrigatório.' }, { status: 400 })
+
+  const admin = createAdminClient()
+  if (!admin) return NextResponse.json({ error: 'Indisponível.' }, { status: 503 })
+  if (!(await assertMember(admin, circleId, user.id))) {
+    return NextResponse.json({ error: 'Não é membro deste círculo.' }, { status: 403 })
+  }
+
+  if (listOnly) {
+    const { data: plans, error } = await admin
+      .from('family_plans')
+      .select('id, circle_id, name, version, status, updated_at')
+      .eq('circle_id', circleId)
+      .neq('status', 'archived')
+      .order('updated_at', { ascending: false })
+
+    if (error && tableMissing(error)) {
+      return NextResponse.json({ plans: [], migrationPending: true })
+    }
+    return NextResponse.json({ plans: plans ?? [] })
+  }
+
+  let query = admin
+    .from('family_plans')
+    .select('id, circle_id, name, version, status, updated_at')
+    .eq('circle_id', circleId)
+    .neq('status', 'archived')
+    .order('updated_at', { ascending: false })
+    .limit(1)
+
+  if (planId) query = query.eq('id', planId)
+
+  const { data: plan, error } = await query.maybeSingle()
+
+  if (error && tableMissing(error)) {
+    return NextResponse.json({ plan: null, migrationPending: true })
+  }
+  if (!plan) return NextResponse.json({ plan: null })
+
+  return NextResponse.json(await readPlanDocument(admin, plan as PlanRow, user.id))
 }
 
 export async function PUT(request: NextRequest) {
@@ -106,6 +130,8 @@ export async function PUT(request: NextRequest) {
 
   let body: {
     circleId?: string
+    planId?: string | null
+    createNew?: boolean
     name?: string
     status?: string
     waypoints?: Waypoint[]
@@ -122,14 +148,19 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: 'Não é membro deste círculo.' }, { status: 403 })
   }
 
-  const { data: existing, error: readError } = await admin
+  let existingQuery = admin
     .from('family_plans')
     .select('id, version')
     .eq('circle_id', body.circleId)
     .neq('status', 'archived')
     .order('updated_at', { ascending: false })
     .limit(1)
-    .maybeSingle()
+
+  if (body.planId && !body.createNew) existingQuery = existingQuery.eq('id', body.planId)
+
+  const { data: existing, error: readError } = body.createNew
+    ? { data: null, error: null }
+    : await existingQuery.maybeSingle()
 
   if (readError && tableMissing(readError)) {
     return NextResponse.json({ error: 'migration_pending' }, { status: 200 })
@@ -142,7 +173,7 @@ export async function PUT(request: NextRequest) {
     await admin
       .from('family_plans')
       .update({
-        name: body.name ?? undefined,
+        name: body.name?.trim() ? body.name.trim().slice(0, 80) : undefined,
         status: body.status ?? undefined,
         version,
         updated_by: user.id,
@@ -154,7 +185,7 @@ export async function PUT(request: NextRequest) {
       .from('family_plans')
       .insert({
         circle_id: body.circleId,
-        name: body.name ?? 'Plano da família',
+        name: body.name?.trim() ? body.name.trim().slice(0, 80) : 'Plano da família',
         status: body.status ?? 'active',
         created_by: user.id,
         updated_by: user.id,

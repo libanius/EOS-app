@@ -51,6 +51,14 @@ export type PlanDocument = {
   triggersPending?: boolean
 }
 
+export type PlanSummary = {
+  id: string
+  name: string
+  version: number
+  status: string
+  updated_at: string
+}
+
 /**
  * A escada de pontos de encontro (doc 18 §4).
  *

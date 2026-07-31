@@ -1,6 +1,6 @@
 import type { PlanDocument, PlanRoute, PlanTrigger, PlanWaypoint } from './family-plan'
 
-export type PlanExecutionStepKind = 'safety' | 'circle' | 'trigger' | 'role' | 'rendezvous' | 'route' | 'finish'
+export type PlanExecutionStepKind = 'circle' | 'trigger' | 'role' | 'rendezvous' | 'route' | 'finish'
 
 export type PlanExecutionStep = {
   id: string
@@ -40,18 +40,9 @@ export function buildPlanExecutionSteps(doc: PlanDocument, pt: boolean): PlanExe
   const version = doc.plan?.version ? `v${doc.plan.version}` : pt ? 'versão atual' : 'current version'
 
   steps.push({
-    id: 'safety-authority',
-    kind: 'safety',
-    title: pt ? '1. Pare e confirme a fonte' : '1. Stop and confirm the source',
-    body: pt
-      ? 'Se houver violência ativa, ordem oficial ou risco humano imediato, siga escola/autoridades e não se aproxime da zona de risco sem instrução oficial.'
-      : 'If there is active violence, an official order, or immediate human threat, follow school/authorities and do not approach the risk zone without official instruction.',
-  })
-
-  steps.push({
     id: 'circle-alert',
     kind: 'circle',
-    title: pt ? '2. Alerte o círculo' : '2. Alert the circle',
+    title: pt ? 'Alerte o círculo' : 'Alert the circle',
     body: pt
       ? `Diga que o plano ${version} está em execução. Depois peça status e localização de todos.`
       : `Tell the circle that plan ${version} is now running. Then ask everyone for status and location.`,
