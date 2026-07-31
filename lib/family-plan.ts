@@ -164,6 +164,27 @@ export const TRIGGER_SUGGESTIONS: Array<{ pt: { condition: string; action: strin
 export const isRendezvous = (kind: WaypointKind) => kind.startsWith('rendezvous_')
 
 /**
+ * Nome padrão para um lugar, a partir do que ele é.
+ *
+ * Um ponto marcado no mapa JÁ É a informação — a coordenada é mais precisa que
+ * qualquer endereço digitado, e num condomínio onde vários prédios dividem o
+ * número, a coordenada é a única coisa exata. Exigir que a pessoa digitasse algo
+ * para poder confirmar transformava a parte precisa do fluxo em refém da parte
+ * imprecisa.
+ *
+ * O nome continua existindo porque a família precisa CHAMAR o lugar de alguma
+ * coisa quando estiver executando o plano ("todo mundo no ponto 2"). Ele só
+ * deixa de ser um obstáculo: vem preenchido e pode ser trocado.
+ */
+export function defaultPlaceName(kind: WaypointKind, pt: boolean): string {
+  const rung = RENDEZVOUS.findIndex(r => r.kind === kind)
+  if (rung >= 0) return pt ? `Ponto ${rung + 1}` : `Point ${rung + 1}`
+  if (kind === 'home') return pt ? 'Casa' : 'Home'
+  const place = PLACE_KINDS.find(k => k.kind === kind)
+  return place ? place[pt ? 'pt' : 'en'] : pt ? 'Lugar' : 'Place'
+}
+
+/**
  * Um plano precisa de ponto de encontro E de papéis (doc 18 §3).
  *
  * Sem os dois não é plano, é mapa — e a UI trata os dois como obrigatórios em

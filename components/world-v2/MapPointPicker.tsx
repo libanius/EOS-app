@@ -30,6 +30,7 @@ const COPY = {
     use: 'Usar este ponto',
     cancel: 'Cancelar',
     accuracy: 'Aproxime mais para escolher com precisão',
+    centring: 'Centralizando onde você está…',
   },
   en: {
     title: 'Pick on the map',
@@ -39,6 +40,7 @@ const COPY = {
     use: 'Use this point',
     cancel: 'Cancel',
     accuracy: 'Zoom in further to pick precisely',
+    centring: 'Centring on where you are…',
   },
 } as const
 
@@ -49,12 +51,16 @@ export default function MapPointPicker({
   open,
   pt,
   start,
+  fallback,
   onPick,
   onClose,
 }: {
   open: boolean
   pt: boolean
+  /** Ponto já escolhido, quando se está editando. Tem prioridade sobre tudo. */
   start: { lat: number; lng: number } | null
+  /** Melhor palpite estático — a casa do plano, ou o endereço do perfil. */
+  fallback: { lat: number; lng: number } | null
   onPick: (point: { lat: number; lng: number }) => void
   onClose: () => void
 }) {
@@ -63,11 +69,21 @@ export default function MapPointPicker({
   const mapRef = useRef<MLMap | null>(null)
   const [base, setBase] = useState<MapBaseMode>('satellite')
   const [zoom, setZoom] = useState(17)
-  const [centre, setCentre] = useState(start)
+  const [locating, setLocating] = useState(false)
+  const [centre, setCentre] = useState(start ?? fallback)
 
   // A posição inicial precisa sobreviver à troca de camada, que recria o mapa.
-  const centreRef = useRef(start)
+  const centreRef = useRef(start ?? fallback)
   useEffect(() => { centreRef.current = centre }, [centre])
+
+  /**
+   * Assim que a pessoa encosta no mapa, ele para de se mover sozinho.
+   *
+   * Sem esta trava, uma posição de GPS chegando com três segundos de atraso
+   * arrancaria a câmera de onde a pessoa acabou de arrastar — o mapa brigando
+   * com quem o usa, que é o defeito que já corrigimos no dashboard (D-070).
+   */
+  const touched = useRef(false)
 
   const build = useCallback(async () => {
     if (!holder.current || mapRef.current) return
@@ -80,7 +96,7 @@ export default function MapPointPicker({
       container: holder.current,
       style: cfg.styleUrl,
       center: [at.lng, at.lat],
-      zoom: centreRef.current ? 17 : 13,
+      zoom: centreRef.current ? 17 : 12,
       pitch: 0,   // escolher endereço exige o chão, não a perspectiva
       bearing: 0,
       attributionControl: false,
@@ -97,6 +113,9 @@ export default function MapPointPicker({
     }
     map.on('move', sync)
     map.on('zoom', sync)
+    // `originalEvent` só existe quando um ponteiro real causou o movimento.
+    map.on('dragstart', event => { if ((event as { originalEvent?: unknown }).originalEvent) touched.current = true })
+    map.on('zoomstart', event => { if ((event as { originalEvent?: unknown }).originalEvent) touched.current = true })
     // Uma vez agora: sem isto, abrir sem ponto de partida deixava a mira sem
     // coordenada e o botão de confirmar desabilitado até o usuário arrastar o
     // mapa — a tela pedia uma ação que ela não explicava.
@@ -112,6 +131,41 @@ export default function MapPointPicker({
       mapRef.current = null
     }
   }, [open, build])
+
+  /**
+   * Abrir onde a pessoa ESTÁ.
+   *
+   * Antes, sem ponto de partida, o mapa abria no centro de referência do app —
+   * e a pessoa tinha que procurar a própria casa navegando. Agora ele parte do
+   * melhor palpite estático (a casa do plano, ou o endereço do perfil) e, se uma
+   * posição chegar rápido, vai até ela.
+   *
+   * Só quando NÃO se está editando um ponto existente: quem abriu para ajustar
+   * um lugar já escolhido não quer ser levado para outro lugar.
+   */
+  useEffect(() => {
+    if (!open || start) return
+    if (typeof navigator === 'undefined' || !navigator.geolocation) return
+    let cancelled = false
+
+    setLocating(true)
+    navigator.geolocation.getCurrentPosition(
+      position => {
+        setLocating(false)
+        if (cancelled || touched.current) return
+        const at = { lat: position.coords.latitude, lng: position.coords.longitude }
+        centreRef.current = at
+        setCentre(at)
+        mapRef.current?.easeTo({ center: [at.lng, at.lat], zoom: 17, duration: 700 })
+      },
+      () => setLocating(false),
+      // Mesma regra de D-076: aceita fix recente. Aqui é só para enquadrar o
+      // mapa, então precisão importa menos que chegar rápido.
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 120000 },
+    )
+
+    return () => { cancelled = true }
+  }, [open, start])
 
   if (!open) return null
 
@@ -155,7 +209,8 @@ export default function MapPointPicker({
           )}
         </div>
 
-        {!precise && <p className="t-foot warn">{c.accuracy}</p>}
+        {locating && <p className="t-foot ink-3">{c.centring}</p>}
+        {!precise && !locating && <p className="t-foot warn">{c.accuracy}</p>}
 
         <div className="wv2-mappick-acts">
           <Pill onClick={onClose}>{c.cancel}</Pill>

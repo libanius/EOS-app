@@ -31,6 +31,7 @@ import {
   RENDEZVOUS,
   TRIGGER_SUGGESTIONS,
   ageLabel,
+  defaultPlaceName,
   isRendezvous,
   planGaps,
   type PlanDocument,
@@ -811,6 +812,7 @@ export default function PlanPage() {
         target={picker}
         pt={pt}
         copy={c}
+        fallback={home ? { lat: home.lat, lng: home.lng } : profilePlace}
         existing={picker ? waypoints.find(w => w.kind === picker.kind) ?? null : null}
         onClose={() => setPicker(null)}
         onConfirm={point => {
@@ -835,6 +837,7 @@ function PointPicker({
   pt,
   copy,
   existing,
+  fallback,
   onClose,
   onConfirm,
 }: {
@@ -842,6 +845,8 @@ function PointPicker({
   pt: boolean
   copy: typeof COPY['pt'] | typeof COPY['en']
   existing: PlanWaypoint | null
+  /** Onde enquadrar o mapa quando ainda não há ponto: casa, ou perfil. */
+  fallback: { lat: number; lng: number } | null
   onClose: () => void
   onConfirm: (point: PlanWaypoint) => void
 }) {
@@ -870,6 +875,18 @@ function PointPicker({
     setGeoError(null)
     setAccuracy(null)
   }, [target, existing])
+
+  /**
+   * O nome deixa de bloquear a confirmação.
+   *
+   * Marcar no mapa é a parte PRECISA do fluxo; digitar um endereço é a
+   * imprecisa. Exigir a segunda para liberar a primeira era ter o obstáculo no
+   * lugar errado. O nome vem preenchido pelo tipo do lugar e pode ser trocado.
+   */
+  const nameIfEmpty = () => {
+    if (!target) return
+    setName(current => (current.trim() ? current : defaultPlaceName(target.kind, pt)))
+  }
 
   const runSearch = async () => {
     if (query.trim().length < 2) return
@@ -929,6 +946,7 @@ function PointPicker({
       }
       setPoint({ lat: position.coords.latitude, lng: position.coords.longitude })
       setAccuracy(Number.isFinite(acc) ? acc : null)
+      nameIfEmpty()
     }
 
     const fail = (error: GeolocationPositionError) => {
@@ -1075,11 +1093,13 @@ function PointPicker({
             open={onMap}
             pt={pt}
             start={point}
+            fallback={fallback}
             onClose={() => setOnMap(false)}
             onPick={picked => {
               setPoint(picked)
               setAccuracy(null)
               setGeoError(null)
+              nameIfEmpty()
               setOnMap(false)
             }}
           />

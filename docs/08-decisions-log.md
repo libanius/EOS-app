@@ -50,6 +50,21 @@
    de alta precisão que só substitui o ponto **quando a leitura melhora**. Falha
    só é reportada se os dois falharem.
 
+**Refinamentos após o dono usar (2026-07-31)**:
+
+- **O mapa abre onde a pessoa está.** Ele abria no centro de referência do app, e
+  o dono tinha que navegar procurando a própria casa. Agora parte do melhor
+  palpite estático (a casa do plano, ou o endereço do perfil) e vai para a
+  posição do aparelho assim que ela chega — **exceto** se a pessoa já encostou no
+  mapa. Uma posição chegando com atraso não pode arrancar a câmera de onde alguém
+  acabou de arrastar; é a mesma trava de D-070.
+- **Confirmar não exige mais digitar endereço.** Marcar no mapa é a parte
+  PRECISA do fluxo — num condomínio a coordenada é a única coisa exata. Bloquear
+  a confirmação até que se digitasse um nome punha o obstáculo no lugar errado.
+  O nome vem preenchido pelo tipo do lugar ("Ponto 2", "Trabalho") e pode ser
+  trocado: ele existe para a família **chamar** o lugar de algo durante a
+  execução, não para validar a coordenada.
+
 **Consequences**: tornar o erro visível foi o que revelou o segundo defeito em
 minutos. Um erro calado não é só ruim para o usuário: **esconde o bug de quem
 escreveu o código**. Vale como argumento sempre que a tentação for engolir uma

@@ -17,7 +17,8 @@
  *      longe demais para ir a pé vira lacuna no debrief (SIM-T06)
  *  10. o ponto pode ser escolhido NO MAPA, com a mira no centro e imagem de
  *      satélite — o caso do condomínio, onde vários prédios dividem o mesmo
- *      número e a busca por endereço devolve um ponto só
+ *      número e a busca por endereço devolve um ponto só. E confirmar não exige
+ *      digitar endereço nenhum: a coordenada já é a informação
  *  11. GPS negado não trava a tela: o motivo é dito e o mapa continua como saída
  *  12. sem rede, o plano continua na tela, rotulado como cópia local, E a carta
  *      do plano é DESENHADA — pinos, traçado, norte e escala, sem tile nenhum
@@ -296,7 +297,15 @@ await a.waitForTimeout(2500)
 
 // A mira é fixa: arrastar o mapa muda o ponto escolhido. Se as coordenadas não
 // mudarem com o arrasto, a mira não está lendo o centro da câmera.
+// O mapa tem que abrir ONDE A PESSOA ESTÁ. Antes ele abria no centro de
+// referência do app e a pessoa navegava procurando a própria casa.
 const before = await mapPick.locator('.coords').innerText()
+const [abriuLat, abriuLng] = before.split(',').map(v => Number(v.trim()))
+const pertoDeMim = Math.abs(abriuLat - FAR.latitude) < 0.02 && Math.abs(abriuLng - FAR.longitude) < 0.02
+pertoDeMim
+  ? ok('o mapa abre na posição atual', before)
+  : no('o mapa abriu longe da pessoa', `${before} vs ${FAR.latitude}, ${FAR.longitude}`)
+
 const box = await a.locator('.wv2-mappick-map').boundingBox()
 await a.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
 await a.mouse.down()
@@ -308,16 +317,20 @@ const after = await mapPick.locator('.coords').innerText()
 await mapPick.locator('button:has-text("Usar este ponto")').click()
 await mapPick.waitFor({ state: 'detached', timeout: 10000 })
 const marked = await dialog.locator('text=Ponto marcado').count()
-await dialog.locator('label:has-text("Como a família chama") input').fill('Escritório')
+
+// Um ponto marcado no mapa JÁ É a informação: confirmar não pode depender de
+// digitar um endereço. O nome vem preenchido pelo tipo do lugar.
+const autoName = await dialog.locator('label:has-text("Como a família chama") input').inputValue()
+const canConfirm = !(await dialog.locator('button:has-text("Confirmar")').isDisabled())
 await dialog.locator('button:has-text("Confirmar")').click()
 await dialog.waitFor({ state: 'detached', timeout: 10000 })
 await a.locator('button:has-text("Salvar plano")').click()
 await a.waitForTimeout(4000)
 
 const work = await admin(`/rest/v1/family_plan_waypoints?plan_id=eq.${v1?.[0]?.id}&kind=eq.work&select=name,lat,lng`).then(r => r.json())
-before !== after && marked && work?.[0]?.name === 'Escritório'
-  ? ok('ponto escolhido no mapa pela mira', `${before} → ${after}`)
-  : no('escolha no mapa falhou', `mudou=${before !== after} confirmou=${marked} gravou=${JSON.stringify(work)}`)
+before !== after && marked && canConfirm && autoName === 'Trabalho' && work?.[0]?.name === 'Trabalho'
+  ? ok('ponto do mapa confirma sem digitar nada', `${before} → ${after} · nome "${autoName}"`)
+  : no('escolha no mapa falhou', `mudou=${before !== after} marcado=${marked} confirmável=${canConfirm} nome="${autoName}" gravou=${JSON.stringify(work)}`)
 
 // ── 11. GPS negado: motivo dito, e o mapa continua disponível ───────────────
 // O dono viu o botão de posição expirar de verdade. Um erro de GPS não pode
