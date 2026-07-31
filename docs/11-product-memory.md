@@ -1,7 +1,31 @@
 # 11 — Product Memory
 
 > Non-obvious facts that don't belong in code comments but must survive across sessions.
-> Last updated: 2026-07-30
+> Last updated: 2026-07-31
+
+---
+
+## Executar Plano não é chat — é orquestração da versão aprovada (2026-07-31)
+
+O dono colocou a lacuna correta: o Plano da Família só vira produto quando existe
+um botão de **executar**. Em crise, a pessoa não quer reler o documento nem
+conversar genericamente; quer que o EOS conduza a família, um passo por vez.
+
+Regra que fica: **o Pilot host lê o plano aprovado; ele não inventa plano no
+meio do evento.** A sequência do MVP é determinística: trava de segurança e
+autoridade → alertar círculo → gatilhos → papéis → pontos de encontro → rotas →
+encerramento com estado claro.
+
+Active shooting perto da escola é o caso que fixa a cautela: o EOS coordena
+comunicação, localização e responsabilidades, mas não improvisa instrução tática
+nem manda familiar se aproximar da zona de risco. A fala padrão é seguir
+escola/autoridades/emergência e bloquear deslocamento impulsivo.
+
+MVP entregue sem tabela nova: execução local no painel da própria foto no mapa,
+derivada de `/api/plans`, com push preset ao círculo. Próxima evolução real é
+`family_plan_executions` + `family_plan_execution_events`, para timeline
+compartilhada e retomada em outro aparelho. Antes disso, não fingir auditoria
+multiusuário.
 
 ---
 

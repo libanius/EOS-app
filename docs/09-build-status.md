@@ -1,7 +1,7 @@
 # 09 — Build Status
 
 > The single most important file for resuming a session. Read this first after AGENTS.md.
-> Last updated: 2026-07-30
+> Last updated: 2026-07-31
 
 ---
 
@@ -10,7 +10,8 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Abrigos oficiais + planos da família (FAM/PLAN) + gates de validação da v2 abertos (WV2-T05) |
-| **Last Completed Task** | **D-078 — tempestade no mapa: cone, trajetória, vento em grade e alerta que vira lugar (2026-07-31)** |
+| **Last Completed Task** | **D-079 / PLAN-T08 — Executar Plano: Pilot host situacional no painel da pessoa (2026-07-31)** |
+| | D-078 — tempestade no mapa: cone, trajetória, vento em grade e alerta que vira lugar (2026-07-31)** |
 | | D-077 — controle do círculo (papel/renomear/excluir), acesso ao plano, gatilhos e temporizador de simulação (2026-07-31)** |
 | | D-076 — escolher endereço no mapa (mira), satélite sem chave e botão de GPS que fala (2026-07-31)** |
 | | PLAN-T06 — envelope do plano + carta que desenha o plano sem tile nenhum (2026-07-30)** |
@@ -78,7 +79,8 @@
 | **In Progress** | — |
 | **Fases pedidas pelo dono (2026-07-31)** | ✅ 1. Camadas de clima + rastreio de ciclone (D-078). 2. Reinventar a aba Família no design system da v2, com componentes dinâmicos. 3. WV2-T05 (a11y/perf), PLAN-T07 (Pilot propõe plano). |
 | **Next Task** | **PLAN-T02** — editor do plano (pontos de encontro, lugares, papéis, gatilhos). Depois **PLAN-T04** (versionamento e reconhecimento na UI) e **SIM-T06**. Antes disso: **PLAN-T01** — modelo de dados + RLS + API dos Planos de Emergência da Família (`docs/18-family-plans.md`), que destrava SIM-T06 e os mapas offline. Antes disso: **SIM-T05** — debrief da simulação com lacunas quantificadas. Alternativas: **SIM-T04** (injeção de eventos/avanço de tempo), **PLAN-T01** (modelo de dados do plano de voo) — modelo de dados + RLS por círculo + API dos Planos de Emergência da Família (`docs/18-family-plans.md`). Alternativas abertas: **WV2-T05** (gates de validação da v2, dívida assumida em D-063), **FAM-T08** (cache offline dos abrigos), **LA-T06** (códigos de afiliado, travado nos params do dono). |
-| **Build** | ✅ Passing — type-check, ESLint, Jest 66/66 e production build limpos (2026-07-30) |
+| **Build** | ✅ Passing — type-check, Jest 67/67 e production build limpos (2026-07-31) |
+| **Plano execução** | ✅ PLAN-T08 MVP: tocar no próprio rosto no mapa abre comando familiar; "Executar plano" carrega a versão atual do plano, monta passos determinísticos do host (segurança → círculo → gatilhos → papéis → pontos → rotas → encerramento) e alerta o círculo com push preset "Execute o plano da família agora". Sem nova tabela ainda: timeline compartilhada fica para `family_plan_executions`. |
 | **Clima** | ✅ `npm run test:weather` **8/8** com dado AO VIVO (2026-07-31): ciclone com posição/rumo, geometria oficial do NHC, vento em grade, painel de camadas persistente, setas RENDERIZADAS no mapa, o alerta pulsando na cor do risco, e a tempestade tocável ENQUADRANDO o cone (medido contra a geometria da API, não contra as entranhas do mapa). O teste PROCURA uma região com alerta ativo no feed do NWS em vez de depender do tempo em Parkland. |
 | **Círculo** | ✅ `npm run test:circle` **5/5** (2026-07-31) — promover a Editor muda o banco, quem não é Admin recebe 403, renomear funciona, excluir exige o nome exato e cascateia. Toda asserção lê o banco depois da ação. |
 | **Plano** | ✅ `npm run test:plan` **14/14** em dois navegadores (2026-07-30): não salva sem ponto e papel, autor salva v1, membro reconhece, v2 **invalida** o ack anterior, gatilho grava, rota desenhada vira LineString, o debrief cobra um ponto de encontro inalcançável a pé, e com a rede derrubada o plano continua na tela rotulado como cópia local **e a carta é desenhada** (pinos, traçado, norte, escala). Inclui abrir o mapa na posição atual, escolher pela mira sem digitar nada, e GPS negado que diz o motivo sem travar a tela. |

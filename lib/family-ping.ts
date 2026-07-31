@@ -13,6 +13,7 @@ export const PING_PRESETS = {
   where: { pt: 'Onde você está?', en: 'Where are you?' },
   come_home: { pt: 'Volte para casa agora', en: 'Come home now' },
   meet: { pt: 'Vamos ao ponto de encontro', en: 'Go to the rendezvous point' },
+  execute_plan: { pt: 'Execute o plano da família agora', en: 'Run the family plan now' },
   help: { pt: 'Preciso de ajuda', en: 'I need help' },
   on_my_way: { pt: 'Estou indo até você', en: 'On my way to you' },
 } as const

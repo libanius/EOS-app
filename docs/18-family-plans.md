@@ -184,6 +184,59 @@ Um plano alterado por IA sem o usuário saber é indistinguível de sabotagem.
 
 ---
 
+## 9.1 Executar plano — Pilot como host situacional (D-079)
+
+O plano só vira produto quando pode ser **executado**. Ler a versão atual é
+preparação; executar é abrir uma sessão operacional em que o EOS guia a família
+pela ordem lógica:
+
+1. Alertar o círculo de que o plano está em execução.
+2. Confirmar localização/presença dos membros.
+3. Ler os gatilhos observáveis e a ação correspondente.
+4. Aplicar os papéis: quem busca quem, quem liga, quem fica.
+5. Levar a família para o ponto de encontro correto.
+6. Usar rotas desenhadas e notas locais quando existirem.
+7. Encerrar só quando todos estiverem localizados, orientados ou explicitamente
+   pendentes.
+
+O Pilot neste modo é **host**, não autor. Ele instrui como um onboarding de
+crise: uma próxima ação por vez, confirmação visível, linguagem curta, sem
+escrever plano novo no meio do evento.
+
+### Active shooting e eventos de segurança humana
+
+No exemplo de um active shooting perto da escola, o EOS pode coordenar presença,
+comunicação, localização, papéis e contato com responsáveis. Ele **não** deve
+improvisar instrução tática nem mandar familiar se aproximar de uma área que
+autoridades mandaram evitar.
+
+Regra de segurança: quando o evento envolve violência ativa, a primeira fala do
+host deve priorizar autoridade local/escola/emergência e bloquear deslocamento
+impulsivo para a zona de risco. O plano da família continua útil, mas como
+coordenação de informação e responsabilidades, não como autorização para entrar
+no incidente.
+
+### Modelo de execução
+
+MVP implementado sem nova tabela: o aparelho deriva os passos da versão atual do
+plano e permite marcar progresso localmente. A próxima evolução persistente deve
+criar:
+
+```
+family_plan_executions
+  id, plan_id, circle_id, started_by, status,
+  scenario, current_step, started_at, ended_at
+
+family_plan_execution_events
+  id, execution_id, actor_user_id, kind, payload jsonb, created_at
+```
+
+Isso permitirá timeline compartilhada, confirmações por membro e retomada em
+outro aparelho. Até essa migration existir, a execução não deve fingir auditoria
+compartilhada.
+
+---
+
 ## 10. Ligação com mapas offline
 
 O plano resolve a pergunta que a fase de mapas offline precisa responder:
@@ -274,6 +327,7 @@ círculo (Admin/Editor). Endpoints públicos de ficha **nunca** tocam estas tabe
 | **PLAN-T05** | ✅ Documento inteiro em IndexedDB por círculo, com versão e instante da sincronização. `GET /api/plans` é NetworkOnly de propósito (D-075): sem isso o service worker devolvia cópia velha como se fosse ao vivo. |
 | **PLAN-T06** | ✅ Envelope calculado (`lib/plan-envelope.ts`) + **carta do plano** em SVG que desenha lugares, escada numerada, traçados, norte e escala **sem tile nenhum**. Download de tiles segue fora por termos de provedor (§10). |
 | **PLAN-T07** | Pilot propõe/revisa planos com confirmação explícita (§9) |
+| **PLAN-T08** | ✅ Executar Plano MVP: painel da pessoa no mapa abre um host situacional, deriva passos da versão atual do plano e permite alertar o círculo para executar agora. Persistência multiusuário fica para `family_plan_executions`. |
 
 ---
 

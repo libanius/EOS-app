@@ -4,6 +4,50 @@
 
 ---
 
+## D-079 — Executar plano: Pilot vira host situacional, não só chat
+
+**Date**: 2026-07-31
+**Status**: DECIDED / IMPLEMENTADO MVP
+
+**Context**: O dono apontou a falha certa: o Plano da Família recebeu muito
+investimento, mas ainda se comportava como documento. Durante um evento real
+("active shooting" perto da escola da filha, por exemplo), a pergunta não é
+"onde está escrito o plano?", é **"como eu aciono a família e o que acontece
+agora, passo a passo?"**
+
+O Pilot também estava limitado por forma: respondia perguntas, mas não conduzia
+uma sessão. Num evento, a pessoa não quer um chat aberto; quer um host
+situacional dizendo a próxima ação, quem falta responder e o que não fazer.
+
+**Decision**:
+
+1. **Executar Plano vira modo do produto.** O plano deixa de ser só documento e
+   passa a ser um playbook executável: alertar círculo, pedir/compartilhar
+   localização, seguir papéis, pontos, rotas e gatilhos na ordem lógica.
+2. **O Pilot vira host situacional.** O tom é de onboarding operacional: uma
+   instrução por vez, linguagem curta, próxima ação clara, confirmação visível.
+   Ele lê o plano aprovado e o estado do EOS; não inventa um plano durante a
+   crise.
+3. **A entrada fica no painel da pessoa/foto.** Tocar no próprio rosto no mapa
+   abre ferramentas de presença e comando: estou seguro, enviar/pedir
+   localização, alertar família e executar o plano atual.
+4. **Active shooting exige trava explícita.** O EOS pode coordenar comunicação,
+   localização e responsabilidades. Ele não deve improvisar instrução tática,
+   nem mandar familiar se aproximar de área perigosa. A orientação padrão é:
+   seguir escola/autoridades, chamar emergência quando apropriado, não dirigir
+   para a área se a autoridade mandou evitar.
+5. **MVP sem nova tabela.** A primeira execução é local e derivada da versão
+   atual do plano: o aparelho monta os passos, permite marcar progresso e envia
+   push preset ao círculo. Persistência multiusuário, timeline auditável e
+   estado compartilhado viram a próxima migration (`family_plan_executions`).
+
+**Consequences**: PLAN-T08 fica criado no roadmap. PLAN-T07 (Pilot propõe/revisa
+planos) continua existindo, mas a prioridade operacional muda: antes de a IA
+escrever planos melhores, o EOS precisa **executar** o plano que a família já
+aprovou.
+
+---
+
 ## D-078 — A tempestade no mapa: onde está, para onde vai, e o que o cone NÃO diz
 
 **Date**: 2026-07-31

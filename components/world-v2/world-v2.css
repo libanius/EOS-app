@@ -2133,6 +2133,10 @@
   color: var(--accent-ink);
   font-weight: 700;
 }
+.wv2-member .go > .marked {
+  border-color: rgba(var(--accent-rgb), 0.42);
+  color: var(--accent);
+}
 .wv2-member .go > *:active { transform: scale(0.97); }
 
 .wv2-member .label { margin: var(--s5) 0 var(--s2); }
@@ -2156,6 +2160,81 @@
   color: var(--ink);
 }
 .wv2-member .presets button:active:not(:disabled) { transform: scale(0.97); }
+.wv2-member .execute-plan { margin-top: var(--s4); }
+.wv2-member .execution-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s3);
+  margin: var(--s4) 0 var(--s3);
+}
+.wv2-member .execution-head span {
+  flex: none;
+  padding-top: 3px;
+}
+.wv2-member .broadcast {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid rgba(var(--accent-rgb), 0.42);
+  border-radius: 14px;
+  background: rgba(var(--accent-rgb), 0.16);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.wv2-member .execution-steps {
+  display: grid;
+  gap: var(--s2);
+  margin-top: var(--s3);
+}
+.wv2-member .execution-steps button {
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  gap: var(--s3);
+  width: 100%;
+  min-height: 64px;
+  padding: var(--s3);
+  border: 1px solid var(--sep);
+  border-radius: 16px;
+  background: var(--fill-2);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.wv2-member .execution-steps .num {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(var(--accent-rgb), 0.16);
+  color: var(--accent);
+  font-size: 0.8125rem;
+  font-weight: 800;
+}
+.wv2-member .execution-steps strong,
+.wv2-member .execution-steps em {
+  display: block;
+  min-width: 0;
+}
+.wv2-member .execution-steps strong {
+  font-size: 0.875rem;
+  line-height: 1.25;
+}
+.wv2-member .execution-steps em {
+  margin-top: 3px;
+  color: var(--ink-2);
+  font-size: 0.8125rem;
+  font-style: normal;
+  line-height: 1.35;
+}
+.wv2-member .execution-steps button.done {
+  border-color: rgba(var(--accent-rgb), 0.45);
+  background: rgba(var(--accent-rgb), 0.13);
+}
 .wv2-member .warn { margin: var(--s3) 0 0; color: #ff9f0a; }
 .wv2-member .note { margin: var(--s4) 0 0; line-height: 1.5; }
 

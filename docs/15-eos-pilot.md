@@ -63,6 +63,7 @@ Pilot is not:
 - A simple weather screen.
 - An isolated recreational recommender.
 - An AI that makes final decisions for the user.
+- An AI that improvises a new family plan during a crisis.
 - A Dashboard replacement.
 - A separate visual system pasted onto EOS.
 
@@ -127,6 +128,29 @@ Re-evaluate
 ```
 
 Pilot primarily owns interpretation and decision.
+
+### Pilot Hosts Execution (D-079)
+
+When a family plan is already approved, Pilot can switch roles: from
+interpreter to **situational host**.
+
+In this mode it does not brainstorm. It guides the circle through the plan that
+already exists:
+
+- names the immediate safety constraint;
+- asks the family to confirm location/status;
+- surfaces the relevant trigger/action;
+- assigns the saved roles in order;
+- points to the saved rendezvous and route notes;
+- waits for visible confirmation before moving on.
+
+This is an onboarding pattern applied to emergency execution: one next action,
+one confirmation, one state transition. It is not a free-form chat.
+
+For active violence incidents, the host must not produce tactical instructions
+or send family members toward the incident. It coordinates communication and
+responsibilities while deferring to school, emergency services and local
+authorities.
 
 ---
 
