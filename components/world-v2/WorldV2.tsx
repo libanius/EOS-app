@@ -381,8 +381,23 @@ export default function WorldV2() {
         lng: s.lng,
         distanceKm: s.distanceKm,
       })),
+      // D-079: o mapa desenhava o cone e o Pilot dizia que não enxergava o
+      // evento. O dado existia e não era enviado — a mesma armadilha de
+      // estender uma ponta e esquecer a outra.
+      cyclones: (cyclones?.storms ?? []).map(st => ({
+        name: st.name,
+        classification: st.classification,
+        windKmh: st.windKmh,
+        distanceKm: st.distanceKm,
+        headingDeg: st.headingDeg,
+        speedKmh: st.speedKmh,
+        relevant: isRelevant(st),
+      })),
+      wind: wind?.atUser
+        ? { speedKmh: wind.atUser.speedKmh, gustKmh: wind.atUser.gustKmh, fromDeg: wind.atUser.fromDeg }
+        : null,
     }),
-    [metric, state, score, snapshot, hasCoords, coords, data, shelterSnapshot, simulation.active, simulation.config, family],
+    [metric, state, score, snapshot, hasCoords, coords, data, shelterSnapshot, simulation.active, simulation.config, family, cyclones, wind],
   )
 
   const sections = (

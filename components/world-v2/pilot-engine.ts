@@ -79,6 +79,25 @@ export type PilotContext = {
   family?: Array<{ name: string; lat: number; lng: number; freshness: string; isMe?: boolean }>
   /** Official open shelters with coordinates. */
   shelters?: Array<{ name: string; lat: number; lng: number; distanceKm: number }>
+  /**
+   * Ciclones tropicais ativos (D-078).
+   *
+   * O dono perguntou ao Pilot sobre um evento climático em andamento e ouviu que
+   * ele não enxergava — enquanto o mapa ao lado desenhava o cone. O dado existia
+   * e simplesmente não era enviado: a mesma armadilha de estender uma ponta e
+   * esquecer a outra que já custou cinco bugs neste projeto.
+   */
+  cyclones?: Array<{
+    name: string
+    classification: string
+    windKmh: number
+    distanceKm: number | null
+    headingDeg: number | null
+    speedKmh: number | null
+    relevant: boolean
+  }>
+  /** Vento medido no ponto da pessoa, com rajada. */
+  wind?: { speedKmh: number; gustKmh: number | null; fromDeg: number } | null
   /** The place the user just searched on the map — their current point of interest. */
   searchedPlace?: { label: string; lat: number; lng: number } | null
 }

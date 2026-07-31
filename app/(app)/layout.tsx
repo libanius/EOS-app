@@ -4,6 +4,8 @@ import SyncStatus from '@/components/SyncStatus'
 import FichaFirstRun from '@/components/FichaFirstRun'
 import LocationReporter from '@/components/LocationReporter'
 import ServiceWorkerRegistrar from '@/components/ServiceWorkerRegistrar'
+import RiskProvider from '@/components/v2/RiskProvider'
+import PilotDock from '@/components/world-v2/PilotDock'
 import SimulationProvider from '@/components/SimulationProvider'
 import SimulationBanner from '@/components/SimulationBanner'
 import SimulationInvite from '@/components/SimulationInvite'
@@ -17,6 +19,12 @@ import SimulationDebrief from '@/components/SimulationDebrief'
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <SimulationProvider>
+      {/*
+        D-079: o risco passa a ser estado do APP, não da tela do dashboard — é o
+        que permite o Pilot existir em qualquer página. Uma instância só,
+        montada aqui, também evita o refetch a cada navegação.
+      */}
+      <RiskProvider>
       <SimulationBanner />
       {/* D-071: a família é convidada, nunca colocada no treino sem aceitar. */}
       <SimulationInvite />
@@ -31,6 +39,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {children}
       <SyncStatus />
       <BottomNav />
+      {/* Alcançável de qualquer tela; some no dashboard, que tem a PilotBar. */}
+      <PilotDock />
+      </RiskProvider>
     </SimulationProvider>
   )
 }

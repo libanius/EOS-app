@@ -48,6 +48,62 @@ aprovou.
 
 ---
 
+## D-079 — O Pilot deixa de morar numa tela, enxerga o clima ao vivo e analisa atividades
+
+**Date**: 2026-07-31
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: Três coisas do dono, todas sobre o mesmo produto:
+
+1. o orbe do Pilot só existia no dashboard — para perguntar era preciso voltar
+   para casa, o oposto de um copiloto;
+2. perguntado sobre um evento climático **em andamento**, ele dizia que não
+   enxergava — enquanto o mapa ao lado desenhava o cone da tempestade;
+3. o assistente da aba Clima analisava atividades ("vou trabalhar no telhado") e
+   o Pilot, que sabe muito mais, não.
+
+**Decision**:
+
+1. **O risco virou estado do APP.** `RiskProvider` subiu para o layout
+   autenticado; `PilotDock` põe o orbe em qualquer tela. No dashboard o dock
+   some, porque lá a entrada é a PilotBar (D-070) — dois orbes seriam dois
+   caminhos para a mesma coisa.
+2. **O contexto do dock é montado SOB DEMANDA.** Inventário, ficha, checklist,
+   ciclones e vento só são buscados ao abrir. Um app de emergência não pode
+   cobrar cinco requisições de rede e bateria em toda tela por uma conversa que
+   talvez não aconteça.
+3. **O Pilot recebe ciclones e vento medido.** O dado existia desde D-078 e
+   simplesmente não era enviado — a mesma armadilha de estender uma ponta e
+   esquecer a outra que já custou cinco bugs neste projeto.
+4. **Ciclone citado é ciclone qualificado.** Regra explícita: dizer na mesma
+   frase se aquela tempestade pode ou não afetar a pessoa, com o rumo em ponto
+   cardeal e não em graus. Sem isso o modelo anunciava "tempestade tropical
+   Genevieve, ventos de 93 km/h, a 5.051 km, direção 285°" — verdadeiro, e lido
+   como ameaça pelo dono de uma casa na Flórida.
+5. **Análise de atividade absorvida e melhorada.** O endpoint da aba Clima tinha
+   prompt próprio e não sabia nada da casa. O Pilot já tem família, reservas,
+   alertas oficiais, ciclone e plano, então a mesma pergunta rende mais. O
+   formato estruturado (veredito, motivo com números, janela do dia, o que muda a
+   resposta) foi copiado de lá porque funciona: quem pergunta se pode subir no
+   telhado quer um sim/não com hora, não três parágrafos.
+6. **Atividade não se julga pelo estoque.** Regra explícita depois do teste vetar
+   trabalho no telhado com rajada de 13 km/h: o veredito depende das condições
+   que afetam AQUELA atividade — rajada, chuva, raio, UV, visibilidade, alerta.
+   Água e checklist não entram; ninguém deixa de subir no telhado porque tem
+   pouca água guardada. E não se veta sem um número que justifique.
+
+**Consequences**: `scripts/pilot-abilities-test.mjs` (`npm run test:pilot`)
+exercita o MODELO de verdade — o defeito relatado não é reproduzível sem ele. O
+teste custa tokens e é mais lento, e vale: foi ele que pegou os itens 4 e 6.
+
+Ele também mostrou, pela terceira vez nesta sequência, como um teste passa sem
+testar: a primeira versão lia o fluxo inteiro do chat, que já contém o briefing
+local com rajada e chuva — então "responde com números" passava **antes** de o
+modelo dizer qualquer coisa. Hoje ele espera a resposta HTTP e lê **apenas a
+última bolha**.
+
+---
+
 ## D-078 — A tempestade no mapa: onde está, para onde vai, e o que o cone NÃO diz
 
 **Date**: 2026-07-31

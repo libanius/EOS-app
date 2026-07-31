@@ -306,6 +306,10 @@ export default function Pilot({
               precipProbPct: h.precip_prob_pct,
               gustMph: h.wind_gust_mph,
             })),
+            // Ciclones e vento medido: sem isto, o Pilot dizia não enxergar um
+            // evento que o mapa ao lado estava desenhando (D-079).
+            cyclones: ctx.cyclones ?? [],
+            wind: ctx.wind ?? null,
             nearestShelter: ctx.nearestShelter,
             sheltersKnown: ctx.sheltersKnown,
             inventory: ctx.inventory

@@ -1,0 +1,162 @@
+/**
+ * As capacidades do Pilot, com navegador e modelo REAIS (D-079).
+ *
+ *   1. o orbe existe fora do dashboard — o Pilot deixou de morar numa tela só
+ *   2. ele responde sobre o CLIMA AO VIVO sem dizer que não enxerga
+ *   3. ele enxerga o ciclone ativo, e diz se aquilo afeta a pessoa
+ *   4. "vou trabalhar no telhado" vira ANÁLISE: veredito, motivo com números,
+ *      janela e precauções que viram tarefas
+ *
+ * Os itens 2 e 4 chamam o modelo de verdade. Isso deixa o teste mais lento e
+ * um pouco menos determinístico, e é proposital: o defeito relatado pelo dono
+ * ("perguntei do evento climático e ele disse que não enxerga") não é
+ * reproduzível sem o modelo no meio. As asserções olham SUBSTÂNCIA — números
+ * citados, ausência da negativa —, não frases exatas.
+ *
+ * ATENÇÃO: cria e apaga uma conta no Supabase de produção. Consome tokens.
+ */
+import fs from 'node:fs'
+import { spawn } from 'node:child_process'
+import { config } from 'dotenv'
+import { chromium } from 'playwright'
+config({ path: '.env.local' })
+
+const URL = process.env.NEXT_PUBLIC_SUPABASE_URL
+const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
+const PORT = Number(process.env.PORT || 3019)
+const B = `http://localhost:${PORT}`
+const PASS = 'EosTest#2026!'
+const HOME = { latitude: 26.3106, longitude: -80.2456 }
+
+const admin = (p, o = {}) => fetch(`${URL}${p}`, {
+  ...o,
+  headers: { 'Content-Type': 'application/json', apikey: KEY, Authorization: `Bearer ${KEY}`, Prefer: 'return=representation', ...o.headers },
+})
+
+let pass = 0, fail = 0
+const ok = (l, d = '') => { pass++; console.log(`✅ ${l}${d ? ': ' + d : ''}`) }
+const no = (l, d = '') => { fail++; console.log(`❌ ${l}${d ? ': ' + d : ''}`) }
+
+if (!process.env.OPENAI_API_KEY) {
+  console.error('Sem OPENAI_API_KEY: este teste exercita o modelo de verdade.')
+  process.exit(1)
+}
+if (!fs.existsSync('.next/BUILD_ID')) { console.error('Faltou `npm run build`.'); process.exit(1) }
+
+const server = spawn('npx', ['next', 'start', '-p', String(PORT)], { env: process.env, stdio: 'ignore' })
+const stopServer = () => { try { server.kill('SIGTERM') } catch {} }
+process.on('exit', stopServer)
+let up = false
+for (let i = 0; i < 60 && !up; i += 1) {
+  await new Promise(r => setTimeout(r, 500))
+  up = await fetch(`${B}/checklist`).then(r => r.status < 500).catch(() => false)
+}
+if (!up) { console.error('Servidor não subiu'); stopServer(); process.exit(1) }
+
+const email = `eos-pilot-${Date.now()}@test.internal`
+const u = await admin('/auth/v1/admin/users', { method: 'POST', body: JSON.stringify({ email, password: PASS, email_confirm: true }) }).then(r => r.json())
+await admin(`/rest/v1/profiles?id=eq.${u.id}`, { method: 'PATCH', body: JSON.stringify({ name: 'Pilot', location_lat: HOME.latitude, location_lng: HOME.longitude }) })
+
+const browser = await chromium.launch({ args: ['--no-sandbox'] })
+const ctx = await browser.newContext({
+  viewport: { width: 420, height: 900 }, locale: 'pt-BR',
+  permissions: ['geolocation'], geolocation: HOME,
+})
+await ctx.addInitScript(() => { try { localStorage.setItem('eos-ficha-firstrun', '1') } catch {} })
+const page = await ctx.newPage()
+await page.goto(`${B}/auth/login`, { waitUntil: 'networkidle' })
+await page.fill('input[type="email"]', email)
+await page.fill('input[type="password"]', PASS)
+await page.locator('button').last().click()
+await page.waitForURL(/dashboard|ficha|onboarding/, { timeout: 30000 }).catch(() => {})
+
+// ── 1. o orbe existe fora do dashboard ──────────────────────────────────────
+await page.goto(`${B}/checklist`, { waitUntil: 'networkidle' })
+await page.waitForTimeout(2500)
+const orbe = page.locator('.wv2-dock-orb')
+const temOrbe = await orbe.count()
+temOrbe === 1
+  ? ok('o Pilot é alcançável fora do dashboard')
+  : no('orbe ausente fora do dashboard', `encontrados=${temOrbe}`)
+
+// E não deve haver DOIS caminhos para a mesma coisa no dashboard.
+await page.goto(`${B}/dashboard`, { waitUntil: 'networkidle' })
+await page.waitForTimeout(2500)
+const noDash = await page.locator('.wv2-dock-orb').count()
+noDash === 0
+  ? ok('no dashboard não há orbe duplicado', 'a PilotBar continua sendo a entrada')
+  : no('orbe duplicado no dashboard', `encontrados=${noDash}`)
+
+/** Pergunta ao Pilot pela PilotBar do dashboard e devolve o texto da resposta. */
+/**
+ * Pergunta ao Pilot e devolve APENAS a última resposta dele.
+ *
+ * Duas armadilhas que a primeira versão caiu em cheio:
+ *
+ *  - contar bolhas não serve: ao abrir, o chat já mostra o briefing local, então
+ *    a contagem sobe antes de o modelo responder e o teste lia o briefing;
+ *  - ler o fluxo inteiro também não: o briefing cita rajada e chuva, então
+ *    "responde com números" passava sem o modelo ter dito nada.
+ *
+ * Esperar a RESPOSTA HTTP e ler a ÚLTIMA bolha remove as duas.
+ */
+async function perguntar(texto) {
+  const resposta = page.waitForResponse(
+    r => r.url().includes('/api/pilot/chat') && r.request().method() === 'POST',
+    { timeout: 90000 },
+  )
+  await page.fill('.wv2-pilotbar input', texto)
+  await page.keyboard.press('Enter')
+  await resposta.catch(() => null)
+  await page.waitForTimeout(1500)
+  const bolhas = page.locator('.chat-pilot')
+  const n = await bolhas.count().catch(() => 0)
+  return n ? bolhas.nth(n - 1).innerText().catch(() => '') : ''
+}
+
+// ── 2. clima ao vivo, sem a negativa ────────────────────────────────────────
+const clima = await perguntar('Qual a temperatura e o vento agora aqui?')
+const negativa = /não tenho acesso|nao tenho acesso|não consigo ver|consulte (outro|um) (site|serviço|app)|verifique um aplicativo/i.test(clima)
+const comNumero = /\d+\s*(°|graus|km\/h|mph)/i.test(clima)
+!negativa && comNumero
+  ? ok('responde o clima com números, sem negar acesso', clima.slice(0, 90).replace(/\n+/g, ' '))
+  : no('Pilot cego para o clima', `negativa=${negativa} numeros=${comNumero} · ${clima.slice(0, 160).replace(/\n+/g, ' ')}`)
+
+// ── 3. enxerga o ciclone ativo ──────────────────────────────────────────────
+const cyc = await fetch(`${B}/api/world/cyclones?lat=${HOME.latitude}&lng=${HOME.longitude}`).then(r => r.json())
+if (cyc.empty) {
+  const semTempestade = await perguntar('Existe algum furacão ou tempestade tropical ativa agora?')
+  // A regex vai numa const: começar a linha com `/` logo após um `)` faz o
+  // parser ler divisão, não expressão regular.
+  const negou = /nenhum|não há|nao ha|sem ciclone|sem tempestade/i.test(semTempestade)
+  negou
+    ? ok('sem ciclone ativo, o Pilot diz isso em vez de inventar')
+    : no('inventou tempestade onde não há', semTempestade.slice(0, 140).replace(/\n+/g, ' '))
+} else {
+  const nome = cyc.storms[0].name
+  const resposta = await perguntar('Existe algum furacão ou tempestade tropical ativa agora? Qual e onde?')
+  const citou = new RegExp(nome, 'i').test(resposta)
+  // Genevieve está a milhares de km: o Pilot precisa dizer que não afeta.
+  const qualificou = /não afeta|nao afeta|longe|distante|sem impacto|não representa|nao representa/i.test(resposta)
+  citou && qualificou
+    ? ok('enxerga o ciclone e qualifica a distância', `${nome} · ${resposta.slice(0, 80).replace(/\n+/g, ' ')}`)
+    : no('não enxergou ou não qualificou o ciclone', `citou=${citou} qualificou=${qualificou} · ${resposta.slice(0, 160).replace(/\n+/g, ' ')}`)
+}
+
+// ── 4. análise de atividade ─────────────────────────────────────────────────
+const telhado = await perguntar('Vou trabalhar no telhado hoje à tarde. Posso?')
+const temVeredito = /pode|não faça|nao faca|evite|adie|espere|sim|não/i.test(telhado)
+const temNumeros = /\d+\s*(km\/h|mph|%|°|graus|uv)/i.test(telhado)
+const temJanela = /(entre|antes|depois|até|manhã|tarde|noite|\d{1,2}\s*h|\d{1,2}:\d{2})/i.test(telhado)
+const tarefas = await page.locator('.chat-task').count().catch(() => 0)
+temVeredito && temNumeros && temJanela
+  ? ok('analisa a atividade: veredito, números e janela', `${tarefas} tarefa(s) · ${telhado.slice(0, 100).replace(/\n+/g, ' ')}`)
+  : no('não analisou a atividade', `veredito=${temVeredito} numeros=${temNumeros} janela=${temJanela} · ${telhado.slice(0, 200).replace(/\n+/g, ' ')}`)
+
+await browser.close()
+stopServer()
+await admin(`/auth/v1/admin/users/${u.id}`, { method: 'DELETE' })
+await admin(`/rest/v1/profiles?id=eq.${u.id}`, { method: 'DELETE' })
+
+console.log(`\n${pass} passaram, ${fail} falharam`)
+process.exit(fail ? 1 : 0)

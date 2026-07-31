@@ -64,6 +64,16 @@ type Body = {
     } | null
     airQualityAqi: number | null
     alerts: Array<{ severity: string; type: string; headline: string }>
+    cyclones?: Array<{
+      name: string
+      classification: string
+      windKmh: number
+      distanceKm: number | null
+      headingDeg: number | null
+      speedKmh: number | null
+      relevant: boolean
+    }>
+    wind?: { speedKmh: number; gustKmh: number | null; fromDeg: number } | null
     earthquakes: Array<{ magnitude: number; place: string }>
     /** Next hours, so "when does it get bad" is answerable. */
     hourly: Array<{ hour: string; tempF: number; precipProbPct: number; gustMph: number }>
@@ -175,6 +185,14 @@ const toKm = (mi: number) => (mi * 1.609).toFixed(1)
  * that it has no real-time access, which is exactly the wrong answer when the
  * app is holding a current weather snapshot.
  */
+/** Ponto cardeal a partir de graus verdadeiros. */
+function compass(deg: number, pt: boolean): string {
+  const pts = pt
+    ? ['N', 'NNE', 'NE', 'ENE', 'L', 'ESE', 'SE', 'SSE', 'S', 'SSO', 'SO', 'OSO', 'O', 'ONO', 'NO', 'NNO']
+    : ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW']
+  return pts[Math.round((((deg % 360) + 360) % 360) / 22.5) % 16]
+}
+
 function situationReport(ctx: Body['context']): string {
   const pt = ctx.pt
   const lines: string[] = []
@@ -204,6 +222,44 @@ function situationReport(ctx: Body['context']): string {
   } else {
     lines.push(pt ? '- Alertas oficiais ativos: nenhum' : '- Active official alerts: none')
   }
+  /**
+   * Ciclones — e a distância QUALIFICADA.
+   *
+   * Sem dizer se a tempestade é assunto da pessoa, o modelo trata "furacão a
+   * 5.000 km no Pacífico" com o mesmo peso de um a 200 km, e passa a alarmar
+   * quem não precisa. A qualificação vem calculada do cliente, não é julgamento
+   * do modelo.
+   */
+  if (ctx.cyclones?.length) {
+    lines.push(
+      (pt ? '- Ciclones tropicais ativos: ' : '- Active tropical cyclones: ') +
+        ctx.cyclones
+          .map(cy => {
+            // Rumo em ponto cardeal: "indo para ONO" é executável, "direção
+            // 285°" obriga quem lê a fazer a conversão de cabeça.
+            const rumo = cy.headingDeg !== null
+              ? `${compass(cy.headingDeg, pt)} (${cy.headingDeg}°)`
+              : (pt ? 'rumo desconhecido' : 'unknown heading')
+            const dist = cy.distanceKm !== null ? `${cy.distanceKm} km` : (pt ? 'distância desconhecida' : 'unknown distance')
+            const peso = cy.relevant
+              ? (pt ? 'PODE AFETAR a área' : 'COULD AFFECT the area')
+              : (pt ? 'longe demais para afetar agora' : 'too far to affect now')
+            return `${cy.name} (${cy.classification}) ${cy.windKmh} km/h, ${dist}, ${pt ? 'indo a' : 'moving'} ${rumo} — ${peso}`
+          })
+          .join(' ; '),
+    )
+  } else {
+    lines.push(pt ? '- Ciclones tropicais ativos: nenhum' : '- Active tropical cyclones: none')
+  }
+
+  if (ctx.wind) {
+    lines.push(
+      pt
+        ? `- Vento medido no ponto: ${ctx.wind.speedKmh} km/h${ctx.wind.gustKmh ? `, rajada ${ctx.wind.gustKmh} km/h` : ''}, vindo de ${ctx.wind.fromDeg}°`
+        : `- Measured wind at the point: ${ctx.wind.speedKmh} km/h${ctx.wind.gustKmh ? `, gusting ${ctx.wind.gustKmh} km/h` : ''}, from ${ctx.wind.fromDeg}°`,
+    )
+  }
+
   if (ctx.earthquakes?.length) {
     lines.push(
       (pt ? '- Sismos recentes: ' : '- Recent earthquakes: ') +
@@ -439,10 +495,33 @@ export async function POST(request: NextRequest) {
         ? 'ATENÇÃO: isto é uma SIMULAÇÃO de treino. Trate como real para efeito de instrução, mas nunca diga que há uma emergência de verdade.'
         : 'NOTE: this is a training SIMULATION. Treat it as real for instruction, but never claim a real emergency is happening.'
       : '',
+    /**
+     * Análise de atividade — a capacidade que só existia na aba Clima.
+     *
+     * Lá era um endpoint separado com prompt próprio, sem saber nada da casa:
+     * dizia se o tempo servia e parava. O Pilot já tem o que aquele não tinha —
+     * a família, as reservas, os alertas oficiais, o ciclone, o plano — então a
+     * mesma pergunta ("vou trabalhar no telhado") passa a render uma resposta
+     * melhor, e não só a mesma noutro lugar.
+     *
+     * O formato estruturado (veredito, janela, checklist) é copiado de lá porque
+     * funciona: quem pergunta se pode subir no telhado quer um SIM/NÃO com hora,
+     * não três parágrafos.
+     */
+    pt
+      ? 'QUANDO O USUÁRIO DISSER QUE VAI FAZER ALGO (trabalhar no telhado, cortar árvore, viajar, correr, soltar o barco, deixar a criança na escola), ANALISE A ATIVIDADE em vez de conversar: (a) veredito numa linha — pode, pode com cuidado, ou não faça; (b) POR QUE, citando os números reais que você tem (rajada, UV, chuva por hora, alerta ativo, ciclone); (c) a MELHOR JANELA de hoje, usando a série horária acima, ou diga que não há janela boa; (d) o que muda a resposta ("acima de 40 km/h de rajada, desça"). Trabalho em altura, água, fogo, eletricidade e estrada merecem o cuidado mais duro. Cada precaução concreta vira uma task.'
+      : 'WHEN THE USER SAYS THEY ARE GOING TO DO SOMETHING (roof work, tree cutting, driving, running, taking the boat out, school run), ANALYSE THE ACTIVITY instead of chatting: (a) one-line verdict — go, go with care, or do not; (b) WHY, citing the real numbers you have (gusts, UV, hourly rain, active alert, cyclone); (c) the BEST WINDOW today from the hourly series above, or say there is none; (d) what would change the answer ("above 40 km/h gusts, come down"). Work at height, water, fire, electricity and driving get the strictest care. Every concrete precaution becomes a task.',
+
     placesBlock,
     knowledge
       ? (pt ? `BASE DE CONHECIMENTO (use e cite quando útil):\n${knowledge}` : `KNOWLEDGE BASE (use and cite when useful):\n${knowledge}`)
       : '',
+    pt
+      ? 'CICLONE: ao citar qualquer tempestade tropical, diga SEMPRE, na mesma frase, se ela pode ou não afetar a pessoa — a qualificação já vem calculada nos dados acima ("PODE AFETAR" ou "longe demais"). Uma tempestade distante nunca deve ser apresentada como ameaça, e uma próxima nunca deve ser minimizada. Use o ponto cardeal do rumo, não os graus.'
+      : 'CYCLONE: whenever you mention a tropical storm, say IN THE SAME SENTENCE whether it can affect this person — the qualification is already computed in the data above ("COULD AFFECT" or "too far"). A distant storm must never be presented as a threat, and a near one must never be downplayed. Use the cardinal heading, not the degrees.',
+    pt
+      ? 'ATIVIDADE vs RESERVAS: o veredito sobre uma atividade depende das condições que afetam AQUELA atividade — rajada, chuva, raio, UV, visibilidade, alerta oficial. O estoque da casa (água, comida, checklist) NÃO entra nesse veredito: ninguém deixa de subir no telhado porque tem pouca água guardada. Não vete uma atividade sem um número que justifique o veto; rajada baixa e céu limpo significam "pode".'
+      : 'ACTIVITY vs RESERVES: the verdict on an activity depends on the conditions affecting THAT activity — gusts, rain, lightning, UV, visibility, official alerts. Household stock (water, food, checklist) does NOT belong in that verdict: nobody skips roof work because their water store is low. Never veto an activity without a number that justifies it; low gusts and clear sky mean "go".',
     pt
       ? 'REGRAS INEGOCIÁVEIS: 1) Nunca invente abrigo, rota ou ordem de evacuação — evacuação só existe se houver ordem oficial. 2) Use os números reais da família acima; nada de conselho genérico. 3) Se faltar dado, diga que falta. 4) Nunca suavize um risco crítico. 5) NUNCA calcule distância, rumo ou coordenada por conta própria — use apenas os números já fornecidos acima. Ao mencionar direção ou distância, **copie o valor exato** que foi dado (ex.: "34.0 km a NO"); nunca parafraseie para outra direção nem arredonde o rumo. 6) Só cite posição de quem aparece na lista de posições consentidas.'
       : 'NON-NEGOTIABLE RULES: 1) Never invent a shelter, route or evacuation order — evacuation exists only under an official order. 2) Use the real household numbers above; no generic advice. 3) If data is missing, say so. 4) Never soften a critical risk. 5) NEVER compute a distance, bearing or coordinate yourself — use only the numbers given above. When mentioning a direction or distance, **copy the exact value** you were given (e.g. "34.0 km NW"); never paraphrase it into a different direction or round the bearing. 6) Only cite the position of people who appear in the consented positions list.',

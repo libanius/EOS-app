@@ -2804,3 +2804,40 @@
 @media (prefers-reduced-motion: reduce) {
   .wv2-layers .wv2-stormline.showing { animation: none; box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.5); }
 }
+
+/* ── Orbe do Pilot fora do dashboard (D-079) ──
+   Mesma linguagem do orbe da PilotBar, em posição flutuante: acima da nav, no
+   lado oposto ao polegar que rola a lista. */
+.wv2-dock-orb {
+  position: fixed;
+  right: 16px;
+  bottom: calc(var(--nav-inset, 72px) + 14px);
+  z-index: 190;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(18, 18, 22, 0.72);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+}
+.wv2-dock-orb .core {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 30%, #fff, var(--dock-accent, #30d158) 62%);
+  box-shadow: 0 0 16px var(--dock-accent, #30d158);
+}
+.wv2-dock-orb[data-state='safe']     { --dock-accent: #30d158; }
+.wv2-dock-orb[data-state='watch']    { --dock-accent: #ffd60a; }
+.wv2-dock-orb[data-state='warning']  { --dock-accent: #ff9f0a; }
+.wv2-dock-orb[data-state='critical'] { --dock-accent: #ff453a; }
+/* Só o estado crítico pulsa: se tudo pulsa, nada chama atenção. */
+.wv2-dock-orb[data-state='critical'] .core { animation: eos-alert-pulse 1.6s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) { .wv2-dock-orb .core { animation: none; } }
+@media (prefers-reduced-transparency: reduce) { .wv2-dock-orb { background: #121216; backdrop-filter: none; } }
