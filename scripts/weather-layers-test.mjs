@@ -115,10 +115,12 @@ if (cyc.empty) {
 // ── 3. vento em grade ───────────────────────────────────────────────────────
 const wind = await fetch(`${B}/api/world/wind?lat=${HOME.latitude}&lng=${HOME.longitude}`).then(r => r.json())
 const distintos = new Set((wind.readings ?? []).map(r => `${r.lat},${r.lng}`)).size
-// A grade pedida tem 25 pontos, mas o Open-Meteo responde pela célula do modelo
-// e alguns coincidem — o provider descarta os repetidos para não empilhar setas.
-// Por isso o teste exige "todos distintos" e aceita menos de 25.
-wind.readings?.length >= 18 && distintos === wind.readings.length && wind.atUser
+// A grade pedida tem 25 pontos, mas chegam menos por dois motivos legítimos: o
+// Open-Meteo responde pela CÉLULA do modelo (e células repetidas são descartadas
+// pelo provider, para não empilhar setas), e sobre o mar ele cobre menos pontos —
+// este teste roda onde há alerta, e alertas marítimos caem quase todos na água.
+// O que importa é ser uma GRADE: vários pontos, todos distintos.
+wind.readings?.length >= 4 && distintos === wind.readings.length && wind.atUser
   ? ok('campo de vento em grade', `${wind.readings.length} leituras · aqui ${wind.atUser.speedKmh} km/h de ${wind.atUser.fromDeg}°`)
   : no('vento não veio em grade', `leituras=${wind.readings?.length} distintos=${distintos}`)
 
@@ -241,12 +243,66 @@ if (await linhas.count()) {
   await page.waitForTimeout(4000)
   const depoisS = await page.evaluate(() => { const c = window.__eosMap?.getCenter(); return c ? [c.lng, c.lat] : null })
   const foi = antesS && depoisS && (Math.abs(antesS[0] - depoisS[0]) > 0.01 || Math.abs(antesS[1] - depoisS[1]) > 0.01)
+
+  /**
+   * O cone tem que CABER na tela.
+   *
+   * Mover a câmera não basta: com zoom fixo ela mergulha no olho da tempestade e
+   * o cone estoura para fora do enquadramento — que foi o que o dono viu. A
+   * pergunta que o cone responde ("minha casa está dentro?") só existe se ele
+   * couber.
+   *
+   * A caixa esperada vem da RESPOSTA DA API, não das entranhas do mapa: a
+   * primeira versão lia `_data` do source, não encontrava nada e passava pela
+   * válvula `semCone` — um teste que reportava sucesso sem testar coisa alguma.
+   */
+  const coneBox = (() => {
+    const f = cyc.cone?.features?.[0]
+    if (!f) return null
+    let w = 180, e = -180, so = 90, n = -90
+    const walk = node => {
+      if (!Array.isArray(node)) return
+      if (typeof node[0] === 'number' && typeof node[1] === 'number') {
+        w = Math.min(w, node[0]); e = Math.max(e, node[0])
+        so = Math.min(so, node[1]); n = Math.max(n, node[1])
+        return
+      }
+      node.forEach(walk)
+    }
+    walk(f.geometry.coordinates)
+    return { w, e, s: so, n }
+  })()
+
+  const vista = await page.evaluate(() => {
+    const b = window.__eosMap.getBounds()
+    return { w: b.getWest(), e: b.getEast(), s: b.getSouth(), n: b.getNorth(), zoom: Number(window.__eosMap.getZoom().toFixed(2)) }
+  })
+
+  const enquadrou = coneBox
+    ? {
+        cabe:
+          vista.w <= coneBox.w + 0.05 && vista.e >= coneBox.e - 0.05 &&
+          vista.s <= coneBox.s + 0.05 && vista.n >= coneBox.n - 0.05,
+        zoom: vista.zoom,
+        cone: `${(coneBox.e - coneBox.w).toFixed(1)}°×${(coneBox.n - coneBox.s).toFixed(1)}°`,
+        vista: `${(vista.e - vista.w).toFixed(1)}°×${(vista.n - vista.s).toFixed(1)}°`,
+      }
+    : { semCone: true }
+
   // A linha precisa dizer se aquilo importa: distância crua não é resposta.
   const qualificada = /assunto seu|longe demais/.test(texto)
   const volta = await page.locator('button:has-text("Voltar para a minha área")').count()
-  foi && qualificada && volta === 1
-    ? ok('tempestade tocável, qualificada e com volta', texto.replace(/\n/g, ' · '))
-    : no('linha da tempestade falhou', `moveu=${foi} qualificada=${qualificada} volta=${volta} · "${texto}"`)
+
+  if (enquadrou.semCone) {
+    note('O NHC não publicou cone para esta tempestade — enquadramento não pôde ser medido.')
+  }
+  const coneOk = enquadrou.semCone || enquadrou.cabe
+  foi && qualificada && volta === 1 && coneOk
+    ? ok(
+        'tempestade tocável, com o cone ENQUADRADO',
+        `${texto.replace(/\n/g, ' · ')} · zoom ${enquadrou.zoom ?? '—'} · cone ${enquadrou.cone ?? '—'} em vista de ${enquadrou.vista ?? '—'}`,
+      )
+    : no('enquadramento da tempestade falhou', `moveu=${foi} qualificada=${qualificada} volta=${volta} cone=${JSON.stringify(enquadrou)}`)
 } else {
   note('Nenhum ciclone ativo — item 7 não pôde ser exercitado.')
   ok('sem ciclone, nenhuma linha inventada')

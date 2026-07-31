@@ -27,7 +27,7 @@ import type { PilotContext } from './pilot-engine'
 import type { ShelterSnapshot } from '@/lib/world/shelters'
 import type { MapBaseMode } from '@/lib/world/providers'
 import { DEFAULT_LAYERS, type MapLayerState } from '@/components/world-dashboard/WorldMap'
-import { headingLabel, isRelevant } from '@/lib/world/cyclones'
+import { headingLabel, isRelevant, stormBounds } from '@/lib/world/cyclones'
 import { windMeaning } from '@/lib/world/wind'
 import { useWeatherLayers } from './useWeatherLayers'
 import { Bar, Card, IconButton, Pill, PillLink, SectionLabel, Tile, TileGrid } from './primitives'
@@ -227,7 +227,15 @@ export default function WorldV2() {
    * O nonce faz o mapa reagir mesmo quando se toca duas vezes no mesmo alerta —
    * sem ele, o segundo toque não mudaria estado e pareceria quebrado.
    */
-  const [focus, setFocus] = useState<{ lat: number; lng: number; label: string; nonce: number; kind?: 'place' | 'alert' } | null>(null)
+  type MapFocus = {
+    lat: number
+    lng: number
+    label: string
+    nonce: number
+    kind?: 'place' | 'alert'
+    bounds?: [[number, number], [number, number]]
+  }
+  const [focus, setFocus] = useState<MapFocus | null>(null)
   const [activeAlertId, setActiveAlertId] = useState<string | null>(null)
   /**
    * Levar a câmera até uma tempestade — que pode estar a milhares de quilómetros.
@@ -242,7 +250,16 @@ export default function WorldV2() {
     setDetent('peek')
     setActiveAlertId(storm.id)
     setAwayFromHome(true)
-    setFocus({ lat: storm.lat, lng: storm.lng, label: storm.name, nonce: Date.now(), kind: 'alert' })
+    setFocus({
+      lat: storm.lat,
+      lng: storm.lng,
+      label: storm.name,
+      nonce: Date.now(),
+      kind: 'alert',
+      // Enquadrar o cone, não mergulhar no olho: a pergunta é "minha casa está
+      // dentro?", e ela não existe se o cone não couber na tela.
+      bounds: cyclones ? stormBounds(cyclones, storm) ?? undefined : undefined,
+    })
   }
   const backHome = () => {
     haptic.impact()

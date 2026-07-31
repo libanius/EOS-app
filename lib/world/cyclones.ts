@@ -257,5 +257,53 @@ export async function getCyclones(
   }
 }
 
+/**
+ * Caixa que contém o cone (ou a trajetória) de UMA tempestade.
+ *
+ * Levar a câmera ao ponto da tempestade com zoom fixo estoura a tela: o cone de
+ * um furacão cobre centenas de quilômetros e a pergunta que ele responde —
+ * "minha casa está dentro?" — só existe se o cone couber no enquadramento.
+ *
+ * Filtra por nome porque as camadas do NHC trazem TODAS as tempestades ativas
+ * juntas; sem o filtro, enquadrar uma no Pacífico e outra no Atlântico daria uma
+ * caixa que atravessa o continente e não mostra nenhuma das duas.
+ */
+export function stormBounds(
+  snapshot: Pick<CycloneSnapshot, 'cone' | 'track'>,
+  storm: { name: string; lat: number; lng: number },
+): [[number, number], [number, number]] | null {
+  const wanted = storm.name.trim().toUpperCase()
+  const features = [
+    ...(snapshot.cone?.features ?? []),
+    ...(snapshot.track?.features ?? []),
+  ].filter(f => {
+    const name = String((f.properties as { stormname?: string } | null)?.stormname ?? '').trim().toUpperCase()
+    return !name || name === wanted
+  })
+
+  const points: Array<[number, number]> = [[storm.lng, storm.lat]]
+  const walk = (node: unknown) => {
+    if (!Array.isArray(node)) return
+    if (typeof node[0] === 'number' && typeof node[1] === 'number') {
+      points.push([node[0] as number, node[1] as number])
+      return
+    }
+    node.forEach(walk)
+  }
+  features.forEach(f => walk((f.geometry as { coordinates?: unknown } | null)?.coordinates))
+
+  // Só o ponto da tempestade não é uma caixa — nesse caso não há o que enquadrar.
+  if (points.length < 2) return null
+
+  let west = points[0][0], east = points[0][0], south = points[0][1], north = points[0][1]
+  for (const [lng, lat] of points) {
+    if (lng < west) west = lng
+    if (lng > east) east = lng
+    if (lat < south) south = lat
+    if (lat > north) north = lat
+  }
+  return [[west, south], [east, north]]
+}
+
 /** Converte mph para km/h — o NHC publica em nós e mph conforme o campo. */
 export const mphToKmh = (mph: number) => Math.round(mph * MPH_TO_KMH)

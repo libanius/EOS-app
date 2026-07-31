@@ -259,7 +259,15 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
   mapBase?: MapBaseMode
   routeFocusNonce?: number
   /** A place picked from search. `nonce` re-triggers the fly-to on re-pick. */
-  focus?: { lat: number; lng: number; label: string; nonce: number; kind?: 'place' | 'alert' } | null
+  focus?: {
+    lat: number
+    lng: number
+    label: string
+    nonce: number
+    kind?: 'place' | 'alert'
+    /** Quando presente, a câmera ENQUADRA esta caixa em vez de mergulhar no ponto. */
+    bounds?: [[number, number], [number, number]]
+  } | null
   /**
    * A course the user asked to see: EOS draws it as a layer on its own map
    * instead of only handing off to another app (D-069). Indicative straight
@@ -880,6 +888,23 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
         .addTo(mapRef.current)
 
       const reduce = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      /**
+       * Cone estourando a tela era o sintoma: `flyTo` com zoom fixo mergulha no
+       * ponto, e o cone de um furacão cobre centenas de quilômetros. Quando há
+       * caixa, ela manda — e a folha inferior é descontada no padding, senão
+       * metade do cone fica embaixo dela.
+       */
+      if (focus.bounds) {
+        const sheetSpace = window.innerWidth < 760 ? 300 : 60
+        map.fitBounds(focus.bounds, {
+          padding: { top: 90, bottom: sheetSpace, left: 40, right: 40 },
+          duration: reduce ? 0 : 1200,
+          maxZoom: 9,   // acima disso o cone volta a não caber
+          essential: true,
+        })
+        return
+      }
+
       const target = { center: [focus.lng, focus.lat] as [number, number], zoom: Math.max(map.getZoom(), 14.5) }
       if (reduce) map.jumpTo(target)
       else map.flyTo({ ...target, duration: 1200, essential: true })

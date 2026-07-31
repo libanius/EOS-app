@@ -58,6 +58,15 @@ Viajar milhares de quilômetros acende o caminho de volta ("← Voltar para a mi
 área"): tirar alguém da própria área sem forma óbvia de retornar é abandoná-la
 longe de casa numa tela que ela abriu para se orientar.
 
+**A câmera ENQUADRA o cone, não mergulha no olho.** Primeira versão usava `flyTo`
+com zoom fixo e o cone estourava para fora da tela. A pergunta que o cone responde
+— "minha casa está dentro?" — só existe se ele couber no enquadramento. Hoje o
+`focus` aceita uma caixa, calculada a partir do cone e da trajetória **daquela**
+tempestade (as camadas do NHC trazem todas as ativas juntas; sem filtrar por
+nome, enquadrar uma no Pacífico e outra no Atlântico daria uma caixa
+atravessando o continente e mostrando nenhuma). O padding desconta a folha
+inferior, senão metade do cone fica embaixo dela.
+
 **Consequences**: dois defeitos que só um teste de RENDERIZAÇÃO pega:
 
 - a primeira versão das setas usava o caractere `➤` num `text-field`. Os dados
