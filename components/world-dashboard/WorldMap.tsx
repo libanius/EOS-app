@@ -23,12 +23,16 @@ import type { Map as MLMap, Marker as MLMarker } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { useRisk } from '@/components/v2/RiskProvider'
 import { getMapConfig } from '@/lib/world/providers'
+import type { CycloneSnapshot } from '@/lib/world/cyclones'
+import type { WindSnapshot } from '@/lib/world/wind'
+import { blowingToward } from '@/lib/world/wind'
 import type { MapBaseMode } from '@/lib/world/providers'
 
 // D-064 §5: no mock overlays. This component used to invent three family pins
 // ("Paulo/Isadora/Ana"), a route and a `SHELTER · mock` marker whenever it got no
 // data — and that shipped to the production dashboard. A fictional shelter on an
 // emergency product is a hazard, not a placeholder. No real data → no marker.
+const EMPTY_FC = { type: 'FeatureCollection' as const, features: [] as GeoJSON.Feature[] }
 const EMPTY_LINE = { type: 'Feature' as const, properties: {}, geometry: { type: 'LineString' as const, coordinates: [] as Array<[number, number]> } }
 
 type HazardSeverity = 'info' | 'minor' | 'moderate' | 'severe' | 'extreme'
@@ -229,7 +233,24 @@ function markerEl(className: string, pin: string, label: string, color?: string,
   return el
 }
 
-export default function WorldMap({ plateUrl, family = [], shelters = [], guidance = null, mapBase = 'hybrid', routeFocusNonce = 0, focus = null, courseTo = null, recenterNonce = 0, onMemberTap, onMapInteraction }: {
+/**
+ * Camadas que o usuário liga e desliga (D-078).
+ *
+ * São escolhas de LEITURA, não de dado: tudo continua sendo buscado e o Pilot
+ * continua enxergando tudo. Desligar o radar não deixa o EOS cego, só limpa a
+ * tela — que num evento, com alerta, cone, vento e família no mesmo mapa, é a
+ * diferença entre ler e não ler.
+ */
+export type MapLayerState = {
+  radar: boolean
+  alerts: boolean
+  wind: boolean
+  cyclone: boolean
+}
+
+export const DEFAULT_LAYERS: MapLayerState = { radar: true, alerts: true, wind: false, cyclone: true }
+
+export default function WorldMap({ plateUrl, family = [], shelters = [], guidance = null, mapBase = 'hybrid', routeFocusNonce = 0, focus = null, courseTo = null, recenterNonce = 0, cyclones = null, wind = null, layers = DEFAULT_LAYERS, onMemberTap, onMapInteraction }: {
   state: string
   plateUrl: string
   family?: WorldFamilyMember[]
@@ -247,6 +268,12 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
   courseTo?: { lat: number; lng: number; label: string; nonce: number } | null
   /** Bump to re-centre on the user. Nothing else ever moves the camera to them. */
   recenterNonce?: number
+  /** Ciclones ativos com a geometria oficial do NHC (D-078). */
+  cyclones?: CycloneSnapshot | null
+  /** Grade de vento em volta da pessoa (D-078). */
+  wind?: WindSnapshot | null
+  /** Quais camadas o usuário deixou ligadas. */
+  layers?: MapLayerState
   /** Tapping a face is how the user acts on a person, not just sees them (D-073). */
   onMemberTap?: (id: string) => void
   onMapInteraction?: () => void
@@ -256,6 +283,7 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
   const mapRef = useRef<MLMap | null>(null)
   const markersRef = useRef<MLMarker[]>([])
   const hazardMarkersRef = useRef<MLMarker[]>([])
+  const stormMarkersRef = useRef<MLMarker[]>([])
   // Kept out of markersRef so a family/shelter refresh never wipes the search pin.
   const searchMarkerRef = useRef<MLMarker | null>(null)
   const courseMarkerRef = useRef<MLMarker | null>(null)
@@ -489,6 +517,15 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
           attributionControl: false, interactive: true, maxPitch: 75,
         })
         mapRef.current = map
+        /**
+         * Referência de diagnóstico.
+         *
+         * As camadas (chuva, vento, ciclone, alertas) são desenhadas em canvas
+         * pelo MapLibre — não existe DOM para inspecionar. Sem esta alça, os
+         * testes de navegador só conseguiriam afirmar que a API respondeu, e não
+         * que a seta apareceu no mapa. É leitura apenas, e não muda comportamento.
+         */
+        ;(window as unknown as { __eosMap?: MLMap }).__eosMap = map
         map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right')
         map.on('error', () => { /* tiles/provider errors must not blank the app */ })
         if (onMapInteraction) {
@@ -521,6 +558,118 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
           // Course: its own source so the family/shelter refresh never wipes it.
           // Dashed on purpose — a dashed line reads as "direction", a solid one
           // would read as "this is the road", which EOS does not know.
+          // ── Ciclone (D-078). O cone vem primeiro para ficar por baixo. ──
+          map.addSource('eos-cyclone-cone', { type: 'geojson', data: EMPTY_FC })
+          map.addLayer({
+            id: 'eos-cyclone-cone',
+            type: 'fill',
+            source: 'eos-cyclone-cone',
+            paint: { 'fill-color': '#ffd60a', 'fill-opacity': 0.12 },
+          })
+          map.addLayer({
+            id: 'eos-cyclone-cone-line',
+            type: 'line',
+            source: 'eos-cyclone-cone',
+            paint: { 'line-color': '#ffd60a', 'line-width': 1.4, 'line-opacity': 0.65, 'line-dasharray': [3, 2] },
+          })
+
+          map.addSource('eos-cyclone-track', { type: 'geojson', data: EMPTY_FC })
+          map.addLayer({
+            id: 'eos-cyclone-track',
+            type: 'line',
+            source: 'eos-cyclone-track',
+            layout: { 'line-cap': 'round', 'line-join': 'round' },
+            paint: { 'line-color': '#ff453a', 'line-width': 2.6, 'line-opacity': 0.9 },
+          })
+
+          map.addSource('eos-cyclone-points', { type: 'geojson', data: EMPTY_FC })
+          map.addLayer({
+            id: 'eos-cyclone-points',
+            type: 'circle',
+            source: 'eos-cyclone-points',
+            paint: {
+              'circle-radius': 5,
+              'circle-color': '#ff453a',
+              'circle-stroke-color': '#000',
+              'circle-stroke-width': 1.5,
+            },
+          })
+          map.addLayer({
+            id: 'eos-cyclone-points-label',
+            type: 'symbol',
+            source: 'eos-cyclone-points',
+            layout: {
+              // `dvlbl` é o rótulo do NHC para o ponto (ex.: "H", "TS", "M").
+              'text-field': ['coalesce', ['get', 'dvlbl'], ''],
+              'text-size': 10,
+              'text-offset': [0, -1.3],
+              'text-allow-overlap': false,
+            },
+            paint: { 'text-color': '#ffffff', 'text-halo-color': '#000000', 'text-halo-width': 1.4 },
+          })
+
+          // ── Vento: seta rotacionada por leitura ──
+          //
+          // O ícone é DESENHADO aqui, e não é um caractere de texto. A primeira
+          // versão usava "➤" num `text-field`: os dados chegavam, a camada ficava
+          // visível, e nada aparecia — a fonte do estilo simplesmente não tem
+          // esse glifo. Falha invisível: `querySourceFeatures` devolvia features
+          // e `queryRenderedFeatures` devolvia zero. Um ícone em canvas não
+          // depende de fonte nenhuma.
+          if (!map.hasImage('eos-arrow')) {
+            const size = 24
+            const canvas = document.createElement('canvas')
+            canvas.width = size
+            canvas.height = size
+            const ctx = canvas.getContext('2d')
+            if (ctx) {
+              ctx.fillStyle = '#ffffff'
+              ctx.beginPath()
+              // Seta apontando para cima; `icon-rotate` gira a partir do norte.
+              ctx.moveTo(size / 2, 2)
+              ctx.lineTo(size - 5, size - 4)
+              ctx.lineTo(size / 2, size - 9)
+              ctx.lineTo(5, size - 4)
+              ctx.closePath()
+              ctx.fill()
+              map.addImage('eos-arrow', ctx.getImageData(0, 0, size, size), { sdf: true })
+            }
+          }
+          map.addSource('eos-wind', { type: 'geojson', data: EMPTY_FC })
+          map.addLayer({
+            id: 'eos-wind',
+            type: 'symbol',
+            source: 'eos-wind',
+            layout: {
+              'icon-image': 'eos-arrow',
+              'icon-size': 0.8,
+              'icon-rotate': ['get', 'rotate'],
+              'icon-rotation-alignment': 'map',
+              'icon-allow-overlap': true,
+              'icon-ignore-placement': true,
+            },
+            paint: {
+              // `sdf: true` na imagem é o que permite recolorir por expressão:
+              // vento forte muda de cor, e a leitura não depende do número.
+              'icon-color': ['case', ['==', ['get', 'strong'], 1], '#ff9f0a', '#7ad7ff'],
+              'icon-halo-color': '#000000',
+              'icon-halo-width': 1,
+              'icon-opacity': 0.95,
+            },
+          })
+          map.addLayer({
+            id: 'eos-wind-label',
+            type: 'symbol',
+            source: 'eos-wind',
+            layout: {
+              'text-field': ['get', 'label'],
+              'text-size': 9,
+              'text-offset': [0, 1.4],
+              'text-allow-overlap': false,
+            },
+            paint: { 'text-color': '#ffffff', 'text-halo-color': '#000000', 'text-halo-width': 1.2, 'text-opacity': 0.8 },
+          })
+
           map.addSource('eos-course', { type: 'geojson', data: EMPTY_LINE })
           map.addLayer({ id: 'eos-course-glow', type: 'line', source: 'eos-course', layout: { 'line-cap': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': 10, 'line-opacity': 0.10, 'line-blur': 6 } })
           map.addLayer({ id: 'eos-course', type: 'line', source: 'eos-course', layout: { 'line-cap': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': 3, 'line-opacity': 0.9, 'line-dasharray': [1.6, 1.6] } })
@@ -578,6 +727,106 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
     if (readyRef.current) void placeOverlays()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [family, shelters, guidance, onMemberTap])
+
+  /**
+   * Ciclone: cone de incerteza, trajetória prevista e pontos com hora (D-078).
+   *
+   * Ordem de desenho é decisão de leitura: o cone é um preenchimento largo e
+   * fica EMBAIXO de tudo; a trajetória por cima dele; os pontos por último,
+   * porque é neles que a pessoa lê "quando". Se o cone ficasse por cima, ele
+   * lavaria a informação que importa.
+   *
+   * O cone é INCERTEZA DE POSIÇÃO DO CENTRO, não área de dano — vento e chuva
+   * passam muito além dele. Quem diz isso é a legenda na UI; aqui a
+   * responsabilidade é não desenhar nada que o NHC não publicou.
+   */
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !readyRef.current) return
+
+    const set = (id: string, data: GeoJSON.FeatureCollection | null) => {
+      const source = map.getSource(id) as maplibregl.GeoJSONSource | undefined
+      const empty: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: [] }
+      if (source) source.setData(data ?? empty)
+    }
+
+    const on = Boolean(layers?.cyclone) && Boolean(cyclones) && !cyclones?.empty
+    set('eos-cyclone-cone', on ? cyclones?.cone ?? null : null)
+    set('eos-cyclone-track', on ? cyclones?.track ?? null : null)
+    set('eos-cyclone-points', on ? cyclones?.forecastPoints ?? null : null)
+
+    // O olho da tempestade é um marcador próprio, com a seta do rumo: "para onde
+    // ela vai" é a pergunta, e um ponto sem direção não responde.
+    stormMarkersRef.current.forEach(m => m.remove())
+    stormMarkersRef.current = []
+    if (on && cyclones?.storms.length) {
+      void (async () => {
+        const maplibregl = (await import('maplibre-gl')).default
+        for (const storm of cyclones.storms) {
+          if (!Number.isFinite(storm.lat) || !Number.isFinite(storm.lng)) continue
+          const el = document.createElement('div')
+          el.className = 'w-storm'
+          el.innerHTML = `<span class="eye">🌀</span><span class="tag">${storm.name}</span>`
+          if (storm.headingDeg !== null) {
+            const arrow = document.createElement('i')
+            arrow.className = 'heading'
+            arrow.style.transform = `rotate(${storm.headingDeg}deg)`
+            el.appendChild(arrow)
+          }
+          stormMarkersRef.current.push(
+            new maplibregl.Marker({ element: el, anchor: 'center' })
+              .setLngLat([storm.lng, storm.lat])
+              .addTo(map),
+          )
+        }
+      })()
+    }
+  }, [cyclones, layers?.cyclone])
+
+  /**
+   * Vento: uma seta por leitura, apontando PARA ONDE ele sopra.
+   *
+   * A convenção meteorológica informa a direção de ORIGEM ("vento de nordeste").
+   * Uma seta no mapa precisa apontar o destino — trocar os dois inverte tudo em
+   * 180°, e seta invertida numa tela de emergência é pior que seta nenhuma.
+   */
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !readyRef.current) return
+    const source = map.getSource('eos-wind') as maplibregl.GeoJSONSource | undefined
+    if (!source) return
+
+    const show = Boolean(layers?.wind) && Boolean(wind?.readings.length)
+    source.setData({
+      type: 'FeatureCollection',
+      features: show
+        ? (wind?.readings ?? []).map(r => ({
+            type: 'Feature' as const,
+            geometry: { type: 'Point' as const, coordinates: [r.lng, r.lat] },
+            properties: {
+              rotate: blowingToward(r.fromDeg),
+              label: `${r.speedKmh}`,
+              strong: r.speedKmh >= 39 ? 1 : 0,
+            },
+          }))
+        : [],
+    })
+  }, [wind, layers?.wind])
+
+  /** Radar e alertas obedecem o interruptor sem serem recarregados. */
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !readyRef.current) return
+    const toggle = (id: string, visible: boolean) => {
+      if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', visible ? 'visible' : 'none')
+    }
+    toggle('eos-radar', Boolean(layers?.radar))
+    // Os IDs vêm de renderHazards; usar nomes inventados aqui faria o
+    // interruptor não fazer nada — em silêncio, que é o pior modo de falhar.
+    for (const id of ['eos-hazard-fill', 'eos-hazard-outline', 'eos-hazard-point-halo', 'eos-hazard-point']) {
+      toggle(id, Boolean(layers?.alerts))
+    }
+  }, [layers?.radar, layers?.alerts])
 
   useEffect(() => {
     const map = mapRef.current

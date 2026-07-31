@@ -13,7 +13,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react'
-import { motion, useReducedMotion } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useLanguage } from '@/lib/i18n'
 import { useRisk } from '@/components/v2/RiskProvider'
 import { useSimulation } from '@/components/SimulationProvider'
@@ -26,8 +26,12 @@ import MemberSheet from './MemberSheet'
 import type { PilotContext } from './pilot-engine'
 import type { ShelterSnapshot } from '@/lib/world/shelters'
 import type { MapBaseMode } from '@/lib/world/providers'
+import { DEFAULT_LAYERS, type MapLayerState } from '@/components/world-dashboard/WorldMap'
+import { headingLabel } from '@/lib/world/cyclones'
+import { windMeaning } from '@/lib/world/wind'
+import { useWeatherLayers } from './useWeatherLayers'
 import { Bar, Card, IconButton, Pill, PillLink, SectionLabel, Tile, TileGrid } from './primitives'
-import { SPRING } from './motion'
+import { SPRING, haptic } from './motion'
 import { useCircleFamily } from './useCircleFamily'
 import { useShelters } from './useShelters'
 import { compassPoint } from '@/lib/world/shelters'
@@ -64,10 +68,20 @@ const COPY = {
     useGps: 'Usar GPS',
     gpsCap: 'Você',
     refreshCap: 'Atualizar',
-    layerToSat: 'Ver imagem de satélite',
-    layerToDark: 'Voltar ao mapa escuro',
+    layersLabel: 'Camadas',
+    base: 'Base do mapa',
+    darkBase: 'Escuro',
     satCap: 'Satélite',
     darkCap: 'Camadas',
+    layerRadar: 'Chuva',
+    layerAlerts: 'Alertas',
+    layerWind: 'Vento',
+    layerCyclone: 'Ciclone',
+    windHere: 'Vento aqui',
+    showOnMap: 'Ver no mapa →',
+    heading: 'indo para',
+    noStorm: 'Nenhum ciclone ativo agora.',
+    coneNote: 'O cone é a incerteza da posição do centro, não a área de dano — vento e chuva vão além dele.',
     panelCap: 'Painel',
     refresh: 'Atualizar dados',
     panel: 'Mostrar ou ocultar o painel',
@@ -119,10 +133,20 @@ const COPY = {
     useGps: 'Use GPS',
     gpsCap: 'You',
     refreshCap: 'Refresh',
-    layerToSat: 'Show satellite imagery',
-    layerToDark: 'Back to the dark map',
+    layersLabel: 'Layers',
+    base: 'Map base',
+    darkBase: 'Dark',
     satCap: 'Satellite',
     darkCap: 'Layers',
+    layerRadar: 'Rain',
+    layerAlerts: 'Alerts',
+    layerWind: 'Wind',
+    layerCyclone: 'Cyclone',
+    windHere: 'Wind here',
+    showOnMap: 'Show on map →',
+    heading: 'heading',
+    noStorm: 'No active cyclone right now.',
+    coneNote: 'The cone is the uncertainty of the centre position, not the damage area — wind and rain reach well beyond it.',
     panelCap: 'Panel',
     refresh: 'Refresh data',
     panel: 'Show or hide the panel',
@@ -168,6 +192,40 @@ export default function WorldV2() {
   const [pilotAsk, setPilotAsk] = useState<{ text: string; nonce: number } | null>(null)
   const [recenterNonce, setRecenterNonce] = useState(0)
 
+  /** Camadas ligadas pelo usuário — leitura, não dado (D-078). */
+  const [layers, setLayers] = useState<MapLayerState>(DEFAULT_LAYERS)
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('eos-map-layers')
+      if (stored) setLayers(current => ({ ...current, ...JSON.parse(stored) }))
+    } catch { /* private mode ou JSON velho */ }
+  }, [])
+  const toggleLayer = (key: keyof MapLayerState) => {
+    haptic.selection()
+    setLayers(current => {
+      const next = { ...current, [key]: !current[key] }
+      try { localStorage.setItem('eos-map-layers', JSON.stringify(next)) } catch { /* private mode */ }
+      return next
+    })
+  }
+  const [layersOpen, setLayersOpen] = useState(false)
+
+  const { cyclones, wind, alerts: locatedAlerts } = useWeatherLayers(coords, layers)
+
+  /**
+   * Levar a câmera até um alerta.
+   *
+   * "Tropical Storm Warning" sem lugar nenhum obriga a pessoa a imaginar onde é.
+   * O nonce faz o mapa reagir mesmo quando se toca duas vezes no mesmo alerta —
+   * sem ele, o segundo toque não mudaria estado e pareceria quebrado.
+   */
+  const [focus, setFocus] = useState<{ lat: number; lng: number; label: string; nonce: number } | null>(null)
+  const showOnMap = (alert: { lat: number; lng: number; title: string }) => {
+    haptic.impact()
+    setDetent('peek')
+    setFocus({ lat: alert.lat, lng: alert.lng, label: alert.title, nonce: Date.now() })
+  }
+
   /**
    * Camada do mapa. Escuro é o padrão operacional; satélite existe porque o
    * traço de rua não distingue prédios de um mesmo condomínio, e a imagem sim.
@@ -180,12 +238,10 @@ export default function WorldV2() {
       if (stored === 'dark' || stored === 'satellite') setMapBase(stored)
     } catch { /* private mode */ }
   }, [])
-  const cycleBase = () => {
-    setMapBase(current => {
-      const next: MapBaseMode = current === 'dark' ? 'satellite' : 'dark'
-      try { localStorage.setItem('eos-map-base', next) } catch { /* private mode */ }
-      return next
-    })
+  const setBase = (next: MapBaseMode) => {
+    haptic.selection()
+    setMapBase(next)
+    try { localStorage.setItem('eos-map-base', next) } catch { /* private mode */ }
   }
   const [tappedMember, setTappedMember] = useState<string | null>(null)
   const familyRaw = useCircleFamily(language === 'pt', coords, avatarUrl)
@@ -290,6 +346,8 @@ export default function WorldV2() {
       aqi={snapshot?.air_quality?.us_aqi ?? null}
       alertCount={alertCount}
       headlines={headlines}
+      locatedAlerts={locatedAlerts}
+      onShowAlert={showOnMap}
       hasCoords={hasCoords}
       onUseGps={requestGps}
       shelters={shelterSnapshot}
@@ -307,6 +365,10 @@ export default function WorldV2() {
           courseTo={course}
           recenterNonce={recenterNonce}
           mapBase={mapBase}
+          focus={focus}
+          cyclones={cyclones}
+          wind={wind}
+          layers={layers}
           onMemberTap={setTappedMember}
           shelters={(shelterSnapshot?.shelters ?? []).map(s => ({ id: s.id, name: s.name, lat: s.lat, lng: s.lng, distanceKm: s.distanceKm }))}
           onMapInteraction={() => setDetent('peek')}
@@ -351,10 +413,10 @@ export default function WorldV2() {
             <RefreshIcon />
           </IconButton>
           <IconButton
-            label={mapBase === 'satellite' ? c.layerToDark : c.layerToSat}
-            caption={mapBase === 'satellite' ? c.satCap : c.darkCap}
-            active={mapBase === 'satellite'}
-            onClick={cycleBase}
+            label={c.layersLabel}
+            caption={c.darkCap}
+            active={layersOpen}
+            onClick={() => { haptic.selection(); setLayersOpen(open => !open) }}
           >
             <LayersIcon />
           </IconButton>
@@ -364,6 +426,48 @@ export default function WorldV2() {
             </IconButton>
           )}
         </div>
+
+        <AnimatePresence>
+          {layersOpen && (
+            <motion.div
+              className="wv2-layers wv2-fume"
+              role="group"
+              aria-label={c.layersLabel}
+              initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8, filter: 'blur(8px)' }}
+              animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, filter: 'blur(0px)' }}
+              exit={{ opacity: 0 }}
+              transition={reduceMotion ? { duration: 0.12 } : SPRING.pop}
+            >
+              <p className="t-caps ink-3">{c.base}</p>
+              <div className="row">
+                <button type="button" className={`wv2-chip${mapBase === 'dark' ? ' on' : ''}`} onClick={() => setBase('dark')}>{c.darkBase}</button>
+                <button type="button" className={`wv2-chip${mapBase === 'satellite' ? ' on' : ''}`} onClick={() => setBase('satellite')}>{c.satCap}</button>
+              </div>
+
+              <p className="t-caps ink-3">{c.layersLabel}</p>
+              <div className="row">
+                <button type="button" className={`wv2-chip${layers.radar ? ' on' : ''}`} onClick={() => toggleLayer('radar')}>{c.layerRadar}</button>
+                <button type="button" className={`wv2-chip${layers.alerts ? ' on' : ''}`} onClick={() => toggleLayer('alerts')}>{c.layerAlerts}</button>
+                <button type="button" className={`wv2-chip${layers.wind ? ' on' : ''}`} onClick={() => toggleLayer('wind')}>{c.layerWind}</button>
+                <button type="button" className={`wv2-chip${layers.cyclone ? ' on' : ''}`} onClick={() => toggleLayer('cyclone')}>{c.layerCyclone}</button>
+              </div>
+
+              {layers.wind && wind?.atUser && (
+                <p className="t-foot ink-2">
+                  {c.windHere}: {wind.atUser.speedKmh} km/h {headingLabel(wind.atUser.fromDeg, metric) ?? ''} · {windMeaning(wind.atUser.speedKmh, metric)}
+                </p>
+              )}
+              {layers.cyclone && cyclones && !cyclones.empty && cyclones.storms[0] && (
+                <p className="t-foot ink-2">
+                  {cyclones.storms[0].name} · {cyclones.storms[0].windKmh} km/h ·{' '}
+                  {cyclones.storms[0].distanceKm} km · {c.heading} {headingLabel(cyclones.storms[0].headingDeg, metric) ?? '—'}
+                </p>
+              )}
+              {layers.cyclone && cyclones?.empty && <p className="t-foot ink-3">{c.noStorm}</p>}
+              {layers.cyclone && cyclones && !cyclones.empty && <p className="t-foot ink-3">{c.coneNote}</p>}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       <div className="wv2-chrome">
@@ -445,6 +549,8 @@ type SectionProps = {
   aqi: number | null
   alertCount: number
   headlines: Array<{ id: string; headline: string }>
+  locatedAlerts: Array<{ id: string; title: string; severity: string; lat: number; lng: number }>
+  onShowAlert: (alert: { lat: number; lng: number; title: string }) => void
   hasCoords: boolean
   onUseGps: () => void
   shelters: ShelterSnapshot | null
@@ -461,6 +567,8 @@ function WorldSections({
   aqi,
   alertCount,
   headlines,
+  locatedAlerts,
+  onShowAlert,
   hasCoords,
   onUseGps,
   shelters,
@@ -544,7 +652,17 @@ function WorldSections({
       {/* ── Alerts ── */}
       <Card>
         <SectionLabel trailing={`${alertCount}`}>{c.alerts}</SectionLabel>
-        {headlines.length ? (
+        {locatedAlerts.length ? (
+          <div className="wv2-alertlist">
+            {locatedAlerts.slice(0, 4).map(alert => (
+              <button key={alert.id} type="button" onClick={() => onShowAlert(alert)}>
+                <span className="t-body">{alert.title}</span>
+                <em className="t-foot ink-3">{c.showOnMap}</em>
+              </button>
+            ))}
+            <PillLink href="/weather">{c.seeAlerts}</PillLink>
+          </div>
+        ) : headlines.length ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.25rem' }}>
             {headlines.map(alert => (
               <p key={alert.id} className="t-body">

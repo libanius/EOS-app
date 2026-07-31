@@ -2592,3 +2592,76 @@
 
 /* ── Duração do exercício ── */
 .sim-durations { display: flex; gap: var(--s2); flex-wrap: wrap; margin-top: var(--s3); }
+
+/* ── Ciclone no mapa (D-078) ── */
+.w-storm {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+}
+.w-storm .eye { font-size: 24px; line-height: 1; filter: drop-shadow(0 0 6px rgba(255, 69, 58, 0.8)); }
+.w-storm .tag {
+  position: absolute;
+  top: 100%;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 0 4px #000, 0 0 2px #000;
+}
+/* A seta de rumo sai do olho e aponta para onde a tempestade vai — a pergunta
+   que a pessoa faz não é onde ela está, é para onde ela vem. */
+.w-storm .heading {
+  position: absolute;
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-bottom: 16px solid #ff453a;
+  transform-origin: 50% 100%;
+  margin-bottom: 30px;
+  filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.9));
+}
+@media (prefers-reduced-motion: reduce) {
+  .w-storm .eye { filter: none; }
+}
+
+/* ── Painel de camadas do mapa (D-078) ── */
+.wv2-layers {
+  position: absolute;
+  right: var(--edge);
+  top: calc(50px + 3 * 62px);
+  z-index: 60;
+  width: min(280px, calc(100vw - var(--edge) * 2));
+  display: grid;
+  gap: var(--s2);
+  padding: var(--s4);
+  border-radius: var(--r-card);
+  border: 1px solid var(--sep-strong);
+}
+.wv2-layers .row { display: flex; gap: var(--s2); flex-wrap: wrap; }
+.wv2-layers p.t-caps { margin: var(--s2) 0 0; }
+.wv2-layers p.t-caps:first-child { margin-top: 0; }
+
+@media (prefers-reduced-transparency: reduce) {
+  .wv2-layers { background: #101014; backdrop-filter: none; }
+}
+
+/* ── Alertas tocáveis: cada um leva a câmera até ele ── */
+.wv2-alertlist { display: grid; gap: var(--s2); margin-top: var(--s2); }
+.wv2-alertlist button {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  padding: var(--s3);
+  border-radius: var(--r-tile);
+  border: 1px solid var(--sep);
+  background: var(--fill-2);
+  color: var(--ink);
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.wv2-alertlist button:hover, .wv2-alertlist button:focus-visible { border-color: rgba(var(--accent-rgb), 0.5); }

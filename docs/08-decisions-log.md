@@ -4,6 +4,61 @@
 
 ---
 
+## D-078 — A tempestade no mapa: onde está, para onde vai, e o que o cone NÃO diz
+
+**Date**: 2026-07-31
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: O dono pediu o que os apps de clima entregam e o EOS não: ver os
+ventos e as direções, tocar num alerta e descobrir **onde** ele é, e acompanhar
+para onde a tempestade está indo.
+
+O EOS já *sabia* dessas coisas em texto — o provider `nhc` lê o `CurrentStorms`
+desde sempre. O que faltava era **geometria**: "furacão a 340 km" é um número que
+ninguém traduz em decisão. Com o cone desenhado, "minha casa está dentro?" se
+responde num olhar.
+
+**Decision**:
+
+1. **Ciclones vêm do serviço GIS do NHC**, com cone, trajetória e pontos de
+   previsão oficiais (`lib/world/cyclones.ts`). O EOS **redesenha**; não calcula,
+   não interpola e não "melhora" o cone. O dia em que fizermos isso, a tela passa
+   a afirmar algo que nenhuma autoridade afirmou.
+2. **O cone é incerteza da posição do CENTRO, não área de dano** — e a UI diz
+   isso, sempre. Ventos e chuva vão muito além dele. Sem essa frase, "estou fora
+   do cone" vira falsa segurança, que é o pior resultado possível desta feature.
+3. **Vento é uma GRADE, não um ponto** (`lib/world/wind.ts`). Uma seta na casa da
+   pessoa não mostra o vento girar. São 25 leituras numa requisição única e sem
+   chave — o Open-Meteo aceita listas de coordenadas. E são leituras pontuais
+   desenhadas como setas, **não** um modelo interpolado nem animação de
+   partículas: uma animação bonita insinuaria resolução que estes dados não têm.
+4. **Alerta vira lugar.** Os alertas do card passam a vir de `/api/hazards`, que
+   carrega geometria, e tocar num deles leva a câmera até ele.
+5. **Camadas são escolha de LEITURA, não de dado.** Desligar o radar não deixa o
+   EOS cego nem o Pilot mudo — só limpa a tela, que num evento com alerta, cone,
+   vento e família no mesmo mapa é a diferença entre ler e não ler. Ciclone fica
+   ligado por padrão: "existe um furacão vindo" não é informação opcional.
+
+**Consequences**: dois defeitos que só um teste de RENDERIZAÇÃO pega:
+
+- a primeira versão das setas usava o caractere `➤` num `text-field`. Os dados
+  chegavam, a camada ficava visível, e **nada aparecia**: a fonte do estilo não
+  tem esse glifo. `querySourceFeatures` devolvia features e
+  `queryRenderedFeatures` devolvia zero. Hoje a seta é um ícone desenhado em
+  canvas, que não depende de fonte;
+- a grade era de 0,5° (≈55 km) e a câmera padrão enquadra poucos quilômetros: o
+  usuário via **uma** seta. Uma seta só não mostra direção. Passou a 0,15°.
+
+Por isso `scripts/weather-layers-test.mjs` (`npm run test:weather`) pergunta ao
+MapLibre **o que ele renderizou**, não o que foi entregue à fonte. A primeira
+versão do teste lia `_data` e teria passado com a camada invisível.
+
+O teste usa dado AO VIVO de propósito, e trata "nenhum ciclone ativo" e "nenhum
+alerta na região" como respostas corretas em vez de falhas — na maior parte do
+ano é exatamente isso que o mundo devolve.
+
+---
+
 ## D-077 — Escrita bloqueada por RLS responde sucesso; o círculo precisa de dono de verdade
 
 **Date**: 2026-07-31
