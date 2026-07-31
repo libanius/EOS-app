@@ -53,7 +53,6 @@ export default function PilotBar({
         <input
           value={draft}
           onChange={event => setDraft(event.target.value)}
-          onFocus={onOpen}
           placeholder={pt ? 'Pergunte ou procure algo' : 'Ask or search for anything'}
           aria-label={pt ? 'Perguntar ao Pilot ou procurar um lugar' : 'Ask the Pilot or search a place'}
           enterKeyHint="send"
@@ -67,6 +66,10 @@ export default function PilotBar({
         data-state={riskState}
         aria-label={pt ? 'Abrir o Pilot, seu especialista EOS' : 'Open the Pilot, your EOS specialist'}
         onClick={() => {
+          if (draft.trim()) {
+            submit()
+            return
+          }
           haptic.impact()
           onOpen()
         }}
