@@ -5,6 +5,20 @@
 
 ---
 
+## Geolocalização: `maximumAge: 0` + alta precisão é pedir para expirar (2026-07-31)
+
+Essa combinação recusa **qualquer** posição que o aparelho já tenha e exige uma trava de GPS nova. Dentro de casa, ou em laptop sem GPS, ela expira — foi exatamente o que o dono viu no seletor de endereço.
+
+A referência certa estava no próprio repo: `RiskProvider` usa `enableHighAccuracy: false, timeout: 10000, maximumAge: 120000` e sempre funcionou.
+
+O padrão que ficou, em dois estágios: **rápido primeiro** (aceita fix recente, sem exigir precisão) para colocar um ponto na tela em segundos, e **refino em paralelo** com `watchPosition` de alta precisão que só substitui o ponto quando a leitura melhora. Falha só se os dois falharem — e a mensagem sempre aponta uma saída que não depende de GPS.
+
+## Erro calado esconde o bug de quem escreveu o código (2026-07-31)
+
+O botão "Usar minha posição" tinha `() => {}` como tratador de erro. Ao trocar isso por uma mensagem de verdade, o dono viu um timeout **em minutos** — e o timeout era um segundo defeito, meu, na configuração do GPS.
+
+Ou seja: engolir a falha não estava só escondendo o problema do usuário; estava escondendo de mim. Vale lembrar sempre que a tentação for silenciar um erro "para não poluir a tela".
+
 ## "Mapa offline" quase nunca é sobre baixar tiles (2026-07-30)
 
 Baixar tiles de basemap parece o caminho óbvio e esbarra em duas paredes: o CARTO keyless (nosso padrão) não autoriza cache em massa nos termos, e o MapTiler, que tem oferta offline explícita, precisa de uma chave que não está configurada. Entregar um cache que viola o provedor seria pior que não entregar.

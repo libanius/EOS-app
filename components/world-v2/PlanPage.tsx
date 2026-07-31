@@ -100,12 +100,12 @@ const COPY = {
     triggersPending: 'A seção de gatilhos espera uma migração no banco. O resto do plano funciona normalmente.',
     pickTitle: 'Onde fica?',
     useMyPosition: 'Usar minha posição',
-    locating: 'Buscando o GPS…',
+    locating: 'Procurando você…',
     pickOnMap: 'Escolher no mapa',
     gotPoint: 'Ponto marcado',
     roughFix: 'sinal fraco; confira no mapa',
     geoDenied: 'O navegador bloqueou a localização. Libere o acesso nas permissões do site e tente de novo — ou escolha no mapa.',
-    geoTimeout: 'O GPS demorou demais. Perto de janela costuma pegar mais rápido, ou escolha no mapa.',
+    geoTimeout: 'Não consegui a posição a tempo. Dentro de casa o GPS costuma falhar — escolher no mapa resolve na hora e é mais preciso para o seu caso.',
     geoFailed: 'Não consegui a posição agora. Escolha no mapa.',
     geoUnsupported: 'Este navegador não dá acesso ao GPS. Escolha no mapa.',
     positionHint: 'O jeito mais preciso — se você estiver no local agora. Buscar o endereço funciona de qualquer lugar.',
@@ -181,12 +181,12 @@ const COPY = {
     triggersPending: 'The triggers section is waiting on a database migration. The rest of the plan works normally.',
     pickTitle: 'Where is it?',
     useMyPosition: 'Use my position',
-    locating: 'Getting GPS…',
+    locating: 'Finding you…',
     pickOnMap: 'Pick on the map',
     gotPoint: 'Point marked',
     roughFix: 'weak signal; check it on the map',
     geoDenied: 'The browser blocked location. Allow it in the site permissions and try again — or pick on the map.',
-    geoTimeout: 'GPS took too long. Near a window usually helps, or pick on the map.',
+    geoTimeout: 'Could not get a position in time. Indoors, GPS often fails — picking on the map is instant and more precise for your case.',
     geoFailed: 'Could not get a position right now. Pick on the map.',
     geoUnsupported: 'This browser gives no GPS access. Pick on the map.',
     positionHint: 'The most precise way — if you are there right now. Searching the address works from anywhere.',
@@ -216,6 +216,9 @@ const COPY = {
 } as const
 
 type PickerTarget = { kind: WaypointKind; index: number | null }
+
+/** Por quanto tempo o GPS de alta precisão continua tentando melhorar o ponto. */
+const REFINE_MS = 15000
 
 export default function PlanPage() {
   const { language } = useLanguage()
@@ -884,13 +887,24 @@ function PointPicker({
   }
 
   /**
-   * "Usar minha posição" não dava sinal nenhum: sem estado de espera, sem erro,
-   * e o único retorno era uma linha pequena de coordenadas que passa
-   * despercebida. Quem apertava concluía, com razão, que o botão estava quebrado
-   * — e quando o GPS negava ou expirava, o `catch` vazio garantia silêncio.
+   * "Usar minha posição", em DOIS ESTÁGIOS.
    *
-   * Agora o botão diz que está buscando, confirma quando consegue, e nomeia o
-   * motivo quando não consegue.
+   * A primeira versão pedia `enableHighAccuracy: true` com `maximumAge: 0` — a
+   * combinação mais dura que existe: recusa qualquer posição que o aparelho já
+   * tenha e exige uma trava de GPS nova. Dentro de casa, ou num laptop sem GPS,
+   * isso simplesmente expira. O dono viu exatamente isso.
+   *
+   * O `RiskProvider`, que sempre funcionou, já mostrava o caminho: baixa
+   * precisão e aceita um fix de até dois minutos.
+   *
+   *   Estágio 1 — rápido. Aceita fix recente, sem exigir alta precisão. É o que
+   *     coloca um ponto na tela em segundos.
+   *   Estágio 2 — refino. `watchPosition` de alta precisão por alguns segundos,
+   *     substituindo o ponto só quando a leitura MELHORA. Silencioso: quem já
+   *     tem o que queria não precisa saber que houve refino.
+   *
+   * Só reporta falha se os dois falharem — e o erro sempre aponta o mapa como
+   * saída, porque escolher o pino não depende de GPS nenhum.
    */
   const useMyPosition = () => {
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
@@ -899,26 +913,52 @@ function PointPicker({
     }
     setGeoBusy(true)
     setGeoError(null)
-    navigator.geolocation.getCurrentPosition(
-      position => {
+
+    let settled = false
+    let bestAccuracy = Infinity
+
+    const accept = (position: GeolocationPosition) => {
+      const acc = position.coords.accuracy ?? Infinity
+      // O refino só substitui o que já está na tela se for de fato melhor.
+      if (acc > bestAccuracy) return
+      bestAccuracy = acc
+      if (!settled) {
+        settled = true
         haptic.selection()
         setGeoBusy(false)
-        setPoint({ lat: position.coords.latitude, lng: position.coords.longitude })
-        setAccuracy(position.coords.accuracy ?? null)
-      },
-      error => {
-        setGeoBusy(false)
-        setAccuracy(null)
-        setGeoError(
-          error.code === error.PERMISSION_DENIED
-            ? copy.geoDenied
-            : error.code === error.TIMEOUT
-              ? copy.geoTimeout
-              : copy.geoFailed,
-        )
-      },
-      { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 },
-    )
+      }
+      setPoint({ lat: position.coords.latitude, lng: position.coords.longitude })
+      setAccuracy(Number.isFinite(acc) ? acc : null)
+    }
+
+    const fail = (error: GeolocationPositionError) => {
+      if (settled) return
+      settled = true
+      setGeoBusy(false)
+      setAccuracy(null)
+      setGeoError(
+        error.code === error.PERMISSION_DENIED
+          ? copy.geoDenied
+          : error.code === error.TIMEOUT
+            ? copy.geoTimeout
+            : copy.geoFailed,
+      )
+    }
+
+    // Estágio 2 começa junto: num aparelho com GPS ele costuma chegar primeiro,
+    // e num sem GPS o estágio 1 já resolveu.
+    const watch = navigator.geolocation.watchPosition(accept, () => {}, {
+      enableHighAccuracy: true,
+      timeout: REFINE_MS,
+      maximumAge: 0,
+    })
+    window.setTimeout(() => navigator.geolocation.clearWatch(watch), REFINE_MS)
+
+    navigator.geolocation.getCurrentPosition(accept, fail, {
+      enableHighAccuracy: false,
+      timeout: 10000,
+      maximumAge: 120000,
+    })
   }
 
   return (

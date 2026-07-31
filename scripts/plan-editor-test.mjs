@@ -18,7 +18,8 @@
  *  10. o ponto pode ser escolhido NO MAPA, com a mira no centro e imagem de
  *      satélite — o caso do condomínio, onde vários prédios dividem o mesmo
  *      número e a busca por endereço devolve um ponto só
- *  11. sem rede, o plano continua na tela, rotulado como cópia local, E a carta
+ *  11. GPS negado não trava a tela: o motivo é dito e o mapa continua como saída
+ *  12. sem rede, o plano continua na tela, rotulado como cópia local, E a carta
  *      do plano é DESENHADA — pinos, traçado, norte e escala, sem tile nenhum
  *      (doc 18 §13: seguir as rotas com o avião no chão)
  *
@@ -318,7 +319,27 @@ before !== after && marked && work?.[0]?.name === 'Escritório'
   ? ok('ponto escolhido no mapa pela mira', `${before} → ${after}`)
   : no('escolha no mapa falhou', `mudou=${before !== after} confirmou=${marked} gravou=${JSON.stringify(work)}`)
 
-// ── 11. sem rede, o plano continua legível (doc 18 §13) ───────────────────────
+// ── 11. GPS negado: motivo dito, e o mapa continua disponível ───────────────
+// O dono viu o botão de posição expirar de verdade. Um erro de GPS não pode
+// deixar a pessoa sem caminho — a saída é escolher o pino, que não depende de
+// GPS nenhum.
+await actx.clearPermissions()
+await a.goto(`${B}/plan`, { waitUntil: 'networkidle' })
+await a.locator('button:has-text("+ Outro")').waitFor({ timeout: 60000 })
+await a.locator('button:has-text("+ Outro")').click()
+const denied = a.locator('[role="dialog"][aria-label="Onde fica?"]')
+await denied.waitFor({ timeout: 10000 })
+await denied.locator('button:has-text("Usar minha posição")').click()
+await a.waitForTimeout(4000)
+const motivo = await denied.locator('p.warn').first().innerText().catch(() => '')
+const saida = await denied.locator('button:has-text("Escolher no mapa")').count()
+const travado = await denied.locator('button:has-text("Procurando você…")').count()
+motivo.length > 20 && saida === 1 && travado === 0
+  ? ok('GPS negado: motivo na tela e mapa como saída', motivo.slice(0, 60) + '…')
+  : no('falha de GPS deixou a tela sem resposta', `motivo="${motivo}" saída=${saida} travado=${travado}`)
+await denied.locator('button:has-text("Cancelar")').click()
+
+// ── 12. sem rede, o plano continua legível (doc 18 §13) ───────────────────────
 await b.reload({ waitUntil: 'networkidle' })
 await b.waitForTimeout(2500)          // garante que a cópia local foi gravada
 await bctx.setOffline(true)

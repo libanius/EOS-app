@@ -39,8 +39,23 @@
    ver. Agora há estado de espera, confirmação explícita ("Ponto marcado", com a
    precisão em metros) e um motivo nomeado para cada falha — sempre oferecendo a
    escolha no mapa como saída.
+5. **E o botão passa a FUNCIONAR, em dois estágios.** A primeira correção deixou
+   o erro visível e o dono viu, na hora, um timeout real. A culpa era da minha
+   configuração: `enableHighAccuracy: true` com `maximumAge: 0` é a combinação
+   mais dura que existe — recusa qualquer posição que o aparelho já tenha e exige
+   uma trava de GPS nova, o que dentro de casa ou num laptop simplesmente expira.
+   O `RiskProvider`, que sempre funcionou, já usava baixa precisão aceitando fix
+   de até dois minutos. Agora são dois estágios: um rápido, que aceita fix
+   recente e coloca o ponto na tela em segundos, e um refino por `watchPosition`
+   de alta precisão que só substitui o ponto **quando a leitura melhora**. Falha
+   só é reportada se os dois falharem.
 
-**Consequences**: é a terceira vez nesta sequência que a causa raiz é a mesma —
+**Consequences**: tornar o erro visível foi o que revelou o segundo defeito em
+minutos. Um erro calado não é só ruim para o usuário: **esconde o bug de quem
+escreveu o código**. Vale como argumento sempre que a tentação for engolir uma
+falha "para não poluir a tela".
+
+É a terceira vez nesta sequência que a causa raiz é a mesma —
 **a tela não dizia o que estava acontecendo**. Ver [[D-075]] (cache servindo dado
 velho como novo) e a distância que sumia sem explicação. O `catch` vazio e o
 tratador de erro vazio entraram na lista de coisas a procurar em revisão.
