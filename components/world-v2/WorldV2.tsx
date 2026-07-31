@@ -77,7 +77,13 @@ const COPY = {
     layerAlerts: 'Alertas',
     layerWind: 'Vento',
     layerCyclone: 'Ciclone',
+    layerFlood: 'Flood',
+    layerSurge: 'Surge',
+    layerWindImpact: 'Vento impacto',
+    layerTornado: 'Tornado',
     windHere: 'Vento aqui',
+    windImpactNote: 'Impacto de vento é derivado do grid atual; avisos oficiais continuam em Alertas.',
+    tornadoNote: 'Direção de tornado só aparece quando o aviso oficial informa movimento.',
     showOnMap: 'Ver no mapa →',
     heading: 'indo para',
     partial: 'Parte do desenho oficial não carregou agora — o traçado na tela pode estar incompleto.',
@@ -146,7 +152,13 @@ const COPY = {
     layerAlerts: 'Alerts',
     layerWind: 'Wind',
     layerCyclone: 'Cyclone',
+    layerFlood: 'Flood',
+    layerSurge: 'Surge',
+    layerWindImpact: 'Wind impact',
+    layerTornado: 'Tornado',
     windHere: 'Wind here',
+    windImpactNote: 'Wind impact is derived from the current grid; official warnings remain in Alerts.',
+    tornadoNote: 'Tornado direction appears only when the official warning includes motion.',
     showOnMap: 'Show on map →',
     heading: 'heading',
     partial: 'Part of the official drawing did not load — what is on screen may be incomplete.',
@@ -516,6 +528,10 @@ export default function WorldV2() {
                 <button type="button" className={`wv2-chip${layers.alerts ? ' on' : ''}`} onClick={() => toggleLayer('alerts')}>{c.layerAlerts}</button>
                 <button type="button" className={`wv2-chip${layers.wind ? ' on' : ''}`} onClick={() => toggleLayer('wind')}>{c.layerWind}</button>
                 <button type="button" className={`wv2-chip${layers.cyclone ? ' on' : ''}`} onClick={() => toggleLayer('cyclone')}>{c.layerCyclone}</button>
+                <button type="button" className={`wv2-chip${layers.flood ? ' on' : ''}`} onClick={() => toggleLayer('flood')}>{c.layerFlood}</button>
+                <button type="button" className={`wv2-chip${layers.surge ? ' on' : ''}`} onClick={() => toggleLayer('surge')}>{c.layerSurge}</button>
+                <button type="button" className={`wv2-chip${layers.windImpact ? ' on' : ''}`} onClick={() => toggleLayer('windImpact')}>{c.layerWindImpact}</button>
+                <button type="button" className={`wv2-chip${layers.tornado ? ' on' : ''}`} onClick={() => toggleLayer('tornado')}>{c.layerTornado}</button>
               </div>
 
               {layers.wind && wind?.atUser && (
@@ -523,6 +539,8 @@ export default function WorldV2() {
                   {c.windHere}: {wind.atUser.speedKmh} km/h {headingLabel(wind.atUser.fromDeg, metric) ?? ''} · {windMeaning(wind.atUser.speedKmh, metric)}
                 </p>
               )}
+              {layers.windImpact && <p className="t-foot ink-3">{c.windImpactNote}</p>}
+              {layers.tornado && <p className="t-foot ink-3">{c.tornadoNote}</p>}
               {/*
                 Cada tempestade é um BOTÃO: tocar leva a câmera até ela. Antes era
                 texto com cara de link — o dono tocou e nada aconteceu, com razão.

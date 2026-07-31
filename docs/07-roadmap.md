@@ -213,6 +213,7 @@
 | WV2-T09 | Prontidão pareada ao índice de risco no dashboard | ✅ COMPLETE | 2026-07-28 — os dois números só significam algo juntos: risco 9 lê diferente a 20% e a 90% de prontidão |
 | WV2-T10 | Responsividade no celular: câmera do usuário, teclado e entrada única | ✅ COMPLETE | 2026-07-28 — D-070. A recentragem automática recolhia o sheet em uso; agora a câmera segue só na 1ª leitura e apenas gestos reais recolhem o HUD |
 | WV2-T11 | PilotBar substitui a busca — o Pilot vira a entrada única | ✅ COMPLETE | 2026-07-28 — D-070; `MapSearch` aposentado |
+| WV2-T12 | Camadas especializadas no mapa: flood area, storm surge, wind impact e direção oficial de tornado | ✅ COMPLETE | 2026-07-31 — D-081. Primeira versão usa polígonos oficiais NWS e impacto de vento derivado do grid existente; tornado só desenha direção se o aviso oficial trouxer movimento. |
 | PILOT-T03 | Rule-backed recommendation states: GO, LIMITED, WAIT, AVOID, PRIORITY OVERRIDE | BLOCKED | Critical rules must override AI |
 | PILOT-T04 | Metrics instrumentation for discovery, trust, retention, personalization, safety | BLOCKED | Needed before production rollout |
 

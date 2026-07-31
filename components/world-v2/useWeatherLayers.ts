@@ -94,7 +94,7 @@ export function useWeatherLayers(
   }, [coords, layers.cyclone])
 
   useEffect(() => {
-    if (!coords || !layers.wind) return
+    if (!coords || (!layers.wind && !layers.windImpact)) return
     let cancelled = false
 
     const load = () => {
@@ -111,7 +111,7 @@ export function useWeatherLayers(
     }, WIND_REFRESH_MS)
 
     return () => { cancelled = true; clearInterval(timer) }
-  }, [coords, layers.wind])
+  }, [coords, layers.wind, layers.windImpact])
 
   // Alertas com geometria: é o que permite tocar num alerta e ver onde ele está.
   useEffect(() => {

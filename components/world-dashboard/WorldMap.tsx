@@ -40,7 +40,11 @@ type HazardEvent = {
   id: string
   source: string
   visualClass: string
+  hazardType?: string
+  eventType?: string
   title: string
+  summary?: string
+  instructions?: string[]
   severity: HazardSeverity
   location?: { lat: number; lng: number }
   geometry?: unknown
@@ -84,6 +88,52 @@ const HAZARD_COLOR: Record<HazardSeverity, string> = {
   extreme: '#ff6b6b',
 }
 
+type HazardMapLayer = 'alert' | 'flood' | 'surge' | 'tornado'
+type StormMotion = { bearingDeg: number; speedMph: number; phrase: string }
+
+const HAZARD_LAYER_COLOR: Record<HazardMapLayer, string> = {
+  alert: '#ffb347',
+  flood: '#35d7f2',
+  surge: '#7c6bff',
+  tornado: '#ff453a',
+}
+
+const MOTION_BEARINGS: Record<string, number> = {
+  n: 0, north: 0, northward: 0, northwards: 0,
+  nne: 22.5, ne: 45, northeast: 45, 'north-east': 45, northeasterly: 45, northeastward: 45, northeastwards: 45,
+  ene: 67.5, e: 90, east: 90, eastward: 90, eastwards: 90,
+  ese: 112.5, se: 135, southeast: 135, 'south-east': 135, southeasterly: 135, southeastward: 135, southeastwards: 135,
+  sse: 157.5, s: 180, south: 180, southward: 180, southwards: 180,
+  ssw: 202.5, sw: 225, southwest: 225, 'south-west': 225, southwesterly: 225, southwestward: 225, southwestwards: 225,
+  wsw: 247.5, w: 270, west: 270, westward: 270, westwards: 270,
+  wnw: 292.5, nw: 315, northwest: 315, 'north-west': 315, northwesterly: 315, northwestward: 315, northwestwards: 315,
+  nnw: 337.5,
+}
+
+function hazardText(e: HazardEvent) {
+  return `${e.eventType ?? ''} ${e.hazardType ?? ''} ${e.title} ${e.summary ?? ''} ${(e.instructions ?? []).join(' ')}`
+}
+
+function hazardLayer(e: HazardEvent): HazardMapLayer {
+  const text = hazardText(e).toLowerCase()
+  if (/\bstorm surge\b/.test(text)) return 'surge'
+  if (/\btornado\b/.test(text)) return 'tornado'
+  if (/\b(flash flood|flood warning|flood watch|flood advisory|coastal flood|river flood|areal flood|flooding)\b/.test(text)) return 'flood'
+  return 'alert'
+}
+
+function parseStormMotion(e: HazardEvent): StormMotion | null {
+  if (hazardLayer(e) !== 'tornado') return null
+  const text = hazardText(e).replace(/\s+/g, ' ')
+  const match = text.match(/\bmoving\s+([a-z-]{1,20}|[NSEW]{1,3})\s+(?:at|around|near)\s+(\d{1,3})\s*mph\b/i)
+  if (!match) return null
+  const key = match[1].toLowerCase()
+  const bearingDeg = MOTION_BEARINGS[key]
+  const speedMph = Number(match[2])
+  if (!Number.isFinite(bearingDeg) || !Number.isFinite(speedMph)) return null
+  return { bearingDeg, speedMph, phrase: `moving ${match[1]} at ${speedMph} mph` }
+}
+
 function isFiniteCoord(lng: number, lat: number) {
   return Number.isFinite(lng) && Number.isFinite(lat) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180
 }
@@ -105,6 +155,7 @@ function pointFeature(e: HazardEvent): unknown | null {
 function geometryFeature(e: HazardEvent): unknown | null {
   const g = e.geometry as { type?: string; coordinates?: unknown } | null
   if (!g?.type || !g.coordinates) return null
+  const layer = hazardLayer(e)
   return {
     type: 'Feature',
     properties: {
@@ -112,7 +163,8 @@ function geometryFeature(e: HazardEvent): unknown | null {
       title: e.title,
       severity: e.severity,
       visualClass: e.visualClass,
-      color: HAZARD_COLOR[e.severity] ?? HAZARD_COLOR.info,
+      hazardLayer: layer,
+      color: layer === 'alert' ? HAZARD_COLOR[e.severity] ?? HAZARD_COLOR.info : HAZARD_LAYER_COLOR[layer],
     },
     geometry: g,
   }
@@ -136,6 +188,55 @@ function hazardTagLngLat(e: HazardEvent): [number, number] | null {
   if (!coords.length) return null
   const mid = coords.reduce((acc, p) => [acc[0] + p[0], acc[1] + p[1]] as [number, number], [0, 0])
   return [mid[0] / coords.length, mid[1] / coords.length]
+}
+
+function destinationPoint(start: [number, number], bearingDeg: number, distanceKm: number): [number, number] {
+  const radiusKm = 6371
+  const bearing = bearingDeg * Math.PI / 180
+  const lat1 = start[1] * Math.PI / 180
+  const lon1 = start[0] * Math.PI / 180
+  const angular = distanceKm / radiusKm
+  const lat2 = Math.asin(Math.sin(lat1) * Math.cos(angular) + Math.cos(lat1) * Math.sin(angular) * Math.cos(bearing))
+  const lon2 = lon1 + Math.atan2(Math.sin(bearing) * Math.sin(angular) * Math.cos(lat1), Math.cos(angular) - Math.sin(lat1) * Math.sin(lat2))
+  return [lon2 * 180 / Math.PI, lat2 * 180 / Math.PI]
+}
+
+function tornadoMotionFeature(e: HazardEvent): unknown | null {
+  const start = hazardTagLngLat(e)
+  const motion = parseStormMotion(e)
+  if (!start || !motion) return null
+  const distanceKm = Math.max(6, Math.min(32, motion.speedMph * 1.60934 * 0.33))
+  return {
+    type: 'Feature',
+    properties: {
+      id: e.id,
+      title: e.title,
+      label: motion.phrase,
+      rotate: motion.bearingDeg,
+      speedMph: motion.speedMph,
+      color: HAZARD_LAYER_COLOR.tornado,
+    },
+    geometry: { type: 'LineString', coordinates: [start, destinationPoint(start, motion.bearingDeg, distanceKm)] },
+  }
+}
+
+function windImpactFeatures(wind: WindSnapshot | null | undefined): GeoJSON.Feature[] {
+  return (wind?.readings ?? [])
+    .filter(r => r.speedKmh >= 39 || (r.gustKmh ?? 0) >= 62)
+    .map(r => {
+      const impact = (r.gustKmh ?? r.speedKmh) >= 89 ? 'high' : 'moderate'
+      return {
+        type: 'Feature' as const,
+        geometry: { type: 'Point' as const, coordinates: [r.lng, r.lat] },
+        properties: {
+          impact,
+          speedKmh: r.speedKmh,
+          gustKmh: r.gustKmh ?? r.speedKmh,
+          radius: impact === 'high' ? 26 : 18,
+          color: impact === 'high' ? '#ff453a' : '#ff9f0a',
+        },
+      }
+    })
 }
 
 function short(text: string, max = 38) {
@@ -246,9 +347,22 @@ export type MapLayerState = {
   alerts: boolean
   wind: boolean
   cyclone: boolean
+  flood: boolean
+  surge: boolean
+  windImpact: boolean
+  tornado: boolean
 }
 
-export const DEFAULT_LAYERS: MapLayerState = { radar: true, alerts: true, wind: false, cyclone: true }
+export const DEFAULT_LAYERS: MapLayerState = {
+  radar: true,
+  alerts: true,
+  wind: false,
+  cyclone: true,
+  flood: true,
+  surge: true,
+  windImpact: false,
+  tornado: true,
+}
 
 export default function WorldMap({ plateUrl, family = [], shelters = [], guidance = null, mapBase = 'hybrid', routeFocusNonce = 0, focus = null, courseTo = null, recenterNonce = 0, cyclones = null, wind = null, layers = DEFAULT_LAYERS, onMemberTap, onMapInteraction }: {
   state: string
@@ -429,14 +543,34 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
       const snap = (await fetch(`/api/hazards?lat=${center[1]}&lng=${center[0]}`).then(r => (r.ok ? r.json() : null))) as HazardSnapshot | null
       const events = (snap?.events ?? []).slice(0, 12)
       const polygons = events.map(geometryFeature).filter(Boolean)
+      const byLayer = (layer: HazardMapLayer) => polygons.filter(f => {
+        const feature = f as { properties?: { hazardLayer?: string } }
+        return feature.properties?.hazardLayer === layer
+      })
       const points = events.map(pointFeature).filter(Boolean)
-      const polyData = { type: 'FeatureCollection' as const, features: polygons } as never
+      const polyData = { type: 'FeatureCollection' as const, features: byLayer('alert') } as never
+      const floodData = { type: 'FeatureCollection' as const, features: byLayer('flood') } as never
+      const surgeData = { type: 'FeatureCollection' as const, features: byLayer('surge') } as never
+      const tornadoPolyData = { type: 'FeatureCollection' as const, features: byLayer('tornado') } as never
+      const tornadoMotionData = { type: 'FeatureCollection' as const, features: events.map(tornadoMotionFeature).filter(Boolean) } as never
       const pointData = { type: 'FeatureCollection' as const, features: points } as never
 
-      const polySrc = map.getSource('eos-hazard-polygons') as { setData?: (d: unknown) => void } | undefined
-      if (polySrc) polySrc.setData?.(polyData)
-      else {
-        map.addSource('eos-hazard-polygons', { type: 'geojson', data: polyData })
+      const setOrAdd = (sourceId: string, data: unknown) => {
+        const src = map.getSource(sourceId) as { setData?: (d: unknown) => void } | undefined
+        if (src) {
+          src.setData?.(data)
+          return true
+        }
+        map.addSource(sourceId, { type: 'geojson', data: data as never })
+        return false
+      }
+
+      const hadHazards = setOrAdd('eos-hazard-polygons', polyData)
+      setOrAdd('eos-flood-polygons', floodData)
+      setOrAdd('eos-surge-polygons', surgeData)
+      setOrAdd('eos-tornado-polygons', tornadoPolyData)
+      setOrAdd('eos-tornado-motion', tornadoMotionData)
+      if (!hadHazards) {
         const before = map.getLayer('eos-route-glow') ? 'eos-route-glow' : undefined
         map.addLayer({
           id: 'eos-hazard-fill',
@@ -457,6 +591,67 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
             'line-opacity': 0.75,
           },
         }, before)
+
+        map.addLayer({
+          id: 'eos-flood-fill',
+          type: 'fill',
+          source: 'eos-flood-polygons',
+          paint: { 'fill-color': HAZARD_LAYER_COLOR.flood, 'fill-opacity': 0.22 },
+        }, before)
+        map.addLayer({
+          id: 'eos-flood-outline',
+          type: 'line',
+          source: 'eos-flood-polygons',
+          paint: { 'line-color': HAZARD_LAYER_COLOR.flood, 'line-width': 1.6, 'line-opacity': 0.86 },
+        }, before)
+
+        map.addLayer({
+          id: 'eos-surge-fill',
+          type: 'fill',
+          source: 'eos-surge-polygons',
+          paint: { 'fill-color': HAZARD_LAYER_COLOR.surge, 'fill-opacity': 0.2 },
+        }, before)
+        map.addLayer({
+          id: 'eos-surge-outline',
+          type: 'line',
+          source: 'eos-surge-polygons',
+          paint: { 'line-color': HAZARD_LAYER_COLOR.surge, 'line-width': 1.8, 'line-opacity': 0.9, 'line-dasharray': [2, 1.2] },
+        }, before)
+
+        map.addLayer({
+          id: 'eos-tornado-fill',
+          type: 'fill',
+          source: 'eos-tornado-polygons',
+          paint: { 'fill-color': HAZARD_LAYER_COLOR.tornado, 'fill-opacity': 0.14 },
+        }, before)
+        map.addLayer({
+          id: 'eos-tornado-outline',
+          type: 'line',
+          source: 'eos-tornado-polygons',
+          paint: { 'line-color': HAZARD_LAYER_COLOR.tornado, 'line-width': 2, 'line-opacity': 0.95 },
+        }, before)
+        map.addLayer({
+          id: 'eos-tornado-motion',
+          type: 'line',
+          source: 'eos-tornado-motion',
+          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          paint: { 'line-color': HAZARD_LAYER_COLOR.tornado, 'line-width': 3, 'line-opacity': 0.95, 'line-dasharray': [1.2, 1.2] },
+        })
+        map.addLayer({
+          id: 'eos-tornado-motion-arrow',
+          type: 'symbol',
+          source: 'eos-tornado-motion',
+          layout: {
+            'symbol-placement': 'line',
+            'symbol-spacing': 140,
+            'icon-image': 'eos-arrow',
+            'icon-size': 0.8,
+            'icon-rotate': ['get', 'rotate'],
+            'icon-rotation-alignment': 'map',
+            'icon-allow-overlap': true,
+          },
+          paint: { 'icon-color': HAZARD_LAYER_COLOR.tornado, 'icon-halo-color': '#000000', 'icon-halo-width': 1.2 },
+        })
       }
 
       const pointSrc = map.getSource('eos-hazard-points') as { setData?: (d: unknown) => void } | undefined
@@ -678,6 +873,36 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
             paint: { 'text-color': '#ffffff', 'text-halo-color': '#000000', 'text-halo-width': 1.2, 'text-opacity': 0.8 },
           })
 
+          // Impacto de vento é derivado do grid acima. Ele responde "onde isso
+          // já está forte o bastante para afetar decisão" sem fingir aviso
+          // oficial: é uma leitura EOS/Open-Meteo, não NWS.
+          map.addSource('eos-wind-impact', { type: 'geojson', data: EMPTY_FC })
+          map.addLayer({
+            id: 'eos-wind-impact',
+            type: 'circle',
+            source: 'eos-wind-impact',
+            paint: {
+              'circle-radius': ['get', 'radius'],
+              'circle-color': ['get', 'color'],
+              'circle-opacity': 0.2,
+              'circle-blur': 0.25,
+              'circle-stroke-color': ['get', 'color'],
+              'circle-stroke-width': 1.2,
+              'circle-stroke-opacity': 0.8,
+            },
+          }, 'eos-wind')
+          map.addLayer({
+            id: 'eos-wind-impact-label',
+            type: 'symbol',
+            source: 'eos-wind-impact',
+            layout: {
+              'text-field': ['concat', ['to-string', ['get', 'gustKmh']], ' km/h'],
+              'text-size': 10,
+              'text-allow-overlap': false,
+            },
+            paint: { 'text-color': '#ffffff', 'text-halo-color': '#000000', 'text-halo-width': 1.3, 'text-opacity': 0.9 },
+          })
+
           map.addSource('eos-course', { type: 'geojson', data: EMPTY_LINE })
           map.addLayer({ id: 'eos-course-glow', type: 'line', source: 'eos-course', layout: { 'line-cap': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': 10, 'line-opacity': 0.10, 'line-blur': 6 } })
           map.addLayer({ id: 'eos-course', type: 'line', source: 'eos-course', layout: { 'line-cap': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': 3, 'line-opacity': 0.9, 'line-dasharray': [1.6, 1.6] } })
@@ -821,6 +1046,18 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
     })
   }, [wind, layers?.wind])
 
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !readyRef.current) return
+    const source = map.getSource('eos-wind-impact') as maplibregl.GeoJSONSource | undefined
+    if (!source) return
+    const show = Boolean(layers?.windImpact) && Boolean(wind?.readings.length)
+    source.setData({
+      type: 'FeatureCollection',
+      features: show ? windImpactFeatures(wind) : [],
+    })
+  }, [wind, layers?.windImpact])
+
   /** Radar e alertas obedecem o interruptor sem serem recarregados. */
   useEffect(() => {
     const map = mapRef.current
@@ -834,7 +1071,13 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
     for (const id of ['eos-hazard-fill', 'eos-hazard-outline', 'eos-hazard-point-halo', 'eos-hazard-point']) {
       toggle(id, Boolean(layers?.alerts))
     }
-  }, [layers?.radar, layers?.alerts])
+    for (const id of ['eos-flood-fill', 'eos-flood-outline']) toggle(id, Boolean(layers?.flood))
+    for (const id of ['eos-surge-fill', 'eos-surge-outline']) toggle(id, Boolean(layers?.surge))
+    for (const id of ['eos-tornado-fill', 'eos-tornado-outline', 'eos-tornado-motion', 'eos-tornado-motion-arrow']) {
+      toggle(id, Boolean(layers?.tornado))
+    }
+    for (const id of ['eos-wind-impact', 'eos-wind-impact-label']) toggle(id, Boolean(layers?.windImpact))
+  }, [layers?.radar, layers?.alerts, layers?.flood, layers?.surge, layers?.tornado, layers?.windImpact])
 
   useEffect(() => {
     const map = mapRef.current

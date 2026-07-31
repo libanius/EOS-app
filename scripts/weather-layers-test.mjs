@@ -155,12 +155,12 @@ await page.locator('button[aria-label="Camadas"]').click()
 await page.waitForTimeout(600)
 const painel = page.locator('[role="group"][aria-label="Camadas"]')
 const chips = await painel.locator('.wv2-chip').allInnerTexts().catch(() => [])
-chips.includes('Chuva') && chips.includes('Vento') && chips.includes('Ciclone') && chips.includes('Satélite')
+chips.includes('Chuva') && chips.includes('Vento') && chips.includes('Ciclone') && chips.includes('Flood') && chips.includes('Surge') && chips.includes('Vento impacto') && chips.includes('Tornado') && chips.includes('Satélite')
   ? ok('painel de camadas com base e camadas', chips.join(' · '))
   : no('painel incompleto', JSON.stringify(chips))
 
 // ── 5. ligar o vento desenha setas ──────────────────────────────────────────
-await painel.locator('button:has-text("Vento")').click()
+await painel.locator('button', { hasText: /^Vento$/ }).click()
 await page.waitForTimeout(6000)
 // Afasta um pouco a câmera: a asserção é sobre VER várias direções, e num zoom
 // de quarteirão nem a grade mais fina cabe na tela.
@@ -184,12 +184,26 @@ setas.desenhadas > 0 && setas.rotacoes > 1
   ? ok('setas de vento DESENHADAS no mapa', `${setas.desenhadas} visíveis · ${setas.rotacoes} direções distintas`)
   : no('vento não desenhou', JSON.stringify(setas))
 
+await painel.locator('button', { hasText: /^Vento impacto$/ }).click()
+await page.waitForTimeout(900)
+const impacto = await page.evaluate(() => {
+  const map = window.__eosMap
+  return {
+    source: Boolean(map?.getSource('eos-wind-impact')),
+    layer: Boolean(map?.getLayer('eos-wind-impact')),
+    label: Boolean(map?.getLayer('eos-wind-impact-label')),
+  }
+})
+impacto.source && impacto.layer && impacto.label
+  ? ok('camada de impacto de vento conectada ao mapa', JSON.stringify(impacto))
+  : no('impacto de vento sem fonte/camada', JSON.stringify(impacto))
+
 // preferência persiste
 await page.reload({ waitUntil: 'networkidle' })
 await page.waitForTimeout(4000)
 await page.locator('button[aria-label="Camadas"]').click()
 await page.waitForTimeout(600)
-const ventoLigado = await page.locator('[role="group"][aria-label="Camadas"] button:has-text("Vento")').getAttribute('class')
+const ventoLigado = await page.locator('[role="group"][aria-label="Camadas"] button', { hasText: /^Vento$/ }).getAttribute('class')
 ventoLigado?.includes('on')
   ? ok('a escolha de camadas sobrevive ao reload')
   : no('camadas não persistiram', String(ventoLigado))

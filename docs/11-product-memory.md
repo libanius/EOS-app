@@ -5,6 +5,25 @@
 
 ---
 
+## Direção de tornado só com movimento oficial, nunca por geometria (2026-07-31)
+
+WV2-T12 separou as camadas do mapa em Flood, Surge, Vento impacto e Tornado.
+Flood/surge usam os polígonos oficiais de alerta que já chegam do NWS por
+`/api/hazards`; impacto de vento é derivado do grid Open-Meteo existente e fica
+rotulado como leitura EOS, não como aviso oficial.
+
+A regra que importa: **não inferir direção provável de tornado pelo formato do
+polígono, centroide, IA ou extrapolação visual.** O mapa só desenha seta quando
+o próprio texto oficial do NWS traz movimento ("moving northeast at 40 mph").
+Sem esse texto, mostrar nada é a resposta correta. Uma seta inventada num aviso
+de tornado parece autoridade e pode colocar uma família indo para o lado errado.
+
+NFHL/FEMA e Potential Storm Surge/NHC continuam como evolução de camada estática
+de risco pré-evento. A primeira versão resolveu alertas ativos, que é o que
+responde a pergunta operacional nos primeiros minutos.
+
+---
+
 ## Executar Plano não é chat — é orquestração da versão aprovada (2026-07-31)
 
 O dono colocou a lacuna correta: o Plano da Família só vira produto quando existe

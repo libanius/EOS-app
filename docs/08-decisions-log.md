@@ -4,6 +4,41 @@
 
 ---
 
+## D-081 — Camadas hidrológicas, vento de impacto e direção oficial de tornado
+
+**Date**: 2026-07-31
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: O dono pediu novas camadas na base do mapa: flood area, storm
+surge, wind impact e modelos/forecast para saber a provável direção de um
+tornado. O EOS já desenha radar, alertas genéricos, vento em grade e ciclones,
+mas isso ainda mistura ameaças diferentes na mesma camada "Alertas".
+
+**Decision**:
+
+1. **Flood area** e **storm surge** entram como camadas próprias a partir dos
+   polígonos oficiais de alerta do NWS já normalizados por `/api/hazards`.
+   NFHL/FEMA e mapas de risco NHC ficam como evolução estática, mas não bloqueiam
+   a leitura operacional de alertas ativos.
+2. **Wind impact** é uma camada derivada do grid de vento já existente: rajadas
+   e vento sustentado viram células de impacto com thresholds explícitos. Ela é
+   análise visual do EOS/Open-Meteo, não aviso oficial.
+3. **Tornado direction** nunca será inferida por geometria ou pelo modelo. O mapa
+   só desenha uma seta quando o texto oficial do NWS traz movimento, como
+   "moving northeast at 40 mph". Sem isso, a camada fica silenciosa e a UI deve
+   dizer que não há direção oficial disponível.
+4. O mapa separa visualmente `Alertas`, `Flood`, `Surge`, `Vento impacto` e
+   `Tornado`, para o usuário limpar a tela sem desligar o dado que o Pilot
+   recebe.
+
+**Consequences**: WV2-T12 entra no roadmap. A primeira versão resolve o uso
+operacional com alertas ativos oficiais e vento derivado. Providers estáticos de
+NFHL/FEMA e SLOSH/NHC podem ser adicionados depois como camadas de risco
+pré-evento, com legenda própria para não confundir risco histórico com alerta
+ativo.
+
+---
+
 ## D-080 — Vários planos, execução cancelável e passos editáveis
 
 **Date**: 2026-07-31
