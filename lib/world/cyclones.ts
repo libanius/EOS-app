@@ -58,6 +58,8 @@ export type CycloneSnapshot = {
   forecastPoints: GeoJSON.FeatureCollection | null
   /** Nenhum ciclone ativo é uma resposta CORRETA, não uma falha. */
   empty: boolean
+  /** Produtos que o NHC tem mas não conseguimos buscar. Vazio é o normal. */
+  missing?: string[]
   error?: string
 }
 
@@ -85,6 +87,23 @@ const CLASS_EN: Record<string, string> = {
   RM: 'Remnants',
 }
 
+/**
+ * A partir de quanto um ciclone deixa de ser assunto seu.
+ *
+ * Não é um número meteorológico — é de leitura. Um furacão a 5.000 km, noutra
+ * bacia, aparecendo com o mesmo destaque de um a 300 km, insinua uma ameaça que
+ * não existe. E um app de preparação que grita quando não é para gritar ensina a
+ * pessoa a ignorar quando for.
+ *
+ * 1.500 km cobre a distância em que um ciclone ainda pode virar assunto em
+ * poucos dias; além disso ele é informação de contexto, e a UI diz isso.
+ */
+export const RELEVANT_KM = 1500
+
+export function isRelevant(storm: { distanceKm: number | null }): boolean {
+  return storm.distanceKm === null || storm.distanceKm <= RELEVANT_KM
+}
+
 export function classLabel(code: string, pt: boolean): string {
   const table = pt ? CLASS_PT : CLASS_EN
   return table[code.toUpperCase()] ?? (pt ? 'Ciclone tropical' : 'Tropical cyclone')
@@ -109,13 +128,39 @@ function distanceKm(a: { lat: number; lng: number }, b: { lat: number; lng: numb
   return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)))
 }
 
+/**
+ * Busca uma camada do NHC, com UMA repetição.
+ *
+ * As três camadas são pedidas em paralelo e o serviço às vezes derruba uma —
+ * observado ao vivo: trajetória e pontos chegaram, o cone não, embora o cone
+ * estivesse publicado. Sem repetição, a tela mostrava a tempestade sem o cone e
+ * ficava indistinguível de "o NHC não publicou cone para esta tempestade".
+ *
+ * Falha e ausência não podem ter a mesma cara. Por isso o resultado diferencia
+ * as duas: `null` é falha de rede, coleção vazia é o NHC não tendo publicado.
+ */
 async function geojson(layer: number, signal?: AbortSignal): Promise<GeoJSON.FeatureCollection | null> {
   const url = `${NHC_GIS}/${layer}/query?where=1%3D1&outFields=*&returnGeometry=true&f=geojson`
-  const response = await fetch(url, { signal, next: { revalidate: 300 } }).catch(() => null)
-  if (!response?.ok) return null
-  const data = (await response.json().catch(() => null)) as GeoJSON.FeatureCollection | null
-  // Uma coleção vazia é diferente de falha, e o chamador precisa distinguir.
-  return data && Array.isArray(data.features) ? data : null
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    if (attempt) await new Promise(resolve => setTimeout(resolve, 400))
+    /**
+     * Sem cache NESTA chamada, de propósito.
+     *
+     * Com `revalidate: 300` uma resposta vazia — de uma falha momentânea do
+     * serviço — ficava guardada por cinco minutos, e a tela mostrava a
+     * tempestade SEM o cone enquanto o NHC publicava o cone normalmente.
+     * Cachear a ausência é pior que não cachear: congela um erro.
+     *
+     * O cache que interessa é o da rota (`revalidate = 300` em
+     * /api/world/cyclones), que guarda a resposta já montada e completa.
+     */
+    const response = await fetch(url, { signal, cache: 'no-store' }).catch(() => null)
+    if (!response?.ok) continue
+    const data = (await response.json().catch(() => null)) as GeoJSON.FeatureCollection | null
+    if (data && Array.isArray(data.features)) return data
+  }
+  return null
 }
 
 function num(value: unknown): number | null {
@@ -192,6 +237,14 @@ export async function getCyclones(
     geojson(LAYER.forecastPoints, signal),
   ])
 
+  // Quais produtos não vieram por FALHA (e não por não existirem). A UI usa isto
+  // para não apresentar um desenho incompleto como se fosse o desenho completo.
+  const missing = [
+    cone === null ? 'cone' : null,
+    track === null ? 'track' : null,
+    forecastPoints === null ? 'forecastPoints' : null,
+  ].filter((x): x is string => x !== null)
+
   return {
     source: 'NOAA National Hurricane Center',
     fetchedAt,
@@ -200,6 +253,7 @@ export async function getCyclones(
     track,
     forecastPoints,
     empty: false,
+    missing,
   }
 }
 

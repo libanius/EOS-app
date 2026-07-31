@@ -27,7 +27,7 @@ import type { PilotContext } from './pilot-engine'
 import type { ShelterSnapshot } from '@/lib/world/shelters'
 import type { MapBaseMode } from '@/lib/world/providers'
 import { DEFAULT_LAYERS, type MapLayerState } from '@/components/world-dashboard/WorldMap'
-import { headingLabel } from '@/lib/world/cyclones'
+import { headingLabel, isRelevant } from '@/lib/world/cyclones'
 import { windMeaning } from '@/lib/world/wind'
 import { useWeatherLayers } from './useWeatherLayers'
 import { Bar, Card, IconButton, Pill, PillLink, SectionLabel, Tile, TileGrid } from './primitives'
@@ -80,6 +80,10 @@ const COPY = {
     windHere: 'Vento aqui',
     showOnMap: 'Ver no mapa →',
     heading: 'indo para',
+    partial: 'Parte do desenho oficial não carregou agora — o traçado na tela pode estar incompleto.',
+    stormNear: 'pode virar assunto seu',
+    stormFar: 'longe demais para te afetar agora',
+    backHome: '← Voltar para a minha área',
     noStorm: 'Nenhum ciclone ativo agora.',
     coneNote: 'O cone é a incerteza da posição do centro, não a área de dano — vento e chuva vão além dele.',
     panelCap: 'Painel',
@@ -145,6 +149,10 @@ const COPY = {
     windHere: 'Wind here',
     showOnMap: 'Show on map →',
     heading: 'heading',
+    partial: 'Part of the official drawing did not load — what is on screen may be incomplete.',
+    stormNear: 'could become your problem',
+    stormFar: 'too far to affect you now',
+    backHome: '← Back to my area',
     noStorm: 'No active cyclone right now.',
     coneNote: 'The cone is the uncertainty of the centre position, not the damage area — wind and rain reach well beyond it.',
     panelCap: 'Panel',
@@ -221,6 +229,29 @@ export default function WorldV2() {
    */
   const [focus, setFocus] = useState<{ lat: number; lng: number; label: string; nonce: number; kind?: 'place' | 'alert' } | null>(null)
   const [activeAlertId, setActiveAlertId] = useState<string | null>(null)
+  /**
+   * Levar a câmera até uma tempestade — que pode estar a milhares de quilómetros.
+   *
+   * Por isso a viagem acende o caminho de volta: sair da própria área sem uma
+   * forma óbvia de retornar é abandonar a pessoa longe de casa numa tela que ela
+   * abriu para se orientar.
+   */
+  const [awayFromHome, setAwayFromHome] = useState(false)
+  const showStorm = (storm: { id: string; name: string; lat: number; lng: number }) => {
+    haptic.impact()
+    setDetent('peek')
+    setActiveAlertId(storm.id)
+    setAwayFromHome(true)
+    setFocus({ lat: storm.lat, lng: storm.lng, label: storm.name, nonce: Date.now(), kind: 'alert' })
+  }
+  const backHome = () => {
+    haptic.impact()
+    setAwayFromHome(false)
+    setActiveAlertId(null)
+    setFocus(null)
+    setRecenterNonce(n => n + 1)
+  }
+
   const showOnMap = (alert: { id: string; lat: number; lng: number; title: string }) => {
     haptic.impact()
     setDetent('peek')
@@ -460,14 +491,40 @@ export default function WorldV2() {
                   {c.windHere}: {wind.atUser.speedKmh} km/h {headingLabel(wind.atUser.fromDeg, metric) ?? ''} · {windMeaning(wind.atUser.speedKmh, metric)}
                 </p>
               )}
-              {layers.cyclone && cyclones && !cyclones.empty && cyclones.storms[0] && (
-                <p className="t-foot ink-2">
-                  {cyclones.storms[0].name} · {cyclones.storms[0].windKmh} km/h ·{' '}
-                  {cyclones.storms[0].distanceKm} km · {c.heading} {headingLabel(cyclones.storms[0].headingDeg, metric) ?? '—'}
-                </p>
+              {/*
+                Cada tempestade é um BOTÃO: tocar leva a câmera até ela. Antes era
+                texto com cara de link — o dono tocou e nada aconteceu, com razão.
+                E a linha diz se aquilo é assunto dele: um ciclone a 5.000 km,
+                noutra bacia, com o mesmo destaque de um a 300 km, insinua uma
+                ameaça que não existe.
+              */}
+              {layers.cyclone && cyclones && !cyclones.empty && cyclones.storms.map(storm => (
+                <button
+                  key={storm.id}
+                  type="button"
+                  className={`wv2-stormline${isRelevant(storm) ? ' near' : ''}${activeAlertId === storm.id ? ' showing' : ''}`}
+                  onClick={() => showStorm(storm)}
+                >
+                  <span className="t-sub">
+                    {storm.name} · {storm.windKmh} km/h · {c.heading} {headingLabel(storm.headingDeg, metric) ?? '—'}
+                  </span>
+                  <em className="t-foot ink-3">
+                    {storm.distanceKm} km · {isRelevant(storm) ? c.stormNear : c.stormFar} · {c.showOnMap}
+                  </em>
+                </button>
+              ))}
+              {awayFromHome && (
+                <button type="button" className="wv2-chip" onClick={backHome}>
+                  {c.backHome}
+                </button>
               )}
               {layers.cyclone && cyclones?.empty && <p className="t-foot ink-3">{c.noStorm}</p>}
               {layers.cyclone && cyclones && !cyclones.empty && <p className="t-foot ink-3">{c.coneNote}</p>}
+              {/* Desenho incompleto tem que se anunciar: um cone que não carregou
+                  é indistinguível de um cone que não existe. */}
+              {layers.cyclone && cyclones?.missing?.length ? (
+                <p className="t-foot warn">{c.partial}</p>
+              ) : null}
             </motion.div>
           )}
         </AnimatePresence>

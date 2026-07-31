@@ -10,6 +10,8 @@
  *   5. ligar o vento desenha setas no mapa, com rotação por leitura
  *   6. tocar num alerta leva a câmera até ele, e o título pulsa na COR DO RISCO
  *      — a mesma cor que diz "quão ruim está" no topo passa a marcar onde é
+ *   7. a linha da tempestade é um BOTÃO que leva a câmera até ela, e diz se
+ *      aquilo é assunto seu ou contexto distante
  *
  * Usa dado ao vivo de propósito. Um mock provaria que meu parser concorda com o
  * meu mock — e o histórico deste projeto é que os defeitos moram exatamente na
@@ -99,9 +101,15 @@ if (cyc.empty) {
   const cone = cyc.cone?.features?.[0]
   const track = cyc.track?.features?.[0]
   const pts = cyc.forecastPoints?.features ?? []
-  cone?.geometry?.type?.includes('Polygon') && track?.geometry?.type?.includes('Line') && pts.length > 0
-    ? ok('geometria oficial do NHC', `cone ${cone.geometry.type} · trajetória ${track.geometry.type} · ${pts.length} pontos`)
-    : no('geometria ausente', `cone=${cone?.geometry?.type} track=${track?.geometry?.type} pontos=${pts.length}`)
+  // O NHC nem sempre publica os três produtos, e uma camada pode falhar. O que
+  // não pode acontecer é falha silenciosa: `missing` diz o que caiu.
+  const faltando = cyc.missing ?? []
+  const temAlgo = Boolean(cone || track) && pts.length > 0
+  temAlgo && faltando.length === 0
+    ? ok('geometria oficial do NHC', `cone ${cone?.geometry?.type ?? '—'} · trajetória ${track?.geometry?.type ?? '—'} · ${pts.length} pontos`)
+    : temAlgo
+      ? no('geometria incompleta por falha de busca', `faltou: ${faltando.join(', ')}`)
+      : no('geometria ausente', `cone=${cone?.geometry?.type} track=${track?.geometry?.type} pontos=${pts.length}`)
 }
 
 // ── 3. vento em grade ───────────────────────────────────────────────────────
@@ -215,6 +223,33 @@ if (alertas) {
 } else {
   note('Nenhum alerta ativo em Parkland agora — item 6 não pôde ser exercitado.')
   ok('sem alerta ativo, a lista não inventa nenhum')
+}
+
+// ── 7. a tempestade é tocável, e a distância é qualificada ──────────────────
+// O botão de camadas ALTERNA o painel. Clicar às cegas quando ele já está aberto
+// o fecha — foi assim que este item passou reportando "nenhum ciclone ativo"
+// enquanto a API devolvia a Genevieve.
+if (!(await page.locator('[role="group"][aria-label="Camadas"]').count())) {
+  await page.locator('button[aria-label="Camadas"]').click()
+}
+await page.waitForTimeout(1500)
+const linhas = page.locator('.wv2-stormline')
+if (await linhas.count()) {
+  const texto = await linhas.first().innerText()
+  const antesS = await page.evaluate(() => { const c = window.__eosMap?.getCenter(); return c ? [c.lng, c.lat] : null })
+  await linhas.first().click()
+  await page.waitForTimeout(4000)
+  const depoisS = await page.evaluate(() => { const c = window.__eosMap?.getCenter(); return c ? [c.lng, c.lat] : null })
+  const foi = antesS && depoisS && (Math.abs(antesS[0] - depoisS[0]) > 0.01 || Math.abs(antesS[1] - depoisS[1]) > 0.01)
+  // A linha precisa dizer se aquilo importa: distância crua não é resposta.
+  const qualificada = /assunto seu|longe demais/.test(texto)
+  const volta = await page.locator('button:has-text("Voltar para a minha área")').count()
+  foi && qualificada && volta === 1
+    ? ok('tempestade tocável, qualificada e com volta', texto.replace(/\n/g, ' · '))
+    : no('linha da tempestade falhou', `moveu=${foi} qualificada=${qualificada} volta=${volta} · "${texto}"`)
+} else {
+  note('Nenhum ciclone ativo — item 7 não pôde ser exercitado.')
+  ok('sem ciclone, nenhuma linha inventada')
 }
 
 await browser.close()

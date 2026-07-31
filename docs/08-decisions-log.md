@@ -46,6 +46,18 @@ faz sem legenda nenhuma. O item tocado na lista pulsa junto, então fica claro
 qual dos alertas está no mapa. Com `prefers-reduced-motion`, o pulso vira
 contorno permanente: a informação é a cor, não o movimento.
 
+**A tempestade é um botão, e a distância é qualificada.** O dono tocou em
+"Genevieve" e nada aconteceu — com razão: era texto com cara de link. Agora cada
+tempestade leva a câmera até ela, e a linha diz se aquilo é **assunto seu** ou
+contexto distante. Um ciclone a 5.000 km, noutra bacia, exibido com o mesmo
+destaque de um a 300 km, insinua uma ameaça que não existe — e um app que grita
+quando não é para gritar ensina a pessoa a ignorar quando for. Acima de 1.500 km
+a linha fica apagada e diz "longe demais para te afetar agora".
+
+Viajar milhares de quilômetros acende o caminho de volta ("← Voltar para a minha
+área"): tirar alguém da própria área sem forma óbvia de retornar é abandoná-la
+longe de casa numa tela que ela abriu para se orientar.
+
 **Consequences**: dois defeitos que só um teste de RENDERIZAÇÃO pega:
 
 - a primeira versão das setas usava o caractere `➤` num `text-field`. Os dados
@@ -55,6 +67,14 @@ contorno permanente: a informação é a cor, não o movimento.
   canvas, que não depende de fonte;
 - a grade era de 0,5° (≈55 km) e a câmera padrão enquadra poucos quilômetros: o
   usuário via **uma** seta. Uma seta só não mostra direção. Passou a 0,15°.
+
+E um terceiro, achado depois: o provider cacheava a resposta das camadas do NHC
+por cinco minutos **inclusive quando ela vinha vazia**. Uma falha momentânea do
+serviço congelava a ausência do cone, e a tela mostrava a tempestade sem o cone
+enquanto o NHC o publicava normalmente. **Cachear ausência é pior que não
+cachear: congela um erro.** Hoje a busca de camada é `no-store` — o cache que
+vale é o da rota, que guarda a resposta já montada — com uma repetição, e o que
+falhou é declarado em `missing` para a UI avisar que o desenho está incompleto.
 
 Por isso `scripts/weather-layers-test.mjs` (`npm run test:weather`) pergunta ao
 MapLibre **o que ele renderizou**, não o que foi entregue à fonte. A primeira

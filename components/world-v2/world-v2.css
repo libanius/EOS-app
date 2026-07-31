@@ -2700,3 +2700,28 @@
     box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.5);
   }
 }
+
+/* ── Linha de tempestade: um botão, e a distância diz se é assunto seu ── */
+.wv2-layers .wv2-stormline {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  padding: var(--s3);
+  border-radius: var(--r-tile);
+  border: 1px solid var(--sep);
+  background: var(--fill-2);
+  color: var(--ink-2);
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+/* Perto o bastante para virar assunto: ganha a cor do risco. Longe fica
+   apagado — é contexto, não ameaça, e a tela não pode insinuar o contrário. */
+.wv2-layers .wv2-stormline.near { border-color: rgba(var(--accent-rgb), 0.45); color: var(--ink); }
+.wv2-layers .wv2-stormline.showing { border-color: var(--accent); animation: eos-alert-pulse 1.8s ease-in-out infinite; }
+.wv2-layers .wv2-stormline.showing .t-sub { color: var(--accent); }
+.wv2-layers .wv2-stormline:not(.near) .t-sub { opacity: 0.72; }
+
+@media (prefers-reduced-motion: reduce) {
+  .wv2-layers .wv2-stormline.showing { animation: none; box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.5); }
+}
