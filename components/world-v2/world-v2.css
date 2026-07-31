@@ -2489,3 +2489,69 @@
   .wv2-chart .chart-route { stroke-width: 3.5; }
   .wv2-chart .chart-pin circle, .wv2-chart .chart-pin path { stroke-width: 2.5; }
 }
+
+/* ── Escolher o ponto no mapa (condomínio: mesmo número, prédios diferentes) ── */
+
+.wv2-picker .wv2-picker-ways { display: flex; gap: var(--s2); flex-wrap: wrap; }
+
+.wv2.wv2-mappick {
+  position: fixed;
+  inset: 0;
+  z-index: 420;   /* acima do picker do plano, que fica em 300 */
+  background: #000;
+  display: flex;
+  flex-direction: column;
+}
+.wv2-mappick .wv2-mappick-map { flex: 1; min-height: 0; }
+
+/* A mira mora no centro geométrico da área do mapa e NÃO recebe toque: o dedo
+   precisa arrastar o mapa por baixo dela. */
+.wv2-mappick .wv2-mappick-cross {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 46dvh;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+.wv2-mappick .wv2-mappick-cross .ring {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.5), 0 0 18px rgba(var(--accent-rgb), 0.5);
+}
+.wv2-mappick .wv2-mappick-cross .dot {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.6);
+}
+
+.wv2-mappick .wv2-mappick-panel {
+  flex: none;
+  max-height: 46dvh;
+  overflow-y: auto;
+  display: grid;
+  gap: var(--s3);
+  padding: var(--s5) var(--edge) calc(var(--s5) + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--sep-strong);
+  border-radius: var(--r-sheet) var(--r-sheet) 0 0;
+  margin-top: calc(var(--r-sheet) * -1);
+}
+.wv2-mappick .wv2-mappick-head { display: grid; gap: var(--s1); }
+.wv2-mappick .wv2-mappick-row { display: flex; gap: var(--s2); align-items: center; flex-wrap: wrap; }
+.wv2-mappick .wv2-mappick-row .coords { font-variant-numeric: tabular-nums; }
+.wv2-mappick .wv2-mappick-acts { display: flex; gap: var(--s2); justify-content: flex-end; }
+
+@media (min-width: 760px) {
+  .wv2-mappick .wv2-mappick-panel { max-height: 38dvh; padding-inline: var(--s8); }
+  .wv2-mappick .wv2-mappick-cross { bottom: 38dvh; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .wv2-mappick .wv2-mappick-panel { background: #101014; backdrop-filter: none; }
+}

@@ -15,7 +15,10 @@
  *   8. a família desenha uma rota no mapa e ela vira LineString no banco (§5)
  *   9. o SIMULADOR cobra o plano: com as vias bloqueadas, um ponto de encontro
  *      longe demais para ir a pé vira lacuna no debrief (SIM-T06)
- *  10. sem rede, o plano continua na tela, rotulado como cópia local, E a carta
+ *  10. o ponto pode ser escolhido NO MAPA, com a mira no centro e imagem de
+ *      satélite — o caso do condomínio, onde vários prédios dividem o mesmo
+ *      número e a busca por endereço devolve um ponto só
+ *  11. sem rede, o plano continua na tela, rotulado como cópia local, E a carta
  *      do plano é DESENHADA — pinos, traçado, norte e escala, sem tile nenhum
  *      (doc 18 §13: seguir as rotas com o avião no chão)
  *
@@ -276,7 +279,46 @@ debrief.includes('longe demais a pé') && debrief.includes('Sítio do vô')
   ? ok('debrief cobrou o plano: ponto inalcançável a pé no cenário')
   : no('debrief não cobrou o plano', debrief.slice(0, 200).replace(/\n+/g, ' | '))
 
-// ── 10. sem rede, o plano continua legível (doc 18 §13) ───────────────────────
+// ── 10. escolher o ponto no mapa, com a mira ────────────────────────────────
+// O passo anterior rodou a simulação e deixou o navegador no cenário.
+await a.goto(`${B}/plan`, { waitUntil: 'networkidle' })
+await a.locator('button:has-text("+ Trabalho")').waitFor({ timeout: 60000 })
+await a.locator('button:has-text("+ Trabalho")').click()
+const dialog = a.locator('[role="dialog"][aria-label="Onde fica?"]')
+await dialog.waitFor({ timeout: 10000 })
+await dialog.locator('button:has-text("Escolher no mapa")').click()
+
+const mapPick = a.locator('[role="dialog"][aria-label="Escolher no mapa"]')
+await mapPick.waitFor({ timeout: 15000 })
+await a.locator('.wv2-mappick-map canvas').waitFor({ timeout: 20000 })
+await a.waitForTimeout(2500)
+
+// A mira é fixa: arrastar o mapa muda o ponto escolhido. Se as coordenadas não
+// mudarem com o arrasto, a mira não está lendo o centro da câmera.
+const before = await mapPick.locator('.coords').innerText()
+const box = await a.locator('.wv2-mappick-map').boundingBox()
+await a.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+await a.mouse.down()
+await a.mouse.move(box.x + box.width / 2 - 90, box.y + box.height / 2 - 60, { steps: 12 })
+await a.mouse.up()
+await a.waitForTimeout(1200)
+const after = await mapPick.locator('.coords').innerText()
+
+await mapPick.locator('button:has-text("Usar este ponto")').click()
+await mapPick.waitFor({ state: 'detached', timeout: 10000 })
+const marked = await dialog.locator('text=Ponto marcado').count()
+await dialog.locator('label:has-text("Como a família chama") input').fill('Escritório')
+await dialog.locator('button:has-text("Confirmar")').click()
+await dialog.waitFor({ state: 'detached', timeout: 10000 })
+await a.locator('button:has-text("Salvar plano")').click()
+await a.waitForTimeout(4000)
+
+const work = await admin(`/rest/v1/family_plan_waypoints?plan_id=eq.${v1?.[0]?.id}&kind=eq.work&select=name,lat,lng`).then(r => r.json())
+before !== after && marked && work?.[0]?.name === 'Escritório'
+  ? ok('ponto escolhido no mapa pela mira', `${before} → ${after}`)
+  : no('escolha no mapa falhou', `mudou=${before !== after} confirmou=${marked} gravou=${JSON.stringify(work)}`)
+
+// ── 11. sem rede, o plano continua legível (doc 18 §13) ───────────────────────
 await b.reload({ waitUntil: 'networkidle' })
 await b.waitForTimeout(2500)          // garante que a cópia local foi gravada
 await bctx.setOffline(true)

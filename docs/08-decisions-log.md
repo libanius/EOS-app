@@ -4,6 +4,54 @@
 
 ---
 
+## D-076 — Endereço se escolhe no mapa, e satélite não depende de chave
+
+**Date**: 2026-07-31
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: Usando o plano de verdade, o dono trouxe três coisas:
+
+1. Buscar endereço não resolve o caso dele — mora num condomínio onde **vários
+   prédios dividem o mesmo número**. O geocoder devolve um ponto só, e "o ponto
+   de encontro é no bloco C" não cabe num resultado de busca.
+2. **"Usar minha posição" não fazia nada** ao ser apertado.
+3. Só existia mapa preto; ele precisa do detalhe de satélite para se orientar.
+
+**Decision**:
+
+1. **Escolher no mapa, com mira fixa no centro** (`MapPointPicker`). A mira não
+   se move e o mapa desliza por baixo — mais preciso que tocar num alvo, porque
+   no zoom de um telhado o dedo cobre justamente o pixel que se quer enxergar. É
+   o padrão de todo app de entrega, então já é conhecido. Abre em satélite por
+   padrão: é a camada que distingue prédios.
+2. **Satélite sem chave, via ESRI World Imagery** + camada de referência para os
+   nomes de rua (imagem sem rótulo é bonita e inútil para achar endereço). O
+   MapTiler resolveria com uma linha, mas exige `NEXT_PUBLIC_MAPTILER_KEY`, que
+   não está configurada — e deixar o produto pior por causa de uma conta que
+   ninguém abriu não se justifica. A atribuição do ESRI vai em cada fonte, como
+   os termos exigem.
+3. **Orbe de camadas** no grupo de controles do mapa, com a escolha guardada no
+   aparelho. O `WorldV2` passava `mapBase="dark"` **cravado** — era essa linha, e
+   não a falta de suporte, que prendia o dashboard no preto.
+4. **O botão de posição passa a falar.** Ele tinha `() => {}` como tratador de
+   erro: GPS negado, expirado ou indisponível produziam silêncio absoluto, e o
+   único retorno de sucesso era uma linha pequena de coordenadas fácil de não
+   ver. Agora há estado de espera, confirmação explícita ("Ponto marcado", com a
+   precisão em metros) e um motivo nomeado para cada falha — sempre oferecendo a
+   escolha no mapa como saída.
+
+**Consequences**: é a terceira vez nesta sequência que a causa raiz é a mesma —
+**a tela não dizia o que estava acontecendo**. Ver [[D-075]] (cache servindo dado
+velho como novo) e a distância que sumia sem explicação. O `catch` vazio e o
+tratador de erro vazio entraram na lista de coisas a procurar em revisão.
+
+Verificado em navegador: `npm run test:plan` 12/12, incluindo arrastar o mapa e
+provar que a coordenada muda com a mira; e uma checagem à parte confirmou 58
+tiles do ESRI carregando após tocar o orbe, com a preferência sobrevivendo ao
+recarregamento.
+
+---
+
 ## D-075 — O App Router não registrava service worker nenhum; e o plano tem cópia própria
 
 **Date**: 2026-07-30

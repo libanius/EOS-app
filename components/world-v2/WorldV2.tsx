@@ -25,6 +25,7 @@ import PilotBar from './PilotBar'
 import MemberSheet from './MemberSheet'
 import type { PilotContext } from './pilot-engine'
 import type { ShelterSnapshot } from '@/lib/world/shelters'
+import type { MapBaseMode } from '@/lib/world/providers'
 import { Bar, Card, IconButton, Pill, PillLink, SectionLabel, Tile, TileGrid } from './primitives'
 import { SPRING } from './motion'
 import { useCircleFamily } from './useCircleFamily'
@@ -63,6 +64,10 @@ const COPY = {
     useGps: 'Usar GPS',
     gpsCap: 'Você',
     refreshCap: 'Atualizar',
+    layerToSat: 'Ver imagem de satélite',
+    layerToDark: 'Voltar ao mapa escuro',
+    satCap: 'Satélite',
+    darkCap: 'Camadas',
     panelCap: 'Painel',
     refresh: 'Atualizar dados',
     panel: 'Mostrar ou ocultar o painel',
@@ -114,6 +119,10 @@ const COPY = {
     useGps: 'Use GPS',
     gpsCap: 'You',
     refreshCap: 'Refresh',
+    layerToSat: 'Show satellite imagery',
+    layerToDark: 'Back to the dark map',
+    satCap: 'Satellite',
+    darkCap: 'Layers',
     panelCap: 'Panel',
     refresh: 'Refresh data',
     panel: 'Show or hide the panel',
@@ -158,6 +167,26 @@ export default function WorldV2() {
   const [pilotOpen, setPilotOpen] = useState(false)
   const [pilotAsk, setPilotAsk] = useState<{ text: string; nonce: number } | null>(null)
   const [recenterNonce, setRecenterNonce] = useState(0)
+
+  /**
+   * Camada do mapa. Escuro é o padrão operacional; satélite existe porque o
+   * traço de rua não distingue prédios de um mesmo condomínio, e a imagem sim.
+   * A escolha fica no aparelho: é preferência de leitura, não dado de conta.
+   */
+  const [mapBase, setMapBase] = useState<MapBaseMode>('dark')
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('eos-map-base')
+      if (stored === 'dark' || stored === 'satellite') setMapBase(stored)
+    } catch { /* private mode */ }
+  }, [])
+  const cycleBase = () => {
+    setMapBase(current => {
+      const next: MapBaseMode = current === 'dark' ? 'satellite' : 'dark'
+      try { localStorage.setItem('eos-map-base', next) } catch { /* private mode */ }
+      return next
+    })
+  }
   const [tappedMember, setTappedMember] = useState<string | null>(null)
   const familyRaw = useCircleFamily(language === 'pt', coords, avatarUrl)
   // A failed instrument must actually be blind, not quietly still working.
@@ -274,10 +303,10 @@ export default function WorldV2() {
         <WorldMap
           state={state}
           plateUrl="/world/parkland.webp"
-          mapBase="dark"
           family={family}
           courseTo={course}
           recenterNonce={recenterNonce}
+          mapBase={mapBase}
           onMemberTap={setTappedMember}
           shelters={(shelterSnapshot?.shelters ?? []).map(s => ({ id: s.id, name: s.name, lat: s.lat, lng: s.lng, distanceKm: s.distanceKm }))}
           onMapInteraction={() => setDetent('peek')}
@@ -320,6 +349,14 @@ export default function WorldV2() {
           </IconButton>
           <IconButton label={c.refresh} caption={c.refreshCap} onClick={() => { refresh(); data.refresh() }}>
             <RefreshIcon />
+          </IconButton>
+          <IconButton
+            label={mapBase === 'satellite' ? c.layerToDark : c.layerToSat}
+            caption={mapBase === 'satellite' ? c.satCap : c.darkCap}
+            active={mapBase === 'satellite'}
+            onClick={cycleBase}
+          >
+            <LayersIcon />
           </IconButton>
           {isDesktop && (
             <IconButton label={c.panel} caption={c.panelCap} active={panelOpen} onClick={() => setPanelOpen(open => !open)}>
@@ -588,6 +625,17 @@ function WorldSections({
 }
 
 /* ── Icons ────────────────────────────────────────────────────────────────── */
+
+/** Camadas empilhadas — a metáfora que todo app de mapa usa para base layer. */
+function LayersIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" aria-hidden="true">
+      <path d="M12 3 3 7.5l9 4.5 9-4.5L12 3Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+      <path d="M3 12.5 12 17l9-4.5" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+      <path d="M3 17 12 21.5 21 17" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" opacity="0.55" />
+    </svg>
+  )
+}
 
 function LocationIcon() {
   return (

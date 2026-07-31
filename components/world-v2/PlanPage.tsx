@@ -40,6 +40,7 @@ import {
   type PlanWaypoint,
   type WaypointKind,
 } from '@/lib/family-plan'
+import MapPointPicker from './MapPointPicker'
 import PlanChart from './PlanChart'
 import RouteDraw, { routeSummary } from './RouteDraw'
 import { Card, Pill, SectionLabel } from './primitives'
@@ -99,6 +100,14 @@ const COPY = {
     triggersPending: 'A seção de gatilhos espera uma migração no banco. O resto do plano funciona normalmente.',
     pickTitle: 'Onde fica?',
     useMyPosition: 'Usar minha posição',
+    locating: 'Buscando o GPS…',
+    pickOnMap: 'Escolher no mapa',
+    gotPoint: 'Ponto marcado',
+    roughFix: 'sinal fraco; confira no mapa',
+    geoDenied: 'O navegador bloqueou a localização. Libere o acesso nas permissões do site e tente de novo — ou escolha no mapa.',
+    geoTimeout: 'O GPS demorou demais. Perto de janela costuma pegar mais rápido, ou escolha no mapa.',
+    geoFailed: 'Não consegui a posição agora. Escolha no mapa.',
+    geoUnsupported: 'Este navegador não dá acesso ao GPS. Escolha no mapa.',
     positionHint: 'O jeito mais preciso — se você estiver no local agora. Buscar o endereço funciona de qualquer lugar.',
     searchPlaceholder: 'Buscar endereço ou lugar',
     search: 'Buscar',
@@ -172,6 +181,14 @@ const COPY = {
     triggersPending: 'The triggers section is waiting on a database migration. The rest of the plan works normally.',
     pickTitle: 'Where is it?',
     useMyPosition: 'Use my position',
+    locating: 'Getting GPS…',
+    pickOnMap: 'Pick on the map',
+    gotPoint: 'Point marked',
+    roughFix: 'weak signal; check it on the map',
+    geoDenied: 'The browser blocked location. Allow it in the site permissions and try again — or pick on the map.',
+    geoTimeout: 'GPS took too long. Near a window usually helps, or pick on the map.',
+    geoFailed: 'Could not get a position right now. Pick on the map.',
+    geoUnsupported: 'This browser gives no GPS access. Pick on the map.',
     positionHint: 'The most precise way — if you are there right now. Searching the address works from anywhere.',
     searchPlaceholder: 'Search an address or place',
     search: 'Search',
@@ -789,6 +806,7 @@ export default function PlanPage() {
 
       <PointPicker
         target={picker}
+        pt={pt}
         copy={c}
         existing={picker ? waypoints.find(w => w.kind === picker.kind) ?? null : null}
         onClose={() => setPicker(null)}
@@ -811,12 +829,14 @@ export default function PlanPage() {
  */
 function PointPicker({
   target,
+  pt,
   copy,
   existing,
   onClose,
   onConfirm,
 }: {
   target: PickerTarget | null
+  pt: boolean
   copy: typeof COPY['pt'] | typeof COPY['en']
   existing: PlanWaypoint | null
   onClose: () => void
@@ -830,6 +850,10 @@ function PointPicker({
   const [point, setPoint] = useState<{ lat: number; lng: number } | null>(null)
   const [name, setName] = useState('')
   const [notes, setNotes] = useState('')
+  const [geoBusy, setGeoBusy] = useState(false)
+  const [geoError, setGeoError] = useState<string | null>(null)
+  const [accuracy, setAccuracy] = useState<number | null>(null)
+  const [onMap, setOnMap] = useState(false)
 
   useEffect(() => {
     if (!target) return
@@ -839,6 +863,9 @@ function PointPicker({
     setPoint(existing ? { lat: existing.lat, lng: existing.lng } : null)
     setName(existing?.name ?? '')
     setNotes(existing?.notes ?? '')
+    setGeoBusy(false)
+    setGeoError(null)
+    setAccuracy(null)
   }, [target, existing])
 
   const runSearch = async () => {
@@ -856,15 +883,41 @@ function PointPicker({
     }
   }
 
+  /**
+   * "Usar minha posição" não dava sinal nenhum: sem estado de espera, sem erro,
+   * e o único retorno era uma linha pequena de coordenadas que passa
+   * despercebida. Quem apertava concluía, com razão, que o botão estava quebrado
+   * — e quando o GPS negava ou expirava, o `catch` vazio garantia silêncio.
+   *
+   * Agora o botão diz que está buscando, confirma quando consegue, e nomeia o
+   * motivo quando não consegue.
+   */
   const useMyPosition = () => {
-    if (typeof navigator === 'undefined' || !navigator.geolocation) return
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      setGeoError(copy.geoUnsupported)
+      return
+    }
+    setGeoBusy(true)
+    setGeoError(null)
     navigator.geolocation.getCurrentPosition(
       position => {
         haptic.selection()
+        setGeoBusy(false)
         setPoint({ lat: position.coords.latitude, lng: position.coords.longitude })
+        setAccuracy(position.coords.accuracy ?? null)
       },
-      () => {},
-      { enableHighAccuracy: true, timeout: 15000 },
+      error => {
+        setGeoBusy(false)
+        setAccuracy(null)
+        setGeoError(
+          error.code === error.PERMISSION_DENIED
+            ? copy.geoDenied
+            : error.code === error.TIMEOUT
+              ? copy.geoTimeout
+              : copy.geoFailed,
+        )
+      },
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 },
     )
   }
 
@@ -893,8 +946,14 @@ function PointPicker({
           >
             <strong className="t-title2">{copy.pickTitle}</strong>
 
-            <Pill onClick={useMyPosition}>{copy.useMyPosition}</Pill>
+            <div className="wv2-picker-ways">
+              <Pill onClick={useMyPosition} disabled={geoBusy}>
+                {geoBusy ? copy.locating : copy.useMyPosition}
+              </Pill>
+              <Pill onClick={() => setOnMap(true)}>{copy.pickOnMap}</Pill>
+            </div>
             <p className="t-foot ink-3">{copy.positionHint}</p>
+            {geoError && <p className="t-foot warn" role="status">{geoError}</p>}
 
             <form
               className="wv2-picker-search"
@@ -934,8 +993,10 @@ function PointPicker({
             )}
 
             {point && (
-              <p className="t-foot ink-3">
-                {point.lat.toFixed(5)}, {point.lng.toFixed(5)}
+              <p className="t-foot ok" role="status">
+                {copy.gotPoint} · {point.lat.toFixed(5)}, {point.lng.toFixed(5)}
+                {accuracy !== null && ` · ±${Math.round(accuracy)} m`}
+                {accuracy !== null && accuracy > 40 && ` — ${copy.roughFix}`}
               </p>
             )}
 
@@ -969,6 +1030,19 @@ function PointPicker({
               </Pill>
             </div>
           </motion.section>
+
+          <MapPointPicker
+            open={onMap}
+            pt={pt}
+            start={point}
+            onClose={() => setOnMap(false)}
+            onPick={picked => {
+              setPoint(picked)
+              setAccuracy(null)
+              setGeoError(null)
+              setOnMap(false)
+            }}
+          />
         </>
       )}
     </AnimatePresence>
