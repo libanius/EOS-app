@@ -19,7 +19,7 @@
  * para a mesma coisa.
  */
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { useLanguage } from '@/lib/i18n'
 import { useRisk } from '@/components/v2/RiskProvider'
@@ -45,6 +45,31 @@ export default function PilotDock() {
   const simulation = useSimulation()
 
   const [open, setOpen] = useState(false)
+
+  /**
+   * Onde o orbe fica, decidido pelo usuário (D-079).
+   *
+   * Um botão fixo num canto atrapalha alguém: canhoto, tela grande, lista cujo
+   * conteúdo importante mora justamente ali. Em vez de eu escolher o canto certo
+   * — que não existe —, ele é arrastável e fica onde for solto.
+   *
+   * Guardado em fração da tela, não em pixels: o mesmo aparelho girado, ou uma
+   * janela redimensionada, jogaria um valor em pixels para fora da vista.
+   */
+  const [spot, setSpot] = useState<{ x: number; y: number } | null>(null)
+  const [dragging, setDragging] = useState(false)
+  const orbRef = useRef<HTMLButtonElement | null>(null)
+  const dragState = useRef<{ id: number; dx: number; dy: number; moved: boolean } | null>(null)
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('eos-pilot-orb')
+      if (stored) {
+        const parsed = JSON.parse(stored) as { x: number; y: number }
+        if (Number.isFinite(parsed?.x) && Number.isFinite(parsed?.y)) setSpot(parsed)
+      }
+    } catch { /* private mode ou valor velho */ }
+  }, [])
   const [loaded, setLoaded] = useState(false)
   const [extra, setExtra] = useState<{
     household: PilotContext['household']
@@ -110,6 +135,62 @@ export default function PilotDock() {
 
   if (HAS_OWN_PILOT.some(route => pathname?.startsWith(route))) return null
 
+  const SIZE = 56
+  const MARGIN = 12
+
+  const onPointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect()
+    dragState.current = {
+      id: event.pointerId,
+      // Respeita ONDE o dedo pegou: puxar para o centro do botão no primeiro
+      // movimento é o salto que denuncia um arrasto mal feito.
+      dx: event.clientX - rect.left,
+      dy: event.clientY - rect.top,
+      moved: false,
+    }
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }
+
+  const onPointerMove = (event: React.PointerEvent<HTMLButtonElement>) => {
+    const drag = dragState.current
+    if (!drag || drag.id !== event.pointerId) return
+    const left = event.clientX - drag.dx
+    const top = event.clientY - drag.dy
+    // Histerese: sem ela, o tremor natural do dedo transformaria todo toque em
+    // arrasto e o orbe nunca abriria o Pilot.
+    if (!drag.moved) {
+      const rect = event.currentTarget.getBoundingClientRect()
+      if (Math.abs(left - rect.left) + Math.abs(top - rect.top) < 8) return
+      drag.moved = true
+      setDragging(true)
+    }
+    const maxX = window.innerWidth - SIZE - MARGIN
+    const maxY = window.innerHeight - SIZE - MARGIN
+    setSpot({
+      x: Math.min(Math.max(left, MARGIN), Math.max(MARGIN, maxX)) / window.innerWidth,
+      y: Math.min(Math.max(top, MARGIN), Math.max(MARGIN, maxY)) / window.innerHeight,
+    })
+  }
+
+  const onPointerUp = () => {
+    const drag = dragState.current
+    dragState.current = null
+    setDragging(false)
+    if (!drag) return
+    if (drag.moved) {
+      haptic.selection()
+      try { localStorage.setItem('eos-pilot-orb', JSON.stringify(spot)) } catch { /* private mode */ }
+      return
+    }
+    // Não houve arrasto: foi um toque, e toque abre o Pilot.
+    haptic.impact()
+    setOpen(true)
+  }
+
+  const placement = spot
+    ? { left: `${(spot.x * 100).toFixed(2)}%`, top: `${(spot.y * 100).toFixed(2)}%`, right: 'auto', bottom: 'auto' }
+    : undefined
+
   const days = (value: number | null | undefined) => (typeof value === 'number' ? value : 0)
 
   const ctx: PilotContext = {
@@ -146,14 +227,33 @@ export default function PilotDock() {
 
   return (
     <>
+      {/*
+        O MESMO orbe da PilotBar — as estrelinhas. Duas formas diferentes para a
+        mesma coisa fariam a pessoa aprender o produto duas vezes.
+      */}
       <button
+        ref={orbRef}
         type="button"
-        className="wv2-dock-orb"
+        className={`wv2-dock-orb${dragging ? ' dragging' : ''}`}
         data-state={risk.state}
-        aria-label={pt ? 'Abrir o Pilot, seu especialista EOS' : 'Open the Pilot, your EOS specialist'}
-        onClick={() => { haptic.impact(); setOpen(true) }}
+        style={placement}
+        aria-label={pt ? 'Abrir o Pilot, seu especialista EOS. Arraste para mover.' : 'Open the Pilot, your EOS specialist. Drag to move.'}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
       >
-        <span className="core" aria-hidden="true" />
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path
+            d="M12 3c.5 3.6 1.9 5 5.5 5.5-3.6.5-5 1.9-5.5 5.5-.5-3.6-1.9-5-5.5-5.5C10.1 8 11.5 6.6 12 3Z"
+            fill="currentColor"
+          />
+          <path
+            d="M17.8 14.5c.28 2 1.05 2.77 3.05 3.05-2 .28-2.77 1.05-3.05 3.05-.28-2-1.05-2.77-3.05-3.05 2-.28 2.77-1.05 3.05-3.05Z"
+            fill="currentColor"
+            opacity="0.72"
+          />
+        </svg>
       </button>
 
       {/*
@@ -165,7 +265,7 @@ export default function PilotDock() {
         páginas — o app inteiro ficou preto menos as duas telas que já tinham
         casca própria. O portal mantém as variáveis e devolve o layout.
       */}
-      <div className="wv2 wv2-portal" data-risk={risk.state}>
+      <div className="wv2 wv2-portal" data-risk={risk.state} data-eos-pilot-dock="">
         <Pilot
           ctx={ctx}
           online={!risk.error}

@@ -2,7 +2,8 @@
  * As capacidades do Pilot, com navegador e modelo REAIS (D-079).
  *
  *   0. NENHUMA página fica coberta pelo Pilot — a regressão que ele causou
- *   1. o orbe existe fora do dashboard — o Pilot deixou de morar numa tela só
+ *   1. o orbe existe fora do dashboard, e pode ser ARRASTADO para onde a pessoa
+ *      quiser, ficando lá depois de recarregar
  *   2. ele responde sobre o CLIMA AO VIVO sem dizer que não enxerga
  *   3. ele enxerga o ciclone ativo, e diz se aquilo afeta a pessoa
  *   4. "vou trabalhar no telhado" vira ANÁLISE: veredito, motivo com números,
@@ -84,7 +85,11 @@ for (const rota of TELAS) {
     // Quem está no ponto central da tela? Se for um contêiner do Pilot, a página
     // está atrás de uma cortina.
     const meio = document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 2)
-    const dentroDoPortal = Boolean(meio?.closest('.wv2-portal'))
+    // Marcador ESTÁVEL, não a classe de estilo: a primeira versão procurava
+    // `.wv2-portal`, que só existe na versão CORRIGIDA — então o controle
+    // negativo passou com o bug de volta. Um guarda que não pega o defeito que
+    // motivou sua existência é pior que nenhum: dá confiança falsa.
+    const dentroDoPortal = Boolean(meio?.closest('[data-eos-pilot-dock]'))
     const texto = (document.body.innerText ?? '').trim().length
     return { dentroDoPortal, texto, tag: meio?.className ?? '' }
   })
@@ -102,6 +107,35 @@ const temOrbe = await orbe.count()
 temOrbe === 1
   ? ok('o Pilot é alcançável fora do dashboard')
   : no('orbe ausente fora do dashboard', `encontrados=${temOrbe}`)
+
+// O orbe é arrastável: um canto fixo atrapalha alguém, e não existe canto certo.
+if (temOrbe === 1) {
+  const antesBox = await orbe.boundingBox()
+  await page.mouse.move(antesBox.x + antesBox.width / 2, antesBox.y + antesBox.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(60, 220, { steps: 14 })
+  await page.mouse.up()
+  await page.waitForTimeout(600)
+  const depoisBox = await orbe.boundingBox()
+  const moveu = Math.abs(depoisBox.x - antesBox.x) > 40 || Math.abs(depoisBox.y - antesBox.y) > 40
+
+  // E fica onde foi deixado: mover e o app esquecer é pior que não deixar mover.
+  await page.reload({ waitUntil: 'networkidle' })
+  await page.waitForTimeout(2500)
+  const depoisReload = await page.locator('.wv2-dock-orb').boundingBox()
+  const lembrou = depoisReload && Math.abs(depoisReload.x - depoisBox.x) < 12 && Math.abs(depoisReload.y - depoisBox.y) < 12
+
+  moveu && lembrou
+    ? ok('o orbe é arrastável e fica onde foi deixado', `${Math.round(antesBox.x)},${Math.round(antesBox.y)} → ${Math.round(depoisBox.x)},${Math.round(depoisBox.y)}`)
+    : no('arrasto do orbe falhou', `moveu=${moveu} lembrou=${lembrou}`)
+
+  // O toque simples continua abrindo o Pilot — o arrasto não pode roubar o clique.
+  await page.locator('.wv2-dock-orb').click()
+  await page.waitForTimeout(1200)
+  const abriu = await page.locator('.wv2-pilot-chat').count()
+  abriu === 1 ? ok('tocar no orbe ainda abre o Pilot') : no('o arrasto comeu o toque', `chats=${abriu}`)
+  await page.keyboard.press('Escape').catch(() => {})
+}
 
 // E não deve haver DOIS caminhos para a mesma coisa no dashboard.
 await page.goto(`${B}/dashboard`, { waitUntil: 'networkidle' })

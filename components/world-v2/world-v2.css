@@ -2890,21 +2890,19 @@
   cursor: pointer;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
 }
-.wv2-dock-orb .core {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 32% 30%, #fff, var(--dock-accent, #30d158) 62%);
-  box-shadow: 0 0 16px var(--dock-accent, #30d158);
-}
+.wv2-dock-orb { color: var(--dock-accent, #30d158); touch-action: none; }
+.wv2-dock-orb svg { filter: drop-shadow(0 0 8px var(--dock-accent, #30d158)); }
+/* Enquanto arrasta, o orbe cresce um pouco e perde a sombra de repouso: a
+   pessoa precisa ver que ele saiu do lugar, não só que o dedo se moveu. */
+.wv2-dock-orb.dragging { transform: scale(1.12); box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6); cursor: grabbing; }
 .wv2-dock-orb[data-state='safe']     { --dock-accent: #30d158; }
 .wv2-dock-orb[data-state='watch']    { --dock-accent: #ffd60a; }
 .wv2-dock-orb[data-state='warning']  { --dock-accent: #ff9f0a; }
 .wv2-dock-orb[data-state='critical'] { --dock-accent: #ff453a; }
 /* Só o estado crítico pulsa: se tudo pulsa, nada chama atenção. */
-.wv2-dock-orb[data-state='critical'] .core { animation: eos-alert-pulse 1.6s ease-in-out infinite; }
+.wv2-dock-orb[data-state='critical'] svg { animation: eos-alert-pulse 1.6s ease-in-out infinite; border-radius: 50%; }
 
-@media (prefers-reduced-motion: reduce) { .wv2-dock-orb .core { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .wv2-dock-orb svg { animation: none; } .wv2-dock-orb.dragging { transform: none; } }
 @media (prefers-reduced-transparency: reduce) { .wv2-dock-orb { background: #121216; backdrop-filter: none; } }
 
 /* ── Portal de tokens (D-079) ──

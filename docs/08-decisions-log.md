@@ -121,6 +121,20 @@ aprovou.
    Água e checklist não entram; ninguém deixa de subir no telhado porque tem
    pouca água guardada. E não se veta sem um número que justifique.
 
+**O orbe é o mesmo, e é do usuário.** Mesma estrela da PilotBar — duas formas
+diferentes para a mesma coisa fariam aprender o produto duas vezes. E ele é
+**arrastável**: um canto fixo atrapalha alguém (canhoto, tela grande, lista cujo
+conteúdo importante mora ali), e não existe canto certo para eu escolher. A
+posição é guardada em fração da tela, não em pixels, senão girar o aparelho
+jogaria o orbe para fora da vista. Histerese de 8 px separa toque de arrasto, e
+o arrasto respeita onde o dedo pegou.
+
+**Regressão que eu causei e que foi para produção**: envolvi o Pilot num `.wv2`
+só para herdar as cores. `.wv2` é a CASCA do dashboard — fixed, inset 0, fundo
+preto —, então o app inteiro ficou preto menos o dashboard e a Família, que já
+têm casca própria. `wv2-portal` mantém os tokens e devolve o layout. Ver
+[[.wv2 é a CASCA do dashboard]].
+
 **Consequences**: `scripts/pilot-abilities-test.mjs` (`npm run test:pilot`)
 exercita o MODELO de verdade — o defeito relatado não é reproduzível sem ele. O
 teste custa tokens e é mais lento, e vale: foi ele que pegou os itens 4 e 6.
