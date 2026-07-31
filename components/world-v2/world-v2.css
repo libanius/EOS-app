@@ -2665,3 +2665,38 @@
   overflow-wrap: anywhere;
 }
 .wv2-alertlist button:hover, .wv2-alertlist button:focus-visible { border-color: rgba(var(--accent-rgb), 0.5); }
+
+/* ── O evento climático pulsa na cor do risco ──
+   A cor que diz "quão ruim está" no topo da tela é a mesma que marca ONDE isso
+   está acontecendo. Duas superfícies, um vocabulário — a conexão se faz sem
+   legenda. */
+.wv2 .w-mapmarker.alerting .lab {
+  color: var(--accent-ink);
+  background: var(--accent);
+  border-color: var(--accent);
+  font-weight: 700;
+  animation: eos-alert-pulse 1.8s ease-in-out infinite;
+}
+.wv2 .w-mapmarker.alerting .pin { background: var(--accent); box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.25); }
+
+/* O item tocado na lista pulsa junto: é o mesmo evento nas duas telas. */
+.wv2-alertlist button.showing {
+  border-color: var(--accent);
+  animation: eos-alert-pulse 1.8s ease-in-out infinite;
+}
+.wv2-alertlist button.showing .t-body { color: var(--accent); font-weight: 650; }
+
+@keyframes eos-alert-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(var(--accent-rgb), 0.55); }
+  50%      { box-shadow: 0 0 0 10px rgba(var(--accent-rgb), 0); }
+}
+
+/* Pulso é informação, não decoração: sem movimento, a mesma coisa é dita por
+   contorno permanente. Nada se perde. */
+@media (prefers-reduced-motion: reduce) {
+  .wv2 .w-mapmarker.alerting .lab,
+  .wv2-alertlist button.showing {
+    animation: none;
+    box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.5);
+  }
+}

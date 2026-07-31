@@ -39,6 +39,13 @@ responde num olhar.
    vento e família no mesmo mapa é a diferença entre ler e não ler. Ciclone fica
    ligado por padrão: "existe um furacão vindo" não é informação opcional.
 
+**O evento pulsa na cor do risco.** Pedido do dono, e é a decisão de design mais
+barata desta feature: a cor que diz *quão ruim está* no topo da tela passa a
+marcar *onde isso está acontecendo*. Dois lugares, um vocabulário — a ligação se
+faz sem legenda nenhuma. O item tocado na lista pulsa junto, então fica claro
+qual dos alertas está no mapa. Com `prefers-reduced-motion`, o pulso vira
+contorno permanente: a informação é a cor, não o movimento.
+
 **Consequences**: dois defeitos que só um teste de RENDERIZAÇÃO pega:
 
 - a primeira versão das setas usava o caractere `➤` num `text-field`. Os dados
@@ -53,9 +60,14 @@ Por isso `scripts/weather-layers-test.mjs` (`npm run test:weather`) pergunta ao
 MapLibre **o que ele renderizou**, não o que foi entregue à fonte. A primeira
 versão do teste lia `_data` e teria passado com a camada invisível.
 
-O teste usa dado AO VIVO de propósito, e trata "nenhum ciclone ativo" e "nenhum
-alerta na região" como respostas corretas em vez de falhas — na maior parte do
-ano é exatamente isso que o mundo devolve.
+O teste usa dado AO VIVO de propósito, e trata "nenhum ciclone ativo" como
+resposta correta em vez de falha — na maior parte do ano é isso que o mundo
+devolve.
+
+Para os alertas ele vai além: **procura** no feed do NWS uma região que tenha
+alerta agora e roda lá. Parkland quase nunca tem um, e um teste que só exercita o
+caminho quando o tempo colabora não testa nada na maior parte do ano. Continua
+sendo dado real — só não é o do quintal do dono.
 
 ---
 

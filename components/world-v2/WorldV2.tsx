@@ -219,11 +219,13 @@ export default function WorldV2() {
    * O nonce faz o mapa reagir mesmo quando se toca duas vezes no mesmo alerta —
    * sem ele, o segundo toque não mudaria estado e pareceria quebrado.
    */
-  const [focus, setFocus] = useState<{ lat: number; lng: number; label: string; nonce: number } | null>(null)
-  const showOnMap = (alert: { lat: number; lng: number; title: string }) => {
+  const [focus, setFocus] = useState<{ lat: number; lng: number; label: string; nonce: number; kind?: 'place' | 'alert' } | null>(null)
+  const [activeAlertId, setActiveAlertId] = useState<string | null>(null)
+  const showOnMap = (alert: { id: string; lat: number; lng: number; title: string }) => {
     haptic.impact()
     setDetent('peek')
-    setFocus({ lat: alert.lat, lng: alert.lng, label: alert.title, nonce: Date.now() })
+    setActiveAlertId(alert.id)
+    setFocus({ lat: alert.lat, lng: alert.lng, label: alert.title, nonce: Date.now(), kind: 'alert' })
   }
 
   /**
@@ -348,6 +350,7 @@ export default function WorldV2() {
       headlines={headlines}
       locatedAlerts={locatedAlerts}
       onShowAlert={showOnMap}
+      activeAlertId={activeAlertId}
       hasCoords={hasCoords}
       onUseGps={requestGps}
       shelters={shelterSnapshot}
@@ -550,7 +553,9 @@ type SectionProps = {
   alertCount: number
   headlines: Array<{ id: string; headline: string }>
   locatedAlerts: Array<{ id: string; title: string; severity: string; lat: number; lng: number }>
-  onShowAlert: (alert: { lat: number; lng: number; title: string }) => void
+  onShowAlert: (alert: { id: string; lat: number; lng: number; title: string }) => void
+  /** Qual alerta está sendo mostrado no mapa agora. */
+  activeAlertId: string | null
   hasCoords: boolean
   onUseGps: () => void
   shelters: ShelterSnapshot | null
@@ -569,6 +574,7 @@ function WorldSections({
   headlines,
   locatedAlerts,
   onShowAlert,
+  activeAlertId,
   hasCoords,
   onUseGps,
   shelters,
@@ -655,7 +661,12 @@ function WorldSections({
         {locatedAlerts.length ? (
           <div className="wv2-alertlist">
             {locatedAlerts.slice(0, 4).map(alert => (
-              <button key={alert.id} type="button" onClick={() => onShowAlert(alert)}>
+              <button
+                key={alert.id}
+                type="button"
+                className={alert.id === activeAlertId ? 'showing' : ''}
+                onClick={() => onShowAlert(alert)}
+              >
                 <span className="t-body">{alert.title}</span>
                 <em className="t-foot ink-3">{c.showOnMap}</em>
               </button>

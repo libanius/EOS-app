@@ -100,6 +100,13 @@ export async function getWind(
     current?: { wind_speed_10m?: number; wind_direction_10m?: number; wind_gusts_10m?: number }
   }>
 
+  /**
+   * O Open-Meteo devolve a coordenada da CÉLULA do modelo, não a que foi pedida.
+   * Quando a grade é mais fina que o modelo, dois pontos meus caem na mesma
+   * célula — e eu desenharia duas setas idênticas, empilhadas no mesmo pixel.
+   * Não é dado errado; é ruído visual que finge densidade que não existe.
+   */
+  const seen = new Set<string>()
   const readings: WindReading[] = items
     .filter(i => typeof i.latitude === 'number' && typeof i.current?.wind_direction_10m === 'number')
     .map(i => ({
@@ -109,6 +116,12 @@ export async function getWind(
       gustKmh: typeof i.current?.wind_gusts_10m === 'number' ? Math.round(i.current.wind_gusts_10m) : null,
       fromDeg: i.current?.wind_direction_10m as number,
     }))
+    .filter(r => {
+      const key = `${r.lat.toFixed(4)},${r.lng.toFixed(4)}`
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
 
   if (!readings.length) {
     return { source: 'Open-Meteo', fetchedAt, readings: [], atUser: null, error: 'wind_empty' }

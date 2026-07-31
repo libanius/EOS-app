@@ -259,7 +259,7 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
   mapBase?: MapBaseMode
   routeFocusNonce?: number
   /** A place picked from search. `nonce` re-triggers the fly-to on re-pick. */
-  focus?: { lat: number; lng: number; label: string; nonce: number } | null
+  focus?: { lat: number; lng: number; label: string; nonce: number; kind?: 'place' | 'alert' } | null
   /**
    * A course the user asked to see: EOS draws it as a layer on its own map
    * instead of only handing off to another app (D-069). Indicative straight
@@ -866,7 +866,15 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
     ;(async () => {
       const maplibregl = (await import('maplibre-gl')).default
       if (cancelled || !mapRef.current) return
-      const el = markerEl('w-mapmarker searched', '', short(focus.label, 30))
+      // Um alerta pulsa na cor do índice de risco. É o mesmo dado dito duas
+      // vezes na mesma linguagem: a cor que diz "quão ruim está" no topo da tela
+      // é a cor que marca ONDE isso está acontecendo. Ligar as duas por cor faz
+      // a conexão sem precisar de legenda.
+      const el = markerEl(
+        `w-mapmarker searched${focus.kind === 'alert' ? ' alerting' : ''}`,
+        '',
+        short(focus.label, 30),
+      )
       searchMarkerRef.current = new maplibregl.Marker({ element: el, anchor: 'bottom' })
         .setLngLat([focus.lng, focus.lat])
         .addTo(mapRef.current)
