@@ -2161,6 +2161,39 @@
 }
 .wv2-member .presets button:active:not(:disabled) { transform: scale(0.97); }
 .wv2-member .execute-plan { margin-top: var(--s4); }
+.wv2-member .system-note {
+  margin: var(--s4) 0 0;
+  padding: var(--s3);
+  border: 1px solid rgba(255, 159, 10, 0.28);
+  border-radius: 14px;
+  background: rgba(255, 159, 10, 0.08);
+}
+.wv2-member .plan-choices {
+  display: grid;
+  gap: var(--s2);
+  margin-top: var(--s3);
+}
+.wv2-member .plan-choices button {
+  min-height: 48px;
+  padding: var(--s3);
+  border: 1px solid var(--sep);
+  border-radius: 14px;
+  background: var(--fill-2);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.wv2-member .plan-choices strong,
+.wv2-member .plan-choices em {
+  display: block;
+}
+.wv2-member .plan-choices em {
+  margin-top: 2px;
+  color: var(--ink-3);
+  font-size: 0.8125rem;
+  font-style: normal;
+}
 .wv2-member .execution-head {
   display: flex;
   align-items: flex-start;
@@ -2183,6 +2216,29 @@
   font-size: 0.875rem;
   font-weight: 700;
   cursor: pointer;
+}
+.wv2-member .execution-actions {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--s2);
+}
+.wv2-member .execution-actions .cancel,
+.wv2-member .false-alarm {
+  min-height: 44px;
+  border: 1px solid var(--sep);
+  border-radius: 14px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.wv2-member .false-alarm {
+  width: 100%;
+  margin-top: var(--s2);
+  color: #ff9f0a;
+  border-color: rgba(255, 159, 10, 0.32);
 }
 .wv2-member .execution-steps {
   display: grid;
@@ -2251,6 +2307,15 @@
   overflow: visible;
   min-height: 100dvh;
   background: #000;
+}
+.wv2-plan-switcher {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin-top: var(--s3);
+}
+.wv2-plan-switcher .wv2-chip {
+  max-width: 100%;
 }
 .wv2-plan-page .plan-scroll {
   display: flex;

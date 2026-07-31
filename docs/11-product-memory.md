@@ -27,6 +27,17 @@ derivada de `/api/plans`, com push preset ao círculo. Próxima evolução real 
 compartilhada e retomada em outro aparelho. Antes disso, não fingir auditoria
 multiusuário.
 
+Correção D-080: a primeira versão colocou "Pare e confirme a fonte" como etapa
+1, mas isso não vinha do plano editável. Isso é errado. Aviso fixo do EOS pode
+existir, mas rotulado como aviso do sistema, fora da sequência numerada. A lista
+de passos executáveis precisa vir do que a família consegue editar: gatilhos,
+papéis, pontos, rotas e notas.
+
+Também ficou claro que **um círculo tem vários planos**. "Sem luz", "sem
+celular", "evento aglomerado" e "escola" são cenários diferentes, não seções de
+um único documento. A migration `20260731000000_multiple_family_plans.sql`
+remove o índice antigo de plano ativo único.
+
 ---
 
 ## Geolocalização: `maximumAge: 0` + alta precisão é pedir para expirar (2026-07-31)

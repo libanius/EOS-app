@@ -37,6 +37,7 @@ import {
   type PlanDocument,
   type PlanRole,
   type PlanRoute,
+  type PlanSummary,
   type PlanTrigger,
   type PlanWaypoint,
   type WaypointKind,
@@ -56,6 +57,10 @@ const COPY = {
     eyebrow: 'Plano da família',
     subtitle: 'Combinado agora, seguido sem discussão depois.',
     version: 'Versão',
+    planName: 'Nome do plano',
+    planNamePlaceholder: 'Ex.: Sem celular na escola',
+    newPlan: 'Novo plano',
+    choosePlan: 'Planos deste círculo',
     synced: 'sincronizado',
     noCircle: 'Você ainda não tem um círculo.',
     noCircleHint: 'O plano pertence ao círculo — é o que faz todo mundo enxergar a mesma coisa. Crie um círculo e convide sua família.',
@@ -140,6 +145,10 @@ const COPY = {
     eyebrow: 'Family plan',
     subtitle: 'Agreed now, followed without debate later.',
     version: 'Version',
+    planName: 'Plan name',
+    planNamePlaceholder: 'e.g. No cell service at school',
+    newPlan: 'New plan',
+    choosePlan: 'Plans in this circle',
     synced: 'synced',
     noCircle: 'You do not have a circle yet.',
     noCircleHint: 'The plan belongs to the circle — that is what makes everyone see the same thing. Create a circle and invite your family.',
@@ -240,6 +249,8 @@ export default function PlanPage() {
   const [fromCache, setFromCache] = useState<string | null>(null)
 
   const [planId, setPlanId] = useState<string | null>(null)
+  const [planName, setPlanName] = useState('')
+  const [planSummaries, setPlanSummaries] = useState<PlanSummary[]>([])
   const [version, setVersion] = useState<number>(0)
   const [updatedAt, setUpdatedAt] = useState<string | null>(null)
   const [myAck, setMyAck] = useState<number | null>(null)
@@ -295,6 +306,7 @@ export default function PlanPage() {
 
   const applyDocument = useCallback((doc: PlanDocument) => {
     setPlanId(doc.plan?.id ?? null)
+    setPlanName(doc.plan?.name ?? '')
     setVersion(doc.plan?.version ?? 0)
     setUpdatedAt(doc.plan?.updated_at ?? null)
     setWaypoints(doc.waypoints ?? [])
@@ -307,12 +319,37 @@ export default function PlanPage() {
     setDirty(false)
   }, [])
 
+  const clearDocument = useCallback((name: string) => {
+    setPlanId(null)
+    setPlanName(name)
+    setVersion(0)
+    setUpdatedAt(null)
+    setWaypoints([])
+    setRoutes([])
+    setRoles([])
+    setTriggers([])
+    setAckedBy([])
+    setMyAck(null)
+    setTriggersPending(false)
+    setDirty(true)
+    setFromCache(null)
+  }, [])
+
+  const loadPlanList = useCallback(async (id: string) => {
+    const response = await fetch(`/api/plans?circleId=${id}&all=1`, { cache: 'no-store' }).catch(() => null)
+    const data = response?.ok ? ((await response.json().catch(() => null)) as { plans?: PlanSummary[] } | null) : null
+    setPlanSummaries(data?.plans ?? [])
+    return data?.plans ?? []
+  }, [])
+
   // ── the plan, network first, device second ─────────────────────────────────
-  const load = useCallback(async (id: string) => {
+  const load = useCallback(async (id: string, targetPlanId?: string | null) => {
     setLoading(true)
     setFailed(false)
     try {
-      const response = await fetch(`/api/plans?circleId=${id}`, { cache: 'no-store' })
+      const plans = await loadPlanList(id)
+      const selected = targetPlanId ?? plans[0]?.id ?? null
+      const response = await fetch(`/api/plans?circleId=${id}${selected ? `&planId=${selected}` : ''}`, { cache: 'no-store' })
       if (!response.ok) throw new Error('load')
       const doc = (await response.json()) as PlanDocument
       applyDocument(doc)
@@ -336,7 +373,7 @@ export default function PlanPage() {
     } finally {
       setLoading(false)
     }
-  }, [applyDocument])
+  }, [applyDocument, loadPlanList])
 
   useEffect(() => {
     if (!circleId) return
@@ -402,13 +439,23 @@ export default function PlanPage() {
       const response = await fetch('/api/plans', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ circleId, waypoints, routes, roles, triggers, status: 'active' }),
+        body: JSON.stringify({
+          circleId,
+          planId,
+          createNew: !planId,
+          name: planName.trim() || c.eyebrow,
+          waypoints,
+          routes,
+          roles,
+          triggers,
+          status: 'active',
+        }),
       })
       const data = await response.json().catch(() => null)
       if (!response.ok || data?.error) throw new Error(data?.error ?? 'save')
       haptic.impact()
       setMessage(c.saved)
-      await load(circleId)
+      await load(circleId, data?.planId ?? planId)
     } catch {
       setMessage(c.saveError)
     } finally {
@@ -488,6 +535,30 @@ export default function PlanPage() {
             ))}
           </div>
         )}
+
+        <div className="wv2-plan-switcher" aria-label={c.choosePlan}>
+          {planSummaries.map(plan => (
+            <button
+              key={plan.id}
+              type="button"
+              className={`wv2-chip${plan.id === planId ? ' on' : ''}`}
+              onClick={() => {
+                if (!circleId) return
+                haptic.selection()
+                void load(circleId, plan.id)
+              }}
+            >
+              {plan.name}
+            </button>
+          ))}
+          <button
+            type="button"
+            className="wv2-chip"
+            onClick={() => clearDocument(pt ? 'Novo plano' : 'New plan')}
+          >
+            + {c.newPlan}
+          </button>
+        </div>
       </header>
 
       {fromCache && (
@@ -523,6 +594,19 @@ export default function PlanPage() {
         </Card>
       ) : (
         <>
+          <SectionLabel>{c.planName}</SectionLabel>
+          <Card>
+            <input
+              className="wv2-input"
+              value={planName}
+              placeholder={c.planNamePlaceholder}
+              onChange={event => {
+                setPlanName(event.target.value)
+                setDirty(true)
+              }}
+            />
+          </Card>
+
           {gaps.length > 0 && (
             <Card className="wv2-plan-note gaps">
               <strong className="t-sub">{c.missing}</strong>

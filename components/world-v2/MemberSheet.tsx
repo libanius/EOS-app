@@ -17,7 +17,7 @@ import { distanceKm } from '@/lib/world/shelters'
 import { directionsUrl, formatDistance, walkingMinutes } from '@/lib/world/navigation'
 import { FADE, SPRING, haptic } from './motion'
 import { PING_PRESETS, type PingPreset } from '@/lib/family-ping'
-import type { PlanDocument } from '@/lib/family-plan'
+import type { PlanDocument, PlanSummary } from '@/lib/family-plan'
 import { buildPlanExecutionSteps } from '@/lib/plan-execution'
 
 export type MapMember = {
@@ -39,6 +39,7 @@ type CircleRow = { id: string; name: string; members?: CircleMember[] }
 type ExecutionState =
   | { status: 'idle' }
   | { status: 'loading' }
+  | { status: 'selecting'; circle: CircleRow; plans: PlanSummary[] }
   | { status: 'ready'; circle: CircleRow; doc: PlanDocument }
   | { status: 'empty'; message: string }
   | { status: 'error'; message: string }
@@ -108,7 +109,26 @@ export default function MemberSheet({
       return
     }
 
-    const planResponse = await fetch(`/api/plans?circleId=${circle.id}`, { cache: 'no-store' }).catch(() => null)
+    const listResponse = await fetch(`/api/plans?circleId=${circle.id}&all=1`, { cache: 'no-store' }).catch(() => null)
+    const listData = listResponse?.ok ? ((await listResponse.json().catch(() => null)) as { plans?: PlanSummary[] } | null) : null
+    const plans = listData?.plans ?? []
+    if (!plans.length) {
+      setExecution({
+        status: 'empty',
+        message: pt ? 'Este círculo ainda não tem um plano salvo.' : 'This circle does not have a saved plan yet.',
+      })
+      return
+    }
+    if (plans.length > 1) {
+      setExecution({ status: 'selecting', circle, plans })
+      return
+    }
+    await loadPlanForExecution(circle, plans[0].id)
+  }
+
+  const loadPlanForExecution = async (circle: CircleRow, planId: string) => {
+    setExecution({ status: 'loading' })
+    const planResponse = await fetch(`/api/plans?circleId=${circle.id}&planId=${planId}`, { cache: 'no-store' }).catch(() => null)
     const doc = planResponse?.ok ? ((await planResponse.json().catch(() => null)) as PlanDocument | null) : null
     if (!doc?.plan) {
       setExecution({
@@ -121,10 +141,10 @@ export default function MemberSheet({
     setExecution({ status: 'ready', circle, doc })
   }
 
-  const alertCircle = async () => {
+  const sendCirclePreset = async (preset: 'execute_plan' | 'false_alarm') => {
     if (execution.status !== 'ready') return
     haptic.impact()
-    setBroadcast(pt ? 'Enviando alerta...' : 'Sending alert...')
+    setBroadcast(pt ? 'Enviando aviso...' : 'Sending notice...')
     const targets = (execution.circle.members ?? []).filter(m => !m.is_me)
     if (!targets.length) {
       setBroadcast(pt ? 'Nenhum outro membro neste círculo.' : 'No other member in this circle.')
@@ -136,7 +156,7 @@ export default function MemberSheet({
         fetch('/api/family/ping', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ toUserId: target.user_id, preset: 'execute_plan', pt }),
+          body: JSON.stringify({ toUserId: target.user_id, preset, pt }),
         })
           .then(r => r.json())
           .catch(() => null),
@@ -152,6 +172,14 @@ export default function MemberSheet({
           ? 'Nenhum aparelho recebeu o push agora.'
           : 'No device received the push right now.',
     )
+  }
+
+  const cancelExecution = async (notify: boolean) => {
+    const current = execution
+    if (notify && current.status === 'ready') await sendCirclePreset('false_alarm')
+    setExecution({ status: 'idle' })
+    setDoneSteps(new Set())
+    setBroadcast(pt ? 'Execução cancelada.' : 'Execution cancelled.')
   }
 
   const toggleStep = (id: string) => {
@@ -267,27 +295,54 @@ export default function MemberSheet({
                 </div>
 
                 {execution.status === 'idle' && (
-                  <p className="t-foot ink-3 note">
-                    {pt
-                      ? 'O Pilot vira host: carrega a versão atual do plano, alerta o círculo e guia a ordem de ação.'
-                      : 'Pilot becomes the host: it loads the current plan, alerts the circle and guides the action order.'}
-                  </p>
+                  <>
+                    <p className="t-foot ink-3 note">
+                      {pt
+                        ? 'O Pilot vira host: carrega um plano escolhido, alerta o círculo e guia a ordem de ação.'
+                        : 'Pilot becomes the host: it loads a selected plan, alerts the circle and guides the action order.'}
+                    </p>
+                    {broadcast && <p className="t-foot ink-3 note">{broadcast}</p>}
+                  </>
                 )}
 
                 {(execution.status === 'empty' || execution.status === 'error') && (
                   <p className="t-foot warn">{execution.message}</p>
                 )}
 
+                {execution.status === 'selecting' && (
+                  <div className="plan-choices">
+                    {execution.plans.map(plan => (
+                      <button key={plan.id} type="button" onClick={() => loadPlanForExecution(execution.circle, plan.id)}>
+                        <strong>{plan.name}</strong>
+                        <em>v{plan.version}</em>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
                 {execution.status === 'ready' && (
                   <>
+                    <p className="system-note t-foot ink-3">
+                      {pt
+                        ? 'Aviso EOS, não editável no plano: em risco humano imediato, siga autoridades/escola/emergência e não se aproxime da zona de risco sem instrução oficial.'
+                        : 'EOS notice, not editable in the plan: under immediate human threat, follow authorities/school/emergency services and do not approach the risk zone without official instruction.'}
+                    </p>
                     <div className="execution-head">
                       <strong className="t-title2">{execution.doc.plan?.name ?? (pt ? 'Plano da família' : 'Family plan')}</strong>
                       <span className="t-foot ink-3">
                         {pt ? 'Host local' : 'Local host'} · v{execution.doc.plan?.version ?? '—'}
                       </span>
                     </div>
-                    <button type="button" className="broadcast" onClick={alertCircle}>
-                      {pt ? 'Alertar círculo: executar agora' : 'Alert circle: run now'}
+                    <div className="execution-actions">
+                      <button type="button" className="broadcast" onClick={() => sendCirclePreset('execute_plan')}>
+                        {pt ? 'Alertar círculo: executar agora' : 'Alert circle: run now'}
+                      </button>
+                      <button type="button" className="cancel" onClick={() => cancelExecution(false)}>
+                        {pt ? 'Cancelar' : 'Cancel'}
+                      </button>
+                    </div>
+                    <button type="button" className="false-alarm" onClick={() => cancelExecution(true)}>
+                      {pt ? 'Falso alarme: avisar e cancelar' : 'False alarm: notify and cancel'}
                     </button>
                     {broadcast && <p className="t-foot ink-3 note">{broadcast}</p>}
 

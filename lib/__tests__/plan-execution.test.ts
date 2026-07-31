@@ -19,7 +19,6 @@ describe('buildPlanExecutionSteps', () => {
     const steps = buildPlanExecutionSteps(doc, true)
 
     expect(steps.map(step => step.kind)).toEqual([
-      'safety',
       'circle',
       'trigger',
       'role',
@@ -28,10 +27,9 @@ describe('buildPlanExecutionSteps', () => {
       'route',
       'finish',
     ])
-    expect(steps[0].body).toContain('não se aproxime')
-    expect(steps[1].body).toContain('v4')
-    expect(steps[4].title).toContain('Ponto 1')
-    expect(steps[5].title).toContain('Ponto 3')
-    expect(steps[6].body).toContain('Evitar avenida.')
+    expect(steps[0].body).toContain('v4')
+    expect(steps[3].title).toContain('Ponto 1')
+    expect(steps[4].title).toContain('Ponto 3')
+    expect(steps[5].body).toContain('Evitar avenida.')
   })
 })
