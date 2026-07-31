@@ -2906,3 +2906,21 @@
 
 @media (prefers-reduced-motion: reduce) { .wv2-dock-orb .core { animation: none; } }
 @media (prefers-reduced-transparency: reduce) { .wv2-dock-orb { background: #121216; backdrop-filter: none; } }
+
+/* ── Portal de tokens (D-079) ──
+   Escopo de variáveis SEM a casca de tela cheia. `.wv2` é o shell do dashboard
+   (fixed, inset 0, fundo preto); quem só precisa das cores — o Pilot montado
+   sobre outra página — usa isto, senão pinta o app inteiro de preto. */
+.wv2.wv2-portal {
+  position: static;
+  inset: auto;
+  overflow: visible;
+  background: transparent;
+  min-height: 0;
+  height: auto;
+  width: auto;
+  contain: none;
+  pointer-events: none;
+}
+/* Os filhos (scrim e folha do Pilot) voltam a receber toque por conta própria. */
+.wv2.wv2-portal > * { pointer-events: auto; }

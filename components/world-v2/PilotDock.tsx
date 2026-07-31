@@ -156,7 +156,16 @@ export default function PilotDock() {
         <span className="core" aria-hidden="true" />
       </button>
 
-      <div className="wv2" data-risk={risk.state}>
+      {/*
+        `wv2-portal` é OBRIGATÓRIO aqui.
+
+        A classe `.wv2` sozinha é a casca do dashboard: `position: fixed`,
+        `inset: 0`, fundo preto. Ela existe para OCUPAR a tela inteira. Usá-la só
+        para herdar os tokens de cor pintou uma cortina preta sobre todas as
+        páginas — o app inteiro ficou preto menos as duas telas que já tinham
+        casca própria. O portal mantém as variáveis e devolve o layout.
+      */}
+      <div className="wv2 wv2-portal" data-risk={risk.state}>
         <Pilot
           ctx={ctx}
           online={!risk.error}

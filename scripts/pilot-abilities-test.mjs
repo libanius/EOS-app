@@ -1,6 +1,7 @@
 /**
  * As capacidades do Pilot, com navegador e modelo REAIS (D-079).
  *
+ *   0. NENHUMA página fica coberta pelo Pilot — a regressão que ele causou
  *   1. o orbe existe fora do dashboard — o Pilot deixou de morar numa tela só
  *   2. ele responde sobre o CLIMA AO VIVO sem dizer que não enxerga
  *   3. ele enxerga o ciclone ativo, e diz se aquilo afeta a pessoa
@@ -69,6 +70,29 @@ await page.fill('input[type="email"]', email)
 await page.fill('input[type="password"]', PASS)
 await page.locator('button').last().click()
 await page.waitForURL(/dashboard|ficha|onboarding/, { timeout: 30000 }).catch(() => {})
+
+// ── 0. nenhuma página coberta ───────────────────────────────────────────────
+// O dock envolvia o Pilot num `.wv2`, que é a casca do dashboard: fixed, inset 0
+// e fundo preto. Resultado: cortina preta sobre todas as telas. Este teste
+// percorre as páginas e confere que o conteúdo continua VISÍVEL e clicável.
+const TELAS = ['/checklist', '/inventory', '/circles', '/weather', '/plan', '/scenario', '/family']
+const cobertas = []
+for (const rota of TELAS) {
+  await page.goto(`${B}${rota}`, { waitUntil: 'networkidle' })
+  await page.waitForTimeout(2000)
+  const estado = await page.evaluate(() => {
+    // Quem está no ponto central da tela? Se for um contêiner do Pilot, a página
+    // está atrás de uma cortina.
+    const meio = document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 2)
+    const dentroDoPortal = Boolean(meio?.closest('.wv2-portal'))
+    const texto = (document.body.innerText ?? '').trim().length
+    return { dentroDoPortal, texto, tag: meio?.className ?? '' }
+  })
+  if (estado.dentroDoPortal || estado.texto < 40) cobertas.push(`${rota} (${estado.tag || 'vazio'})`)
+}
+cobertas.length === 0
+  ? ok('nenhuma página coberta pelo Pilot', `${TELAS.length} telas conferidas`)
+  : no('páginas cobertas por cortina', cobertas.join(' · '))
 
 // ── 1. o orbe existe fora do dashboard ──────────────────────────────────────
 await page.goto(`${B}/checklist`, { waitUntil: 'networkidle' })
