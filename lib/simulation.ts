@@ -64,6 +64,15 @@ export type SimulationConfig = {
   mobilityLimited: boolean
   medicalNeed: boolean
   reserves: ReserveLevel
+  /**
+   * Quanto o exercício deve durar, em minutos.
+   *
+   * Um treino sem hora para acabar vira estado permanente — e o EOS em simulação
+   * mostra risco simulado, autonomia simulada e um Pilot falando de um evento
+   * que não existe. Combinar a duração ANTES é o que separa um exercício de um
+   * app com o dado errado.
+   */
+  durationMin: number
   sources: SimulationSources
   values: SimulationValues
 }
@@ -73,6 +82,7 @@ export const DEFAULT_SIMULATION: SimulationConfig = {
   severity: 3,
   arrivalHours: 12,
   description: '',
+  durationMin: 30,
   powerOut: false,
   networkDown: false,
   roadsBlocked: false,

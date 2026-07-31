@@ -4,6 +4,48 @@
 
 ---
 
+## D-077 — Escrita bloqueada por RLS responde sucesso; o círculo precisa de dono de verdade
+
+**Date**: 2026-07-31
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: O dono relatou que nomear alguém Editor "não fazia nada", e que não
+conseguia editar nem excluir os círculos que criou. Reproduzido em navegador:
+
+| Ação | Resposta | Realidade |
+|---|---|---|
+| `PATCH` papel → Editor | `200 {"ok":true}` | banco continuava `Viewer` |
+| `PATCH` círculo (renomear) | `404` | rota nunca existiu |
+| `DELETE` círculo | `404` | rota nunca existiu |
+
+**A causa do primeiro é a mais perigosa das três**: o endpoint escrevia na linha
+de OUTRA pessoa usando o cliente do usuário. A RLS de `circle_members` bloqueia
+isso — e **um UPDATE bloqueado por RLS não devolve erro**. Ele afeta zero linhas
+e o Supabase responde sucesso. O endpoint então dizia `{ok:true}` sobre nada.
+
+**Decision**:
+
+1. **Escrita em linha de terceiro usa service-role, depois de checar o papel na
+   mão** — o mesmo padrão de `/api/plans`. Vale para mudar papel e remover membro.
+2. **Toda escrita confere quantas linhas mudaram.** Zero linha vira 404 com
+   mensagem, nunca `ok`. É a trava que impede a classe inteira de voltar.
+3. **`PATCH` e `DELETE /api/circles/:id` passam a existir.** Renomear é simples;
+   excluir é destrutivo e em cascata — leva membros, o plano de voo e os treinos
+   compartilhados —, então **exige o nome exato do círculo no corpo**. Não é
+   burocracia: é a diferença entre um toque errado e perder o plano que a família
+   combinou. A resposta devolve o que foi apagado, em números, para a tela poder
+   dizer o que se perdeu.
+
+**Consequences**: `scripts/circle-admin-test.mjs` (`npm run test:circle`) — 5/5.
+Toda asserção lê o BANCO depois da ação; conferir só o código HTTP teria dado
+tudo verde com o produto quebrado, que foi exatamente o que aconteceu por meses.
+
+Regra que fica para revisão: **`supabase` do usuário só escreve na própria linha.
+Qualquer escrita em linha de terceiro é service-role com checagem explícita — e
+confere linhas afetadas.**
+
+---
+
 ## D-076 — Endereço se escolhe no mapa, e satélite não depende de chave
 
 **Date**: 2026-07-31

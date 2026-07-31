@@ -125,7 +125,10 @@ const COPY = {
     responsibilityPlaceholder: 'Ex.: pega a Isadora na escola',
     condition: 'Se acontecer',
     action: 'Então',
-    suggestions: 'Sugestões',
+    suggestions: 'Sugestões prontas',
+    customTrigger: 'Escrever o meu',
+    cannotSave: 'Falta para poder salvar',
+    noChanges: 'Nada mudou desde o último salvamento.',
     loadError: 'Não foi possível carregar o plano.',
     retry: 'Tentar de novo',
     saveError: 'Não foi possível salvar. Verifique a conexão.',
@@ -206,7 +209,10 @@ const COPY = {
     responsibilityPlaceholder: 'e.g. picks up Isadora at school',
     condition: 'If this happens',
     action: 'Then',
-    suggestions: 'Suggestions',
+    suggestions: 'Ready-made suggestions',
+    customTrigger: 'Write my own',
+    cannotSave: 'Missing before you can save',
+    noChanges: 'Nothing changed since the last save.',
     loadError: 'Could not load the plan.',
     retry: 'Try again',
     saveError: 'Could not save. Check your connection.',
@@ -742,19 +748,40 @@ export default function PlanPage() {
             ))}
             {!triggersPending && (
               <>
+                <Pill
+                  onClick={() => {
+                    setDirty(true)
+                    setTriggers(list => [...list, { condition: '', action: '' }])
+                  }}
+                >
+                  + {c.customTrigger}
+                </Pill>
+
                 <p className="t-caps ink-3 sugg-label">{c.suggestions}</p>
-                <div className="wv2-plan-addrow">
-                  {TRIGGER_SUGGESTIONS.map((s, i) => (
-                    <Pill
-                      key={i}
-                      onClick={() => {
-                        setDirty(true)
-                        setTriggers(list => [...list, { ...s[pt ? 'pt' : 'en'] }])
-                      }}
-                    >
-                      + {s[pt ? 'pt' : 'en'].condition}
-                    </Pill>
-                  ))}
+                {/*
+                  Sugestões são FRASES INTEIRAS, não etiquetas. Numa pill elas
+                  estouravam a largura do telefone. Viraram uma lista de opções
+                  em bloco, que é o que uma frase pede.
+                */}
+                <div className="wv2-plan-suggestions">
+                  {TRIGGER_SUGGESTIONS.map((s, i) => {
+                    const item = s[pt ? 'pt' : 'en']
+                    const already = triggers.some(t => t.condition === item.condition)
+                    return (
+                      <button
+                        key={i}
+                        type="button"
+                        disabled={already}
+                        onClick={() => {
+                          setDirty(true)
+                          setTriggers(list => [...list, { ...item }])
+                        }}
+                      >
+                        <strong className="t-sub">{already ? '✓ ' : '+ '}{item.condition}</strong>
+                        <span className="t-foot ink-3">{item.action}</span>
+                      </button>
+                    )
+                  })}
                 </div>
               </>
             )}
@@ -784,8 +811,19 @@ export default function PlanPage() {
             </>
           )}
 
+          {/*
+            O botão ficava desabilitado sem dizer por quê, e o aviso do que
+            faltava estava lá no TOPO da página — longe demais para se conectar
+            ao botão. Quem chegava aqui achava que o salvar estava quebrado.
+            O motivo agora fica colado no botão, que é onde a pergunta nasce.
+          */}
           <div className="wv2-plan-save">
             {message && <p className={`t-foot ${message === c.saved ? 'ok' : 'warn'}`} role="status">{message}</p>}
+            {gaps.length > 0 ? (
+              <p className="t-foot warn">{c.cannotSave}: {gaps.join(' · ')}</p>
+            ) : !dirty && !saving ? (
+              <p className="t-foot ink-3">{c.noChanges}</p>
+            ) : null}
             <Pill primary wide onClick={save} disabled={saving || gaps.length > 0 || !dirty}>
               {saving ? c.saving : c.save}
             </Pill>

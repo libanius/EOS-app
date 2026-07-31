@@ -306,6 +306,49 @@ export default function CirclesPage() {
     finally { setBusy(false) }
   }, [load, t])
 
+  /**
+   * Renomear e excluir o círculo.
+   *
+   * Excluir é destrutivo e em cascata: leva membros, o plano de voo da família e
+   * os treinos compartilhados. Por isso pede o nome exato — a diferença entre um
+   * toque errado e perder o plano que a família combinou. Depois de excluir, a
+   * tela diz o que foi apagado, em números.
+   */
+  const renameCircle = useCallback(async (circleId: string, current: string) => {
+    const name = prompt('Novo nome do círculo:', current)?.trim()
+    if (!name || name === current) return
+    setBusy(true)
+    try {
+      const res = await fetch(`/api/circles/${circleId}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      })
+      const d = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(d.error ?? `HTTP ${res.status}`)
+      await load()
+    } catch (e) { setError(e instanceof Error ? e.message : t('common.error')) }
+    finally { setBusy(false) }
+  }, [load, t])
+
+  const deleteCircle = useCallback(async (circleId: string, name: string) => {
+    const typed = prompt(
+      `Excluir "${name}" apaga o círculo para todo mundo, junto com o plano da família e os treinos compartilhados. Isso não tem volta.\n\nEscreva o nome exato para confirmar:`,
+    )?.trim()
+    if (!typed) return
+    setBusy(true)
+    try {
+      const res = await fetch(`/api/circles/${circleId}`, {
+        method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirmName: typed }),
+      })
+      const d = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(d.error ?? `HTTP ${res.status}`)
+      setNotice(`"${d.deleted?.name}" excluído · ${d.deleted?.members ?? 0} membro(s), ${d.deleted?.plans ?? 0} plano(s)`)
+      await load()
+    } catch (e) { setError(e instanceof Error ? e.message : t('common.error')) }
+    finally { setBusy(false) }
+  }, [load, t])
+
   const removeMember = useCallback(async (circleId: string, userId: string) => {
     if (!confirm('Remover este membro?')) return
     setBusy(true)
@@ -501,6 +544,16 @@ export default function CirclesPage() {
                     <button onClick={() => setQrCircleId(qrCircleId === c.id ? null : c.id)} style={{ fontSize: 11, padding: '2px 8px', background: 'transparent', border: '1px solid #2a2a3a', borderRadius: 4, color: '#8a8a99', cursor: 'pointer' }}>
                       QR
                     </button>
+                    {c.is_admin && (
+                      <>
+                        <button onClick={() => renameCircle(c.id, c.name)} disabled={busy} style={{ fontSize: 11, padding: '2px 8px', background: 'transparent', border: '1px solid #2a2a3a', borderRadius: 4, color: '#8a8a99', cursor: 'pointer' }}>
+                          Renomear
+                        </button>
+                        <button onClick={() => deleteCircle(c.id, c.name)} disabled={busy} style={{ fontSize: 11, padding: '2px 8px', background: 'transparent', border: '1px solid rgba(239,68,68,0.4)', borderRadius: 4, color: '#ef4444', cursor: 'pointer' }}>
+                          Excluir
+                        </button>
+                      </>
+                    )}
                   </div>
                   {qrCircleId === c.id && (
                     <div style={{ marginTop: 12, padding: 16, background: '#fff', borderRadius: 10, display: 'inline-block' }}>

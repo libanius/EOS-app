@@ -2555,3 +2555,40 @@
 @media (prefers-reduced-transparency: reduce) {
   .wv2-mappick .wv2-mappick-panel { background: #101014; backdrop-filter: none; }
 }
+
+/* ── Sugestões de gatilho: frases inteiras, não etiquetas ──
+   Numa pill elas estouravam a largura do telefone. Bloco com quebra de linha é
+   o que uma frase pede. */
+.wv2-plan-page .wv2-plan-suggestions { display: grid; gap: var(--s2); margin-top: var(--s2); }
+.wv2-plan-page .wv2-plan-suggestions button {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  padding: var(--s3);
+  border-radius: var(--r-tile);
+  border: 1px solid var(--sep);
+  background: var(--fill-2);
+  color: var(--ink);
+  cursor: pointer;
+}
+.wv2-plan-page .wv2-plan-suggestions button strong,
+.wv2-plan-page .wv2-plan-suggestions button span {
+  /* Sem isto uma condição longa empurra o card e sangra na borda da tela. */
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+.wv2-plan-page .wv2-plan-suggestions button:disabled { opacity: 0.45; cursor: default; }
+.wv2-plan-page .wv2-plan-suggestions button:hover:not(:disabled) { border-color: rgba(var(--accent-rgb), 0.5); }
+
+/* A mesma trava para QUALQUER pill do sistema: um rótulo longo deixa de esticar
+   a linha e passa a quebrar dentro do próprio botão. */
+.wv2 .wv2-pill {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  text-align: left;
+}
+
+/* ── Duração do exercício ── */
+.sim-durations { display: flex; gap: var(--s2); flex-wrap: wrap; margin-top: var(--s3); }

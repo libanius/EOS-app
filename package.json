@@ -16,7 +16,8 @@
     "ingest": "node scripts/ingest.mjs",
     "test:push": "node scripts/push-test.mjs",
     "test:push:prod": "node scripts/push-prod-check.mjs",
-    "test:plan": "node scripts/plan-editor-test.mjs"
+    "test:plan": "node scripts/plan-editor-test.mjs",
+    "test:circle": "node scripts/circle-admin-test.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.86.1",

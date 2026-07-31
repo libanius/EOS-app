@@ -56,6 +56,8 @@ const COPY = {
     reserveHalf: 'Metade',
     reserveCritical: 'No limite',
     start: 'Iniciar simulação',
+    duration: 'Duração do exercício',
+    durationWhy: 'O treino se encerra sozinho e gera o debrief. Dá para esticar durante, se precisar.',
     shareWith: 'Compartilhar com',
     shareHint: 'Cada pessoa recebe um convite e decide se entra. Quem aceitar vê o mesmo cenário.',
     guestLink: 'Convidar alguém de fora',
@@ -108,6 +110,8 @@ const COPY = {
     reserveHalf: 'Half',
     reserveCritical: 'At the limit',
     start: 'Start simulation',
+    duration: 'Exercise length',
+    durationWhy: 'The drill ends by itself and produces the debrief. You can extend it while running.',
     shareWith: 'Share with',
     shareHint: 'Each person gets an invite and decides. Whoever accepts sees the same scenario.',
     guestLink: 'Invite someone outside',
@@ -140,6 +144,9 @@ const COPY = {
 } as const
 
 const ARRIVALS = [0, 3, 6, 12, 24, 48]
+
+/** Opções de duração. 15 min é um ensaio curto; 120 é um exercício de família. */
+const DURATIONS = [15, 30, 60, 120]
 
 export default function SimulatorPage() {
   const { language } = useLanguage()
@@ -406,8 +413,31 @@ export default function SimulatorPage() {
               )}
             </Card>
 
+            {/*
+              A duração é escolhida ANTES de começar, e não depois.
+              Um treino sem hora para acabar vira estado permanente — e o EOS em
+              simulação mostra risco simulado, autonomia simulada e um Pilot
+              falando de um evento que não existe.
+            */}
+            <Card>
+              <SectionLabel trailing={`${draft.durationMin} min`}>{c.duration}</SectionLabel>
+              <p className="t-foot ink-3">{c.durationWhy}</p>
+              <div className="sim-durations">
+                {DURATIONS.map(minutes => (
+                  <button
+                    key={minutes}
+                    type="button"
+                    className={`wv2-chip${draft.durationMin === minutes ? ' on' : ''}`}
+                    onClick={() => { haptic.selection(); set({ durationMin: minutes }) }}
+                  >
+                    {minutes} min
+                  </button>
+                ))}
+              </div>
+            </Card>
+
             <motion.div whileTap={{ scale: 0.98 }} transition={SPRING.quick}>
-              <Pill primary wide onClick={launch}>{c.start}</Pill>
+              <Pill primary wide onClick={launch}>{c.start} · {draft.durationMin} min</Pill>
             </motion.div>
 
             <p className="sim-safety t-foot ink-3">{c.safety}</p>

@@ -38,6 +38,9 @@ type SimulationCtx = {
   debriefFor: SimulationConfig | null
   clearDebrief: () => void
   start: (config: SimulationConfig) => void
+  /** Quando o exercício termina sozinho. Null quando não há simulação. */
+  endsAt: number | null
+  extend: (minutes: number) => void
   update: (patch: Partial<SimulationConfig>) => void
   stop: () => void
   abortForRealAlert: () => void
@@ -58,6 +61,8 @@ export function useSimulation(): SimulationCtx {
       debriefFor: null,
       clearDebrief: () => {},
       start: () => {},
+      endsAt: null,
+      extend: () => {},
       update: () => {},
       stop: () => {},
       abortForRealAlert: () => {},
@@ -68,6 +73,7 @@ export function useSimulation(): SimulationCtx {
 
 export default function SimulationProvider({ children }: { children: ReactNode }) {
   const [config, setConfig] = useState<SimulationConfig | null>(null)
+  const [endsAt, setEndsAt] = useState<number | null>(null)
   const [abortedByRealAlert, setAborted] = useState(false)
   const [sharedSessionId, setSharedSessionId] = useState<string | null>(null)
   const [debriefFor, setDebriefFor] = useState<SimulationConfig | null>(null)
@@ -89,6 +95,7 @@ export default function SimulationProvider({ children }: { children: ReactNode }
   }, [])
 
   const stop = useCallback(() => {
+    setEndsAt(null)
     endShared('owner')
     // A deliberate end earns a debrief; the value of a simulator is what you
     // learn afterwards, not the run itself (doc 19 §8).
@@ -102,7 +109,16 @@ export default function SimulationProvider({ children }: { children: ReactNode }
   const start = useCallback((next: SimulationConfig) => {
     setAborted(false)
     lastTouch.current = Date.now()
+    // O fim é decidido no início. Sem isso, "esqueci ligado" é o estado mais
+    // provável — e um app inteiro respondendo a um evento que não existe.
+    setEndsAt(Date.now() + Math.max(1, next.durationMin ?? 30) * 60_000)
     setConfig(next)
+  }, [])
+
+  /** Estica o exercício sem precisar recomeçar. */
+  const extend = useCallback((minutes: number) => {
+    lastTouch.current = Date.now()
+    setEndsAt(current => (current ? current + minutes * 60_000 : current))
   }, [])
 
   const update = useCallback((patch: Partial<SimulationConfig>) => {
@@ -122,6 +138,21 @@ export default function SimulationProvider({ children }: { children: ReactNode }
   }, [endShared])
 
   const clearAbortNotice = useCallback(() => setAborted(false), [])
+
+  /**
+   * Fim por tempo combinado.
+   *
+   * Encerra pelo mesmo caminho do botão, então o debrief acontece igual: o valor
+   * do simulador está no que se aprende depois, e um treino que termina sozinho
+   * sem relatório desperdiça o exercício inteiro.
+   */
+  useEffect(() => {
+    if (!config || !endsAt) return
+    const timer = setInterval(() => {
+      if (Date.now() >= endsAt) stop()
+    }, 5_000)
+    return () => clearInterval(timer)
+  }, [config, endsAt, stop])
 
   // Idle expiry. Interaction anywhere counts as being at the controls.
   useEffect(() => {
@@ -151,12 +182,14 @@ export default function SimulationProvider({ children }: { children: ReactNode }
       debriefFor,
       clearDebrief: () => setDebriefFor(null),
       start,
+      endsAt,
+      extend,
       update,
       stop,
       abortForRealAlert,
       clearAbortNotice,
     }),
-    [config, sharedSessionId, abortedByRealAlert, debriefFor, start, update, stop, abortForRealAlert, clearAbortNotice],
+    [config, sharedSessionId, abortedByRealAlert, debriefFor, start, update, stop, abortForRealAlert, clearAbortNotice, endsAt, extend],
   )
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>

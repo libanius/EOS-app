@@ -668,3 +668,21 @@ body:has(.wv2-pilot-chat) .app-actions { display: none; }
   font-weight: 600;
   cursor: pointer;
 }
+
+/* Relógio do exercício: o tempo restante fica visível o tempo todo, porque é o
+   que impede um treino de virar estado permanente por esquecimento. */
+.sim-banner .sim-clock {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.28);
+  letter-spacing: 0.04em;
+}
+.sim-banner .sim-clock.urgent { background: rgba(0, 0, 0, 0.5); animation: sim-clock-pulse 2s ease-in-out infinite; }
+
+@keyframes sim-clock-pulse { 0%, 100% { opacity: 1 } 50% { opacity: 0.55 } }
+@media (prefers-reduced-motion: reduce) {
+  .sim-banner .sim-clock.urgent { animation: none; text-decoration: underline; }
+}

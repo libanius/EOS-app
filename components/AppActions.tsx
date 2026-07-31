@@ -23,6 +23,18 @@ export default function AppActions() {
 
   return (
     <div className="app-actions" style={{ position: 'fixed', top: 'max(16px, calc(env(safe-area-inset-top, 0px) + 8px))', right: 16, zIndex: 200, display: 'flex', gap: 8 }}>
+      {/*
+        O plano da família vivia só dentro do painel do dashboard — para chegar
+        nele era preciso arrastar a folha para cima e rolar. Um plano que se
+        edita em tempo de calma e se lê em tempo de evento precisa de porta
+        própria, visível de qualquer tela.
+      */}
+      <Link href="/plan" aria-label={t('actions.familyPlan')} style={buttonStyle}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 21s-7-4.5-7-10a7 7 0 1 1 14 0c0 5.5-7 10-7 10Z" />
+          <circle cx="12" cy="11" r="2.5" />
+        </svg>
+      </Link>
       <Link href="/settings" aria-label={t('actions.settings')} style={buttonStyle}>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="12" cy="12" r="3" />
