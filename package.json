@@ -20,7 +20,8 @@
     "test:circle": "node scripts/circle-admin-test.mjs",
     "test:weather": "node scripts/weather-layers-test.mjs",
     "test:pilot": "node scripts/pilot-abilities-test.mjs",
-    "test:marker": "node scripts/marker-stability-test.mjs"
+    "test:marker": "node scripts/marker-stability-test.mjs",
+    "test:multiplan": "node scripts/multi-plan-test.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.86.1",

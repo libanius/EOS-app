@@ -34,6 +34,41 @@ a oferecer "Google Maps" em cada rota desenhada.
 
 ---
 
+## D-080 — Vários planos por círculo, e o servidor nunca adivinha qual
+
+**Date**: 2026-08-01
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: A migration `20260731000000_multiple_family_plans.sql` derrubou o
+índice de plano-ativo-único: uma família precisa de planos separados para
+situações separadas — queda de energia, sem sinal, incidente na escola. Um
+documento só forçava tudo junto e deixava a execução ambígua.
+
+Só que o `PUT /api/plans` pegava **o plano mais recente do círculo** e
+sobrescrevia. Enquanto havia um só, isso era equivalente a "o plano". Com a
+migration aplicada em produção, virou **destruir o outro plano em silêncio** —
+provado em teste antes da correção: dois `PUT` devolveram o mesmo `planId` e o
+ponto de encontro do primeiro plano apareceu dentro do segundo.
+
+**Decision**:
+
+1. **`planId` seleciona; `createNew` cria.** O editor já mandava os dois.
+2. **Sem `planId` e com mais de um plano no círculo, o servidor RECUSA** com
+   `409 ambiguous_plan`. Adivinhar qual sobrescrever é a operação errada: perder
+   o plano que a família combinou é a pior falha que este código pode ter. Com
+   zero ou um plano não há ambiguidade e o comportamento antigo continua.
+3. **Id de outro círculo é 403, não silêncio.** A busca por id deixou de filtrar
+   por círculo justamente para que a checagem de posse decida — antes, um id
+   estrangeiro simplesmente não casava e caía no fallback perigoso.
+4. **O GET devolve a lista de planos** junto com o documento escolhido, para a
+   escolha ficar na tela e não escondida no servidor.
+
+**Consequences**: `scripts/multi-plan-test.mjs` (`npm run test:multiplan`) — 4/4,
+todas lendo o BANCO depois da operação. Foi ele que provou o defeito antes de eu
+corrigir, e é ele que impede a volta.
+
+---
+
 ## D-081 — Camadas hidrológicas, vento de impacto e direção oficial de tornado
 
 **Date**: 2026-07-31
@@ -95,6 +130,41 @@ ativo.
 **Consequences**: a migration remove o índice que obrigava um único plano ativo
 por círculo. A próxima camada ainda deve persistir execuções compartilhadas, mas
 o modelo de plano já não bloqueia múltiplos cenários.
+
+---
+
+## D-080 — Vários planos por círculo, e o servidor nunca adivinha qual
+
+**Date**: 2026-08-01
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: A migration `20260731000000_multiple_family_plans.sql` derrubou o
+índice de plano-ativo-único: uma família precisa de planos separados para
+situações separadas — queda de energia, sem sinal, incidente na escola. Um
+documento só forçava tudo junto e deixava a execução ambígua.
+
+Só que o `PUT /api/plans` pegava **o plano mais recente do círculo** e
+sobrescrevia. Enquanto havia um só, isso era equivalente a "o plano". Com a
+migration aplicada em produção, virou **destruir o outro plano em silêncio** —
+provado em teste antes da correção: dois `PUT` devolveram o mesmo `planId` e o
+ponto de encontro do primeiro plano apareceu dentro do segundo.
+
+**Decision**:
+
+1. **`planId` seleciona; `createNew` cria.** O editor já mandava os dois.
+2. **Sem `planId` e com mais de um plano no círculo, o servidor RECUSA** com
+   `409 ambiguous_plan`. Adivinhar qual sobrescrever é a operação errada: perder
+   o plano que a família combinou é a pior falha que este código pode ter. Com
+   zero ou um plano não há ambiguidade e o comportamento antigo continua.
+3. **Id de outro círculo é 403, não silêncio.** A busca por id deixou de filtrar
+   por círculo justamente para que a checagem de posse decida — antes, um id
+   estrangeiro simplesmente não casava e caía no fallback perigoso.
+4. **O GET devolve a lista de planos** junto com o documento escolhido, para a
+   escolha ficar na tela e não escondida no servidor.
+
+**Consequences**: `scripts/multi-plan-test.mjs` (`npm run test:multiplan`) — 4/4,
+todas lendo o BANCO depois da operação. Foi ele que provou o defeito antes de eu
+corrigir, e é ele que impede a volta.
 
 ---
 
@@ -178,6 +248,41 @@ situacional dizendo a próxima ação, quem falta responder e o que não fazer.
 planos) continua existindo, mas a prioridade operacional muda: antes de a IA
 escrever planos melhores, o EOS precisa **executar** o plano que a família já
 aprovou.
+
+---
+
+## D-080 — Vários planos por círculo, e o servidor nunca adivinha qual
+
+**Date**: 2026-08-01
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: A migration `20260731000000_multiple_family_plans.sql` derrubou o
+índice de plano-ativo-único: uma família precisa de planos separados para
+situações separadas — queda de energia, sem sinal, incidente na escola. Um
+documento só forçava tudo junto e deixava a execução ambígua.
+
+Só que o `PUT /api/plans` pegava **o plano mais recente do círculo** e
+sobrescrevia. Enquanto havia um só, isso era equivalente a "o plano". Com a
+migration aplicada em produção, virou **destruir o outro plano em silêncio** —
+provado em teste antes da correção: dois `PUT` devolveram o mesmo `planId` e o
+ponto de encontro do primeiro plano apareceu dentro do segundo.
+
+**Decision**:
+
+1. **`planId` seleciona; `createNew` cria.** O editor já mandava os dois.
+2. **Sem `planId` e com mais de um plano no círculo, o servidor RECUSA** com
+   `409 ambiguous_plan`. Adivinhar qual sobrescrever é a operação errada: perder
+   o plano que a família combinou é a pior falha que este código pode ter. Com
+   zero ou um plano não há ambiguidade e o comportamento antigo continua.
+3. **Id de outro círculo é 403, não silêncio.** A busca por id deixou de filtrar
+   por círculo justamente para que a checagem de posse decida — antes, um id
+   estrangeiro simplesmente não casava e caía no fallback perigoso.
+4. **O GET devolve a lista de planos** junto com o documento escolhido, para a
+   escolha ficar na tela e não escondida no servidor.
+
+**Consequences**: `scripts/multi-plan-test.mjs` (`npm run test:multiplan`) — 4/4,
+todas lendo o BANCO depois da operação. Foi ele que provou o defeito antes de eu
+corrigir, e é ele que impede a volta.
 
 ---
 

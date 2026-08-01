@@ -308,8 +308,12 @@ export default function PlanPage() {
     return () => { cancelled = true }
   }, [])
 
-  const applyDocument = useCallback((doc: PlanDocument) => {
+  const applyDocument = useCallback((doc: PlanDocument & { plans?: PlanSummary[] }) => {
+    // `plans` é a lista que o servidor passou a devolver (D-080). Mantém o nome
+    // que o componente já usava para não existirem dois vocabulários.
+    if (doc.plans) setPlanSummaries(doc.plans)
     setPlanId(doc.plan?.id ?? null)
+    setPlanName(doc.plan?.name ?? '')
     setPlanName(doc.plan?.name ?? '')
     setVersion(doc.plan?.version ?? 0)
     setUpdatedAt(doc.plan?.updated_at ?? null)

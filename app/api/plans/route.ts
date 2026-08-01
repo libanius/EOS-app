@@ -13,6 +13,16 @@ import { createAdminClient } from '@/lib/supabase/admin'
  * only meaningful together. A rendezvous point saved without the role that says
  * who goes there is not half a plan — it is a wrong one.
  *
+ * MÚLTIPLOS PLANOS POR CÍRCULO (D-080). Uma família precisa de planos separados
+ * para situações separadas: queda de energia, sem sinal de celular, incidente na
+ * escola. A migration removeu o índice de plano-ativo-único, e isso tornou
+ * PERIGOSO o comportamento antigo desta rota — ela pegava "o mais recente" e
+ * sobrescrevia. Com dois planos, salvar um sobrescreveria o outro em silêncio.
+ *
+ * Agora o plano é escolhido por `planId`, sempre. Sem `planId` o GET devolve o
+ * mais recente (e a lista completa, para a UI escolher) e o PUT **cria um plano
+ * novo** em vez de adivinhar qual sobrescrever.
+ *
  * VERSIONING IS THE SAFETY FEATURE (doc 18 §6). Every save increments `version`
  * and clears nothing: acks from older versions stay, so the UI can show exactly
  * who has and has not seen the change. A save also pushes the circle, because
@@ -148,19 +158,55 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: 'Não é membro deste círculo.' }, { status: 403 })
   }
 
+  /**
+   * Sem `planId`, só se atualiza quando NÃO HÁ AMBIGUIDADE.
+   *
+   * Depois que D-080 permitiu vários planos por círculo, cair no "mais recente"
+   * virou sobrescrever o plano errado em silêncio — perder o plano que a família
+   * combinou é a pior falha que este código pode ter. Com dois ou mais planos e
+   * nenhum id, a resposta certa é recusar e pedir qual, não adivinhar.
+   */
   let existingQuery = admin
     .from('family_plans')
-    .select('id, version')
+    .select('id, version, circle_id')
     .eq('circle_id', body.circleId)
     .neq('status', 'archived')
     .order('updated_at', { ascending: false })
     .limit(1)
 
-  if (body.planId && !body.createNew) existingQuery = existingQuery.eq('id', body.planId)
+  if (body.planId && !body.createNew) {
+    // Por id, sem filtrar por círculo: é a checagem de posse logo abaixo que
+    // decide, e assim um id de outro círculo é RECUSADO em vez de ignorado.
+    existingQuery = admin
+      .from('family_plans')
+      .select('id, version, circle_id')
+      .eq('id', body.planId)
+      .limit(1)
+  } else if (!body.createNew) {
+    const { count } = await admin
+      .from('family_plans')
+      .select('*', { count: 'exact', head: true })
+      .eq('circle_id', body.circleId)
+      .neq('status', 'archived')
+    if ((count ?? 0) > 1) {
+      return NextResponse.json(
+        { error: 'ambiguous_plan', message: 'Este círculo tem mais de um plano. Diga qual (planId) ou peça um novo (createNew).' },
+        { status: 409 },
+      )
+    }
+  }
 
   const { data: existing, error: readError } = body.createNew
     ? { data: null, error: null }
     : await existingQuery.maybeSingle()
+
+  if (body.planId && !body.createNew && !existing) {
+    return NextResponse.json({ error: 'Plano não encontrado.' }, { status: 404 })
+  }
+  // Um plano de outro círculo nunca é editável por aqui, nem com id válido.
+  if (existing && (existing as { circle_id?: string }).circle_id !== body.circleId) {
+    return NextResponse.json({ error: 'Plano não pertence a este círculo.' }, { status: 403 })
+  }
 
   if (readError && tableMissing(readError)) {
     return NextResponse.json({ error: 'migration_pending' }, { status: 200 })
