@@ -2942,3 +2942,58 @@
 }
 /* Os filhos (scrim e folha do Pilot) voltam a receber toque por conta própria. */
 .wv2.wv2-portal > * { pointer-events: auto; }
+
+/* ═══ FAMÍLIA (D-082) ══════════════════════════════════════════════════════ */
+
+.wv2.wv2-family-page {
+  position: static;
+  inset: auto;
+  overflow: visible;
+  min-height: 100dvh;
+  background: #000;
+}
+.wv2-family-page .family-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+  max-width: 720px;
+  margin: 0 auto;
+  padding: calc(var(--s8) + env(safe-area-inset-top)) var(--edge) calc(var(--nav-inset) + var(--s8));
+}
+.wv2-family-page .family-head { padding: 0 var(--s2); }
+.wv2-family-page .family-title {
+  margin: var(--s2) 0 var(--s3);
+  font-size: clamp(1.5rem, 5.5vw, 2rem);
+  line-height: 1.12;
+  letter-spacing: -0.025em;
+  font-weight: 700;
+}
+.wv2-family-page .family-meta { display: flex; gap: var(--s2); flex-wrap: wrap; align-items: baseline; }
+
+/* Uma pessoa é UMA linha: cadastro, conta e papel costurados. */
+.wv2-family-page .family-person { display: grid; gap: var(--s3); }
+.wv2-family-page .family-person .who { display: flex; gap: var(--s3); align-items: center; }
+.wv2-family-page .family-person .face {
+  flex: none;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: var(--fill-1);
+  border: 1px solid var(--sep-strong);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--ink-2);
+}
+.wv2-family-page .family-person .face img { width: 100%; height: 100%; object-fit: cover; }
+.wv2-family-page .family-person .id { display: grid; gap: 2px; min-width: 0; }
+.wv2-family-page .family-person .id em { font-style: normal; overflow-wrap: anywhere; }
+.wv2-family-page .family-person .chips { display: flex; gap: var(--s2); flex-wrap: wrap; }
+.wv2-family-page .family-person .role { overflow-wrap: anywhere; }
+.wv2-family-page .family-person .role b { margin-right: var(--s2); }
+.wv2-family-page .family-person .acts { display: flex; gap: var(--s2); flex-wrap: wrap; }
+
+.wv2-family-page .family-needs { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s2); }
+.wv2-family-page .family-foot { display: flex; gap: var(--s2); flex-wrap: wrap; margin-top: var(--s4); }

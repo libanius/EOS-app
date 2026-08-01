@@ -21,7 +21,8 @@
     "test:weather": "node scripts/weather-layers-test.mjs",
     "test:pilot": "node scripts/pilot-abilities-test.mjs",
     "test:marker": "node scripts/marker-stability-test.mjs",
-    "test:multiplan": "node scripts/multi-plan-test.mjs"
+    "test:multiplan": "node scripts/multi-plan-test.mjs",
+    "test:family": "node scripts/family-page-test.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.86.1",

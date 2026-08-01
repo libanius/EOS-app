@@ -968,10 +968,13 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
         // WebGL/init failure → keep the static plate visible (§28)
       }
     })()
+    // O ref é copiado para uma variável do efeito: no cleanup, `.current` pode
+    // já apontar para outro mapa, e removeríamos os marcadores errados.
+    const people = peopleMarkersRef.current
     return () => {
       cancelled = true
-      peopleMarkersRef.current.forEach(entry => entry.marker.remove())
-      peopleMarkersRef.current.clear()
+      people.forEach(entry => entry.marker.remove())
+      people.clear()
       staticMarkersRef.current.forEach(m => m.remove())
       staticMarkersRef.current = []
       hazardMarkersRef.current.forEach(m => m.remove())

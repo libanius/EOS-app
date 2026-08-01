@@ -34,6 +34,49 @@ a oferecer "Google Maps" em cada rota desenhada.
 
 ---
 
+## D-082 — A Família deixa de ser cadastro e passa a responder três perguntas
+
+**Date**: 2026-08-01
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: O dono disse que a aba parecia "sobrando, ou custando caro manter".
+Ele estava certo: 1896 linhas de formulário, tags sugeridas e leitura de ficha —
+todos os dados certos, e **nenhuma pergunta respondida**. Cadastrar não é uma
+função de emergência.
+
+Pior: a mesma pessoa aparecia em três lugares e em nenhum deles completa —
+registro no roster, membro do círculo, papel no plano.
+
+**Decision**:
+
+1. **Cada pessoa é UMA linha**, costurada pelo `linked_user_id`: cadastro +
+   conta + papel no plano no mesmo cartão. Quem tem conta e não está no cadastro
+   entra do mesmo jeito — a família real é a união dos dois.
+2. **A tela responde, nesta ordem:** onde está cada um (e há quanto tempo isso é
+   verdade), o que cada um precisa que muda a decisão (medicação, mobilidade,
+   bebê), e quem faz o quê quando o plano começar.
+3. **Quem não está coberto aparece, com o motivo.** Sem conta no EOS: "não
+   aparece no mapa e não recebe mensagem". Com conta e sem compartilhar: "ela
+   precisa ligar em Círculos, no aparelho dela". **Omitir a pessoa faria a
+   família acreditar que está toda coberta** — é o oposto do que esta tela existe
+   para fazer.
+4. **Ação onde a informação está**: rota até a pessoa e mensagens prontas no
+   próprio cartão. Antes era preciso ir ao mapa, achar o pino e tocar nele.
+5. **O cadastro não foi jogado fora.** Vive em `/family-legacy`, alcançável em
+   dois lugares da tela nova. Ele deixou de ser a primeira coisa que a família
+   vê, e só isso.
+
+**Consequences**: `scripts/family-page-test.mjs` (`npm run test:family`) — 5/5,
+com um círculo de duas contas, uma filha SEM conta e um papel no plano. É o
+cenário real do dono.
+
+O teste também errou de um jeito instrutivo: procurar "Isadora" em qualquer lugar
+do cartão casava também o da mãe, cujo papel é "pega a Isadora na escola" — dois
+elementos, e o Playwright recusa. Ele reportava "a pessoa sumiu" enquanto ela
+estava na tela. **Localizador de teste mira no título, não no texto inteiro.**
+
+---
+
 ## D-080 — Vários planos por círculo, e o servidor nunca adivinha qual
 
 **Date**: 2026-08-01
@@ -104,6 +147,49 @@ ativo.
 
 ---
 
+## D-082 — A Família deixa de ser cadastro e passa a responder três perguntas
+
+**Date**: 2026-08-01
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: O dono disse que a aba parecia "sobrando, ou custando caro manter".
+Ele estava certo: 1896 linhas de formulário, tags sugeridas e leitura de ficha —
+todos os dados certos, e **nenhuma pergunta respondida**. Cadastrar não é uma
+função de emergência.
+
+Pior: a mesma pessoa aparecia em três lugares e em nenhum deles completa —
+registro no roster, membro do círculo, papel no plano.
+
+**Decision**:
+
+1. **Cada pessoa é UMA linha**, costurada pelo `linked_user_id`: cadastro +
+   conta + papel no plano no mesmo cartão. Quem tem conta e não está no cadastro
+   entra do mesmo jeito — a família real é a união dos dois.
+2. **A tela responde, nesta ordem:** onde está cada um (e há quanto tempo isso é
+   verdade), o que cada um precisa que muda a decisão (medicação, mobilidade,
+   bebê), e quem faz o quê quando o plano começar.
+3. **Quem não está coberto aparece, com o motivo.** Sem conta no EOS: "não
+   aparece no mapa e não recebe mensagem". Com conta e sem compartilhar: "ela
+   precisa ligar em Círculos, no aparelho dela". **Omitir a pessoa faria a
+   família acreditar que está toda coberta** — é o oposto do que esta tela existe
+   para fazer.
+4. **Ação onde a informação está**: rota até a pessoa e mensagens prontas no
+   próprio cartão. Antes era preciso ir ao mapa, achar o pino e tocar nele.
+5. **O cadastro não foi jogado fora.** Vive em `/family-legacy`, alcançável em
+   dois lugares da tela nova. Ele deixou de ser a primeira coisa que a família
+   vê, e só isso.
+
+**Consequences**: `scripts/family-page-test.mjs` (`npm run test:family`) — 5/5,
+com um círculo de duas contas, uma filha SEM conta e um papel no plano. É o
+cenário real do dono.
+
+O teste também errou de um jeito instrutivo: procurar "Isadora" em qualquer lugar
+do cartão casava também o da mãe, cujo papel é "pega a Isadora na escola" — dois
+elementos, e o Playwright recusa. Ele reportava "a pessoa sumiu" enquanto ela
+estava na tela. **Localizador de teste mira no título, não no texto inteiro.**
+
+---
+
 ## D-080 — Vários planos, execução cancelável e passos editáveis
 
 **Date**: 2026-07-31
@@ -130,6 +216,49 @@ ativo.
 **Consequences**: a migration remove o índice que obrigava um único plano ativo
 por círculo. A próxima camada ainda deve persistir execuções compartilhadas, mas
 o modelo de plano já não bloqueia múltiplos cenários.
+
+---
+
+## D-082 — A Família deixa de ser cadastro e passa a responder três perguntas
+
+**Date**: 2026-08-01
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: O dono disse que a aba parecia "sobrando, ou custando caro manter".
+Ele estava certo: 1896 linhas de formulário, tags sugeridas e leitura de ficha —
+todos os dados certos, e **nenhuma pergunta respondida**. Cadastrar não é uma
+função de emergência.
+
+Pior: a mesma pessoa aparecia em três lugares e em nenhum deles completa —
+registro no roster, membro do círculo, papel no plano.
+
+**Decision**:
+
+1. **Cada pessoa é UMA linha**, costurada pelo `linked_user_id`: cadastro +
+   conta + papel no plano no mesmo cartão. Quem tem conta e não está no cadastro
+   entra do mesmo jeito — a família real é a união dos dois.
+2. **A tela responde, nesta ordem:** onde está cada um (e há quanto tempo isso é
+   verdade), o que cada um precisa que muda a decisão (medicação, mobilidade,
+   bebê), e quem faz o quê quando o plano começar.
+3. **Quem não está coberto aparece, com o motivo.** Sem conta no EOS: "não
+   aparece no mapa e não recebe mensagem". Com conta e sem compartilhar: "ela
+   precisa ligar em Círculos, no aparelho dela". **Omitir a pessoa faria a
+   família acreditar que está toda coberta** — é o oposto do que esta tela existe
+   para fazer.
+4. **Ação onde a informação está**: rota até a pessoa e mensagens prontas no
+   próprio cartão. Antes era preciso ir ao mapa, achar o pino e tocar nele.
+5. **O cadastro não foi jogado fora.** Vive em `/family-legacy`, alcançável em
+   dois lugares da tela nova. Ele deixou de ser a primeira coisa que a família
+   vê, e só isso.
+
+**Consequences**: `scripts/family-page-test.mjs` (`npm run test:family`) — 5/5,
+com um círculo de duas contas, uma filha SEM conta e um papel no plano. É o
+cenário real do dono.
+
+O teste também errou de um jeito instrutivo: procurar "Isadora" em qualquer lugar
+do cartão casava também o da mãe, cujo papel é "pega a Isadora na escola" — dois
+elementos, e o Playwright recusa. Ele reportava "a pessoa sumiu" enquanto ela
+estava na tela. **Localizador de teste mira no título, não no texto inteiro.**
 
 ---
 
@@ -248,6 +377,49 @@ situacional dizendo a próxima ação, quem falta responder e o que não fazer.
 planos) continua existindo, mas a prioridade operacional muda: antes de a IA
 escrever planos melhores, o EOS precisa **executar** o plano que a família já
 aprovou.
+
+---
+
+## D-082 — A Família deixa de ser cadastro e passa a responder três perguntas
+
+**Date**: 2026-08-01
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: O dono disse que a aba parecia "sobrando, ou custando caro manter".
+Ele estava certo: 1896 linhas de formulário, tags sugeridas e leitura de ficha —
+todos os dados certos, e **nenhuma pergunta respondida**. Cadastrar não é uma
+função de emergência.
+
+Pior: a mesma pessoa aparecia em três lugares e em nenhum deles completa —
+registro no roster, membro do círculo, papel no plano.
+
+**Decision**:
+
+1. **Cada pessoa é UMA linha**, costurada pelo `linked_user_id`: cadastro +
+   conta + papel no plano no mesmo cartão. Quem tem conta e não está no cadastro
+   entra do mesmo jeito — a família real é a união dos dois.
+2. **A tela responde, nesta ordem:** onde está cada um (e há quanto tempo isso é
+   verdade), o que cada um precisa que muda a decisão (medicação, mobilidade,
+   bebê), e quem faz o quê quando o plano começar.
+3. **Quem não está coberto aparece, com o motivo.** Sem conta no EOS: "não
+   aparece no mapa e não recebe mensagem". Com conta e sem compartilhar: "ela
+   precisa ligar em Círculos, no aparelho dela". **Omitir a pessoa faria a
+   família acreditar que está toda coberta** — é o oposto do que esta tela existe
+   para fazer.
+4. **Ação onde a informação está**: rota até a pessoa e mensagens prontas no
+   próprio cartão. Antes era preciso ir ao mapa, achar o pino e tocar nele.
+5. **O cadastro não foi jogado fora.** Vive em `/family-legacy`, alcançável em
+   dois lugares da tela nova. Ele deixou de ser a primeira coisa que a família
+   vê, e só isso.
+
+**Consequences**: `scripts/family-page-test.mjs` (`npm run test:family`) — 5/5,
+com um círculo de duas contas, uma filha SEM conta e um papel no plano. É o
+cenário real do dono.
+
+O teste também errou de um jeito instrutivo: procurar "Isadora" em qualquer lugar
+do cartão casava também o da mãe, cujo papel é "pega a Isadora na escola" — dois
+elementos, e o Playwright recusa. Ele reportava "a pessoa sumiu" enquanto ela
+estava na tela. **Localizador de teste mira no título, não no texto inteiro.**
 
 ---
 
