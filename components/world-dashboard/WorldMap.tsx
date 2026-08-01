@@ -403,7 +403,16 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
   const { coords } = useRisk()
   const ref = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MLMap | null>(null)
-  const markersRef = useRef<MLMarker[]>([])
+  /**
+   * Marcadores de pessoas, indexados por id (D-081).
+   *
+   * Guardados num mapa e não numa lista porque eles são ATUALIZADOS entre
+   * leituras: recriar um marcador com foto remonta o `<img>`, o navegador rebusca
+   * a imagem, e o pino pisca a cada atualização de posição.
+   */
+  const peopleMarkersRef = useRef<Map<string, { shape: string; marker: MLMarker }>>(new Map())
+  /** Abrigos e destino: poucos, sem imagem, posição fixa — recriar sai barato. */
+  const staticMarkersRef = useRef<MLMarker[]>([])
   const hazardMarkersRef = useRef<MLMarker[]>([])
   const stormMarkersRef = useRef<MLMarker[]>([])
   // Kept out of markersRef so a family/shelter refresh never wipes the search pin.
@@ -428,10 +437,24 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
       geometry: { type: 'LineString', coordinates: routeCoords },
     })
 
-    markersRef.current.forEach(m => m.remove())
-    markersRef.current = []
+    /**
+     * Marcadores de PESSOAS são reconciliados, não recriados.
+     *
+     * Recriar todos a cada atualização remonta o `<img>` da foto, e o navegador
+     * a busca de novo — o marcador PISCAVA a cada leitura de posição. Uma
+     * posição que muda deve MOVER o pino, não trocá-lo por outro igual.
+     *
+     * Abrigos e destino seguem sendo recriados: são poucos, sem imagem, e não
+     * mudam de posição — ali o custo de reconciliar não se paga.
+     */
+    staticMarkersRef.current.forEach(m => m.remove())
+    staticMarkersRef.current = []
 
-    if (!family.length && !shelters.length && !guidance?.shelter) return
+    if (!family.length && !shelters.length && !guidance?.shelter) {
+      peopleMarkersRef.current.forEach(m => m.marker.remove())
+      peopleMarkersRef.current.clear()
+      return
+    }
     const maplibregl = (await import('maplibre-gl')).default
 
     // Co-located people must not hide each other. Two members who both geocoded
@@ -450,7 +473,33 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
       return [Math.cos(angle) * 26, Math.sin(angle) * 26]
     }
 
+    // Quem saiu da lista sai do mapa; quem ficou é atualizado no lugar.
+    const alive = new Set(family.slice(0, 8).map(m => m.id))
+    // `forEach` em vez de `for…of`: o alvo de compilação do projeto não itera
+    // Map sem downlevelIteration, e mudar o alvo por causa de um laço é o tipo
+    // de mudança global que se paga em outro lugar.
+    Array.from(peopleMarkersRef.current.keys()).forEach(id => {
+      if (!alive.has(id)) {
+        peopleMarkersRef.current.get(id)?.marker.remove()
+        peopleMarkersRef.current.delete(id)
+      }
+    })
+
     family.slice(0, 8).forEach((m, i) => {
+      const offset = offsetFor(m, i)
+      const existing = peopleMarkersRef.current.get(m.id)
+      // Chave do que EXIGE um elemento novo. Posição não entra: mudar de lugar
+      // é mover o marcador, não recriá-lo.
+      const shape = `${m.isMe}|${m.avatarUrl ?? ''}|${m.name}|${m.freshness}|${m.approximate}|${m.live}`
+      if (existing && existing.shape === shape) {
+        existing.marker.setLngLat([m.lng, m.lat]).setOffset(offset)
+        return
+      }
+      if (existing) {
+        existing.marker.remove()
+        peopleMarkersRef.current.delete(m.id)
+      }
+
       if (m.isMe) {
         // Centred, unlabelled: a presence, not a marker (see selfPuckEl).
         const puck = selfPuckEl(m.avatarUrl, m.live !== false)
@@ -459,11 +508,12 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
           puck.style.cursor = 'pointer'
           puck.addEventListener('click', () => onMemberTap(m.id))
         }
-        markersRef.current.push(
-          new maplibregl.Marker({ element: puck, anchor: 'center', offset: offsetFor(m, i) })
+        peopleMarkersRef.current.set(m.id, {
+          shape,
+          marker: new maplibregl.Marker({ element: puck, anchor: 'center', offset })
             .setLngLat([m.lng, m.lat])
             .addTo(map),
-        )
+        })
         return
       }
       const initials = m.name.split(/\s+/).map(p => p[0]).join('').slice(0, 2).toUpperCase() || 'FM'
@@ -481,18 +531,19 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
         el.style.cursor = 'pointer'
         el.addEventListener('click', () => onMemberTap(m.id))
       }
-      markersRef.current.push(
-        new maplibregl.Marker({ element: el, anchor: 'bottom', offset: offsetFor(m, i) })
+      peopleMarkersRef.current.set(m.id, {
+        shape,
+        marker: new maplibregl.Marker({ element: el, anchor: 'bottom', offset })
           .setLngLat([m.lng, m.lat])
           .addTo(map),
-      )
+      })
     })
 
     // Official FEMA shelters. Distance is on the label because it is the fact
     // that decides whether this shelter is reachable on foot.
     for (const shelter of shelters.slice(0, 6)) {
       const el = markerEl('w-mapmarker shelter', '', `${short(shelter.name, 26)} · ${shelter.distanceKm.toFixed(1)} km`)
-      markersRef.current.push(
+      staticMarkersRef.current.push(
         new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([shelter.lng, shelter.lat]).addTo(map),
       )
     }
@@ -500,7 +551,7 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
     const shelter = guidance?.shelter
     if (shelter) {
       const sh = markerEl('w-mapmarker shelter ai', '', `AI SHELTER · ${short(shelter.name, 24)}`)
-      markersRef.current.push(
+      staticMarkersRef.current.push(
         new maplibregl.Marker({ element: sh, anchor: 'bottom' }).setLngLat([shelter.lng, shelter.lat]).addTo(map),
       )
     }
@@ -919,7 +970,10 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
     })()
     return () => {
       cancelled = true
-      markersRef.current = []
+      peopleMarkersRef.current.forEach(entry => entry.marker.remove())
+      peopleMarkersRef.current.clear()
+      staticMarkersRef.current.forEach(m => m.remove())
+      staticMarkersRef.current = []
       hazardMarkersRef.current.forEach(m => m.remove())
       hazardMarkersRef.current = []
       searchMarkerRef.current?.remove()

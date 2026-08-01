@@ -48,6 +48,24 @@ function freshnessLabel(member: CircleMember, pt: boolean): string {
   return pt ? `há ${hours} h` : `${hours} h ago`
 }
 
+/**
+ * A parte ESTÁVEL de uma URL assinada.
+ *
+ * `/api/circles` assina as fotos a cada requisição, então a URL muda a cada
+ * consulta mesmo apontando para o mesmo arquivo. Como o mapa consulta a cada 15
+ * segundos, o `src` da imagem mudava sozinho, o navegador rebaixava a foto e o
+ * marcador PISCAVA. Comparar pelo caminho, sem a query, é o que revela que nada
+ * mudou de fato.
+ */
+const stablePart = (url: string | null | undefined) => (url ? url.split('?')[0] : '')
+
+/** Assinatura do que a tela realmente mostra — token de assinatura não conta. */
+function signature(members: WorldFamilyMember[]): string {
+  return members
+    .map(m => `${m.id}|${m.lat.toFixed(5)}|${m.lng.toFixed(5)}|${m.freshness}|${m.live}|${m.approximate}|${stablePart(m.avatarUrl)}`)
+    .join(';')
+}
+
 export function useCircleFamily(
   pt: boolean,
   selfCoords: { lat: number; lng: number } | null,
@@ -79,7 +97,22 @@ export function useCircleFamily(
         })
       }
     }
-    setFamily(Array.from(byUser.values()))
+    const next = Array.from(byUser.values())
+
+    setFamily(current => {
+      if (signature(current) === signature(next)) return current
+
+      // Nada mudou de fato, mas algo mudou: preserva a URL de foto ANTERIOR
+      // quando ela aponta para o mesmo arquivo. Trocar por uma assinatura nova
+      // faria o navegador buscar a imagem de novo — que é justamente o piscar.
+      const previous = new Map(current.map(m => [m.id, m]))
+      return next.map(m => {
+        const old = previous.get(m.id)
+        return old && stablePart(old.avatarUrl) === stablePart(m.avatarUrl)
+          ? { ...m, avatarUrl: old.avatarUrl }
+          : m
+      })
+    })
   }, [pt, selfAvatarUrl])
 
   useEffect(() => {

@@ -98,6 +98,45 @@ o modelo de plano já não bloqueia múltiplos cenários.
 
 ---
 
+## D-081 — Um marcador que pisca é um marcador sendo recriado
+
+**Date**: 2026-07-31
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: O dono relatou o pino com a foto piscando no mapa. Duas causas,
+independentes, e as duas confirmadas antes de qualquer correção:
+
+1. **`/api/circles` assina as fotos a cada requisição.** A URL muda a cada
+   consulta apontando para o MESMO arquivo, e o mapa consulta a cada 15 s. O
+   `src` da imagem mudava sozinho e o navegador rebaixava a foto.
+2. **`placeOverlays` destruía e recriava TODOS os marcadores** a cada
+   atualização. Um `<img>` remontado é um `<img>` que recarrega.
+
+**Decision**:
+
+1. **A URL assinada não conta como mudança.** O hook compara pela parte estável
+   da URL (sem a query) e, quando o arquivo é o mesmo, **preserva a URL
+   anterior** — o `src` literalmente não muda.
+2. **Marcadores de PESSOAS são reconciliados, não recriados.** Guardados num
+   mapa por id: posição nova move o pino; só uma mudança de forma (foto, nome,
+   freshness) cria elemento novo. Abrigos e destino seguem recriados — são
+   poucos, sem imagem, e não se movem; ali reconciliar não se paga.
+
+**Consequences**: "não pisca" não se mede olhando. `scripts/marker-stability-test.mjs`
+(`npm run test:marker`) carimba os nós no DOM e confere que o carimbo sobreviveu
+a duas rodadas de atualização — se o marcador tivesse sido recriado, o carimbo
+teria ido embora com o nó antigo.
+
+O teste **sobe uma foto real** para a conta de teste. Sem isso a asserção da URL
+comparava duas listas vazias e passava sem medir nada — a mesma válvula de escape
+que já deixou dois outros testes desta suíte reportarem verde sem testar. Hoje
+"nenhuma foto no mapa" é reportado como FALHA do teste, não como sucesso.
+
+Controle negativo executado: revertendo as duas correções, o teste acusa
+`preservados=0 de 2` e a troca da URL.
+
+---
+
 ## D-079 — Executar plano: Pilot vira host situacional, não só chat
 
 **Date**: 2026-07-31
@@ -139,6 +178,45 @@ situacional dizendo a próxima ação, quem falta responder e o que não fazer.
 planos) continua existindo, mas a prioridade operacional muda: antes de a IA
 escrever planos melhores, o EOS precisa **executar** o plano que a família já
 aprovou.
+
+---
+
+## D-081 — Um marcador que pisca é um marcador sendo recriado
+
+**Date**: 2026-07-31
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: O dono relatou o pino com a foto piscando no mapa. Duas causas,
+independentes, e as duas confirmadas antes de qualquer correção:
+
+1. **`/api/circles` assina as fotos a cada requisição.** A URL muda a cada
+   consulta apontando para o MESMO arquivo, e o mapa consulta a cada 15 s. O
+   `src` da imagem mudava sozinho e o navegador rebaixava a foto.
+2. **`placeOverlays` destruía e recriava TODOS os marcadores** a cada
+   atualização. Um `<img>` remontado é um `<img>` que recarrega.
+
+**Decision**:
+
+1. **A URL assinada não conta como mudança.** O hook compara pela parte estável
+   da URL (sem a query) e, quando o arquivo é o mesmo, **preserva a URL
+   anterior** — o `src` literalmente não muda.
+2. **Marcadores de PESSOAS são reconciliados, não recriados.** Guardados num
+   mapa por id: posição nova move o pino; só uma mudança de forma (foto, nome,
+   freshness) cria elemento novo. Abrigos e destino seguem recriados — são
+   poucos, sem imagem, e não se movem; ali reconciliar não se paga.
+
+**Consequences**: "não pisca" não se mede olhando. `scripts/marker-stability-test.mjs`
+(`npm run test:marker`) carimba os nós no DOM e confere que o carimbo sobreviveu
+a duas rodadas de atualização — se o marcador tivesse sido recriado, o carimbo
+teria ido embora com o nó antigo.
+
+O teste **sobe uma foto real** para a conta de teste. Sem isso a asserção da URL
+comparava duas listas vazias e passava sem medir nada — a mesma válvula de escape
+que já deixou dois outros testes desta suíte reportarem verde sem testar. Hoje
+"nenhuma foto no mapa" é reportado como FALHA do teste, não como sucesso.
+
+Controle negativo executado: revertendo as duas correções, o teste acusa
+`preservados=0 de 2` e a troca da URL.
 
 ---
 
