@@ -84,9 +84,20 @@ await page.goto(`${B}/auth/login`, { waitUntil: 'domcontentloaded' })
 const state = await page.evaluate(async () => {
   try {
     await navigator.serviceWorker.register('/sw.js', { scope: '/', updateViaCache: 'none' })
+    /**
+     * 75 s, e não 25.
+     *
+     * Logo após um deploy o cache de borda está frio e o precache busca ~70
+     * arquivos: medido em produção, o install passou de 25 s e o worker ficava
+     * em `installing/running` sem erro nenhum. O check acusava "não ativou" e a
+     * conclusão natural — errada — era que o push estava quebrado de novo.
+     *
+     * O custo é do PRIMEIRO acesso depois de publicar, em segundo plano. Esperar
+     * menos que a realidade transforma o teste num gerador de alarme falso.
+     */
     const reg = await Promise.race([
       navigator.serviceWorker.ready,
-      new Promise(r => setTimeout(() => r(null), 25000)),
+      new Promise(r => setTimeout(() => r(null), 75000)),
     ])
     return reg?.active?.state ?? 'não ativou'
   } catch (e) { return String(e) }
