@@ -21,6 +21,13 @@ const withPWA = nextPwa({
   //   bad-precaching-response :: [{"url":".../app-build-manifest.json","status":404}]
   buildExcludes: [
     /app-build-manifest\.json$/,
+    // Cópias do próprio service worker que se acumulam em `public/` — "sw 2.js",
+    // "sw 33.js", "worker-<hash>.js". Elas entraram no manifesto de precache num
+    // deploy e quebraram o install em produção: o nome tem ESPAÇO, a URL 404a, e
+    // precache é atômico. Nenhuma delas deveria existir; excluí-las aqui garante
+    // que reaparecer não volte a derrubar o push.
+    /^sw \d+\.js$/,
+    /^worker-[A-Za-z0-9_-]+\.js$/,
     /build-manifest\.json$/,
     /react-loadable-manifest\.json$/,
     /middleware-manifest\.json$/,
