@@ -5,6 +5,27 @@
 
 ---
 
+## Rota EOS é compromisso; Google Maps é navegador por ruas (2026-07-31)
+
+PLAN-T10 adicionou handoff multi-stop: a rota desenhada no plano (`LineString`)
+vira um Google Maps URL com `origin`, `destination` e `waypoints` na ordem do
+traçado. Isso resolve o caso "ponto 1 → ponto 2 → ponto 3" sem o EOS fingir que
+tem um motor de ruas.
+
+Regra: **o EOS guarda a intenção operacional e a sequência offline; o app de
+mapas calcula ruas quando houver rede.** O Google pode pedir o toque final em
+"Iniciar" e pode otimizar/ajustar ruas conforme trânsito/fechamentos. O EOS não
+deve prometer auto-start silencioso nem que cada vértice desenhado será uma rua
+exata.
+
+Para não transformar todo clique do desenho em parada e não estourar URL em
+mobile, o helper limita pontos intermediários e preserva a ordem. Se algum dia
+quisermos paradas nomeadas explícitas ("buscar esposa", "escola", "casa da
+tia"), isso deve virar modelo próprio de rota/etapas, não abuso dos vértices da
+polilinha.
+
+---
+
 ## Direção de tornado só com movimento oficial, nunca por geometria (2026-07-31)
 
 WV2-T12 separou as camadas do mapa em Flood, Surge, Vento impacto e Tornado.

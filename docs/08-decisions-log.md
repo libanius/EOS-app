@@ -4,6 +4,36 @@
 
 ---
 
+## D-082 — Rota autoral do EOS pode abrir Google Maps com múltiplas paradas
+
+**Date**: 2026-07-31
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: O dono pediu que uma rota criada no EOS como ponto 1 → ponto 2 →
+ponto 3 possa iniciar navegação no Google Maps já com a sequência inteira, não
+apenas com um destino final. Isso é diferente de pedir que o EOS calcule ruas
+como o Google: o plano carrega a intenção e a ordem; o app de mapas calcula as
+ruas.
+
+**Decision**:
+
+1. A rota do plano continua sendo **autoral e offline**: a família desenha o
+   caminho/ordem que quer seguir e o EOS guarda a `LineString`.
+2. Quando houver handoff, o EOS monta um Google Maps URL com `origin`,
+   `destination` e `waypoints` na ordem do traçado. O Google Maps calcula a rota
+   por ruas e pode pedir o toque final em "Iniciar".
+3. O EOS não promete que o Google obedecerá cada vértice desenhado como rua
+   exata. Para não estourar URL nem transformar todo clique em parada, o handoff
+   usa uma sequência limitada de pontos intermediários, preservando a ordem.
+4. O fallback antigo de um destino continua existindo para ações simples
+   ("rota até ela", "como chegar ao abrigo").
+
+**Consequences**: sem migration. `lib/world/navigation.ts` vira o lugar único de
+construção de links de navegação, incluindo rotas multi-stop. A UI do plano passa
+a oferecer "Google Maps" em cada rota desenhada.
+
+---
+
 ## D-081 — Camadas hidrológicas, vento de impacto e direção oficial de tornado
 
 **Date**: 2026-07-31

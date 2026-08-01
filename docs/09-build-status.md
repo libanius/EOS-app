@@ -10,7 +10,8 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Abrigos oficiais + planos da família (FAM/PLAN) + gates de validação da v2 abertos (WV2-T05) |
-| **Last Completed Task** | **D-081 / WV2-T12 — camadas flood, surge, wind impact e direção oficial de tornado (2026-07-31)** |
+| **Last Completed Task** | **D-082 / PLAN-T10 — handoff multi-stop da rota do plano para Google Maps (2026-07-31)** |
+| | D-081 / WV2-T12 — camadas flood, surge, wind impact e direção oficial de tornado (2026-07-31)** |
 | | D-080 / PLAN-T09 — múltiplos planos, execução cancelável e passos editáveis (2026-07-31)** |
 | | D-079 / PLAN-T08 — Executar Plano: Pilot host situacional no painel da pessoa (2026-07-31)** |
 | | D-078 — tempestade no mapa: cone, trajetória, vento em grade e alerta que vira lugar (2026-07-31)** |
@@ -82,9 +83,10 @@
 | **In Progress** | — |
 | **Fases pedidas pelo dono (2026-07-31)** | ✅ 1. Camadas de clima + rastreio de ciclone (D-078). 2. Reinventar a aba Família no design system da v2, com componentes dinâmicos. 3. WV2-T05 (a11y/perf), PLAN-T07 (Pilot propõe plano). |
 | **Next Task** | **PLAN-T02** — editor do plano (pontos de encontro, lugares, papéis, gatilhos). Depois **PLAN-T04** (versionamento e reconhecimento na UI) e **SIM-T06**. Antes disso: **PLAN-T01** — modelo de dados + RLS + API dos Planos de Emergência da Família (`docs/18-family-plans.md`), que destrava SIM-T06 e os mapas offline. Antes disso: **SIM-T05** — debrief da simulação com lacunas quantificadas. Alternativas: **SIM-T04** (injeção de eventos/avanço de tempo), **PLAN-T01** (modelo de dados do plano de voo) — modelo de dados + RLS por círculo + API dos Planos de Emergência da Família (`docs/18-family-plans.md`). Alternativas abertas: **WV2-T05** (gates de validação da v2, dívida assumida em D-063), **FAM-T08** (cache offline dos abrigos), **LA-T06** (códigos de afiliado, travado nos params do dono). |
-| **Build** | ✅ Passing — type-check, production build e `npm run test:weather` 9/9 limpos (2026-07-31) |
+| **Build** | ✅ Passing — type-check, Jest 70/70, `npm run test:plan` 14/14 e production build limpos (2026-07-31) |
 | **Plano execução** | ✅ PLAN-T08 MVP: tocar no próprio rosto no mapa abre comando familiar; "Executar plano" carrega um plano escolhido, monta passos determinísticos do host (círculo → gatilhos → papéis → pontos → rotas → encerramento) e alerta o círculo com push preset "Execute o plano da família agora". Sem nova tabela ainda: timeline compartilhada fica para `family_plan_executions`. |
 | **Plano múltiplo** | ✅ PLAN-T09: o círculo pode ter vários planos ativos; `/plan` alterna/cria planos por nome, o executor escolhe qual plano rodar, passos fixos do EOS saem da lista numerada e há cancelar/falso alarme. Migration `20260731000000_multiple_family_plans.sql` aplicada pelo dono. |
+| **Rotas do plano** | ✅ PLAN-T10: cada rota desenhada no plano agora tem handoff "Google Maps" com origem, destino e paradas intermediárias na ordem da `LineString`. O EOS mantém o combinado offline; Google Maps calcula ruas/ETA quando abrir. |
 | **Pilot** | ✅ `npm run test:pilot` **8/8** com o MODELO real (2026-07-31): orbe fora do dashboard sem duplicar no dashboard, clima com números sem negar acesso, ciclone citado E qualificado, análise de atividade com veredito/números/janela, orbe arrastável que fica onde foi deixado, e um guarda que percorre 7 telas conferindo que nenhuma está coberta (validado com controle negativo). |
 | **Clima** | ✅ `npm run test:weather` **9/9** com dado AO VIVO (2026-07-31): ciclone com posição/rumo, geometria oficial do NHC, vento em grade, painel com camadas Flood/Surge/Vento impacto/Tornado, setas RENDERIZADAS no mapa, camada de impacto de vento conectada ao MapLibre, alerta pulsando na cor do risco, e tempestade tocável ENQUADRANDO o cone (medido contra a geometria da API, não contra as entranhas do mapa). O teste PROCURA uma região com alerta ativo no feed do NWS em vez de depender do tempo em Parkland. |
 | **Círculo** | ✅ `npm run test:circle` **5/5** (2026-07-31) — promover a Editor muda o banco, quem não é Admin recebe 403, renomear funciona, excluir exige o nome exato e cascateia. Toda asserção lê o banco depois da ação. |

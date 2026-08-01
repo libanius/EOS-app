@@ -23,7 +23,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useLanguage } from '@/lib/i18n'
 import { distanceKm, bearing, compassPoint } from '@/lib/world/shelters'
-import { formatDistance, walkingMinutes } from '@/lib/world/navigation'
+import { formatDistance, googleMapsRouteUrlFromLineString, walkingMinutes } from '@/lib/world/navigation'
 import { getFamilyPlan, saveFamilyPlan } from '@/lib/offline-storage'
 import { planEnvelope } from '@/lib/plan-envelope'
 import {
@@ -81,6 +81,8 @@ const COPY = {
     triggers: 'Quando executar',
     routes: 'Rotas',
     routesHint: 'Nenhuma rota desenhada. A rota da família carrega o que roteador nenhum sabe: qual ponte alaga, qual portão fica aberto.',
+    openGoogleRoute: 'Google Maps',
+    openGoogleRouteLabel: 'Abrir esta rota com paradas no Google Maps',
     drawRoute: 'Desenhar rota',
     needTwoPlaces: 'Defina pelo menos dois lugares antes de desenhar uma rota.',
     byCar: 'Carro',
@@ -169,6 +171,8 @@ const COPY = {
     triggers: 'When to execute',
     routes: 'Routes',
     routesHint: 'No route drawn yet. A family route carries what no routing engine knows: which bridge floods, which gate stays open.',
+    openGoogleRoute: 'Google Maps',
+    openGoogleRouteLabel: 'Open this route with stops in Google Maps',
     drawRoute: 'Draw route',
     needTwoPlaces: 'Set at least two places before drawing a route.',
     byCar: 'Car',
@@ -741,20 +745,34 @@ export default function PlanPage() {
           <SectionLabel trailing={routes.length ? String(routes.length) : undefined}>{c.routes}</SectionLabel>
           <Card>
             {routes.length === 0 && <p className="t-foot ink-3">{c.routesHint}</p>}
-            {routes.map((route, index) => (
-              <div key={index} className="wv2-plan-row">
-                <span className="t-caps ink-3">{route.mode === 'car' ? c.byCar : c.onFootShort}</span>
-                <span className="t-body">
-                  {route.label}
-                  <em className="t-foot ink-3 route-meta">{routeSummary(route, pt)}</em>
-                  {route.notes && <em className="t-foot ink-2 route-meta">{route.notes}</em>}
-                </span>
-                <span className="route-acts">
-                  <button type="button" className="wv2-plan-x" onClick={() => setDrawing({ index })} aria-label={c.change}>✎</button>
-                  <button type="button" className="wv2-plan-x" onClick={() => { setDirty(true); setRoutes(list => list.filter((_, i) => i !== index)) }} aria-label={c.remove}>×</button>
-                </span>
-              </div>
-            ))}
+            {routes.map((route, index) => {
+              const googleRoute = googleMapsRouteUrlFromLineString(route.geometry, route.mode)
+              return (
+                <div key={index} className="wv2-plan-row">
+                  <span className="t-caps ink-3">{route.mode === 'car' ? c.byCar : c.onFootShort}</span>
+                  <span className="t-body">
+                    {route.label}
+                    <em className="t-foot ink-3 route-meta">{routeSummary(route, pt)}</em>
+                    {route.notes && <em className="t-foot ink-2 route-meta">{route.notes}</em>}
+                  </span>
+                  <span className="route-acts">
+                    {googleRoute && (
+                      <a
+                        className="wv2-route-nav"
+                        href={googleRoute}
+                        target="_blank"
+                        rel="noreferrer"
+                        aria-label={c.openGoogleRouteLabel}
+                      >
+                        {c.openGoogleRoute}
+                      </a>
+                    )}
+                    <button type="button" className="wv2-plan-x" onClick={() => setDrawing({ index })} aria-label={c.change}>✎</button>
+                    <button type="button" className="wv2-plan-x" onClick={() => { setDirty(true); setRoutes(list => list.filter((_, i) => i !== index)) }} aria-label={c.remove}>×</button>
+                  </span>
+                </div>
+              )
+            })}
             <div className="wv2-plan-addrow">
               <Pill onClick={() => setDrawing({ index: null })} disabled={waypoints.length < 2}>
                 + {c.drawRoute}

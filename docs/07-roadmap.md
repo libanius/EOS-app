@@ -177,6 +177,7 @@
 | PLAN-T07 | Pilot propõe/revisa planos com confirmação elemento a elemento | PENDING | Depende de UPP-03; sem escrita silenciosa |
 | PLAN-T08 | Executar Plano: Pilot host situacional + painel de ação familiar | ✅ COMPLETE (MVP local) | 2026-07-31 — D-079. Tocar no próprio rosto no mapa abre ferramentas de comando; o host deriva passos da versão atual do plano e alerta o círculo para executar agora. Timeline compartilhada e `family_plan_executions` ficam como próxima evolução. |
 | PLAN-T09 | Múltiplos planos + cancelar execução | ✅ COMPLETE | 2026-07-31 — D-080. Remove a regra de um plano ativo por círculo, permite criar/alternar planos por situação e torna cancelamento/falso alarme explícito. Passos fixos do EOS saem da lista numerada editável. |
+| PLAN-T10 | Handoff de rota multi-stop para Google Maps | ✅ COMPLETE | 2026-07-31 — D-082. A rota autoral/offline do EOS abre o Google Maps com origem, destino e paradas intermediárias na ordem do traçado. Sem migration. |
 
 ---
 

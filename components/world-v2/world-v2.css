@@ -2529,7 +2529,22 @@
 /* ── Rotas desenhadas pela família (PLAN-T03 / doc 18 §5) ── */
 
 .wv2-plan-page .route-meta { display: block; font-style: normal; margin-top: 2px; }
-.wv2-plan-page .route-acts { display: flex; gap: var(--s2); }
+.wv2-plan-page .route-acts { display: flex; gap: var(--s2); align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.wv2-plan-page .wv2-route-nav {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--s3);
+  border-radius: var(--r-pill);
+  border: 1px solid rgba(var(--accent-rgb), 0.42);
+  background: rgba(var(--accent-rgb), 0.12);
+  color: var(--ink);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
 
 .wv2.wv2-draw {
   position: fixed;
