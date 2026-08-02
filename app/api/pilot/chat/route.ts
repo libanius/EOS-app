@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { getOpenAIClient, getOpenAIModel } from '@/lib/openai'
+import { generationParams, getOpenAIClient, getOpenAIModel } from '@/lib/openai'
 import { getRelevantChunks } from '@/lib/knowledge'
 
 /**
@@ -533,15 +533,19 @@ export async function POST(request: NextRequest) {
     .join('\n\n')
 
   try {
+    const model = getOpenAIModel()
     const payload = {
-      model: getOpenAIModel(),
+      model,
       messages: [
         { role: 'system' as const, content: system },
         ...messages.slice(-8).map(m => ({ role: m.role, content: m.content })),
       ],
-      temperature: context.riskState === 'critical' ? 0.2 : 0.5,
-      // Raised because a truncated object is what leaked raw JSON to the screen.
-      max_tokens: 1400,
+      // Os parâmetros dependem da família do modelo: os de raciocínio recusam
+      // `max_tokens` e gastam o orçamento pensando antes de escrever.
+      ...generationParams(model, {
+        maxOutputTokens: 1400,   // subiu porque objeto truncado vazava JSON cru na tela
+        temperature: context.riskState === 'critical' ? 0.2 : 0.5,
+      }),
     }
 
     let completion

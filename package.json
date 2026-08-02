@@ -22,7 +22,8 @@
     "test:pilot": "node scripts/pilot-abilities-test.mjs",
     "test:marker": "node scripts/marker-stability-test.mjs",
     "test:multiplan": "node scripts/multi-plan-test.mjs",
-    "test:family": "node scripts/family-page-test.mjs"
+    "test:family": "node scripts/family-page-test.mjs",
+    "bench:rag": "node scripts/rag-bench.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.86.1",

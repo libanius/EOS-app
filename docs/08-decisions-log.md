@@ -4,6 +4,66 @@
 
 ---
 
+## D-083 — O RAG estava desligado na prática, e o Pilot rodava no modelo mais fraco
+
+**Date**: 2026-08-02
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: O dono testou o índice com "Como estocar alimentos". No limiar de
+produção (0,7) ele devolveu **zero trechos**. Medido em oito perguntas reais em
+português:
+
+| Limiar | Perguntas sem resposta (cru) | Traduzido |
+|---|---|---|
+| **0,70 (produção)** | **8 de 8** | 7 de 8 |
+| 0,50 | 4 de 8 | 1 de 8 |
+| **0,45** | 2 de 8 | **0 de 8** |
+
+Ou seja: o acervo do EOS — FEMA, Cruz Vermelha, WHO, SAS, Navy SEAL, 3.887
+trechos — **não era usado**. O Pilot respondia do próprio modelo.
+
+Duas causas somadas:
+
+1. **O acervo é todo em inglês e o dono pergunta em português.** A distância
+   entre idiomas come a margem de similaridade: "Como estocar alimentos" pontuou
+   0,598; "how to store food", o mesmo assunto, 0,708.
+2. **0,7 era alto demais até para inglês**: "food storage stockpile" fez 0,658.
+
+**Decision**:
+
+1. **Traduzir a CONSULTA, não o acervo.** Uma chamada curta e barata antes do
+   embedding, contra reindexar 3.887 trechos. Falha de tradução não cala a busca:
+   segue com o texto original, porque pior recall é melhor que recall nenhum.
+2. **Limiar 0,45 e 8 trechos.** Um trecho fracamente relacionado entra como
+   CONTEXTO, não como verdade — o risco de um trecho a mais é baixo; o de nenhum
+   é responder sem fonte.
+3. **Modelo padrão sobe de `gpt-4o-mini` para `gpt-4.1`.** Medido na mesma
+   pergunta real ("Tenho 2 dias até a tempestade chegar, o que faço primeiro?",
+   casa com filha asmática):
+
+   | Modelo | Tempo | Resultado |
+   |---|---|---|
+   | gpt-4o-mini | 4,1 s | genérico; **não citou a asma da filha** |
+   | **gpt-4.1** | **3,6 s** | citou a asma, inalador com espaçador e receita; 5 tarefas concretas |
+   | gpt-5 | 45,7 s | **queimou 4.200 tokens raciocinando e não respondeu** |
+
+   `gpt-4.1` é mais rápido **e** mais específico que o modelo que estava em
+   produção. E fica o aviso: **gpt-5 é inadequado para o Pilot** — 45 s é
+   inaceitável para quem está numa emergência, e o orçamento inteiro vira
+   raciocínio antes de sair uma letra.
+4. **Parâmetros por família de modelo** (`generationParams`). Os modelos de
+   raciocínio recusam `max_tokens` e ignoram `temperature`; trocar `OPENAI_MODEL`
+   passa a ser decisão de produto, não um bug.
+
+**Consequences**: `npm run bench:rag` mede recall com perguntas reais em
+português, cru contra traduzido, em cinco limiares. Ajustar limiar no olho troca
+um problema por outro — em recuperação de informação isso se mede.
+
+`npm run test:pilot` — 8/8, agora citando a hora da leitura e devolvendo
+"Pode, mas com cuidado" com os números, onde antes vinha um "Não faça" seco.
+
+---
+
 ## D-082 — Rota autoral do EOS pode abrir Google Maps com múltiplas paradas
 
 **Date**: 2026-07-31
@@ -31,6 +91,66 @@ ruas.
 **Consequences**: sem migration. `lib/world/navigation.ts` vira o lugar único de
 construção de links de navegação, incluindo rotas multi-stop. A UI do plano passa
 a oferecer "Google Maps" em cada rota desenhada.
+
+---
+
+## D-083 — O RAG estava desligado na prática, e o Pilot rodava no modelo mais fraco
+
+**Date**: 2026-08-02
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: O dono testou o índice com "Como estocar alimentos". No limiar de
+produção (0,7) ele devolveu **zero trechos**. Medido em oito perguntas reais em
+português:
+
+| Limiar | Perguntas sem resposta (cru) | Traduzido |
+|---|---|---|
+| **0,70 (produção)** | **8 de 8** | 7 de 8 |
+| 0,50 | 4 de 8 | 1 de 8 |
+| **0,45** | 2 de 8 | **0 de 8** |
+
+Ou seja: o acervo do EOS — FEMA, Cruz Vermelha, WHO, SAS, Navy SEAL, 3.887
+trechos — **não era usado**. O Pilot respondia do próprio modelo.
+
+Duas causas somadas:
+
+1. **O acervo é todo em inglês e o dono pergunta em português.** A distância
+   entre idiomas come a margem de similaridade: "Como estocar alimentos" pontuou
+   0,598; "how to store food", o mesmo assunto, 0,708.
+2. **0,7 era alto demais até para inglês**: "food storage stockpile" fez 0,658.
+
+**Decision**:
+
+1. **Traduzir a CONSULTA, não o acervo.** Uma chamada curta e barata antes do
+   embedding, contra reindexar 3.887 trechos. Falha de tradução não cala a busca:
+   segue com o texto original, porque pior recall é melhor que recall nenhum.
+2. **Limiar 0,45 e 8 trechos.** Um trecho fracamente relacionado entra como
+   CONTEXTO, não como verdade — o risco de um trecho a mais é baixo; o de nenhum
+   é responder sem fonte.
+3. **Modelo padrão sobe de `gpt-4o-mini` para `gpt-4.1`.** Medido na mesma
+   pergunta real ("Tenho 2 dias até a tempestade chegar, o que faço primeiro?",
+   casa com filha asmática):
+
+   | Modelo | Tempo | Resultado |
+   |---|---|---|
+   | gpt-4o-mini | 4,1 s | genérico; **não citou a asma da filha** |
+   | **gpt-4.1** | **3,6 s** | citou a asma, inalador com espaçador e receita; 5 tarefas concretas |
+   | gpt-5 | 45,7 s | **queimou 4.200 tokens raciocinando e não respondeu** |
+
+   `gpt-4.1` é mais rápido **e** mais específico que o modelo que estava em
+   produção. E fica o aviso: **gpt-5 é inadequado para o Pilot** — 45 s é
+   inaceitável para quem está numa emergência, e o orçamento inteiro vira
+   raciocínio antes de sair uma letra.
+4. **Parâmetros por família de modelo** (`generationParams`). Os modelos de
+   raciocínio recusam `max_tokens` e ignoram `temperature`; trocar `OPENAI_MODEL`
+   passa a ser decisão de produto, não um bug.
+
+**Consequences**: `npm run bench:rag` mede recall com perguntas reais em
+português, cru contra traduzido, em cinco limiares. Ajustar limiar no olho troca
+um problema por outro — em recuperação de informação isso se mede.
+
+`npm run test:pilot` — 8/8, agora citando a hora da leitura e devolvendo
+"Pode, mas com cuidado" com os números, onde antes vinha um "Não faça" seco.
 
 ---
 
@@ -147,6 +267,66 @@ ativo.
 
 ---
 
+## D-083 — O RAG estava desligado na prática, e o Pilot rodava no modelo mais fraco
+
+**Date**: 2026-08-02
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: O dono testou o índice com "Como estocar alimentos". No limiar de
+produção (0,7) ele devolveu **zero trechos**. Medido em oito perguntas reais em
+português:
+
+| Limiar | Perguntas sem resposta (cru) | Traduzido |
+|---|---|---|
+| **0,70 (produção)** | **8 de 8** | 7 de 8 |
+| 0,50 | 4 de 8 | 1 de 8 |
+| **0,45** | 2 de 8 | **0 de 8** |
+
+Ou seja: o acervo do EOS — FEMA, Cruz Vermelha, WHO, SAS, Navy SEAL, 3.887
+trechos — **não era usado**. O Pilot respondia do próprio modelo.
+
+Duas causas somadas:
+
+1. **O acervo é todo em inglês e o dono pergunta em português.** A distância
+   entre idiomas come a margem de similaridade: "Como estocar alimentos" pontuou
+   0,598; "how to store food", o mesmo assunto, 0,708.
+2. **0,7 era alto demais até para inglês**: "food storage stockpile" fez 0,658.
+
+**Decision**:
+
+1. **Traduzir a CONSULTA, não o acervo.** Uma chamada curta e barata antes do
+   embedding, contra reindexar 3.887 trechos. Falha de tradução não cala a busca:
+   segue com o texto original, porque pior recall é melhor que recall nenhum.
+2. **Limiar 0,45 e 8 trechos.** Um trecho fracamente relacionado entra como
+   CONTEXTO, não como verdade — o risco de um trecho a mais é baixo; o de nenhum
+   é responder sem fonte.
+3. **Modelo padrão sobe de `gpt-4o-mini` para `gpt-4.1`.** Medido na mesma
+   pergunta real ("Tenho 2 dias até a tempestade chegar, o que faço primeiro?",
+   casa com filha asmática):
+
+   | Modelo | Tempo | Resultado |
+   |---|---|---|
+   | gpt-4o-mini | 4,1 s | genérico; **não citou a asma da filha** |
+   | **gpt-4.1** | **3,6 s** | citou a asma, inalador com espaçador e receita; 5 tarefas concretas |
+   | gpt-5 | 45,7 s | **queimou 4.200 tokens raciocinando e não respondeu** |
+
+   `gpt-4.1` é mais rápido **e** mais específico que o modelo que estava em
+   produção. E fica o aviso: **gpt-5 é inadequado para o Pilot** — 45 s é
+   inaceitável para quem está numa emergência, e o orçamento inteiro vira
+   raciocínio antes de sair uma letra.
+4. **Parâmetros por família de modelo** (`generationParams`). Os modelos de
+   raciocínio recusam `max_tokens` e ignoram `temperature`; trocar `OPENAI_MODEL`
+   passa a ser decisão de produto, não um bug.
+
+**Consequences**: `npm run bench:rag` mede recall com perguntas reais em
+português, cru contra traduzido, em cinco limiares. Ajustar limiar no olho troca
+um problema por outro — em recuperação de informação isso se mede.
+
+`npm run test:pilot` — 8/8, agora citando a hora da leitura e devolvendo
+"Pode, mas com cuidado" com os números, onde antes vinha um "Não faça" seco.
+
+---
+
 ## D-082 — A Família deixa de ser cadastro e passa a responder três perguntas
 
 **Date**: 2026-08-01
@@ -216,6 +396,66 @@ estava na tela. **Localizador de teste mira no título, não no texto inteiro.**
 **Consequences**: a migration remove o índice que obrigava um único plano ativo
 por círculo. A próxima camada ainda deve persistir execuções compartilhadas, mas
 o modelo de plano já não bloqueia múltiplos cenários.
+
+---
+
+## D-083 — O RAG estava desligado na prática, e o Pilot rodava no modelo mais fraco
+
+**Date**: 2026-08-02
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: O dono testou o índice com "Como estocar alimentos". No limiar de
+produção (0,7) ele devolveu **zero trechos**. Medido em oito perguntas reais em
+português:
+
+| Limiar | Perguntas sem resposta (cru) | Traduzido |
+|---|---|---|
+| **0,70 (produção)** | **8 de 8** | 7 de 8 |
+| 0,50 | 4 de 8 | 1 de 8 |
+| **0,45** | 2 de 8 | **0 de 8** |
+
+Ou seja: o acervo do EOS — FEMA, Cruz Vermelha, WHO, SAS, Navy SEAL, 3.887
+trechos — **não era usado**. O Pilot respondia do próprio modelo.
+
+Duas causas somadas:
+
+1. **O acervo é todo em inglês e o dono pergunta em português.** A distância
+   entre idiomas come a margem de similaridade: "Como estocar alimentos" pontuou
+   0,598; "how to store food", o mesmo assunto, 0,708.
+2. **0,7 era alto demais até para inglês**: "food storage stockpile" fez 0,658.
+
+**Decision**:
+
+1. **Traduzir a CONSULTA, não o acervo.** Uma chamada curta e barata antes do
+   embedding, contra reindexar 3.887 trechos. Falha de tradução não cala a busca:
+   segue com o texto original, porque pior recall é melhor que recall nenhum.
+2. **Limiar 0,45 e 8 trechos.** Um trecho fracamente relacionado entra como
+   CONTEXTO, não como verdade — o risco de um trecho a mais é baixo; o de nenhum
+   é responder sem fonte.
+3. **Modelo padrão sobe de `gpt-4o-mini` para `gpt-4.1`.** Medido na mesma
+   pergunta real ("Tenho 2 dias até a tempestade chegar, o que faço primeiro?",
+   casa com filha asmática):
+
+   | Modelo | Tempo | Resultado |
+   |---|---|---|
+   | gpt-4o-mini | 4,1 s | genérico; **não citou a asma da filha** |
+   | **gpt-4.1** | **3,6 s** | citou a asma, inalador com espaçador e receita; 5 tarefas concretas |
+   | gpt-5 | 45,7 s | **queimou 4.200 tokens raciocinando e não respondeu** |
+
+   `gpt-4.1` é mais rápido **e** mais específico que o modelo que estava em
+   produção. E fica o aviso: **gpt-5 é inadequado para o Pilot** — 45 s é
+   inaceitável para quem está numa emergência, e o orçamento inteiro vira
+   raciocínio antes de sair uma letra.
+4. **Parâmetros por família de modelo** (`generationParams`). Os modelos de
+   raciocínio recusam `max_tokens` e ignoram `temperature`; trocar `OPENAI_MODEL`
+   passa a ser decisão de produto, não um bug.
+
+**Consequences**: `npm run bench:rag` mede recall com perguntas reais em
+português, cru contra traduzido, em cinco limiares. Ajustar limiar no olho troca
+um problema por outro — em recuperação de informação isso se mede.
+
+`npm run test:pilot` — 8/8, agora citando a hora da leitura e devolvendo
+"Pode, mas com cuidado" com os números, onde antes vinha um "Não faça" seco.
 
 ---
 
@@ -377,6 +617,66 @@ situacional dizendo a próxima ação, quem falta responder e o que não fazer.
 planos) continua existindo, mas a prioridade operacional muda: antes de a IA
 escrever planos melhores, o EOS precisa **executar** o plano que a família já
 aprovou.
+
+---
+
+## D-083 — O RAG estava desligado na prática, e o Pilot rodava no modelo mais fraco
+
+**Date**: 2026-08-02
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: O dono testou o índice com "Como estocar alimentos". No limiar de
+produção (0,7) ele devolveu **zero trechos**. Medido em oito perguntas reais em
+português:
+
+| Limiar | Perguntas sem resposta (cru) | Traduzido |
+|---|---|---|
+| **0,70 (produção)** | **8 de 8** | 7 de 8 |
+| 0,50 | 4 de 8 | 1 de 8 |
+| **0,45** | 2 de 8 | **0 de 8** |
+
+Ou seja: o acervo do EOS — FEMA, Cruz Vermelha, WHO, SAS, Navy SEAL, 3.887
+trechos — **não era usado**. O Pilot respondia do próprio modelo.
+
+Duas causas somadas:
+
+1. **O acervo é todo em inglês e o dono pergunta em português.** A distância
+   entre idiomas come a margem de similaridade: "Como estocar alimentos" pontuou
+   0,598; "how to store food", o mesmo assunto, 0,708.
+2. **0,7 era alto demais até para inglês**: "food storage stockpile" fez 0,658.
+
+**Decision**:
+
+1. **Traduzir a CONSULTA, não o acervo.** Uma chamada curta e barata antes do
+   embedding, contra reindexar 3.887 trechos. Falha de tradução não cala a busca:
+   segue com o texto original, porque pior recall é melhor que recall nenhum.
+2. **Limiar 0,45 e 8 trechos.** Um trecho fracamente relacionado entra como
+   CONTEXTO, não como verdade — o risco de um trecho a mais é baixo; o de nenhum
+   é responder sem fonte.
+3. **Modelo padrão sobe de `gpt-4o-mini` para `gpt-4.1`.** Medido na mesma
+   pergunta real ("Tenho 2 dias até a tempestade chegar, o que faço primeiro?",
+   casa com filha asmática):
+
+   | Modelo | Tempo | Resultado |
+   |---|---|---|
+   | gpt-4o-mini | 4,1 s | genérico; **não citou a asma da filha** |
+   | **gpt-4.1** | **3,6 s** | citou a asma, inalador com espaçador e receita; 5 tarefas concretas |
+   | gpt-5 | 45,7 s | **queimou 4.200 tokens raciocinando e não respondeu** |
+
+   `gpt-4.1` é mais rápido **e** mais específico que o modelo que estava em
+   produção. E fica o aviso: **gpt-5 é inadequado para o Pilot** — 45 s é
+   inaceitável para quem está numa emergência, e o orçamento inteiro vira
+   raciocínio antes de sair uma letra.
+4. **Parâmetros por família de modelo** (`generationParams`). Os modelos de
+   raciocínio recusam `max_tokens` e ignoram `temperature`; trocar `OPENAI_MODEL`
+   passa a ser decisão de produto, não um bug.
+
+**Consequences**: `npm run bench:rag` mede recall com perguntas reais em
+português, cru contra traduzido, em cinco limiares. Ajustar limiar no olho troca
+um problema por outro — em recuperação de informação isso se mede.
+
+`npm run test:pilot` — 8/8, agora citando a hora da leitura e devolvendo
+"Pode, mas com cuidado" com os números, onde antes vinha um "Não faça" seco.
 
 ---
 
