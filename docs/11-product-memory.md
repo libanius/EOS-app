@@ -1,7 +1,38 @@
 # 11 — Product Memory
 
 > Non-obvious facts that don't belong in code comments but must survive across sessions.
-> Last updated: 2026-07-31
+> Last updated: 2026-08-03
+
+---
+
+## EOS Platform: quatro camadas, não quatro produtos (2026-08-03)
+
+D-084 resolveu a pergunta de plataforma: levar EOS para Web, App Store, Google
+Play, CarPlay/Android Auto e Mesh não significa abrir produtos paralelos.
+Significa manter um **core operacional único** e adaptar somente as bordas.
+
+As quatro camadas são:
+
+1. Product Core — Pilot, Risk Engine, Family, Plans, Weather, Shelters, Routes,
+   Simulation, Preparedness, EDU e Comms.
+2. Domain Core — regras, decisão, risco, consentimento, offline, autoridade da
+   fonte, freshness e ordem de execução.
+3. Shared UI — design system, HUD, sheets, mapa, status, família, plano e
+   preparação.
+4. Platform Adapters — push nativo, background location, secure storage, loja,
+   widgets, Automotive, BLE e LoRa.
+
+Regra: **não abrir quatro produtos; estruturar quatro camadas**. Web/PWA continua
+sendo a superfície primária de validação. iOS/Android só começam depois de G-03.
+CarPlay/Android Auto só depois de G-06 e como companion mode restrito. Mesh/LoRa
+continua bloqueado por G-05.
+
+`/mobile/` contém template/código conceitual e experimentos LoRa/BLE. Não existe
+app React Native inicializado, nem Expo, nem Capacitor, nem pipeline de App
+Store/Google Play.
+
+Preparedness, EDU, Comms e onboarding por simulação pertencem primeiro ao Web/PWA
+core; não são justificativa para iniciar mobile.
 
 ---
 
@@ -300,8 +331,8 @@ Every feature decision must answer: "does this help in the next 15 minutes?"
 
 There are three intelligence modes, not two. They are a **fallback chain**, not a feature toggle:
 
-1. **CONNECTED** — Claude API + RAG from knowledge_base. Requires internet + auth.
-2. **LOCAL_AI** — llama.rn on-device model. Planned, not yet implemented.
+1. **CONNECTED** — OpenAI API + RAG from knowledge_base. Requires internet + auth.
+2. **LOCAL_AI** — on-device model. Planned, blocked by native mobile readiness.
 3. **SURVIVAL** — Rules Engine only. Always available. Cannot be disabled.
 
 The Rules Engine runs **before** the LLM on every request. The LLM **cannot downgrade** the urgency level set by the Rules Engine. This is a safety guarantee, not a UX choice.
@@ -380,8 +411,9 @@ This bug existed in all previous versions of the ingest script and is the root c
 ## Platform Status
 
 - **Web PWA**: active, deployed on Vercel, auto-deploys on push to main
-- **React Native**: `/mobile/` folder has template files but `npx react-native init` has NOT been run
-- **LoRa firmware**: prototype exists, long-horizon, blocked on mobile app
+- **Native mobile**: blocked by G-03; `/mobile/` has template/conceptual React Native files but no initialized app
+- **Automotive**: blocked by G-06; future restricted companion mode only
+- **LoRa firmware**: prototype exists, long-horizon, blocked by G-05 and mobile readiness
 
 ---
 

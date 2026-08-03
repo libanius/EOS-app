@@ -8,7 +8,11 @@
 
 **EOS — Emergency Operating System** is a survival intelligence platform for families facing any emergency. It transforms chaos into prioritized action, and it works with or without internet.
 
-EOS runs as a **Progressive Web App (Next.js 14)** backed by **Supabase** for auth, data, and vector search, and calls the **Claude API (Anthropic)** for AI reasoning. A **React Native mobile app** is in preparation but not yet initialized.
+EOS runs as a **Progressive Web App (Next.js 14)** backed by **Supabase** for
+auth, data, and vector search, and calls the **OpenAI API** for AI reasoning and
+embeddings. D-084 defines EOS as a multi-surface platform: Web/PWA is the
+primary validation surface; native mobile, Automotive, and Mesh are future
+adapters, not separate products.
 
 ---
 
@@ -16,9 +20,9 @@ EOS runs as a **Progressive Web App (Next.js 14)** backed by **Supabase** for au
 
 | Field | Value |
 |---|---|
-| **Phase** | Launch Activation — Stripe & Production Readiness |
-| **Current Task** | LA-T02 — Stripe Live cutover |
-| **Last Updated** | 2026-07-20 |
+| **Phase** | PHASE 0B complete; next product lane is Preparedness Engine |
+| **Current Task** | PREP-T00 — spec + decision for Preparedness Engine |
+| **Last Updated** | 2026-08-03 |
 
 Full details: `docs/09-build-status.md`
 
@@ -29,7 +33,7 @@ Full details: `docs/09-build-status.md`
 | Auth (signup/login/recovery) | ✅ Working |
 | Onboarding (profile + family) | ✅ Working |
 | Resource inventory + readiness score | ✅ Working |
-| Decision Engine — CONNECTED mode (Claude + RAG) | ✅ Working |
+| Decision Engine / Pilot — CONNECTED mode (OpenAI + RAG + Rules Engine) | ✅ Working |
 | Knowledge base (3887 chunks, 14 sources) | ✅ Ingested |
 | pgvector RAG (`match_documents` RPC) | ✅ Working |
 | Scenarios + threat monitoring panel | ✅ Working |
@@ -53,8 +57,9 @@ Full details: `docs/09-build-status.md`
 | PWA icons (192px, 512px) | ✅ Working |
 | i18n — PT/EN bilíngue | ✅ Working |
 | Landing page (pitch + CTAs) | ✅ Working |
-| LOCAL_AI mode | ❌ Phase 4 |
-| React Native app | ❌ Phase 4 |
+| LOCAL_AI mode | ❌ Not implemented |
+| Native mobile app | ❌ Blocked by G-03 |
+| Automotive companion | ❌ Blocked by G-06 |
 
 ---
 
@@ -76,21 +81,24 @@ Full details: `docs/09-build-status.md`
 | `app/page.tsx` | Root landing page (currently a placeholder) |
 | `app/layout.tsx` | Root layout, PWA metadata, viewport config |
 | `app/(app)/` | All authenticated app pages |
-| `app/(app)/scenario/page.tsx` | Decision Engine UI (AI streaming action plans) |
+| `app/(app)/dashboard/page.tsx` | World v2 front door |
+| `app/(app)/scenario/page.tsx` | Scenario simulator |
 | `app/(app)/inventory/page.tsx` | Resource inventory + readiness score |
-| `app/(app)/family/page.tsx` | Family member management |
+| `app/(app)/family/page.tsx` | Family location/readiness command surface |
+| `app/(app)/plan/page.tsx` | Family emergency plans |
 | `app/(app)/checklist/page.tsx` | Preparedness checklist |
 | `app/(app)/circles/page.tsx` | Community resilience groups |
-| `app/api/analyze/route.ts` | Main AI orchestration endpoint (streaming SSE) |
+| `app/api/pilot/chat/route.ts` | Pilot conversation endpoint |
+| `app/api/analyze/route.ts` | Legacy/analyze AI orchestration endpoint |
 | `lib/knowledge.ts` | RAG retrieval via pgvector (`match_documents` RPC) |
 | `lib/offline-storage.ts` | IndexedDB offline cache |
 | `lib/rate-limit.ts` | Upstash Redis rate limiting (falls back to in-memory) |
 | `middleware.ts` | Auth route protection |
 | `eos_schema.sql` | Supabase database schema (canonical reference) |
-| `supabase/migrations/` | Applied migrations (most recent: 20260630) |
+| `supabase/migrations/` | Applied migrations |
 | `scripts/pdf_to_text.py` | Step 1 of ingest: PDFs → text files |
 | `scripts/ingest.mjs` | Step 2 of ingest: text files → knowledge_base embeddings |
-| `mobile/` | React Native templates (NOT a runnable RN project yet) |
+| `mobile/` | Native mobile templates/concepts (NOT a runnable app yet) |
 | `docs/15-eos-pilot.md` | EOS Pilot product concept/spec |
 
 ---
@@ -99,8 +107,8 @@ Full details: `docs/09-build-status.md`
 
 - **Framework**: Next.js 14 (App Router, TypeScript strict)
 - **Database + Auth**: Supabase (PostgreSQL + pgvector + RLS)
-- **AI (Reasoning)**: Anthropic Claude API (`claude-sonnet-4-20250514`)
-- **AI (Embeddings/RAG)**: OpenAI `text-embedding-3-small` via pgvector
+- **AI (Reasoning)**: OpenAI API (Pilot default documented in build status)
+- **AI (Embeddings/RAG)**: OpenAI embeddings via pgvector
 - **Offline Storage**: IndexedDB via `idb`
 - **PWA**: `next-pwa` with service worker and runtime caching
 - **Rate Limiting**: Upstash Redis (sliding window, 10 req/60s)
@@ -108,7 +116,7 @@ Full details: `docs/09-build-status.md`
 - **Push**: Web Push API (VAPID) via `web-push` + next-pwa `customWorkerSrc`
 - **i18n**: Custom `useLanguage()` hook with PT/EN translations in `lib/i18n.tsx`
 - **Error Monitoring**: Sentry (`@sentry/nextjs`)
-- **Mobile (planned)**: React Native bare workflow + llama.rn local AI
+- **Mobile (planned)**: native shell blocked by G-03; approach not initialized
 
 ---
 
@@ -118,7 +126,7 @@ EOS operates in three modes — a fallback chain, not feature toggles:
 
 | Mode | Description | Status |
 |---|---|---|
-| `CONNECTED` | Full Claude API + pgvector RAG + Rules Engine | ✅ Working |
+| `CONNECTED` | OpenAI + pgvector RAG + Rules Engine | ✅ Working |
 | `LOCAL_AI` | On-device LLM via llama.rn (mobile only) | ❌ Not implemented |
 | `SURVIVAL` | Rules Engine only — fully offline, no AI | ✅ Always available |
 

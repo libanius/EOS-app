@@ -1,7 +1,7 @@
 # 09 — Build Status
 
 > The single most important file for resuming a session. Read this first after AGENTS.md.
-> Last updated: 2026-07-31
+> Last updated: 2026-08-03
 
 ---
 
@@ -9,8 +9,10 @@
 
 | Field | Value |
 |---|---|
-| **Current Phase** | Abrigos oficiais + planos da família (FAM/PLAN) + gates de validação da v2 abertos (WV2-T05) |
-| **Last Completed Task** | **D-082 / PLAN-T10 — handoff multi-stop da rota do plano para Google Maps (2026-07-31)** |
+| **Current Phase** | PHASE 0B concluída; próximo bloco de produto é Preparedness Engine (PREP/EDU/COMMS/ONB) sobre Web/PWA |
+| **Last Completed Task** | **D-084 / P0B-T01→T06 — EOS Platform Foundation Alignment (2026-08-03)** |
+| | D-083 — RAG com tradução de consulta, limiar 0,45 e Pilot em `gpt-4.1` (2026-08-02)** |
+| | **D-082 / PLAN-T10 — handoff multi-stop da rota do plano para Google Maps (2026-07-31)** |
 | | D-081 / WV2-T12 — camadas flood, surge, wind impact e direção oficial de tornado (2026-07-31)** |
 | | D-080 / PLAN-T09 — múltiplos planos, execução cancelável e passos editáveis (2026-07-31)** |
 | | D-079 / PLAN-T08 — Executar Plano: Pilot host situacional no painel da pessoa (2026-07-31)** |
@@ -81,8 +83,9 @@
 | | LA-T02: Stripe **Live** cutover — faturamento real ativo (2026-07-21) |
 | | LA-T01: Stripe test payment → webhook → `profiles.plan=family` (2026-07-20) |
 | **In Progress** | — |
+| **Platform Alignment** | ✅ D-084: EOS é plataforma multi-superfície com um único core operacional. Web/PWA segue como superfície primária; iOS/Android serão adapters nativos futuros; Automotive é companion mode restrito; Mesh/LoRa segue bloqueado por G-05. `/mobile/` é template/conceitual, não app inicializado. |
 | **Fases pedidas pelo dono (2026-07-31)** | ✅ 1. Camadas de clima + rastreio de ciclone (D-078). 2. Reinventar a aba Família no design system da v2, com componentes dinâmicos. 3. WV2-T05 (a11y/perf), PLAN-T07 (Pilot propõe plano). |
-| **Next Task** | **PLAN-T02** — editor do plano (pontos de encontro, lugares, papéis, gatilhos). Depois **PLAN-T04** (versionamento e reconhecimento na UI) e **SIM-T06**. Antes disso: **PLAN-T01** — modelo de dados + RLS + API dos Planos de Emergência da Família (`docs/18-family-plans.md`), que destrava SIM-T06 e os mapas offline. Antes disso: **SIM-T05** — debrief da simulação com lacunas quantificadas. Alternativas: **SIM-T04** (injeção de eventos/avanço de tempo), **PLAN-T01** (modelo de dados do plano de voo) — modelo de dados + RLS por círculo + API dos Planos de Emergência da Família (`docs/18-family-plans.md`). Alternativas abertas: **WV2-T05** (gates de validação da v2, dívida assumida em D-063), **FAM-T08** (cache offline dos abrigos), **LA-T06** (códigos de afiliado, travado nos params do dono). |
+| **Next Task** | **PREP-T00** — spec + decisão do Preparedness Engine: unificar Checklist/Recursos, definir Comms app-level, EDU via conteúdo aprovado/YouTube→RAG e onboarding contextual por simulação. Alternativas abertas: WV2-T05 (a11y/perf), PLAN-T07 (Pilot propõe/revisa planos), UPP-03 (memória confirmada), LA-T04 (Upstash). |
 | **Build** | ✅ Passing — type-check, Jest 70/70, `npm run test:plan` 14/14 e production build limpos (2026-07-31) |
 | **Plano execução** | ✅ PLAN-T08 MVP: tocar no próprio rosto no mapa abre comando familiar; "Executar plano" carrega um plano escolhido, monta passos determinísticos do host (círculo → gatilhos → papéis → pontos → rotas → encerramento) e alerta o círculo com push preset "Execute o plano da família agora". Sem nova tabela ainda: timeline compartilhada fica para `family_plan_executions`. |
 | **Plano múltiplo** | ✅ PLAN-T09: o círculo pode ter vários planos ativos; `/plan` alterna/cria planos por nome, o executor escolhe qual plano rodar, passos fixos do EOS saem da lista numerada e há cancelar/falso alarme. Migration `20260731000000_multiple_family_plans.sql` aplicada pelo dono. |
@@ -345,8 +348,8 @@ Validar `/dashboard-world` antes de qualquer rollout para substituir `/dashboard
 | PWA icons missing (icon-192.png, icon-512.png) | ✅ FIXED | `public/` | P1-T03 — completed 2026-06-28 |
 | Landing page | ✅ DONE | `app/page.tsx` | Pitch + CTAs deployed |
 | Offline write sync not implemented | MEDIUM | `lib/offline-storage.ts` | Writes to IndexedDB not synced back to Supabase on reconnect |
-| LOCAL_AI mode not implemented | MEDIUM | `app/api/analyze/route.ts` | Phase 2 |
-| React Native project not initialized | MEDIUM | `mobile/` | `/mobile/` has template files but `npx react-native init` not run — Phase 2 |
+| LOCAL_AI mode not implemented | MEDIUM | mobile/native AI | Blocked by G-03 / native mobile readiness |
+| Native mobile shell not initialized | HIGH | `mobile/` | Blocked by G-03 / D-084; `/mobile/` has template/conceptual files but no initialized app |
 | Sentry DSN not confirmed in Vercel | LOW | Vercel env vars | P1-T07 — confirm `SENTRY_DSN` is set |
 | Upstash Redis not confirmed in Vercel | LOW | Vercel env vars | P1-T08 — rate limit falls back to in-memory without it |
 | SAMHSA_Tips 20 chunks skipped (null bytes) | LOW | knowledge_base | 49/69 chunks stored — non-critical |

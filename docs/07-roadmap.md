@@ -1,6 +1,6 @@
 # 07 — Roadmap
 
-> Last updated: 2026-07-31
+> Last updated: 2026-08-03
 
 ---
 
@@ -16,6 +16,29 @@
 | P0-T04 | Sequence first real implementation task | ✅ COMPLETE | First task: P1-T01 — fix Decision Engine |
 
 **Exit criteria for Phase 0**: All docs confirmed accurate, MVP scope agreed, Phase 1 tasks sequenced.
+
+---
+
+## PHASE 0B — Foundation Alignment Para EOS Platform
+
+*Goal: reconcile the App Spine around EOS as a multi-surface platform before new major product or platform work.*
+
+> Decision: D-084. This phase exists to avoid turning EOS into separate Web,
+> iOS, Android, Automotive, and Mesh products. It is documentation/governance
+> only; it does not initialize mobile or implement product features.
+
+| Task ID | Task | Status | Notes |
+|---|---|---|---|
+| P0B-T01 | Decisão EOS Platform | ✅ COMPLETE | D-084 — one operational core, platform adapters at the edge |
+| P0B-T02 | Reconciliar platform strategy | ✅ COMPLETE | `docs/05-platform-strategy.md` now uses Product Core / Domain Core / Shared UI / Platform Adapters |
+| P0B-T03 | Reconciliar roadmap canônico | ✅ COMPLETE | `docs/07-roadmap.md` remains canonical; older roadmap taxonomies are historical |
+| P0B-T04 | Atualizar base do Spine desatualizada | ✅ COMPLETE | Platform/gates/status/memory updated for the current product reality |
+| P0B-T05 | Definir gates para Mobile, Automotive e Mesh | ✅ COMPLETE | G-03 and G-05 stay open; G-06 added for Automotive |
+| P0B-T06 | Criar plano de execução para Preparedness Engine | ✅ COMPLETE | Preparedness Engine section added below as the next product planning lane |
+
+**Exit criteria for PHASE 0B**: EOS Platform decision recorded, platform strategy
+reconciled, gates updated, mobile explicitly not initialized, and the next core
+product phase sequenced.
 
 ---
 
@@ -220,15 +243,35 @@
 
 ---
 
+## Preparedness Engine (PREP / EDU / COMMS / ONB)
+
+*Goal: turn EOS from monitoring-only behavior into a preparation operating layer that educates, simulates, assigns, and converts knowledge into concrete family readiness.*
+
+> Decision: pending. This lane follows D-084: Preparedness, EDU, Comms, and
+> onboarding belong to the Web/PWA core first. They are not mobile-only features.
+
+| Task ID | Task | Status | Notes |
+|---|---|---|---|
+| PREP-T00 | Spec + decisão do Preparedness Engine | PENDING | Define scope, data contracts, acceptance criteria, and relationship to Checklist/Recursos |
+| PREP-T01 | Unificar Checklist + Recursos em Preparação | PENDING | One readiness surface for tasks, materials, acquisition gaps, and owned resources |
+| COMMS-T01 | Criar aba Comms app-level | PENDING | Circle chat, radio-amateur guide, frequencies, quick use guide, mesh status placeholder |
+| EDU-T01 | Conteúdo educativo como fonte oficial EOS | PENDING | Owner YouTube channel can feed EDU catalog and internal RAG after ingestion/versioning spec |
+| ONB-T01 | Onboarding contextual por convite de simulação | PENDING | New users enter through the scenario that invited them, not a generic tutorial |
+| SIM-T11 | Simulação gera preparação acionável | PENDING | Scenario outcomes create confirmed checklist/resource tasks, not silent writes |
+| PILOT-T08 | Pilot como educador situacional | PENDING | Pilot instructs, asks, validates, and guides preparation without bypassing rules/confirmation |
+
+---
+
 ## Phase 3 — Mobile App (React Native)
 
-*Goal: Initialize the React Native project, integrate the intelligence layer, and ship LOCAL_AI mode.*
+*Goal: Initialize the native mobile shell only after G-03 is cleared, then wrap the shared EOS core with platform-specific capabilities.*
 
-> Blocked until Gate G-03 is cleared.
+> Blocked until Gate G-03 is cleared. D-084 explicitly does **not** authorize
+> `react-native init`, Expo, Capacitor, or store submission.
 
 | Task ID | Task | Status |
 |---|---|---|
-| M-T01 | Initialize React Native project (npx react-native@latest init EOSMobile) | BLOCKED |
+| M-T01 | Choose native shell approach and initialize only after G-03 | BLOCKED |
 | M-T02 | Install mobile dependencies (llama.rn, RNFS, Zustand, NetInfo, etc.) | BLOCKED |
 | M-T03 | Integrate `/mobile/eos-intelligence-layer.ts` | BLOCKED |
 | M-T04 | Implement LOCAL_AI mode with llama.rn | BLOCKED |
@@ -236,6 +279,21 @@
 | M-T06 | Auth with Supabase JWT in SecureStore | BLOCKED |
 | M-T07 | Implement LoRa BLE bridge screen (`mobile/screens/LoRaMeshScreen.tsx`) | BLOCKED |
 | M-T08 | Submit to App Store and Google Play | BLOCKED |
+
+---
+
+## Automotive Companion
+
+*Goal: provide a restricted driver-safe companion mode for active risk, route handoff, check-in, limited communication, and plan execution state.*
+
+> Blocked until Gate G-06 is cleared and the native mobile core exists.
+
+| Task ID | Task | Status |
+|---|---|---|
+| AUTO-T00 | Review CarPlay/Android Auto platform rules and define allowed EOS scope | BLOCKED |
+| AUTO-T01 | Design restricted companion information model | BLOCKED |
+| AUTO-T02 | Implement mobile adapter for automotive surface | BLOCKED |
+| AUTO-T03 | Validate driver-safe interactions and release requirements | BLOCKED |
 
 ---
 

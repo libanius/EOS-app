@@ -16,7 +16,7 @@ can use on any device with a browser.
 | Email/password auth (signup, login, recovery) | ✅ Done |
 | Onboarding: profile + family members | ✅ Done |
 | Resource inventory (fuel, water, food, battery, medical) | ✅ Done |
-| Decision Engine: CONNECTED mode (Claude + RAG) | ✅ Done |
+| Decision Engine: CONNECTED mode (OpenAI + RAG) | ✅ Done |
 | Decision Engine: SURVIVAL mode (Rules Engine) | ✅ Done |
 | Action plan generation and persistence | ✅ Done |
 | Checklist generation | ✅ Done |
@@ -32,13 +32,10 @@ can use on any device with a browser.
 
 | Feature | Phase |
 |---|---|
-| React Native mobile app | Phase 2 |
-| LOCAL_AI mode (llama.rn) | Phase 2 |
-| LoRa mesh communication | Phase 4 |
-| Landing / marketing page | Phase 1 (P1-T04, DRAFT) |
-| Monetization / subscription | Phase 3 |
-| Multi-language (i18n) | Phase 3 |
-| Push notifications | Phase 3 |
+| Native mobile app | Blocked by G-03 |
+| LOCAL_AI mode | Blocked by native mobile readiness |
+| LoRa mesh communication | Blocked by G-05 |
+| Automotive companion | Blocked by G-06 |
 
 ---
 

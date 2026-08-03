@@ -14,7 +14,7 @@
 8. User navigates to `/scenario`
 9. User types emergency description → clicks Generate
 10. Rules Engine evaluates urgency (CRITICAL/HIGH/MEDIUM/LOW)
-11. If internet: Claude API + RAG → streaming response
+11. If internet: OpenAI API + RAG → streaming response
 12. If no internet: SURVIVAL mode → rules-based response
 13. Action plan displayed with priority badge and knowledge sources
 14. Action plan saved to `action_plans` table

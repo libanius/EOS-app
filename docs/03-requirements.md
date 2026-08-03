@@ -41,7 +41,7 @@
 | F04-1 | User describes a scenario in free text | ✅ IMPLEMENTED |
 | F04-2 | Rules Engine evaluates urgency before LLM | ✅ IMPLEMENTED |
 | F04-3 | LLM cannot downgrade Rules Engine urgency | ✅ IMPLEMENTED |
-| F04-4 | CONNECTED mode uses Claude API + RAG | ✅ IMPLEMENTED |
+| F04-4 | CONNECTED mode uses OpenAI API + RAG | ✅ IMPLEMENTED |
 | F04-5 | SURVIVAL mode uses Rules Engine only (no API) | ✅ IMPLEMENTED |
 | F04-6 | LOCAL_AI mode uses on-device model | ❌ NOT IMPLEMENTED |
 | F04-7 | Action plan is streamed to the client | ✅ IMPLEMENTED |

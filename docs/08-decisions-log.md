@@ -4,6 +4,52 @@
 
 ---
 
+## D-084 — EOS passa a ser plataforma multi-superfície, não quatro produtos
+
+**Date**: 2026-08-03
+**Status**: DECIDED / DOCUMENTADO
+
+**Context**: O dono trouxe a intenção de levar o EOS para App Store, Google
+Play, CarPlay, Web e futuras superfícies, junto com a evolução de EDU,
+Preparação e Comms. O relatório externo `EOS-PHASE0-FOUNDATION-ALIGNMENT_1.md`
+mostrou que o App Spine ainda descrevia uma estratégia antiga: Web PWA ativo,
+React Native planejado e LoRa longo prazo, mas sem uma camada formal de
+plataforma.
+
+O risco seria abrir frentes paralelas — Web, iOS, Android, Automotive e Mesh —
+como produtos separados, duplicando lógica de decisão, UI, regras de segurança,
+consentimento e plano.
+
+**Decision**:
+
+1. **EOS será tratado como plataforma multi-superfície com um único core
+   operacional.** Web/PWA permanece a superfície primária de validação.
+2. **Não iniciar mobile agora.** G-03 continua aberto; `/mobile/` contém
+   template/código conceitual e não é um app React Native inicializado.
+3. **iOS e Android serão adapters nativos futuros**, usados para capacidades que
+   a PWA não deve prometer sozinha: push nativo, background location, secure
+   storage, câmera/QR, empacotamento e release nas lojas.
+4. **CarPlay/Android Auto serão companion modes restritos**, não EOS completo no
+   carro. Sem chat longo, edição de plano, vídeos ou simulador.
+5. **Comms e Mesh não são a mesma coisa.** Comms app-level pode nascer no Web
+   core; Mesh/LoRa hardware continua bloqueado por G-05.
+6. O App Spine ganha **PHASE 0B — Foundation Alignment**, uma etapa documental
+   curta para reconciliar plataforma, roadmap, gates e próxima fase de produto
+   antes de novas features grandes.
+
+**Consequences**:
+
+- `docs/05-platform-strategy.md` passa a falar em Product Core, Domain Core,
+  Shared UI e Platform Adapters.
+- `docs/07-roadmap.md` registra PHASE 0B e a próxima fase de produto:
+  Preparedness Engine.
+- `docs/10-decision-gates.md` mantém G-03 e G-05 abertos e adiciona G-06 para
+  Automotive.
+- Nenhum código mobile, Capacitor, Expo, React Native init ou integração de loja
+  é autorizado por esta decisão.
+
+---
+
 ## D-083 — O RAG estava desligado na prática, e o Pilot rodava no modelo mais fraco
 
 **Date**: 2026-08-02
