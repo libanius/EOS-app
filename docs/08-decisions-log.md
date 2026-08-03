@@ -4,6 +4,50 @@
 
 ---
 
+## D-085 — Preparedness Engine transforma monitoramento em preparação acionável
+
+**Date**: 2026-08-03
+**Status**: DECIDED / DOCUMENTADO
+
+**Context**: O dono definiu que o EOS não pode ser apenas um app que monitora
+weather, hazards e sistemas externos. A maior solução de produto é ajudar a
+família a se preparar: aprender, comprar/adquirir materiais, treinar, revisar
+planos, convidar pessoas para simulações e melhorar comunicação antes da crise.
+
+Também ficou claro que Checklist e Recursos estão artificialmente separados, e
+que a nova aba Comms deve nascer no espaço liberado por essa unificação. EDU
+deve poder ser alimentado por conteúdo aprovado do canal do dono no YouTube,
+mas esse conteúdo só pode virar RAG/ação depois de ingestão, transcript,
+classificação, aprovação e versionamento.
+
+**Decision**:
+
+1. Criar o **Preparedness Engine** como core Web/PWA, não como feature mobile.
+2. Unificar Checklist + Recursos em **Preparação**, uma superfície para tarefas,
+   materiais, gaps de aquisição, itens possuídos e prontidão por cenário.
+3. Criar **Comms app-level** como lane própria: chat do círculo, guia rápido de
+   rádio, frequências, referência de radioamador e status de canais. Mesh/LoRa
+   hardware continua separado e bloqueado por G-05.
+4. Criar **EDU** como fonte editorial aprovada do EOS. O canal do dono no
+   YouTube pode alimentar EDU/RAG, mas só por fluxo especificado de ingestão,
+   transcript, classificação por cenário, aprovação e versionamento.
+5. Criar **onboarding contextual por simulação**: convidado entra pelo cenário
+   que o trouxe e o Pilot guia até estar coberto pelo círculo/plano.
+6. O Pilot passa a ter um papel explícito de **educador situacional**: instrui,
+   pergunta, valida e conduz preparação, mas não escreve estado persistente sem
+   confirmação.
+
+**Consequences**:
+
+- `docs/20-preparedness-engine.md` passa a ser a spec canônica.
+- PREP-T00 fica completo; PREP-T01 é o próximo task de produto.
+- Nenhuma migration, UI, YouTube API, chat, mobile, Automotive ou LoRa é
+  autorizada por esta decisão.
+- Toda recomendação de Pilot/EDU/Simulação que virar tarefa/recurso deve ter
+  fonte visível e confirmação explícita do usuário.
+
+---
+
 ## D-084 — EOS passa a ser plataforma multi-superfície, não quatro produtos
 
 **Date**: 2026-08-03

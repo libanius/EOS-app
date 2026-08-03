@@ -247,12 +247,12 @@ product phase sequenced.
 
 *Goal: turn EOS from monitoring-only behavior into a preparation operating layer that educates, simulates, assigns, and converts knowledge into concrete family readiness.*
 
-> Decision: pending. This lane follows D-084: Preparedness, EDU, Comms, and
+> Decision: D-085. This lane follows D-084: Preparedness, EDU, Comms, and
 > onboarding belong to the Web/PWA core first. They are not mobile-only features.
 
 | Task ID | Task | Status | Notes |
 |---|---|---|---|
-| PREP-T00 | Spec + decisão do Preparedness Engine | PENDING | Define scope, data contracts, acceptance criteria, and relationship to Checklist/Recursos |
+| PREP-T00 | Spec + decisão do Preparedness Engine | ✅ COMPLETE | 2026-08-03 — D-085 / `docs/20-preparedness-engine.md`; no code/migration authorized |
 | PREP-T01 | Unificar Checklist + Recursos em Preparação | PENDING | One readiness surface for tasks, materials, acquisition gaps, and owned resources |
 | COMMS-T01 | Criar aba Comms app-level | PENDING | Circle chat, radio-amateur guide, frequencies, quick use guide, mesh status placeholder |
 | EDU-T01 | Conteúdo educativo como fonte oficial EOS | PENDING | Owner YouTube channel can feed EDU catalog and internal RAG after ingestion/versioning spec |

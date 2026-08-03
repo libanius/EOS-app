@@ -36,6 +36,29 @@ core; não são justificativa para iniciar mobile.
 
 ---
 
+## Preparedness Engine: conhecimento precisa virar ação confirmada (2026-08-03)
+
+D-085 define o próximo eixo do produto: EOS não é só monitoramento de hazard e
+weather. O core precisa ajudar a família a se preparar antes da crise.
+
+Regra: **conteúdo educativo, Pilot e simulação só entram no Preparedness Engine
+quando podem virar ação concreta** — tarefa, material, aquisição, papel, revisão
+de plano, treino ou melhoria de comunicação.
+
+Checklist e Recursos deixam de ser tratados como abas separadas no produto
+futuro; viram uma superfície de **Preparação**. Comms nasce como app-level core:
+chat do círculo, guia de rádio, frequências e referência rápida. Isso não libera
+Mesh/LoRa hardware; G-05 continua bloqueando BLE/LoRa.
+
+YouTube do dono pode alimentar EDU/RAG, mas não como busca genérica. O fluxo
+precisa capturar transcript, classificar por cenário, aprovar/versionar e manter
+fonte visível. Pilot/EDU/Simulação podem propor tarefas e recursos, mas escrita
+persistente exige confirmação explícita.
+
+Spec canônica: `docs/20-preparedness-engine.md`.
+
+---
+
 ## Rota EOS é compromisso; Google Maps é navegador por ruas (2026-07-31)
 
 PLAN-T10 adicionou handoff multi-stop: a rota desenhada no plano (`LineString`)

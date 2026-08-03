@@ -21,7 +21,7 @@ adapters, not separate products.
 | Field | Value |
 |---|---|
 | **Phase** | PHASE 0B complete; next product lane is Preparedness Engine |
-| **Current Task** | PREP-T00 — spec + decision for Preparedness Engine |
+| **Current Task** | PREP-T01 — unify Checklist + Recursos into Preparação |
 | **Last Updated** | 2026-08-03 |
 
 Full details: `docs/09-build-status.md`
@@ -100,6 +100,7 @@ Full details: `docs/09-build-status.md`
 | `scripts/ingest.mjs` | Step 2 of ingest: text files → knowledge_base embeddings |
 | `mobile/` | Native mobile templates/concepts (NOT a runnable app yet) |
 | `docs/15-eos-pilot.md` | EOS Pilot product concept/spec |
+| `docs/20-preparedness-engine.md` | Preparedness Engine spec |
 
 ---
 
