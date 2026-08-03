@@ -13,18 +13,27 @@
 
 import type { ChecklistTier } from './checklist'
 import type { SimulationConfig } from './simulation'
-import { reserveFactor } from './simulation'
+import { reserveFactor, simulationLabel } from './simulation'
 import { drillPlan, type PlanDrillInput } from './plan-drill'
 
 export type GapSeverity = 'critical' | 'important' | 'advisory'
+export type PreparednessActionKind = 'resource' | 'task' | 'plan_review' | 'comms_setup'
+
+export type PreparednessAction = {
+  kind: PreparednessActionKind
+  source: string
+  destination: string
+  confirmLabel: string
+  savedLabel: string
+}
 
 export type DebriefGap = {
   id: string
   title: string
   detail: string
   severity: GapSeverity
-  /** Present when the gap can be closed by acquiring something. */
-  task?: { name: string; quantity: number; unit: string | null; tier: ChecklistTier }
+  /** Present when the gap can become a confirmed preparedness item. */
+  task?: { name: string; quantity: number; unit: string | null; tier: ChecklistTier; action: PreparednessAction }
 }
 
 export type Debrief = {
@@ -81,6 +90,91 @@ function requiredDaysFor(config: SimulationConfig): number {
 
 const round = (n: number) => Math.max(0, Math.round(n))
 
+function action(input: DebriefInput, kind: PreparednessActionKind): PreparednessAction {
+  const source = input.pt
+    ? `Debrief da simulação: ${simulationLabel(input.config, true)}`
+    : `Simulation debrief: ${simulationLabel(input.config, false)}`
+  const destination = input.pt
+    ? 'Preparação > Checklist da simulação'
+    : 'Preparedness > Simulation checklist'
+
+  return {
+    kind,
+    source,
+    destination,
+    confirmLabel: input.pt ? 'Adicionar à preparação' : 'Add to preparedness',
+    savedLabel: input.pt ? 'Na preparação' : 'In preparedness',
+  }
+}
+
+function planTaskForGap(id: string, title: string, input: DebriefInput): DebriefGap['task'] | null {
+  const planAction = action(input, 'plan_review')
+  const tier: ChecklistTier = id === 'plan-missing' || id === 'no-rendezvous-offline' ? 'ESSENTIAL' : 'MODERATE'
+
+  if (id === 'plan-missing') {
+    return {
+      name: input.pt ? 'Criar plano da família para este cenário' : 'Create a family plan for this scenario',
+      quantity: 1,
+      unit: null,
+      tier,
+      action: planAction,
+    }
+  }
+  if (id.startsWith('reach-')) {
+    return {
+      name: input.pt ? 'Revisar ponto de encontro distante no plano' : 'Review distant meeting point in the plan',
+      quantity: 1,
+      unit: null,
+      tier,
+      action: planAction,
+    }
+  }
+  if (id === 'no-foot-route') {
+    return {
+      name: input.pt ? 'Desenhar rota a pé no plano da família' : 'Draw a walking route in the family plan',
+      quantity: 1,
+      unit: null,
+      tier,
+      action: planAction,
+    }
+  }
+  if (id === 'no-triggers') {
+    return {
+      name: input.pt ? 'Definir gatilhos observáveis para executar o plano' : 'Define observable triggers to execute the plan',
+      quantity: 1,
+      unit: null,
+      tier,
+      action: planAction,
+    }
+  }
+  if (id === 'unacknowledged') {
+    return {
+      name: input.pt ? 'Confirmar a versão atual do plano com todos' : 'Confirm the current plan version with everyone',
+      quantity: 1,
+      unit: null,
+      tier: 'ESSENTIAL',
+      action: planAction,
+    }
+  }
+  if (id === 'no-rendezvous-offline') {
+    return {
+      name: input.pt ? 'Definir ponto de encontro offline no plano' : 'Define an offline meeting point in the plan',
+      quantity: 1,
+      unit: null,
+      tier,
+      action: planAction,
+    }
+  }
+
+  return {
+    name: title,
+    quantity: 1,
+    unit: null,
+    tier,
+    action: planAction,
+  }
+}
+
 export function buildDebrief(input: DebriefInput): Debrief {
   const { config, people, inventory, pt } = input
   const required = requiredDaysFor(config)
@@ -114,6 +208,7 @@ export function buildDebrief(input: DebriefInput): Debrief {
         quantity: missing,
         unit: 'L',
         tier: 'ESSENTIAL',
+        action: action(input, 'resource'),
       },
     })
   }
@@ -133,6 +228,7 @@ export function buildDebrief(input: DebriefInput): Debrief {
         quantity: missing,
         unit: pt ? 'dias' : 'days',
         tier: 'ESSENTIAL',
+        action: action(input, 'resource'),
       },
     })
   }
@@ -146,7 +242,7 @@ export function buildDebrief(input: DebriefInput): Debrief {
       detail: pt
         ? `Com a rede caída, a reserva durava ${powerDays.toFixed(1)} dias contra ${required} exigidos.`
         : `With the grid down, stored power lasted ${powerDays.toFixed(1)} days against ${required} required.`,
-      task: { name: pt ? 'Bateria portátil / gerador' : 'Power bank / generator', quantity: 1, unit: null, tier: 'ESSENTIAL' },
+      task: { name: pt ? 'Bateria portátil / gerador' : 'Power bank / generator', quantity: 1, unit: null, tier: 'ESSENTIAL', action: action(input, 'resource') },
     })
   }
 
@@ -159,7 +255,7 @@ export function buildDebrief(input: DebriefInput): Debrief {
       detail: pt
         ? `Havia ${round(fuel)} L. As vias estavam abertas neste cenário — sair era possível, e a autonomia de combustível era de ${fuelDays.toFixed(1)} dias.`
         : `There were ${round(fuel)} L. Roads were open in this scenario — leaving was possible, and fuel autonomy was ${fuelDays.toFixed(1)} days.`,
-      task: { name: pt ? 'Combustível de reserva' : 'Reserve fuel', quantity: 20, unit: 'L', tier: 'MODERATE' },
+      task: { name: pt ? 'Combustível de reserva' : 'Reserve fuel', quantity: 20, unit: 'L', tier: 'MODERATE', action: action(input, 'resource') },
     })
   }
 
@@ -172,7 +268,7 @@ export function buildDebrief(input: DebriefInput): Debrief {
       detail: pt
         ? 'O celular ficou mudo e não havia rádio. A família teria perdido contato e não receberia aviso oficial.'
         : 'The phone went silent and there was no radio. The family would have lost contact and any official warning.',
-      task: { name: pt ? 'Rádio a pilha (NOAA/AM-FM)' : 'Battery radio (NOAA/AM-FM)', quantity: 1, unit: null, tier: 'ESSENTIAL' },
+      task: { name: pt ? 'Rádio a pilha (NOAA/AM-FM)' : 'Battery radio (NOAA/AM-FM)', quantity: 1, unit: null, tier: 'ESSENTIAL', action: action(input, 'comms_setup') },
     })
   }
 
@@ -185,7 +281,7 @@ export function buildDebrief(input: DebriefInput): Debrief {
       detail: pt
         ? 'O cenário incluía necessidade de medicação e não havia kit registrado no inventário.'
         : 'The scenario included a medication need and no kit was recorded in the inventory.',
-      task: { name: pt ? 'Kit médico com medicação de uso contínuo' : 'Medical kit with ongoing medication', quantity: 1, unit: null, tier: 'ESSENTIAL' },
+      task: { name: pt ? 'Kit médico com medicação de uso contínuo' : 'Medical kit with ongoing medication', quantity: 1, unit: null, tier: 'ESSENTIAL', action: action(input, 'resource') },
     })
   }
 
@@ -198,6 +294,13 @@ export function buildDebrief(input: DebriefInput): Debrief {
       detail: pt
         ? 'Isso não se resolve comprando: precisa estar escrito no plano da família quem busca quem, e por qual caminho.'
         : 'This is not solved by buying: the family plan has to say who collects whom, and by which route.',
+      task: {
+        name: pt ? 'Definir no plano quem acompanha mobilidade reduzida' : 'Define who assists reduced mobility in the plan',
+        quantity: 1,
+        unit: null,
+        tier: 'ESSENTIAL',
+        action: action(input, 'plan_review'),
+      },
     })
   }
 
@@ -209,6 +312,13 @@ export function buildDebrief(input: DebriefInput): Debrief {
       detail: pt
         ? 'Fórmula, fraldas e água para preparo entram na conta e acabam antes do resto.'
         : 'Formula, nappies and water for preparation are part of the maths and run out before everything else.',
+      task: {
+        name: pt ? 'Separar suprimentos de bebê para emergência' : 'Set aside infant emergency supplies',
+        quantity: 1,
+        unit: null,
+        tier: 'ESSENTIAL',
+        action: action(input, 'resource'),
+      },
     })
   }
 
@@ -222,6 +332,13 @@ export function buildDebrief(input: DebriefInput): Debrief {
       detail: pt
         ? 'Não consegui ler a ficha da família, então as contas acima valem para uma pessoa só. Com mais gente, todas as faltas aumentam proporcionalmente.'
         : 'I could not read the family record, so the maths above is for one person. With more people every shortfall grows proportionally.',
+      task: {
+        name: pt ? 'Completar ficha da família para cálculos do EOS' : 'Complete the family record for EOS calculations',
+        quantity: 1,
+        unit: null,
+        tier: 'ESSENTIAL',
+        action: action(input, 'task'),
+      },
     })
   }
 
@@ -233,6 +350,13 @@ export function buildDebrief(input: DebriefInput): Debrief {
       detail: pt
         ? 'O que está na lista e não foi adquirido é exatamente o que faltaria nesta situação.'
         : 'Whatever is on the list and not acquired is exactly what would have been missing here.',
+      task: {
+        name: pt ? 'Revisar itens pendentes do checklist' : 'Review pending checklist items',
+        quantity: 1,
+        unit: null,
+        tier: input.checklistPct < 50 ? 'ESSENTIAL' : 'MODERATE',
+        action: action(input, 'task'),
+      },
     })
   }
 
@@ -240,14 +364,16 @@ export function buildDebrief(input: DebriefInput): Debrief {
   // Vem depois das faltas de estoque de propósito: primeiro o que acabaria,
   // depois se a decisão combinada era executável. As duas coisas são o ensaio.
   if (input.plan) {
-    gaps.push(
-      ...drillPlan({
+    const planGaps = drillPlan({
         ...input.plan,
         config,
         mobilityImpaired: input.mobilityImpaired > 0,
         pt,
-      }),
-    )
+      }).map(gap => ({
+        ...gap,
+        task: planTaskForGap(gap.id, gap.title, input) ?? undefined,
+      }))
+    gaps.push(...planGaps)
   }
 
   const survived = inventory

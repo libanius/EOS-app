@@ -217,6 +217,7 @@ família — e é aí que o EOS deixa de ser informação e vira preparo.
 | **SIM-T09** | ⏳ Traduzir o texto livre para os painéis, revisável antes de rodar |
 | **SIM-T10** | ✅ Escolher círculos e convidar de fora por link (D-072) |
 | **ONB-T01** | ✅ Convite de simulação preserva contexto no login/signup/onboarding (D-091) |
+| **SIM-T11** | ✅ Debrief gera propostas confirmáveis de preparação, com fonte visível e `kit_type=SIMULATION_DEBRIEF` (D-092) |
 
 SIM-T01 primeiro e sozinho: as travas de segurança precisam existir **antes** de
 a simulação alcançar o app inteiro, não depois.

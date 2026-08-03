@@ -12,6 +12,7 @@ type ChecklistTier = 'ESSENTIAL' | 'MODERATE' | 'EXCELLENT'
 
 interface ChecklistItem {
   id: string
+  kit_type: string
   canonical_key: string
   item_name: string
   tier: ChecklistTier
@@ -26,6 +27,15 @@ const TIER_COLOR: Record<ChecklistTier, string> = {
   ESSENTIAL: '#ef4444',
   MODERATE:  '#f59e0b',
   EXCELLENT: '#22c55e',
+}
+
+const KIT_LABEL: Record<string, { pt: string; en: string }> = {
+  GERAL: { pt: 'Geral', en: 'General' },
+  SIMULATION_DEBRIEF: { pt: 'Debrief da simulação', en: 'Simulation debrief' },
+  BUG_OUT: { pt: 'Bug Out', en: 'Bug Out' },
+  ACAMPAMENTO: { pt: 'Acampamento', en: 'Camping' },
+  PESCA: { pt: 'Pesca', en: 'Fishing' },
+  CACA: { pt: 'Caça', en: 'Hunting' },
 }
 
 type Inventory = {
@@ -295,6 +305,9 @@ function getInventoryDelta(item: ChecklistItem): Partial<Inventory> {
   }
   if (/combustivel|gasolina|diesel|fuel/.test(k)) {
     return { fuel_liters: item.quantity }
+  }
+  if (/comida|alimento|food/.test(k) && /dia|day/.test(unit)) {
+    return { food_days: item.quantity }
   }
   if (/kit.*auxilios|kit.*medic|primeiros.*socorro|kit.*first|kit.*pronto/.test(k)) {
     return { has_medical_kit: true }
@@ -882,39 +895,50 @@ export default function PreparednessPage() {
                       </span>
                     </div>
                     {/* Items */}
-                    {tierItems.map((item) => (
-                      <button
-                        key={item.id}
-                        onClick={() => toggleChecklistItem(item.canonical_key, !item.acquired)}
-                        style={{
-                          width: '100%', textAlign: 'left' as const,
-                          padding: '11px 16px', background: 'transparent',
-                          border: 'none', borderBottom: '1px solid var(--bd)',
-                          color: 'var(--tx)', cursor: 'pointer',
-                          display: 'grid', gridTemplateColumns: '20px 1fr auto',
-                          alignItems: 'center', gap: 12,
-                        }}
-                      >
-                        <span style={{
-                          width: 18, height: 18, borderRadius: 4, flexShrink: 0,
-                          border: `1.5px solid ${item.acquired ? TIER_COLOR[item.tier] : 'var(--bd)'}`,
-                          background: item.acquired ? TIER_COLOR[item.tier] : 'transparent',
-                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                        }}>
-                          {item.acquired && (
-                            <svg viewBox="0 0 10 10" width="11" height="11" aria-hidden>
-                              <polyline points="1.5,5 4,7.5 8.5,2.5" fill="none" stroke="#0a0a0f" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                          )}
-                        </span>
-                        <span style={{ fontSize: 14, color: item.acquired ? 'var(--mu)' : 'var(--tx)', textDecoration: item.acquired ? 'line-through' : 'none' }}>
-                          {item.item_name}
-                        </span>
-                        <span style={{ fontSize: 12, color: 'var(--mu)', fontFamily: 'ui-monospace,Menlo,monospace', flexShrink: 0 }}>
-                          {item.quantity}{item.unit ? ` ${item.unit}` : ''}
-                        </span>
-                      </button>
-                    ))}
+                    {tierItems.map((item) => {
+                      const kit = KIT_LABEL[item.kit_type] ?? { pt: item.kit_type, en: item.kit_type }
+                      const showSource = item.kit_type !== 'GERAL'
+                      return (
+                        <button
+                          key={item.id}
+                          onClick={() => toggleChecklistItem(item.canonical_key, !item.acquired)}
+                          style={{
+                            width: '100%', textAlign: 'left' as const,
+                            padding: '11px 16px', background: 'transparent',
+                            border: 'none', borderBottom: '1px solid var(--bd)',
+                            color: 'var(--tx)', cursor: 'pointer',
+                            display: 'grid', gridTemplateColumns: '20px 1fr auto',
+                            alignItems: 'center', gap: 12,
+                          }}
+                        >
+                          <span style={{
+                            width: 18, height: 18, borderRadius: 4, flexShrink: 0,
+                            border: `1.5px solid ${item.acquired ? TIER_COLOR[item.tier] : 'var(--bd)'}`,
+                            background: item.acquired ? TIER_COLOR[item.tier] : 'transparent',
+                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                          }}>
+                            {item.acquired && (
+                              <svg viewBox="0 0 10 10" width="11" height="11" aria-hidden>
+                                <polyline points="1.5,5 4,7.5 8.5,2.5" fill="none" stroke="#0a0a0f" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                            )}
+                          </span>
+                          <span style={{ display: 'flex', flexDirection: 'column' as const, gap: 4, minWidth: 0 }}>
+                            <span style={{ fontSize: 14, color: item.acquired ? 'var(--mu)' : 'var(--tx)', textDecoration: item.acquired ? 'line-through' : 'none' }}>
+                              {item.item_name}
+                            </span>
+                            {showSource && (
+                              <span style={{ fontSize: 11, color: 'var(--mu)' }}>
+                                {language === 'pt' ? 'Fonte: ' : 'Source: '}{language === 'pt' ? kit.pt : kit.en}
+                              </span>
+                            )}
+                          </span>
+                          <span style={{ fontSize: 12, color: 'var(--mu)', fontFamily: 'ui-monospace,Menlo,monospace', flexShrink: 0 }}>
+                            {item.quantity}{item.unit ? ` ${item.unit}` : ''}
+                          </span>
+                        </button>
+                      )
+                    })}
                   </div>
                 )
               })}

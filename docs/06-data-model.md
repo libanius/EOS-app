@@ -111,9 +111,19 @@ of the public emergency QR contract.
 |---|---|---|
 | id | uuid | PK |
 | profile_id | uuid | FK → profiles.id |
-| title | text | |
-| items | jsonb | array of {text, checked} |
-| created_at | timestamptz | |
+| scenario_id | uuid | Optional FK → scenarios.id |
+| canonical_key | text | Dedup key generated from item name |
+| item_name | text | Display name |
+| tier | checklist_tier_enum | `ESSENTIAL`, `MODERATE`, `EXCELLENT` |
+| quantity | numeric | |
+| unit | text | Nullable |
+| acquired | boolean | |
+| acquired_at | timestamptz | Nullable |
+| kit_type | text | Source/grouping: `GERAL`, `BUG_OUT`, `SIMULATION_DEBRIEF`, etc. |
+
+`SIMULATION_DEBRIEF` is the v1 persistence marker for SIM-T11. It means the
+item was explicitly confirmed from a simulation debrief proposal. It is not an
+automatic write and should be displayed as source/provenance in Preparação.
 
 ### circles
 | Column | Type | Notes |

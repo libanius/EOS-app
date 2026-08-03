@@ -21,7 +21,7 @@ adapters, not separate products.
 | Field | Value |
 |---|---|
 | **Phase** | PHASE 0B complete; next product lane is Preparedness Engine |
-| **Current Task** | SIM-T11 — simulation creates actionable preparedness proposals |
+| **Current Task** | PILOT-T08 — Pilot as situational educator with confirmed preparedness actions |
 | **Last Updated** | 2026-08-03 |
 
 Full details: `docs/09-build-status.md`
@@ -112,6 +112,7 @@ Full details: `docs/09-build-status.md`
 | `docs/21-comms.md` | App-level Comms spec |
 | `docs/22-edu.md` | EDU catalog and future RAG provenance spec |
 | `docs/23-onboarding-by-simulation.md` | Contextual onboarding from simulation invites |
+| `docs/24-simulation-preparedness-actions.md` | Simulation debrief to confirmed preparedness actions |
 
 ---
 

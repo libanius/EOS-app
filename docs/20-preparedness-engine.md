@@ -221,3 +221,23 @@ ONB-T01 made simulation invites drive contextual onboarding:
 
 No database migration was needed. The simulation token remains context, not
 authorization.
+
+---
+
+## 11. SIM-T11 Result
+
+**Decision:** D-092
+**Date:** 2026-08-03
+
+SIM-T11 connected simulation debriefs to confirmed preparedness work:
+
+- actionable debrief gaps now expose proposal type: resource, task, plan review,
+  or Comms setup;
+- each proposal shows source and destination before the user confirms;
+- confirmation writes one item at a time to `checklists`;
+- confirmed simulation proposals use `kit_type=SIMULATION_DEBRIEF`;
+- Preparação shows "Fonte: Debrief da simulação" for those rows.
+
+No database migration was needed. The checklist remains the v1 persistence
+contract for confirmed preparedness actions until a dedicated Preparedness Items
+table is decided.

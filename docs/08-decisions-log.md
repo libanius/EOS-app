@@ -4,6 +4,37 @@
 
 ---
 
+## D-092 — Debrief de simulação vira proposta confirmável de preparação
+
+**Date**: 2026-08-03
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: SIM-T05/SIM-T06 já calculavam lacunas do treino e permitiam salvar
+alguns itens no checklist. Para o Preparedness Engine, isso precisava virar um
+contrato mais explícito: o usuário deve ver o que está sendo proposto, de onde
+veio, qual tipo de ação é, e só então confirmar a escrita.
+
+**Decision**:
+
+1. Cada lacuna acionável do debrief passa a carregar tipo: recurso, tarefa,
+   revisão de plano ou setup de Comms.
+2. A UI mostra fonte e destino antes da confirmação.
+3. A escrita continua item a item, nunca silenciosa e sem "aceitar tudo".
+4. Itens confirmados usam o contrato existente de checklist com
+   `kit_type=SIMULATION_DEBRIEF`.
+5. Preparação mostra a origem "Debrief da simulação" nos itens salvos.
+6. Não criar nova tabela em SIM-T11; um modelo persistente próprio de
+   Preparedness Items fica para decisão futura se o checklist não bastar.
+
+**Consequences**:
+
+- O debrief vira ponte real entre treino e preparação.
+- A origem persiste de forma simples via `kit_type`.
+- PILOT-T08 deve seguir o mesmo padrão: propor, mostrar fonte e confirmar antes
+  de escrever.
+
+---
+
 ## D-091 — Onboarding preserva o contexto do convite de simulação
 
 **Date**: 2026-08-03

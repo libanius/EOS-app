@@ -128,6 +128,23 @@ degrada com conteúdo padrão e `/admin/edu` não persiste.
 
 ---
 
+## Debrief vira preparação, mas só com confirmação (2026-08-03)
+
+D-092 / SIM-T11 criou o contrato v1 para transformar resultado de simulação em
+preparação persistente. O debrief classifica cada lacuna acionável como recurso,
+tarefa, revisão de plano ou setup de Comms, mostra a fonte do cenário e só salva
+quando o usuário confirma item a item.
+
+Persistência atual: `checklists.kit_type = SIMULATION_DEBRIEF`. Não existe tabela
+nova de Preparedness Items ainda. A aba Preparação mostra essa origem para que o
+item salvo não pareça um checklist genérico.
+
+Regra para próximas evoluções: Pilot/EDU/simulação podem propor, mas não podem
+escrever em checklist, inventário, plano ou Comms sem confirmação explícita e
+fonte visível.
+
+---
+
 ## Onboarding por simulação preserva o motivo da chegada (2026-08-03)
 
 D-091 / ONB-T01 corrige a aquisição por cenário simulado. `/sim/[token]` agora

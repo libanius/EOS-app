@@ -7,9 +7,9 @@
  * that moment a genuine threat owns the screen, and a training report would be
  * exactly the wrong thing to put in front of someone.
  *
- * Each gap that can be bought carries a one-tap "add to checklist". The tap is
+ * Each actionable gap carries a one-tap "add to preparedness". The tap is
  * required — same rule as the Pilot and D-067: nothing edits the family's plan
- * silently.
+ * or resources silently.
  */
 
 import { useEffect, useState } from 'react'
@@ -106,7 +106,7 @@ export default function SimulationDebrief() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        kitType: 'GERAL',
+        kitType: 'SIMULATION_DEBRIEF',
         items: [{ name: gap.task.name, tier: gap.task.tier, quantity: gap.task.quantity, unit: gap.task.unit }],
       }),
     }).catch(() => {
@@ -122,6 +122,12 @@ export default function SimulationDebrief() {
     held: pt ? 'A casa aguentou' : 'The household held',
     tight: pt ? 'Aguentou no limite' : 'It held, barely',
     failed: pt ? 'A casa não aguentaria' : 'The household would not have held',
+  }
+  const actionKindCopy = {
+    resource: pt ? 'Recurso' : 'Resource',
+    task: pt ? 'Tarefa' : 'Task',
+    plan_review: pt ? 'Plano' : 'Plan',
+    comms_setup: pt ? 'Comms' : 'Comms',
   }
 
   return (
@@ -170,15 +176,23 @@ export default function SimulationDebrief() {
                     <strong>{gap.title}</strong>
                     <p>{gap.detail}</p>
                     {gap.task && (
-                      <button
-                        type="button"
-                        disabled={added.has(gap.id)}
-                        onClick={() => addTask(gap)}
-                      >
-                        {added.has(gap.id)
-                          ? (pt ? 'No checklist' : 'On checklist')
-                          : (pt ? 'Adicionar ao checklist' : 'Add to checklist')}
-                      </button>
+                      <div className="proposal">
+                        <span className="proposal-kind">{actionKindCopy[gap.task.action.kind]}</span>
+                        <p>
+                          <strong>{gap.task.name}</strong>
+                          <em>{gap.task.action.source}</em>
+                          <em>{gap.task.action.destination}</em>
+                        </p>
+                        <button
+                          type="button"
+                          disabled={added.has(gap.id)}
+                          onClick={() => addTask(gap)}
+                        >
+                          {added.has(gap.id)
+                            ? gap.task.action.savedLabel
+                            : gap.task.action.confirmLabel}
+                        </button>
+                      </div>
                     )}
                   </div>
                 ))
