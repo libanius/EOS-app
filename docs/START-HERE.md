@@ -84,7 +84,7 @@ Full details: `docs/09-build-status.md`
 | `app/(app)/dashboard/page.tsx` | World v2 front door |
 | `app/(app)/scenario/page.tsx` | Scenario simulator |
 | `app/(app)/preparedness/page.tsx` | Unified readiness, resources, and checklist/tasks |
-| `app/(app)/comms/page.tsx` | App-level Comms: circle chat, family radio frequencies, quick radio guide, and Mesh boundary |
+| `app/(app)/comms/page.tsx` | App-level Comms: circle chat, editable family radio frequencies, quick radio guide, and Mesh boundary |
 | `app/(app)/inventory/page.tsx` | Redirects to `/preparedness` |
 | `app/(app)/checklist/page.tsx` | Redirects to `/preparedness` |
 | `app/(app)/family/page.tsx` | Family location/readiness command surface |

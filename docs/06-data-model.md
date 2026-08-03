@@ -166,6 +166,22 @@ in `circle_members` before service-role reads/writes. Chat messages are not
 emergency alerts by default and do not imply SMS, dispatch, radio transmission,
 or Mesh/LoRa delivery.
 
+### circle_radio_profiles
+| Column | Type | Notes |
+|---|---|---|
+| circle_id | uuid | PK/FK → circles.id, cascade delete |
+| config | jsonb | Normalized `RadioConfig` for PT/EN radio reference content |
+| updated_by | uuid | FK → profiles.id, nullable on delete |
+| updated_at | timestamptz | Last saved timestamp |
+
+`circle_radio_profiles` is the editable radio reference for Comms (D-089 /
+COMMS-T03). It is separate from `circle_messages`: chat messages are events,
+radio profile is configuration. RLS is enabled with no direct policies. Reads
+and writes go through `/api/comms/radio`; all circle members can read, but only
+`Admin` and `Editor` roles can write. The JSON stores operational reference
+content only; it is not a legal validation engine or proof of transmission
+rights.
+
 ### knowledge_base
 | Column | Type | Notes |
 |---|---|---|

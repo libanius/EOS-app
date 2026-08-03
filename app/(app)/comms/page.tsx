@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useLanguage } from '@/lib/i18n'
+import { cloneDefaultRadioConfig, type RadioConfig, type RadioLanguageConfig } from '@/lib/comms-radio'
 import { Card, PillLink, SectionLabel } from '@/components/world-v2/primitives'
 import '@/components/world-v2/world-v2.css'
 
@@ -23,14 +24,6 @@ type MessageRow = {
   is_me: boolean
 }
 
-type FrequencyRow = {
-  channel: string
-  name: string
-  frequency: string
-  use: string
-  why: string[]
-}
-
 const COPY = {
   pt: {
     eyebrow: 'EOS · Comms',
@@ -47,6 +40,14 @@ const COPY = {
     placeholder: 'Escreva para o círculo',
     send: 'Enviar',
     sending: 'Enviando...',
+    save: 'Salvar',
+    saving: 'Salvando...',
+    cancel: 'Cancelar',
+    edit: 'Editar',
+    resetDefaults: 'Restaurar padrão',
+    editorOnly: 'Admin/Editor podem editar esta referência.',
+    saved: 'Referência salva.',
+    saveError: 'Não foi possível salvar a referência.',
     radio: 'Rádio',
     radioStatus: 'Canais familiares pré-programados',
     vhf: 'VHF · 144-148 MHz · longa distância',
@@ -78,6 +79,14 @@ const COPY = {
     placeholder: 'Write to the circle',
     send: 'Send',
     sending: 'Sending...',
+    save: 'Save',
+    saving: 'Saving...',
+    cancel: 'Cancel',
+    edit: 'Edit',
+    resetDefaults: 'Reset default',
+    editorOnly: 'Admin/Editor can edit this reference.',
+    saved: 'Reference saved.',
+    saveError: 'Could not save the reference.',
     radio: 'Radio',
     radioStatus: 'Pre-programmed family channels',
     vhf: 'VHF · 144-148 MHz · long distance',
@@ -96,76 +105,6 @@ const COPY = {
   },
 } as const
 
-const FAMILY_CHANNELS: { pt: { vhf: FrequencyRow[]; uhf: FrequencyRow[] }; en: { vhf: FrequencyRow[]; uhf: FrequencyRow[] } } = {
-  pt: {
-    vhf: [
-      { channel: '1', name: 'VHF-A · principal', frequency: '145.500', use: 'Família principal', why: ['Baixo tráfego', 'Comunicação privada', 'Boa para longas distâncias'] },
-      { channel: '2', name: 'VHF-B · secundário', frequency: '146.550', use: 'Fallback backup', why: ['Frequência simplex tranquila', 'Boa alternativa se A estiver ocupada'] },
-      { channel: '3', name: 'VHF-C · emergência', frequency: '146.520', use: 'Contato externo', why: ['Chamada nacional', 'Muito monitorada por radioamadores', 'Use para pedir ajuda'] },
-    ],
-    uhf: [
-      { channel: '4', name: 'UHF-A · principal', frequency: '446.100', use: 'Local / bairro', why: ['Boa penetração urbana', 'Menos interferência'] },
-      { channel: '5', name: 'UHF-B · secundário', frequency: '446.050', use: 'Fallback local', why: ['Simplex limpa', 'Backup se A estiver ocupada'] },
-      { channel: '6', name: 'UHF-C · geral', frequency: '446.000', use: 'Geral / simplex', why: ['Simplex universal', 'Muitos rádios monitoram'] },
-    ],
-  },
-  en: {
-    vhf: [
-      { channel: '1', name: 'VHF-A · primary', frequency: '145.500', use: 'Main family', why: ['Low traffic', 'Private coordination', 'Useful over longer distances'] },
-      { channel: '2', name: 'VHF-B · secondary', frequency: '146.550', use: 'Fallback backup', why: ['Quiet simplex frequency', 'Alternative if A is busy'] },
-      { channel: '3', name: 'VHF-C · emergency', frequency: '146.520', use: 'External contact', why: ['National calling frequency', 'Often monitored by amateur operators', 'Use to request help'] },
-    ],
-    uhf: [
-      { channel: '4', name: 'UHF-A · primary', frequency: '446.100', use: 'Local / neighborhood', why: ['Good urban penetration', 'Less interference'] },
-      { channel: '5', name: 'UHF-B · secondary', frequency: '446.050', use: 'Local fallback', why: ['Clean simplex', 'Backup if A is busy'] },
-      { channel: '6', name: 'UHF-C · general', frequency: '446.000', use: 'General / simplex', why: ['Universal simplex', 'Many radios monitor'] },
-    ],
-  },
-} as const
-
-const NATIONAL_REFERENCES = {
-  pt: [
-    { title: 'NOAA Weather Radio', body: 'Alertas oficiais de furacões, tornados, tempestades severas, inundações, calor extremo e emergências civis.', lines: ['162.400', '162.425', '162.450', '162.475', '162.500', '162.525', '162.550'] },
-    { title: 'Radioamador nacional', body: 'Frequências muito monitoradas por radioamadores.', lines: ['146.520 MHz · chamada nacional VHF', '446.000 MHz · chamada nacional UHF'] },
-    { title: 'Marítima · ouvir costa/águas', body: 'Use apenas quando aplicável e conforme licença/regra local.', lines: ['156.800 MHz · Canal 16'] },
-    { title: 'Serviços de emergência · ouvir', body: 'Não transmita em frequências oficiais.', lines: ['Polícia FL · 155.340 MHz', 'Fire/EMS · 155.160 MHz', 'SAR/Resgate aéreo · 121.500 MHz', 'Guarda Costeira · 161.975 MHz'] },
-  ],
-  en: [
-    { title: 'NOAA Weather Radio', body: 'Official alerts for hurricanes, tornadoes, severe storms, floods, extreme heat, and civil emergencies.', lines: ['162.400', '162.425', '162.450', '162.475', '162.500', '162.525', '162.550'] },
-    { title: 'National amateur radio', body: 'Commonly monitored amateur radio frequencies.', lines: ['146.520 MHz · VHF national calling', '446.000 MHz · UHF national calling'] },
-    { title: 'Marine · listen coast/water', body: 'Use only when applicable and under the right license/local rule.', lines: ['156.800 MHz · Channel 16'] },
-    { title: 'Emergency services · listen', body: 'Do not transmit on official frequencies.', lines: ['Police FL · 155.340 MHz', 'Fire/EMS · 155.160 MHz', 'SAR/air rescue · 121.500 MHz', 'Coast Guard · 161.975 MHz'] },
-  ],
-} as const
-
-const QUICK_STEPS = {
-  pt: [
-    'Ligar/desligar: gire o knob de volume.',
-    'Selecionar canal: use setas para trocar canais salvos.',
-    'Transmitir: segure PTT, fale curto e solte para ouvir.',
-    'Modo/banda: BAND alterna VHF e UHF.',
-    'Volume: ajuste para nível audível e confortável.',
-    'Monitor/squelch: use MONI para abrir o squelch e ouvir sinais fracos.',
-    'Scan: pressione SCAN para varrer canais; pressione novamente para parar.',
-    'Lanterna/teclado: segure a tecla da lanterna; use lock quando necessário.',
-  ],
-  en: [
-    'Power: turn the volume knob.',
-    'Select channel: use arrows to move through saved channels.',
-    'Transmit: hold PTT, speak briefly, release to listen.',
-    'Mode/band: BAND switches VHF and UHF.',
-    'Volume: set a clear and comfortable level.',
-    'Monitor/squelch: use MONI to open squelch and hear weak signals.',
-    'Scan: press SCAN to sweep channels; press again to stop.',
-    'Light/keypad: hold the flashlight key; lock when needed.',
-  ],
-} as const
-
-const OTHER_OPTIONS = {
-  pt: ['MURS: 151.820, 151.880, 151.940, 154.570, 154.600 MHz', 'GMRS: 462.550, 462.5625, 462.675, 462.725, 467.550 MHz', 'FRS: canais 1-14, 462/467 MHz, baixa potência'],
-  en: ['MURS: 151.820, 151.880, 151.940, 154.570, 154.600 MHz', 'GMRS: 462.550, 462.5625, 462.675, 462.725, 467.550 MHz', 'FRS: channels 1-14, 462/467 MHz, low power'],
-} as const
-
 function formatTime(value: string, language: 'pt' | 'en') {
   try {
     return new Intl.DateTimeFormat(language === 'pt' ? 'pt-BR' : 'en-US', {
@@ -175,6 +114,14 @@ function formatTime(value: string, language: 'pt' | 'en') {
   } catch {
     return ''
   }
+}
+
+function linesToText(lines: string[]) {
+  return lines.join('\n')
+}
+
+function textToLines(value: string) {
+  return value.split('\n').map(line => line.trim()).filter(Boolean)
 }
 
 export default function CommsPage() {
@@ -188,11 +135,18 @@ export default function CommsPage() {
   const [sending, setSending] = useState(false)
   const [draft, setDraft] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [radioConfig, setRadioConfig] = useState<RadioConfig>(() => cloneDefaultRadioConfig())
+  const [radioDraft, setRadioDraft] = useState<RadioConfig>(() => cloneDefaultRadioConfig())
+  const [radioEditing, setRadioEditing] = useState(false)
+  const [radioSaving, setRadioSaving] = useState(false)
+  const [radioCanEdit, setRadioCanEdit] = useState(false)
+  const [radioStatus, setRadioStatus] = useState<string | null>(null)
 
   const selectedCircle = useMemo(
     () => circles.find(circle => circle.id === circleId) ?? null,
     [circles, circleId],
   )
+  const activeRadio = radioEditing ? radioDraft[language] : radioConfig[language]
 
   useEffect(() => {
     let cancelled = false
@@ -237,6 +191,30 @@ export default function CommsPage() {
     if (circleId) void loadMessages(circleId)
   }, [circleId, loadMessages])
 
+  const loadRadio = useCallback(async (nextCircleId: string) => {
+    if (!nextCircleId) return
+    setRadioStatus(null)
+    setRadioEditing(false)
+    try {
+      const response = await fetch(`/api/comms/radio?circleId=${encodeURIComponent(nextCircleId)}`, { cache: 'no-store' })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data?.error ?? 'radio unavailable')
+      const next = (data.config ?? cloneDefaultRadioConfig()) as RadioConfig
+      setRadioConfig(next)
+      setRadioDraft(JSON.parse(JSON.stringify(next)) as RadioConfig)
+      setRadioCanEdit(Boolean(data.canEdit))
+    } catch {
+      const fallback = cloneDefaultRadioConfig()
+      setRadioConfig(fallback)
+      setRadioDraft(JSON.parse(JSON.stringify(fallback)) as RadioConfig)
+      setRadioCanEdit(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (circleId) void loadRadio(circleId)
+  }, [circleId, loadRadio])
+
   async function submitMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const text = draft.trim()
@@ -257,6 +235,38 @@ export default function CommsPage() {
       setError(c.unavailable)
     } finally {
       setSending(false)
+    }
+  }
+
+  function updateRadioLanguage(updater: (current: RadioLanguageConfig) => RadioLanguageConfig) {
+    setRadioDraft(current => ({
+      ...current,
+      [language]: updater(current[language]),
+    }))
+  }
+
+  async function saveRadio() {
+    if (!selectedCircle || radioSaving) return
+    setRadioSaving(true)
+    setRadioStatus(null)
+    try {
+      const response = await fetch('/api/comms/radio', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ circleId: selectedCircle.id, config: radioDraft }),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok || data.error === 'migration_pending') throw new Error(data?.error ?? 'save failed')
+      const next = data.config as RadioConfig
+      setRadioConfig(next)
+      setRadioDraft(JSON.parse(JSON.stringify(next)) as RadioConfig)
+      setRadioCanEdit(Boolean(data.canEdit))
+      setRadioEditing(false)
+      setRadioStatus(c.saved)
+    } catch {
+      setRadioStatus(c.saveError)
+    } finally {
+      setRadioSaving(false)
     }
   }
 
@@ -366,10 +376,60 @@ export default function CommsPage() {
 
         <Card>
           <SectionLabel trailing={c.radioStatus}>{c.radio}</SectionLabel>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap', marginTop: '0.75rem' }}>
+            <p className="t-foot ink-3" style={{ margin: 0 }}>{c.editorOnly}</p>
+            {radioCanEdit ? (
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                {radioEditing ? (
+                  <>
+                    <button
+                      type="button"
+                      className="wv2-pill primary"
+                      onClick={saveRadio}
+                      disabled={radioSaving}
+                    >
+                      {radioSaving ? c.saving : c.save}
+                    </button>
+                    <button
+                      type="button"
+                      className="wv2-pill"
+                      onClick={() => {
+                        setRadioDraft(JSON.parse(JSON.stringify(radioConfig)) as RadioConfig)
+                        setRadioEditing(false)
+                        setRadioStatus(null)
+                      }}
+                    >
+                      {c.cancel}
+                    </button>
+                    <button
+                      type="button"
+                      className="wv2-pill"
+                      onClick={() => setRadioDraft(cloneDefaultRadioConfig())}
+                    >
+                      {c.resetDefaults}
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    className="wv2-pill primary"
+                    onClick={() => {
+                      setRadioDraft(JSON.parse(JSON.stringify(radioConfig)) as RadioConfig)
+                      setRadioEditing(true)
+                      setRadioStatus(null)
+                    }}
+                  >
+                    {c.edit}
+                  </button>
+                )}
+              </div>
+            ) : null}
+          </div>
+          {radioStatus ? <p className="t-foot ink-2" style={{ margin: '0.65rem 0 0' }}>{radioStatus}</p> : null}
           <div style={{ display: 'grid', gap: '1rem', marginTop: '0.9rem' }}>
             {[
-              { title: c.vhf, best: c.vhfBestFor, rows: FAMILY_CHANNELS[language].vhf },
-              { title: c.uhf, best: c.uhfBestFor, rows: FAMILY_CHANNELS[language].uhf },
+              { key: 'vhf' as const, title: c.vhf, best: c.vhfBestFor, rows: activeRadio.family.vhf },
+              { key: 'uhf' as const, title: c.uhf, best: c.uhfBestFor, rows: activeRadio.family.uhf },
             ].map(section => (
               <section
                 key={section.title}
@@ -408,13 +468,67 @@ export default function CommsPage() {
                       >
                         {row.channel}
                       </strong>
-                      <div>
-                        <div className="t-title2" style={{ marginBottom: '0.2rem' }}>{row.frequency}</div>
-                        <div className="t-sub">{row.name} · {row.use}</div>
-                        <ul className="t-foot ink-2" style={{ margin: '0.45rem 0 0', paddingLeft: '1rem' }}>
-                          {row.why.map(reason => <li key={reason}>{reason}</li>)}
-                        </ul>
-                      </div>
+                      {radioEditing ? (
+                        <div style={{ display: 'grid', gap: '0.5rem' }}>
+                          <input
+                            className="wv2-input"
+                            value={row.frequency}
+                            onChange={event => updateRadioLanguage(current => ({
+                              ...current,
+                              family: {
+                                ...current.family,
+                                [section.key]: current.family[section.key].map(item => item.channel === row.channel ? { ...item, frequency: event.target.value } : item),
+                              },
+                            }))}
+                            aria-label="frequency"
+                          />
+                          <input
+                            className="wv2-input"
+                            value={row.name}
+                            onChange={event => updateRadioLanguage(current => ({
+                              ...current,
+                              family: {
+                                ...current.family,
+                                [section.key]: current.family[section.key].map(item => item.channel === row.channel ? { ...item, name: event.target.value } : item),
+                              },
+                            }))}
+                            aria-label="name"
+                          />
+                          <input
+                            className="wv2-input"
+                            value={row.use}
+                            onChange={event => updateRadioLanguage(current => ({
+                              ...current,
+                              family: {
+                                ...current.family,
+                                [section.key]: current.family[section.key].map(item => item.channel === row.channel ? { ...item, use: event.target.value } : item),
+                              },
+                            }))}
+                            aria-label="use"
+                          />
+                          <textarea
+                            className="wv2-input"
+                            value={linesToText(row.why)}
+                            rows={3}
+                            onChange={event => updateRadioLanguage(current => ({
+                              ...current,
+                              family: {
+                                ...current.family,
+                                [section.key]: current.family[section.key].map(item => item.channel === row.channel ? { ...item, why: textToLines(event.target.value) } : item),
+                              },
+                            }))}
+                            aria-label="reasons"
+                          />
+                        </div>
+                      ) : (
+                        <div>
+                          <div className="t-title2" style={{ marginBottom: '0.2rem' }}>{row.frequency}</div>
+                          <div className="t-sub">{row.name} · {row.use}</div>
+                          <ul className="t-foot ink-2" style={{ margin: '0.45rem 0 0', paddingLeft: '1rem' }}>
+                            {row.why.map(reason => <li key={reason}>{reason}</li>)}
+                          </ul>
+                        </div>
+                      )}
                     </article>
                   ))}
                 </div>
@@ -426,7 +540,7 @@ export default function CommsPage() {
         <Card>
           <SectionLabel>{c.national}</SectionLabel>
           <div style={{ display: 'grid', gap: '0.75rem', marginTop: '0.9rem' }}>
-            {NATIONAL_REFERENCES[language].map(group => (
+            {activeRadio.national.map((group, index) => (
               <section
                 key={group.title}
                 style={{
@@ -436,24 +550,60 @@ export default function CommsPage() {
                   background: 'rgba(255,255,255,0.04)',
                 }}
               >
-                <h2 className="t-title2" style={{ margin: 0 }}>{group.title}</h2>
-                <p className="t-foot ink-2" style={{ margin: '0.45rem 0 0.65rem' }}>{group.body}</p>
-                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  {group.lines.map(line => (
-                    <span
-                      key={line}
-                      className="t-foot"
-                      style={{
-                        border: '1px solid rgba(255,255,255,0.12)',
-                        borderRadius: '999px',
-                        padding: '0.35rem 0.55rem',
-                        background: 'rgba(255,255,255,0.06)',
-                      }}
-                    >
-                      {line}
-                    </span>
-                  ))}
-                </div>
+                {radioEditing ? (
+                  <div style={{ display: 'grid', gap: '0.5rem' }}>
+                    <input
+                      className="wv2-input"
+                      value={group.title}
+                      onChange={event => updateRadioLanguage(current => ({
+                        ...current,
+                        national: current.national.map((item, itemIndex) => itemIndex === index ? { ...item, title: event.target.value } : item),
+                      }))}
+                      aria-label="title"
+                    />
+                    <textarea
+                      className="wv2-input"
+                      value={group.body}
+                      rows={2}
+                      onChange={event => updateRadioLanguage(current => ({
+                        ...current,
+                        national: current.national.map((item, itemIndex) => itemIndex === index ? { ...item, body: event.target.value } : item),
+                      }))}
+                      aria-label="body"
+                    />
+                    <textarea
+                      className="wv2-input"
+                      value={linesToText(group.lines)}
+                      rows={4}
+                      onChange={event => updateRadioLanguage(current => ({
+                        ...current,
+                        national: current.national.map((item, itemIndex) => itemIndex === index ? { ...item, lines: textToLines(event.target.value) } : item),
+                      }))}
+                      aria-label="lines"
+                    />
+                  </div>
+                ) : (
+                  <>
+                    <h2 className="t-title2" style={{ margin: 0 }}>{group.title}</h2>
+                    <p className="t-foot ink-2" style={{ margin: '0.45rem 0 0.65rem' }}>{group.body}</p>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      {group.lines.map(line => (
+                        <span
+                          key={line}
+                          className="t-foot"
+                          style={{
+                            border: '1px solid rgba(255,255,255,0.12)',
+                            borderRadius: '999px',
+                            padding: '0.35rem 0.55rem',
+                            background: 'rgba(255,255,255,0.06)',
+                          }}
+                        >
+                          {line}
+                        </span>
+                      ))}
+                    </div>
+                  </>
+                )}
               </section>
             ))}
           </div>
@@ -461,21 +611,54 @@ export default function CommsPage() {
 
         <Card>
           <SectionLabel>{c.quickUse}</SectionLabel>
-          <ol className="t-body ink-2" style={{ display: 'grid', gap: '0.55rem', margin: '0.9rem 0 0', paddingLeft: '1.2rem' }}>
-            {QUICK_STEPS[language].map(step => <li key={step}>{step}</li>)}
-          </ol>
+          {radioEditing ? (
+            <textarea
+              className="wv2-input"
+              value={linesToText(activeRadio.quickSteps)}
+              rows={8}
+              onChange={event => updateRadioLanguage(current => ({ ...current, quickSteps: textToLines(event.target.value) }))}
+              style={{ marginTop: '0.9rem' }}
+              aria-label={c.quickUse}
+            />
+          ) : (
+            <ol className="t-body ink-2" style={{ display: 'grid', gap: '0.55rem', margin: '0.9rem 0 0', paddingLeft: '1.2rem' }}>
+              {activeRadio.quickSteps.map(step => <li key={step}>{step}</li>)}
+            </ol>
+          )}
         </Card>
 
         <Card>
           <SectionLabel>{c.otherOptions}</SectionLabel>
-          <ul className="t-body ink-2" style={{ margin: '0.9rem 0 0', paddingLeft: '1.2rem' }}>
-            {OTHER_OPTIONS[language].map(option => <li key={option} style={{ marginBottom: '0.45rem' }}>{option}</li>)}
-          </ul>
+          {radioEditing ? (
+            <textarea
+              className="wv2-input"
+              value={linesToText(activeRadio.otherOptions)}
+              rows={5}
+              onChange={event => updateRadioLanguage(current => ({ ...current, otherOptions: textToLines(event.target.value) }))}
+              style={{ marginTop: '0.9rem' }}
+              aria-label={c.otherOptions}
+            />
+          ) : (
+            <ul className="t-body ink-2" style={{ margin: '0.9rem 0 0', paddingLeft: '1.2rem' }}>
+              {activeRadio.otherOptions.map(option => <li key={option} style={{ marginBottom: '0.45rem' }}>{option}</li>)}
+            </ul>
+          )}
         </Card>
 
         <Card accented>
           <SectionLabel>{c.legal}</SectionLabel>
-          <p className="t-body ink-2" style={{ margin: '0.75rem 0 0' }}>{c.legalBody}</p>
+          {radioEditing ? (
+            <textarea
+              className="wv2-input"
+              value={activeRadio.legalBody}
+              rows={4}
+              onChange={event => updateRadioLanguage(current => ({ ...current, legalBody: event.target.value }))}
+              style={{ marginTop: '0.75rem' }}
+              aria-label={c.legal}
+            />
+          ) : (
+            <p className="t-body ink-2" style={{ margin: '0.75rem 0 0' }}>{activeRadio.legalBody}</p>
+          )}
         </Card>
 
         <Card>

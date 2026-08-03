@@ -4,6 +4,37 @@
 
 ---
 
+## D-089 — Frequências de rádio são editáveis por círculo
+
+**Date**: 2026-08-03
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: A referência de frequências familiares inserida em D-088 não pode
+ficar congelada no código. Cada família/círculo precisa ajustar canais, usos,
+notas, serviços para escuta e guia rápido conforme seus rádios, região e plano.
+
+**Decision**:
+
+1. Criar `circle_radio_profiles` como documento JSON por círculo.
+2. Todos os membros autenticados do círculo podem ler a referência.
+3. Somente membros `Admin` ou `Editor` podem salvar alterações.
+4. A referência padrão D-088 continua como fallback quando o círculo ainda não
+   salvou um perfil próprio ou quando a migration não está aplicada.
+5. A edição não altera a regra legal: EOS armazena referência operacional, não
+   valida licença, autorização FCC, scanner, despacho, SMS ou transmissão real.
+6. Não usar `circle_messages` para guardar configuração; chat e perfil de rádio
+   são contratos separados.
+
+**Consequences**:
+
+- Nova migration `20260803001000_circle_radio_profiles.sql`.
+- Novo endpoint `/api/comms/radio`.
+- `/comms` ganha modo leitura/edição inline para canais VHF/UHF, referências
+  nacionais, opções úteis, guia rápido e aviso legal.
+- Próxima evolução possível: histórico/versionamento e perfis por cenário.
+
+---
+
 ## D-088 — Comms inclui referência de frequências familiares pré-programadas
 
 **Date**: 2026-08-03

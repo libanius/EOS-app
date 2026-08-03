@@ -68,6 +68,30 @@ queries.
 - Trims body and rejects empty or >1000 characters.
 - Inserts a `text` message.
 
+### `circle_radio_profiles`
+
+| Field | Type | Notes |
+|---|---|---|
+| `circle_id` | uuid | primary key, references `circles(id)` |
+| `config` | jsonb | normalized PT/EN `RadioConfig` |
+| `updated_by` | uuid | last editor |
+| `updated_at` | timestamptz | last save timestamp |
+
+`GET /api/comms/radio?circleId=...`
+
+- Requires authenticated user.
+- Requires caller membership in the circle.
+- Returns saved config or D-088 defaults.
+- Returns `canEdit` based on role.
+
+`PUT /api/comms/radio`
+
+- Requires authenticated user.
+- Requires caller membership in the circle.
+- Requires `Admin` or `Editor`.
+- Body: `{ circleId: string, config: RadioConfig }`.
+- Normalizes/clamps the JSON before saving.
+
 ---
 
 ## 4. Regras De Negócio
@@ -81,6 +105,8 @@ queries.
 7. The UI must degrade cleanly when the migration is not applied.
 8. Radio frequencies shown in the UI are owner-provided operational references,
    not legal advice and not proof of transmission rights.
+9. Radio reference edits are circle configuration, not chat messages.
+10. Viewers can read radio profiles; only Admin/Editor can save them.
 
 ---
 
@@ -101,8 +127,8 @@ The legal line is required: normal amateur VHF/UHF transmission in the US needs
 the appropriate license; in immediate danger, prioritize 911/authorities when
 available and verify FCC/local rules before transmitting.
 
-This is static content in COMMS-T02. Editable per-circle frequencies require a
-future data model and permission decision.
+COMMS-T03 makes this content editable per circle. All members can read the saved
+reference; Admin/Editor can edit.
 
 ---
 
@@ -133,7 +159,6 @@ COMMS-T01 is complete when:
 - file/image/audio messages;
 - BLE/LoRa hardware;
 - CarPlay/Android Auto Comms.
-- editable radio profiles by circle;
 - legal/regulatory validation engine.
 
 ---
@@ -158,5 +183,5 @@ Implementation shipped on 2026-08-03:
 Radio reference shipped on 2026-08-03:
 
 - `/comms` includes the owner-provided frequency reference from D-088.
-- No migration was added.
-- Frequencies are not editable yet.
+- D-089 / COMMS-T03 adds persisted editing through
+  `circle_radio_profiles` and `/api/comms/radio`.

@@ -99,9 +99,13 @@ rádio: canais VHF/UHF 1-6, NOAA, chamadas nacionais, marítima, serviços para
 escuta, MURS/GMRS/FRS e guia rápido de Baofeng UV-5R. Isto é conteúdo
 operacional estático, não editor de frequências e não fonte legal definitiva.
 
-Próxima evolução correta, se o dono priorizar Comms, é `circle_radio_profiles`:
-frequências configuráveis por círculo, editáveis por Admin/Editor, com histórico
-e aviso legal. Não enfiar isso em `circle_messages`.
+D-089 criou `circle_radio_profiles`: frequências configuráveis por círculo,
+editáveis por Admin/Editor e lidas por todos os membros. Não enfiar isso em
+`circle_messages`. A próxima evolução, se priorizada, é histórico/versionamento
+e perfis por cenário.
+
+Migration criada: `20260803001000_circle_radio_profiles.sql`. Até ser aplicada,
+o app mostra a referência padrão e a API responde `migration_pending` ao salvar.
 
 ---
 
