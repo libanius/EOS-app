@@ -4,6 +4,38 @@
 
 ---
 
+## D-087 — Comms começa como chat do círculo + guia de rádio, sem Mesh hardware
+
+**Date**: 2026-08-03
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: Depois de PREP-T01 liberar a antiga aba Checklist, o dono quer uma
+aba Comms para comunicação do círculo, referência de rádio amador e futuro mesh.
+O risco é misturar três coisas diferentes: chat app-level, alerta/dispatch e
+hardware off-grid.
+
+**Decision**:
+
+1. COMMS-T01 começa no Web/PWA core com chat de texto por círculo.
+2. Mensagens são `circle_messages`, escopadas ao círculo, com RLS deny-all e
+   acesso apenas via API autenticada que checa membership.
+3. Rádio/frequências entram como guia rápido e referência operacional na UI,
+   sem transmissão real.
+4. Mesh/LoRa fica visível como status/futuro canal, mas hardware continua
+   bloqueado por G-05.
+5. Chat não é alerta, SMS, dispatch, WhatsApp nem garantia de entrega fora do
+   EOS.
+
+**Consequences**:
+
+- `docs/21-comms.md` passa a ser a spec canônica.
+- Migration `20260803000000_circle_messages.sql` adiciona a tabela.
+- `/api/comms/messages` é o contrato v1 para leitura/escrita.
+- Próximas evoluções devem decidir retenção, push por mensagem, delete/edit,
+  anexos e eventual alerta escalável separadamente.
+
+---
+
 ## D-086 — Checklist e Recursos viram Preparação; Comms entra na navegação
 
 **Date**: 2026-08-03

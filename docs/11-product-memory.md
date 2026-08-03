@@ -69,10 +69,29 @@ Regra de continuidade: não recriar duas abas. Se uma tela precisa mandar o
 usuário ajustar estoque, tarefa, checklist ou aquisição, o destino é
 `/preparedness`.
 
-A aba Comms já existe na navegação e abre `/comms`, mas a página ainda é uma
-superfície inicial sem backend. COMMS-T01 precisa especificar chat do círculo,
-guia de rádio/frequências, permissões, retenção, relação com alertas e limite de
-Mesh/LoRa. G-05 continua bloqueando hardware.
+A aba Comms existe na navegação e abre `/comms`.
+
+---
+
+## Comms v1 é chat do círculo, não canal de emergência garantido (2026-08-03)
+
+D-087 / COMMS-T01 cria Comms como uma superfície app-level do Web/PWA: chat do
+círculo, guia rápido de rádio e status de Mesh como referência. O contrato de
+dados é `circle_messages`, acessado só por `/api/comms/messages` depois de
+checar membership em `circle_members`.
+
+Regra: mensagem de Comms **não é alerta**, **não é SMS**, **não é dispatch** e
+**não é transmissão por rádio**. Alertas familiares, push e execução de plano
+continuam fluxos separados. Se no futuro o chat gerar push, isso precisa virar
+decisão e política própria, porque push de toda mensagem muda ruído, privacidade
+e expectativa de entrega.
+
+Mesh/LoRa continua bloqueado por G-05. A UI pode explicar como operar canais
+combinados no plano, mas não pode prometer rede mesh/off-grid enquanto não houver
+hardware, adapter e gate de prioridade aprovados.
+
+Migration criada: `20260803000000_circle_messages.sql`. Até ela ser aplicada no
+Supabase, `/comms` deve degradar com estado indisponível em vez de quebrar.
 
 ---
 

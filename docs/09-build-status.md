@@ -10,7 +10,8 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Preparedness Engine (PREP/EDU/COMMS/ONB) sobre Web/PWA |
-| **Last Completed Task** | **D-086 / PREP-T01 — Checklist + Recursos unificados em Preparação (2026-08-03)** |
+| **Last Completed Task** | **D-087 / COMMS-T01 — Comms app-level: chat do círculo + guia de rádio + limite Mesh/LoRa (2026-08-03)** |
+| | **D-086 / PREP-T01 — Checklist + Recursos unificados em Preparação (2026-08-03)** |
 | | D-085 / PREP-T00 — spec + decisão do Preparedness Engine (2026-08-03)** |
 | | D-084 / P0B-T01→T06 — EOS Platform Foundation Alignment (2026-08-03)** |
 | | D-083 — RAG com tradução de consulta, limiar 0,45 e Pilot em `gpt-4.1` (2026-08-02)** |
@@ -54,6 +55,7 @@
 | | D-066 / PLAN-T00 — spec dos Planos de Emergência da Família (`docs/18-family-plans.md`) (2026-07-27) |
 | | D-064 / FAM-T01→T04 — localização familiar ao vivo, consentimento próprio e remoção dos mocks do mapa (2026-07-27) |
 | **Migration** | ✅ `20260730000000_family_plan_triggers.sql` aplicada pelo dono em 2026-07-30 e verificada. Gatilho gravando ponta a ponta no teste de navegador. |
+| **Migration** | ⏳ `20260803000000_circle_messages.sql` criada para COMMS-T01. Precisa ser aplicada no Supabase antes do chat persistir em produção. |
 | **Migration** | ✅ `20260731000000_multiple_family_plans.sql` aplicada pelo dono em 2026-07-31. Remove o índice antigo de plano ativo único e libera múltiplos planos por círculo. Tentei verificar via REST `pg_indexes`, mas a view não está exposta no schema cache. |
 | **Migration** | ✅ `20260729000000_family_plans.sql` aplicada pelo dono em 2026-07-29 e verificada (5 tabelas + índice de plano ativo único). |
 | **Migration** | ✅ `20260728010000_simulation_join_token.sql` aplicada pelo dono em 2026-07-28 e verificada. |
@@ -87,8 +89,8 @@
 | **In Progress** | — |
 | **Platform Alignment** | ✅ D-084: EOS é plataforma multi-superfície com um único core operacional. Web/PWA segue como superfície primária; iOS/Android serão adapters nativos futuros; Automotive é companion mode restrito; Mesh/LoRa segue bloqueado por G-05. `/mobile/` é template/conceitual, não app inicializado. |
 | **Fases pedidas pelo dono (2026-07-31)** | ✅ 1. Camadas de clima + rastreio de ciclone (D-078). 2. Reinventar a aba Família no design system da v2, com componentes dinâmicos. 3. WV2-T05 (a11y/perf), PLAN-T07 (Pilot propõe plano). |
-| **Next Task** | **COMMS-T01** — especificar e implementar Comms app-level: chat do círculo, guia de rádio/frequências, permissões, retenção, relação com alertas e limite claro de Mesh/LoRa. Alternativas abertas: WV2-T05 (a11y/perf), PLAN-T07 (Pilot propõe/revisa planos), UPP-03 (memória confirmada), LA-T04 (Upstash). |
-| **Build** | ✅ Passing — `npm run type-check` e `npm run build` limpos para PREP-T01 (2026-08-03). Última suíte ampla registrada: Jest 70/70, `npm run test:plan` 14/14 (2026-07-31). |
+| **Next Task** | **EDU-T01** — especificar conteúdo educativo como fonte oficial EOS: catálogo, ingestão de YouTube/transcripts, versionamento, aprovação e ligação com RAG/Preparedness. Alternativas abertas: WV2-T05 (a11y/perf), PLAN-T07 (Pilot propõe/revisa planos), UPP-03 (memória confirmada), LA-T04 (Upstash). |
+| **Build** | ✅ Passing — `npm run type-check`, `npm run build` e `git diff --check` limpos para COMMS-T01 (2026-08-03). Última suíte ampla registrada: Jest 70/70, `npm run test:plan` 14/14 (2026-07-31). |
 | **Plano execução** | ✅ PLAN-T08 MVP: tocar no próprio rosto no mapa abre comando familiar; "Executar plano" carrega um plano escolhido, monta passos determinísticos do host (círculo → gatilhos → papéis → pontos → rotas → encerramento) e alerta o círculo com push preset "Execute o plano da família agora". Sem nova tabela ainda: timeline compartilhada fica para `family_plan_executions`. |
 | **Plano múltiplo** | ✅ PLAN-T09: o círculo pode ter vários planos ativos; `/plan` alterna/cria planos por nome, o executor escolhe qual plano rodar, passos fixos do EOS saem da lista numerada e há cancelar/falso alarme. Migration `20260731000000_multiple_family_plans.sql` aplicada pelo dono. |
 | **Rotas do plano** | ✅ PLAN-T10: cada rota desenhada no plano agora tem handoff "Google Maps" com origem, destino e paradas intermediárias na ordem da `LineString`. O EOS mantém o combinado offline; Google Maps calcula ruas/ETA quando abrir. |

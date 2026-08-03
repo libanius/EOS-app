@@ -148,6 +148,24 @@ it is only shared when the string `location` is explicitly present. Members who
 never touched the toggle must not start broadcasting position because of a legacy
 convention.
 
+### circle_messages
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid | PK |
+| circle_id | uuid | FK → circles.id, cascade delete |
+| sender_id | uuid | FK → profiles.id, cascade delete |
+| body | text | User-authored message, 1–1000 characters after trim |
+| kind | text | `text`, `system`, or `alert`; COMMS-T01 writes only `text` |
+| created_at | timestamptz | Server timestamp |
+| deleted_at | timestamptz | Nullable soft delete marker |
+
+`circle_messages` is the v1 data contract for app-level Comms (D-087 /
+COMMS-T01). RLS is enabled with no direct policies: clients must not read or
+write this table directly. `/api/comms/messages` checks authenticated membership
+in `circle_members` before service-role reads/writes. Chat messages are not
+emergency alerts by default and do not imply SMS, dispatch, radio transmission,
+or Mesh/LoRa delivery.
+
 ### knowledge_base
 | Column | Type | Notes |
 |---|---|---|
