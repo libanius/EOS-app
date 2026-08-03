@@ -203,3 +203,21 @@ EDU-T01 created the official educational content catalog:
 RAG ingestion is deliberately not automatic. `rag_enabled=true` means eligible
 for a future ingestion job, not that embeddings already exist in
 `knowledge_base`.
+
+---
+
+## 10. ONB-T01 Result
+
+**Decision:** D-091
+**Date:** 2026-08-03
+
+ONB-T01 made simulation invites drive contextual onboarding:
+
+- `/sim/[token]` can load context before authentication.
+- login/signup preserve `redirectTo`.
+- `/onboarding` shows the invite scenario and returns the user to the invite
+  after profile setup.
+- joining still requires the existing simulation acceptance pop-up.
+
+No database migration was needed. The simulation token remains context, not
+authorization.

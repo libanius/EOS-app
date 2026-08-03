@@ -128,6 +128,24 @@ degrada com conteúdo padrão e `/admin/edu` não persiste.
 
 ---
 
+## Onboarding por simulação preserva o motivo da chegada (2026-08-03)
+
+D-091 / ONB-T01 corrige a aquisição por cenário simulado. `/sim/[token]` agora
+carrega contexto antes de autenticar, salva o convite localmente e manda para
+login/signup com `redirectTo`. Login e confirmação de signup preservam esse
+destino. `/onboarding` mostra o cenário que trouxe a pessoa e, depois de salvar
+perfil, devolve para `/sim/[token]`.
+
+Regra: **convite é contexto, não autoridade**. O link nunca coloca ninguém em
+simulação sozinho. Depois do onboarding, `/sim/[token]` só registra o usuário
+como `invited`; o pop-up da simulação continua sendo a decisão explícita de
+participar.
+
+Não recolocar `/sim` no middleware protegido sem substituir essa ponte, senão o
+fluxo volta a perder o motivo da aquisição no login.
+
+---
+
 ## Rota EOS é compromisso; Google Maps é navegador por ruas (2026-07-31)
 
 PLAN-T10 adicionou handoff multi-stop: a rota desenhada no plano (`LineString`)

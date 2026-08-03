@@ -258,7 +258,7 @@ product phase sequenced.
 | COMMS-T02 | Inserir referência de frequências familiares | ✅ COMPLETE | 2026-08-03 — D-088; canais VHF/UHF, NOAA, nacionais/emergência, MURS/GMRS/FRS e guia Baofeng na aba Comms |
 | COMMS-T03 | Tornar referência de rádio editável por círculo | ✅ COMPLETE | 2026-08-03 — D-089; `circle_radio_profiles`, `/api/comms/radio`, leitura por membro e edição Admin/Editor |
 | EDU-T01 | Conteúdo educativo como fonte oficial EOS | ✅ COMPLETE | 2026-08-03 — D-090; `edu_content`, `/edu`, `/admin/edu`, fonte visível, aprovação/versionamento e RAG futuro sem ingestão automática |
-| ONB-T01 | Onboarding contextual por convite de simulação | PENDING | New users enter through the scenario that invited them, not a generic tutorial |
+| ONB-T01 | Onboarding contextual por convite de simulação | ✅ COMPLETE | 2026-08-03 — D-091 / `docs/23-onboarding-by-simulation.md`; `/sim/[token]` preserva contexto, login/signup mantêm redirect e `/onboarding` devolve ao convite |
 | SIM-T11 | Simulação gera preparação acionável | PENDING | Scenario outcomes create confirmed checklist/resource tasks, not silent writes |
 | PILOT-T08 | Pilot como educador situacional | PENDING | Pilot instructs, asks, validates, and guides preparation without bypassing rules/confirmation |
 

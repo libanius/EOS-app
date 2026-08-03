@@ -10,15 +10,17 @@ export async function signUp(formData: {
   name: string
   email: string
   password: string
+  redirectTo?: string
 }): Promise<{ error: string | null }> {
   const supabase = await createClient()
+  const redirectParam = formData.redirectTo?.startsWith('/') ? `&redirectTo=${encodeURIComponent(formData.redirectTo)}` : ''
 
   const { error } = await supabase.auth.signUp({
     email: formData.email,
     password: formData.password,
     options: {
       data: { full_name: formData.name },
-      emailRedirectTo: `${getSiteUrl()}/auth/callback?type=signup`,
+      emailRedirectTo: `${getSiteUrl()}/auth/callback?type=signup${redirectParam}`,
     },
   })
 
@@ -37,6 +39,7 @@ export async function signUp(formData: {
 export async function signIn(formData: {
   email: string
   password: string
+  redirectTo?: string
 }): Promise<{ error: string | null }> {
   const supabase = await createClient()
 
@@ -49,7 +52,7 @@ export async function signIn(formData: {
     return { error: 'E-mail ou senha incorretos.' }
   }
 
-  redirect('/dashboard')
+  redirect(formData.redirectTo?.startsWith('/') ? formData.redirectTo : '/dashboard')
 }
 
 // ─── Sign Out ─────────────────────────────────────────────────────────────────

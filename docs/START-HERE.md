@@ -21,7 +21,7 @@ adapters, not separate products.
 | Field | Value |
 |---|---|
 | **Phase** | PHASE 0B complete; next product lane is Preparedness Engine |
-| **Current Task** | ONB-T01 — contextual onboarding by simulation invitation |
+| **Current Task** | SIM-T11 — simulation creates actionable preparedness proposals |
 | **Last Updated** | 2026-08-03 |
 
 Full details: `docs/09-build-status.md`
@@ -83,6 +83,8 @@ Full details: `docs/09-build-status.md`
 | `app/(app)/` | All authenticated app pages |
 | `app/(app)/dashboard/page.tsx` | World v2 front door |
 | `app/(app)/scenario/page.tsx` | Scenario simulator |
+| `app/(app)/sim/[token]/page.tsx` | Simulation invite bridge; preserves onboarding context |
+| `app/(app)/onboarding/page.tsx` | First-run profile setup; can show simulation invite context |
 | `app/(app)/preparedness/page.tsx` | Unified readiness, resources, and checklist/tasks |
 | `app/(app)/comms/page.tsx` | App-level Comms: circle chat, editable family radio frequencies, quick radio guide, and Mesh boundary |
 | `app/(app)/edu/page.tsx` | Approved EDU catalog by scenario tag |
@@ -109,6 +111,7 @@ Full details: `docs/09-build-status.md`
 | `docs/20-preparedness-engine.md` | Preparedness Engine spec |
 | `docs/21-comms.md` | App-level Comms spec |
 | `docs/22-edu.md` | EDU catalog and future RAG provenance spec |
+| `docs/23-onboarding-by-simulation.md` | Contextual onboarding from simulation invites |
 
 ---
 

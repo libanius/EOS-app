@@ -4,6 +4,36 @@
 
 ---
 
+## D-091 — Onboarding preserva o contexto do convite de simulação
+
+**Date**: 2026-08-03
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: A principal aquisição imaginada pelo dono é rodar um cenário
+simulado e convidar pessoas para participar. O fluxo antigo tratava `/sim/[token]`
+como rota protegida; usuário não logado ia para login, o login ignorava
+`redirectTo`, e o onboarding não sabia qual cenário trouxe a pessoa.
+
+**Decision**:
+
+1. `/sim/[token]` deixa de depender do middleware para carregar contexto.
+2. O link de simulação continua não sendo autoridade: só registra o usuário como
+   `invited` depois de autenticação.
+3. Login/signup preservam `redirectTo`.
+4. `/onboarding` mostra o cenário do convite quando veio de `/sim/[token]`.
+5. Depois de salvar perfil, onboarding devolve o usuário ao convite para entrar
+   pelo mesmo pop-up de aceitação.
+6. Nenhuma tabela nova é necessária.
+
+**Consequences**:
+
+- Novo `GET /api/simulation/join/[token]` para consultar contexto do convite.
+- `/sim/[token]` funciona como ponte pública de contexto + doorbell autenticado.
+- O próximo passo pode transformar esse contexto em tarefas/preparação, mas
+  escrita persistente continua fora de ONB-T01.
+
+---
+
 ## D-090 — EDU vira catálogo aprovado antes de alimentar RAG
 
 **Date**: 2026-08-03

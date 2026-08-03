@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useState, useTransition } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { signIn, signUp } from '@/lib/auth/actions'
 import { useLanguage } from '@/lib/i18n'
@@ -13,8 +13,18 @@ type Mode = 'login' | 'signup'
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={<div style={s.page}><div style={s.card} /></div>}>
+      <LoginContent />
+    </Suspense>
+  )
+}
+
+function LoginContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { t } = useLanguage()
+  const redirectTo = searchParams.get('redirectTo')?.startsWith('/') ? searchParams.get('redirectTo')! : undefined
 
   const [mode, setMode] = useState<Mode>('login')
   const [name, setName] = useState('')
@@ -39,7 +49,7 @@ export default function LoginPage() {
         return
       }
       startTransition(async () => {
-        const result = await signIn({ email, password })
+        const result = await signIn({ email, password, redirectTo })
         if (result?.error) setError(result.error)
       })
     } else {
@@ -50,7 +60,7 @@ export default function LoginPage() {
         return
       }
       startTransition(async () => {
-        const result = await signUp({ name: name.trim(), email, password })
+        const result = await signUp({ name: name.trim(), email, password, redirectTo })
         if (result?.error) {
           setError(result.error)
         } else {

@@ -11,7 +11,6 @@ const PROTECTED_ROUTES = [
   '/preparedness',
   '/inventory',
   '/scenario',
-  '/sim',
   '/scenario-legacy',
   '/checklist',
   '/checklist-legacy',
