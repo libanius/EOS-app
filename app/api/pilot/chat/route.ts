@@ -27,6 +27,9 @@ export type PilotTask = {
   tier: 'ESSENTIAL' | 'MODERATE' | 'EXCELLENT'
   quantity?: number
   unit?: string | null
+  kind: 'resource' | 'task' | 'plan_review' | 'comms_setup'
+  source: string
+  destination: string
 }
 
 type Body = {
@@ -371,7 +374,11 @@ function salvageReply(raw: string): string {
   return cleaned.length > 20 ? cleaned : ''
 }
 
-function extractJson(raw: string): { reply: string; tasks: PilotTask[]; destinations: PilotDestination[] } {
+function normalizeTaskKind(kind: unknown): PilotTask['kind'] {
+  return kind === 'resource' || kind === 'plan_review' || kind === 'comms_setup' ? kind : 'task'
+}
+
+function extractJson(raw: string, pt: boolean): { reply: string; tasks: PilotTask[]; destinations: PilotDestination[] } {
   const match = raw.match(/\{[\s\S]*\}/)
   if (!match) return { reply: salvageReply(raw), tasks: [], destinations: [] }
   try {
@@ -386,6 +393,13 @@ function extractJson(raw: string): { reply: string; tasks: PilotTask[]; destinat
             tier: (t.tier === 'MODERATE' || t.tier === 'EXCELLENT' ? t.tier : 'ESSENTIAL') as PilotTask['tier'],
             quantity: typeof t.quantity === 'number' && t.quantity > 0 ? Math.round(t.quantity) : 1,
             unit: typeof t.unit === 'string' && t.unit.trim() ? t.unit.trim().slice(0, 16) : null,
+            kind: normalizeTaskKind((t as { kind?: unknown }).kind),
+            source: pt
+              ? 'EOS Pilot: dados ao vivo, contexto da família e base RAG quando aplicável'
+              : 'EOS Pilot: live data, household context, and RAG when applicable',
+            destination: pt
+              ? 'Preparação > Recomendações do Pilot'
+              : 'Preparedness > Pilot recommendations',
           }))
       : []
     const destinations = Array.isArray(parsed.destinations)
@@ -511,6 +525,9 @@ export async function POST(request: NextRequest) {
     pt
       ? 'QUANDO O USUÁRIO DISSER QUE VAI FAZER ALGO (trabalhar no telhado, cortar árvore, viajar, correr, soltar o barco, deixar a criança na escola), ANALISE A ATIVIDADE em vez de conversar: (a) veredito numa linha — pode, pode com cuidado, ou não faça; (b) POR QUE, citando os números reais que você tem (rajada, UV, chuva por hora, alerta ativo, ciclone); (c) a MELHOR JANELA de hoje, usando a série horária acima, ou diga que não há janela boa; (d) o que muda a resposta ("acima de 40 km/h de rajada, desça"). Trabalho em altura, água, fogo, eletricidade e estrada merecem o cuidado mais duro. Cada precaução concreta vira uma task.'
       : 'WHEN THE USER SAYS THEY ARE GOING TO DO SOMETHING (roof work, tree cutting, driving, running, taking the boat out, school run), ANALYSE THE ACTIVITY instead of chatting: (a) one-line verdict — go, go with care, or do not; (b) WHY, citing the real numbers you have (gusts, UV, hourly rain, active alert, cyclone); (c) the BEST WINDOW today from the hourly series above, or say there is none; (d) what would change the answer ("above 40 km/h gusts, come down"). Work at height, water, fire, electricity and driving get the strictest care. Every concrete precaution becomes a task.',
+    pt
+      ? 'MODO EDUCADOR SITUACIONAL: instrua em sequência lógica. Quando faltar contexto essencial, faça uma pergunta curta antes de concluir. Quando houver ação concreta, transforme em proposta de preparação; não diga apenas "considere". Classifique cada task com kind: resource para comprar/adquirir, task para fazer/verificar, plan_review para revisar plano familiar, comms_setup para rádio/comunicação.'
+      : 'SITUATIONAL EDUCATOR MODE: instruct in a logical sequence. When essential context is missing, ask one short question before concluding. When there is a concrete action, turn it into a preparedness proposal; do not only say "consider". Classify each task with kind: resource for acquiring supplies, task for doing/checking, plan_review for reviewing the family plan, comms_setup for radio/communication setup.',
 
     placesBlock,
     knowledge
@@ -526,8 +543,8 @@ export async function POST(request: NextRequest) {
       ? 'REGRAS INEGOCIÁVEIS: 1) Nunca invente abrigo, rota ou ordem de evacuação — evacuação só existe se houver ordem oficial. 2) Use os números reais da família acima; nada de conselho genérico. 3) Se faltar dado, diga que falta. 4) Nunca suavize um risco crítico. 5) NUNCA calcule distância, rumo ou coordenada por conta própria — use apenas os números já fornecidos acima. Ao mencionar direção ou distância, **copie o valor exato** que foi dado (ex.: "34.0 km a NO"); nunca parafraseie para outra direção nem arredonde o rumo. 6) Só cite posição de quem aparece na lista de posições consentidas.'
       : 'NON-NEGOTIABLE RULES: 1) Never invent a shelter, route or evacuation order — evacuation exists only under an official order. 2) Use the real household numbers above; no generic advice. 3) If data is missing, say so. 4) Never soften a critical risk. 5) NEVER compute a distance, bearing or coordinate yourself — use only the numbers given above. When mentioning a direction or distance, **copy the exact value** you were given (e.g. "34.0 km NW"); never paraphrase it into a different direction or round the bearing. 6) Only cite the position of people who appear in the consented positions list.',
     pt
-      ? 'Responda no mesmo idioma em que o usuário escreveu. RESPONDA SOMENTE com JSON: {"reply":"sua resposta","tasks":[{"name":"ação curta e executável","why":"por que","tier":"ESSENTIAL|MODERATE|EXCELLENT","quantity":1,"unit":null}],"destinations":[{"label":"nome do lugar","lat":0,"lng":0}]}. Inclua em tasks TODA ação concreta que você recomendar. Inclua em destinations TODO lugar para onde valha a pena ir — copiando as coordenadas exatas da lista acima, nunca inventando — para que o usuário possa iniciar a navegação com um toque. Se não houver, use [].'
-      : 'Reply in the language the user wrote in. ANSWER ONLY with JSON: {"reply":"your answer","tasks":[{"name":"short executable action","why":"why","tier":"ESSENTIAL|MODERATE|EXCELLENT","quantity":1,"unit":null}],"destinations":[{"label":"place name","lat":0,"lng":0}]}. Put EVERY concrete action into tasks. Put in destinations EVERY place worth travelling to — copying the exact coordinates from the list above, never inventing them — so the user can start navigation with one tap. Use [] when there are none.',
+      ? 'Responda no mesmo idioma em que o usuário escreveu. RESPONDA SOMENTE com JSON: {"reply":"sua resposta","tasks":[{"name":"ação curta e executável","why":"por que","kind":"resource|task|plan_review|comms_setup","tier":"ESSENTIAL|MODERATE|EXCELLENT","quantity":1,"unit":null}],"destinations":[{"label":"nome do lugar","lat":0,"lng":0}]}. Inclua em tasks TODA ação concreta que você recomendar. Inclua em destinations TODO lugar para onde valha a pena ir — copiando as coordenadas exatas da lista acima, nunca inventando — para que o usuário possa iniciar a navegação com um toque. Se não houver, use [].'
+      : 'Reply in the language the user wrote in. ANSWER ONLY with JSON: {"reply":"your answer","tasks":[{"name":"short executable action","why":"why","kind":"resource|task|plan_review|comms_setup","tier":"ESSENTIAL|MODERATE|EXCELLENT","quantity":1,"unit":null}],"destinations":[{"label":"place name","lat":0,"lng":0}]}. Put EVERY concrete action into tasks. Put in destinations EVERY place worth travelling to — copying the exact coordinates from the list above, never inventing them — so the user can start navigation with one tap. Use [] when there are none.',
   ]
     .filter(Boolean)
     .join('\n\n')
@@ -560,7 +577,7 @@ export async function POST(request: NextRequest) {
     }
 
     const raw = completion.choices[0]?.message?.content ?? ''
-    const { reply, tasks, destinations } = extractJson(raw)
+    const { reply, tasks, destinations } = extractJson(raw, pt)
     return NextResponse.json({ reply, tasks, destinations })
   } catch {
     return NextResponse.json({ error: 'unavailable', reply: null, tasks: [], destinations: [] }, { status: 200 })

@@ -18,9 +18,10 @@
  *     not open with "great question".
  *
  *  3. ADVICE BECOMES WORK. If the specialist says to buy fuel, that arrives as a
- *     TASK you can add to the checklist with one tap. Advice that evaporates
- *     when the screen closes is why preparedness apps fail. The tap is required:
- *     nothing edits the family's plan silently (UPP-03, D-067).
+ *     preparedness proposal with source and type. Advice that evaporates when
+ *     the screen closes is why preparedness apps fail. The tap is required:
+ *     nothing edits the family's plan or readiness silently (UPP-03, D-067,
+ *     D-092).
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -68,8 +69,16 @@ const COPY = {
     offline: 'Sem rede. O Pilot segue respondendo pelo motor local — toque nas perguntas abaixo.',
     unavailable: 'Não consegui falar com a base agora. As respostas locais continuam funcionando.',
     addTask: 'Adicionar',
-    added: 'No checklist',
-    tasksTitle: 'Vira tarefa',
+    added: 'Na preparação',
+    tasksTitle: 'Propostas de preparação',
+    source: 'Fonte',
+    destination: 'Destino',
+    taskKind: {
+      resource: 'Recurso',
+      task: 'Tarefa',
+      plan_review: 'Plano',
+      comms_setup: 'Comms',
+    },
     goTitle: 'Ir até lá',
     showOnMap: 'Ver no mapa',
     navigate: 'Abrir no app de mapas',
@@ -91,8 +100,16 @@ const COPY = {
     offline: 'No network. The Pilot still answers from the local engine — tap a question below.',
     unavailable: 'I could not reach the knowledge base. Local answers still work.',
     addTask: 'Add',
-    added: 'On checklist',
-    tasksTitle: 'Becomes a task',
+    added: 'In preparedness',
+    tasksTitle: 'Preparedness proposals',
+    source: 'Source',
+    destination: 'Destination',
+    taskKind: {
+      resource: 'Resource',
+      task: 'Task',
+      plan_review: 'Plan',
+      comms_setup: 'Comms',
+    },
     goTitle: 'Go there',
     showOnMap: 'Show on map',
     navigate: 'Open in maps app',
@@ -390,7 +407,7 @@ export default function Pilot({
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        kitType: 'GERAL',
+        kitType: 'PILOT_RECOMMENDATION',
         items: [{ name: task.name, tier: task.tier, quantity: task.quantity ?? 1, unit: task.unit ?? null }],
       }),
     }).catch(() => {
@@ -474,8 +491,11 @@ export default function Pilot({
                           return (
                             <div key={task.name} className="chat-task">
                               <span>
+                                <i className="chat-task-kind">{c.taskKind[task.kind]}</i>
                                 <strong className="t-sub">{task.name}</strong>
                                 {task.why && <em className="t-foot ink-3">{task.why}</em>}
+                                <em className="t-foot ink-3">{c.source}: {task.source}</em>
+                                <em className="t-foot ink-3">{c.destination}: {task.destination}</em>
                               </span>
                               <button
                                 type="button"

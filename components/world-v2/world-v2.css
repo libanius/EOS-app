@@ -1469,6 +1469,21 @@
 .wv2-pilot-chat .chat-task > span { min-width: 0; }
 .wv2-pilot-chat .chat-task strong { display: block; color: var(--ink); }
 .wv2-pilot-chat .chat-task em { display: block; font-style: normal; margin-top: 1px; }
+.wv2-pilot-chat .chat-task-kind {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  margin-bottom: var(--s1);
+  padding: 0 var(--s2);
+  border-radius: var(--r-pill);
+  background: rgba(var(--accent-rgb), 0.14);
+  color: var(--accent);
+  font-style: normal;
+  font-size: 0.625rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
 .wv2-pilot-chat .chat-task button {
   flex: none;
   min-height: 36px;

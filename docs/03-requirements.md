@@ -127,7 +127,7 @@
 | F11-6 | Circle radio reference can be edited by Admin/Editor and read by all circle members | ✅ IMPLEMENTED — COMMS-T03 |
 | F11-4 | Simulation invitations can drive contextual onboarding | ✅ IMPLEMENTED — ONB-T01 |
 | F11-7 | Simulation debrief gaps can become confirmed preparedness tasks/resources with visible source | ✅ IMPLEMENTED — SIM-T11 |
-| F11-5 | Pilot may propose preparedness tasks/resources but persistent writes require explicit confirmation and visible source | SPECIFIED — PILOT-T08 |
+| F11-5 | Pilot may propose preparedness tasks/resources but persistent writes require explicit confirmation and visible source | ✅ IMPLEMENTED — PILOT-T08 |
 
 ---
 

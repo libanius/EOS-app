@@ -152,6 +152,25 @@ or send family members toward the incident. It coordinates communication and
 responsibilities while deferring to school, emergency services and local
 authorities.
 
+### Pilot Educador Situacional (D-093 / PILOT-T08)
+
+Pilot also acts as a situational educator inside the Preparedness Engine. When
+it recommends concrete work, the recommendation becomes a confirmed
+preparedness proposal:
+
+- `resource` for things to acquire;
+- `task` for things to do or verify;
+- `plan_review` for family-plan changes to review;
+- `comms_setup` for communication/radio setup.
+
+The server assigns source and destination. The UI shows them before the user
+confirms. Confirmed Pilot actions persist through the existing checklist
+contract with `kit_type=PILOT_RECOMMENDATION`.
+
+Pilot may instruct, ask one short clarifying question, validate, and propose. It
+must not silently write to checklist, inventory, plans, Comms, or long-term
+memory.
+
 ---
 
 ## 4. Primary Prompt

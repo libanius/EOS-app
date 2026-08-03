@@ -260,7 +260,7 @@ product phase sequenced.
 | EDU-T01 | Conteúdo educativo como fonte oficial EOS | ✅ COMPLETE | 2026-08-03 — D-090; `edu_content`, `/edu`, `/admin/edu`, fonte visível, aprovação/versionamento e RAG futuro sem ingestão automática |
 | ONB-T01 | Onboarding contextual por convite de simulação | ✅ COMPLETE | 2026-08-03 — D-091 / `docs/23-onboarding-by-simulation.md`; `/sim/[token]` preserva contexto, login/signup mantêm redirect e `/onboarding` devolve ao convite |
 | SIM-T11 | Simulação gera preparação acionável | ✅ COMPLETE | 2026-08-03 — D-092 / `docs/24-simulation-preparedness-actions.md`; debrief gera propostas confirmáveis com fonte e salva em `SIMULATION_DEBRIEF` |
-| PILOT-T08 | Pilot como educador situacional | PENDING | Pilot instructs, asks, validates, and guides preparation without bypassing rules/confirmation |
+| PILOT-T08 | Pilot como educador situacional | ✅ COMPLETE | 2026-08-03 — D-093 / `docs/25-pilot-situational-educator.md`; propostas do Pilot têm tipo/fonte/destino, confirmação explícita e `PILOT_RECOMMENDATION` |
 
 ---
 

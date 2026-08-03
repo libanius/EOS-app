@@ -4,6 +4,35 @@
 
 ---
 
+## D-093 — Pilot educador usa propostas confirmáveis de preparação
+
+**Date**: 2026-08-03
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: O dono quer que o Pilot seja educador/host situacional, guiando a
+família nas decisões em vez de apenas responder como chat. Depois de SIM-T11, o
+produto passou a ter um contrato claro para transformar orientação em preparação:
+tipo, fonte, destino e confirmação explícita.
+
+**Decision**:
+
+1. `/api/pilot/chat` passa a pedir e normalizar `kind` em cada task:
+   `resource`, `task`, `plan_review` ou `comms_setup`.
+2. A fonte e o destino da proposta são definidos pelo servidor, não pelo modelo.
+3. A UI do Pilot mostra tipo, fonte e destino antes do botão de confirmação.
+4. Itens confirmados pelo Pilot usam `kit_type=PILOT_RECOMMENDATION`.
+5. Preparação mostra "Fonte: Recomendação do Pilot" para esses itens.
+6. O provider de AI segue sendo OpenAI para Pilot/RAG.
+
+**Consequences**:
+
+- Pilot passa a ser educador acionável: instrui, pergunta quando falta contexto
+  essencial e converte orientação em trabalho confirmado.
+- Não há escrita silenciosa em checklist, inventário, plano, Comms ou memória.
+- Um modelo dedicado de Preparedness Items continua fora desta task.
+
+---
+
 ## D-092 — Debrief de simulação vira proposta confirmável de preparação
 
 **Date**: 2026-08-03

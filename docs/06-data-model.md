@@ -122,8 +122,10 @@ of the public emergency QR contract.
 | kit_type | text | Source/grouping: `GERAL`, `BUG_OUT`, `SIMULATION_DEBRIEF`, etc. |
 
 `SIMULATION_DEBRIEF` is the v1 persistence marker for SIM-T11. It means the
-item was explicitly confirmed from a simulation debrief proposal. It is not an
-automatic write and should be displayed as source/provenance in Preparação.
+item was explicitly confirmed from a simulation debrief proposal.
+`PILOT_RECOMMENDATION` is the v1 persistence marker for PILOT-T08. It means the
+item was explicitly confirmed from a Pilot proposal. Neither is an automatic
+write; both should be displayed as source/provenance in Preparação.
 
 ### circles
 | Column | Type | Notes |

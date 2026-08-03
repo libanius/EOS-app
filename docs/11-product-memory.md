@@ -128,6 +128,22 @@ degrada com conteúdo padrão e `/admin/edu` não persiste.
 
 ---
 
+## Pilot educador também usa preparação confirmável (2026-08-03)
+
+D-093 / PILOT-T08 aplicou ao Pilot o mesmo contrato de SIM-T11. As tasks vindas
+de `/api/pilot/chat` agora têm tipo (`resource`, `task`, `plan_review`,
+`comms_setup`), fonte definida pelo servidor e destino visível. A UI mostra isso
+antes do toque de confirmação.
+
+Persistência atual: `checklists.kit_type = PILOT_RECOMMENDATION`. A aba
+Preparação mostra "Fonte: Recomendação do Pilot" para esses itens. O provider de
+AI segue sendo OpenAI para Pilot/RAG.
+
+Não transformar resposta do Pilot em escrita automática. Ele pode educar,
+sequenciar, perguntar e propor; quem confirma é o usuário.
+
+---
+
 ## Debrief vira preparação, mas só com confirmação (2026-08-03)
 
 D-092 / SIM-T11 criou o contrato v1 para transformar resultado de simulação em

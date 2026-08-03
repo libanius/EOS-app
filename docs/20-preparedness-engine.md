@@ -241,3 +241,22 @@ SIM-T11 connected simulation debriefs to confirmed preparedness work:
 No database migration was needed. The checklist remains the v1 persistence
 contract for confirmed preparedness actions until a dedicated Preparedness Items
 table is decided.
+
+---
+
+## 12. PILOT-T08 Result
+
+**Decision:** D-093
+**Date:** 2026-08-03
+
+PILOT-T08 made the Pilot follow the same confirmed-action contract:
+
+- the Pilot prompt now frames the assistant as a situational educator;
+- concrete recommendations are normalized as `resource`, `task`,
+  `plan_review`, or `comms_setup`;
+- the server assigns source and destination for each proposal;
+- the Pilot UI shows type, source and destination before confirmation;
+- confirmed Pilot proposals use `kit_type=PILOT_RECOMMENDATION`;
+- Preparação shows "Fonte: Recomendação do Pilot" for those rows.
+
+No database migration was needed. OpenAI remains the AI provider for Pilot/RAG.
