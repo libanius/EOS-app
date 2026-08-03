@@ -242,8 +242,7 @@ function answerNow(ctx: PilotContext): PilotAnswer {
         ...weatherFactors(ctx, pt),
       ].slice(0, 4),
       actions: [
-        { label: 'Checklist', href: '/checklist', primary: true },
-        { label: pt ? 'Ver inventário' : 'View inventory', href: '/inventory' },
+        { label: pt ? 'Preparação' : 'Preparedness', href: '/preparedness', primary: true },
       ],
       caveat: rosterCaveat(ctx, pt),
     }
@@ -264,8 +263,7 @@ function answerNow(ctx: PilotContext): PilotAnswer {
         { label: 'Checklist', value: `${ctx.checklistPct}%` },
       ],
       actions: [
-        { label: 'Checklist', href: '/checklist', primary: true },
-        { label: pt ? 'Inventário' : 'Inventory', href: '/inventory' },
+        { label: pt ? 'Preparação' : 'Preparedness', href: '/preparedness', primary: true },
       ],
       caveat: rosterCaveat(ctx, pt),
     }
@@ -376,7 +374,7 @@ function answerStayOrGo(ctx: PilotContext): PilotAnswer {
       { label: pt ? 'Combustível' : 'Fuel', value: `${days(ctx.fuelDays)}d` },
     ],
     actions: [
-      { label: pt ? 'Inventário' : 'Inventory', href: '/inventory', primary: !canSustain },
+      { label: pt ? 'Preparação' : 'Preparedness', href: '/preparedness', primary: !canSustain },
       { label: pt ? 'Ver plano' : 'View plan', href: '/scenario' },
     ],
     caveat: rosterCaveat(ctx, pt),
@@ -405,7 +403,7 @@ function answerEndurance(ctx: PilotContext): PilotAnswer {
       { label: pt ? 'Energia' : 'Power', value: `${days(ctx.powerDays)}d` },
       { label: pt ? 'Combustível' : 'Fuel', value: `${days(ctx.fuelDays)}d` },
     ],
-    actions: [{ label: pt ? 'Ajustar inventário' : 'Adjust inventory', href: '/inventory', primary: short }],
+    actions: [{ label: pt ? 'Ajustar preparação' : 'Adjust preparedness', href: '/preparedness', primary: short }],
     caveat: rosterCaveat(ctx, pt),
   }
 }
@@ -423,7 +421,7 @@ function answerGaps(ctx: PilotContext): PilotAnswer {
         ? 'Sem inventário eu não consigo dizer o que falta sem inventar. Preencha e eu respondo na hora.'
         : 'Without an inventory I cannot say what is missing without making it up. Fill it in and I answer instantly.',
       factors: [],
-      actions: [{ label: pt ? 'Preencher inventário' : 'Fill inventory', href: '/inventory', primary: true }],
+      actions: [{ label: pt ? 'Preencher preparação' : 'Fill preparedness', href: '/preparedness', primary: true }],
     }
   }
 
@@ -436,7 +434,7 @@ function answerGaps(ctx: PilotContext): PilotAnswer {
         ? `Nenhuma regra do EOS disparou. O checklist está em ${ctx.checklistPct}%.`
         : `No EOS rule fired. The checklist is at ${ctx.checklistPct}%.`,
       factors: [{ label: 'Checklist', value: `${ctx.checklistPct}%` }],
-      actions: [{ label: 'Checklist', href: '/checklist' }],
+      actions: [{ label: pt ? 'Preparação' : 'Preparedness', href: '/preparedness' }],
       caveat: rosterCaveat(ctx, pt),
     }
   }
@@ -450,8 +448,7 @@ function answerGaps(ctx: PilotContext): PilotAnswer {
     body: gaps.items[0],
     factors: gaps.items.slice(1, 4).map(item => ({ label: pt ? 'Também' : 'Also', value: item })),
     actions: [
-      { label: pt ? 'Inventário' : 'Inventory', href: '/inventory', primary: true },
-      { label: 'Checklist', href: '/checklist' },
+      { label: pt ? 'Preparação' : 'Preparedness', href: '/preparedness', primary: true },
     ],
     caveat: rosterCaveat(ctx, pt),
   }

@@ -4,6 +4,42 @@
 
 ---
 
+## D-086 — Checklist e Recursos viram Preparação; Comms entra na navegação
+
+**Date**: 2026-08-03
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: O dono pediu que Checklist e Recursos fossem unificados em uma
+mesma aba, liberando o espaço da navegação para uma nova aba Comms. A página de
+Recursos já continha o comportamento correto para PREP-T01: resumo de prontidão,
+recursos reais, briefing OpenAI e checklist embutido com sincronização
+checklist → inventário quando um item é marcado como adquirido.
+
+Manter `/inventory` e `/checklist` como abas separadas preservaria a confusão de
+fluxo que o Preparedness Engine existe para resolver.
+
+**Decision**:
+
+1. Criar `/preparedness` como a superfície única de Preparação.
+2. Redirecionar `/inventory` e `/checklist` para `/preparedness`.
+3. A aba antiga Recursos passa a abrir Preparação.
+4. A aba antiga Checklist passa a abrir Comms.
+5. Comms recebe uma primeira superfície navegável, mas sem backend de chat,
+   retenção, permissões ou Mesh/LoRa. Isso continua para COMMS-T01.
+6. Nenhuma migration é necessária: os contratos `/api/inventory` e
+   `/api/checklist` continuam sendo as fontes atuais.
+
+**Consequences**:
+
+- O usuário vê uma única aba para recursos, tarefas, gaps e checklist.
+- Links antigos para `/inventory` e `/checklist` não quebram, mas convergem para
+  Preparação.
+- O Pilot e o dashboard passam a apontar para `/preparedness`.
+- COMMS-T01 permanece como próximo passo para especificar chat do círculo,
+  rádio/frequências, permissões, retenção e relação com alertas.
+
+---
+
 ## D-085 — Preparedness Engine transforma monitoramento em preparação acionável
 
 **Date**: 2026-08-03

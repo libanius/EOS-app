@@ -157,3 +157,30 @@ Recommended next order:
 The first implementation should be conservative: merge existing Checklist and
 Inventory/Resources into a coherent Preparação flow before introducing new
 schema-heavy EDU or chat systems.
+
+---
+
+## 8. PREP-T01 Result
+
+**Decision:** D-086
+**Date:** 2026-08-03
+
+PREP-T01 created `/preparedness` as the unified readiness surface. `/inventory`
+and `/checklist` now redirect there so the user no longer has two separate tabs
+for resources and tasks.
+
+The unified surface keeps the existing data contracts:
+
+- `/api/inventory` for real household resources;
+- `/api/checklist` and related endpoints for generated/acquired tasks;
+- existing checklist-to-inventory sync when an acquired checklist item maps to a
+  tracked resource.
+
+The BottomNav now has:
+
+- **Preparação** instead of Recursos;
+- **Comms** instead of Checklist.
+
+`/comms` is intentionally only a first navigable surface. Chat, radio/frequency
+contracts, permissions, retention, alert escalation, and Mesh/LoRa boundaries
+belong to COMMS-T01.

@@ -253,8 +253,8 @@ product phase sequenced.
 | Task ID | Task | Status | Notes |
 |---|---|---|---|
 | PREP-T00 | Spec + decisão do Preparedness Engine | ✅ COMPLETE | 2026-08-03 — D-085 / `docs/20-preparedness-engine.md`; no code/migration authorized |
-| PREP-T01 | Unificar Checklist + Recursos em Preparação | PENDING | One readiness surface for tasks, materials, acquisition gaps, and owned resources |
-| COMMS-T01 | Criar aba Comms app-level | PENDING | Circle chat, radio-amateur guide, frequencies, quick use guide, mesh status placeholder |
+| PREP-T01 | Unificar Checklist + Recursos em Preparação | ✅ COMPLETE | 2026-08-03 — D-086; `/preparedness` is the single surface, `/inventory` and `/checklist` redirect |
+| COMMS-T01 | Criar aba Comms app-level | PENDING | First navigable placeholder exists; needs spec/data contract for circle chat, radio guide, frequencies, retention, permissions |
 | EDU-T01 | Conteúdo educativo como fonte oficial EOS | PENDING | Owner YouTube channel can feed EDU catalog and internal RAG after ingestion/versioning spec |
 | ONB-T01 | Onboarding contextual por convite de simulação | PENDING | New users enter through the scenario that invited them, not a generic tutorial |
 | SIM-T11 | Simulação gera preparação acionável | PENDING | Scenario outcomes create confirmed checklist/resource tasks, not silent writes |

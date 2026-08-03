@@ -58,7 +58,7 @@ const COPY = {
     noAlerts: 'Nenhum alerta oficial na sua área',
     seeAlerts: 'Ver alertas',
     scenario: 'Abrir cenário',
-    checklist: 'Checklist',
+    checklist: 'Preparação',
     plan: 'Plano da família',
     actions: 'Ações',
     offline: 'Offline',
@@ -133,7 +133,7 @@ const COPY = {
     noAlerts: 'No official alert in your area',
     seeAlerts: 'See alerts',
     scenario: 'Open scenario',
-    checklist: 'Checklist',
+    checklist: 'Preparedness',
     plan: 'Family plan',
     actions: 'Actions',
     offline: 'Offline',
@@ -723,7 +723,7 @@ function WorldSections({
         <PillLink href="/scenario" primary>
           {c.scenario}
         </PillLink>
-        <PillLink href="/checklist">{c.checklist}</PillLink>
+        <PillLink href="/preparedness">{c.checklist}</PillLink>
         <PillLink href="/plan">{c.plan}</PillLink>
       </div>
 

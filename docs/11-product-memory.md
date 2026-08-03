@@ -59,6 +59,23 @@ Spec canônica: `docs/20-preparedness-engine.md`.
 
 ---
 
+## Preparação substitui Recursos + Checklist na navegação (2026-08-03)
+
+D-086 fez a unificação prática do PREP-T01: `/preparedness` é a superfície única
+para prontidão, recursos reais, gaps, briefing OpenAI e checklist/tarefas.
+`/inventory` e `/checklist` redirecionam para ela.
+
+Regra de continuidade: não recriar duas abas. Se uma tela precisa mandar o
+usuário ajustar estoque, tarefa, checklist ou aquisição, o destino é
+`/preparedness`.
+
+A aba Comms já existe na navegação e abre `/comms`, mas a página ainda é uma
+superfície inicial sem backend. COMMS-T01 precisa especificar chat do círculo,
+guia de rádio/frequências, permissões, retenção, relação com alertas e limite de
+Mesh/LoRa. G-05 continua bloqueando hardware.
+
+---
+
 ## Rota EOS é compromisso; Google Maps é navegador por ruas (2026-07-31)
 
 PLAN-T10 adicionou handoff multi-stop: a rota desenhada no plano (`LineString`)

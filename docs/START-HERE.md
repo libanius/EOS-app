@@ -21,7 +21,7 @@ adapters, not separate products.
 | Field | Value |
 |---|---|
 | **Phase** | PHASE 0B complete; next product lane is Preparedness Engine |
-| **Current Task** | PREP-T01 — unify Checklist + Recursos into Preparação |
+| **Current Task** | COMMS-T01 — specify and implement app-level Comms |
 | **Last Updated** | 2026-08-03 |
 
 Full details: `docs/09-build-status.md`
@@ -83,7 +83,10 @@ Full details: `docs/09-build-status.md`
 | `app/(app)/` | All authenticated app pages |
 | `app/(app)/dashboard/page.tsx` | World v2 front door |
 | `app/(app)/scenario/page.tsx` | Scenario simulator |
-| `app/(app)/inventory/page.tsx` | Resource inventory + readiness score |
+| `app/(app)/preparedness/page.tsx` | Unified readiness, resources, and checklist/tasks |
+| `app/(app)/comms/page.tsx` | App-level Comms surface; backend/spec still pending |
+| `app/(app)/inventory/page.tsx` | Redirects to `/preparedness` |
+| `app/(app)/checklist/page.tsx` | Redirects to `/preparedness` |
 | `app/(app)/family/page.tsx` | Family location/readiness command surface |
 | `app/(app)/plan/page.tsx` | Family emergency plans |
 | `app/(app)/checklist/page.tsx` | Preparedness checklist |

@@ -46,8 +46,8 @@ const NAV_LEFT: NavItem[] = [
     ),
   },
   {
-    href: '/inventory',
-    labelKey: 'nav.inventory',
+    href: '/preparedness',
+    labelKey: 'nav.preparedness',
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
@@ -60,12 +60,15 @@ const NAV_LEFT: NavItem[] = [
 
 const NAV_RIGHT: NavItem[] = [
   {
-    href: '/checklist',
-    labelKey: 'nav.checklist',
+    href: '/comms',
+    labelKey: 'nav.comms',
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M9 11l3 3L22 4" />
-        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+        <path d="M4.9 19.1a10 10 0 0 1 0-14.2" />
+        <path d="M8.4 15.6a5 5 0 0 1 0-7.2" />
+        <path d="M15.6 8.4a5 5 0 0 1 0 7.2" />
+        <path d="M19.1 4.9a10 10 0 0 1 0 14.2" />
+        <circle cx="12" cy="12" r="1.6" />
       </svg>
     ),
   },

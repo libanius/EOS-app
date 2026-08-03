@@ -10,7 +10,8 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Preparedness Engine (PREP/EDU/COMMS/ONB) sobre Web/PWA |
-| **Last Completed Task** | **D-085 / PREP-T00 — spec + decisão do Preparedness Engine (2026-08-03)** |
+| **Last Completed Task** | **D-086 / PREP-T01 — Checklist + Recursos unificados em Preparação (2026-08-03)** |
+| | D-085 / PREP-T00 — spec + decisão do Preparedness Engine (2026-08-03)** |
 | | D-084 / P0B-T01→T06 — EOS Platform Foundation Alignment (2026-08-03)** |
 | | D-083 — RAG com tradução de consulta, limiar 0,45 e Pilot em `gpt-4.1` (2026-08-02)** |
 | | **D-082 / PLAN-T10 — handoff multi-stop da rota do plano para Google Maps (2026-07-31)** |
@@ -86,8 +87,8 @@
 | **In Progress** | — |
 | **Platform Alignment** | ✅ D-084: EOS é plataforma multi-superfície com um único core operacional. Web/PWA segue como superfície primária; iOS/Android serão adapters nativos futuros; Automotive é companion mode restrito; Mesh/LoRa segue bloqueado por G-05. `/mobile/` é template/conceitual, não app inicializado. |
 | **Fases pedidas pelo dono (2026-07-31)** | ✅ 1. Camadas de clima + rastreio de ciclone (D-078). 2. Reinventar a aba Família no design system da v2, com componentes dinâmicos. 3. WV2-T05 (a11y/perf), PLAN-T07 (Pilot propõe plano). |
-| **Next Task** | **PREP-T01** — unificar Checklist + Recursos em Preparação: uma superfície de prontidão para tarefas, materiais, gaps de aquisição e recursos possuídos. Alternativas abertas: WV2-T05 (a11y/perf), PLAN-T07 (Pilot propõe/revisa planos), UPP-03 (memória confirmada), LA-T04 (Upstash). |
-| **Build** | ✅ Passing — type-check, Jest 70/70, `npm run test:plan` 14/14 e production build limpos (2026-07-31) |
+| **Next Task** | **COMMS-T01** — especificar e implementar Comms app-level: chat do círculo, guia de rádio/frequências, permissões, retenção, relação com alertas e limite claro de Mesh/LoRa. Alternativas abertas: WV2-T05 (a11y/perf), PLAN-T07 (Pilot propõe/revisa planos), UPP-03 (memória confirmada), LA-T04 (Upstash). |
+| **Build** | ✅ Passing — `npm run type-check` e `npm run build` limpos para PREP-T01 (2026-08-03). Última suíte ampla registrada: Jest 70/70, `npm run test:plan` 14/14 (2026-07-31). |
 | **Plano execução** | ✅ PLAN-T08 MVP: tocar no próprio rosto no mapa abre comando familiar; "Executar plano" carrega um plano escolhido, monta passos determinísticos do host (círculo → gatilhos → papéis → pontos → rotas → encerramento) e alerta o círculo com push preset "Execute o plano da família agora". Sem nova tabela ainda: timeline compartilhada fica para `family_plan_executions`. |
 | **Plano múltiplo** | ✅ PLAN-T09: o círculo pode ter vários planos ativos; `/plan` alterna/cria planos por nome, o executor escolhe qual plano rodar, passos fixos do EOS saem da lista numerada e há cancelar/falso alarme. Migration `20260731000000_multiple_family_plans.sql` aplicada pelo dono. |
 | **Rotas do plano** | ✅ PLAN-T10: cada rota desenhada no plano agora tem handoff "Google Maps" com origem, destino e paradas intermediárias na ordem da `LineString`. O EOS mantém o combinado offline; Google Maps calcula ruas/ETA quando abrir. |

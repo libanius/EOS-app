@@ -10,7 +10,7 @@
  * (para o push).
  *
  * Consequência prática, medida em navegador: `getRegistrations()` devolvia 0 em
- * `/dashboard`, `/plan`, `/checklist` e em todo o resto. Não havia cache
+ * `/dashboard`, `/plan`, `/preparedness` e em todo o resto. Não havia cache
  * offline nenhum — o app parecia ter PWA e não tinha.
  *
  * Isso importa mais do que parece: o Plano da Família (doc 18 §2) existe para
