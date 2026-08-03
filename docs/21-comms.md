@@ -124,6 +124,7 @@ Implementation shipped on 2026-08-03:
   new text messages with Enter/form submit.
 - `/api/comms/messages` enforces authenticated circle membership before
   service-role reads/writes.
-- Migration: `supabase/migrations/20260803000000_circle_messages.sql`.
+- Migration: `supabase/migrations/20260803000000_circle_messages.sql`, applied
+  by the owner on 2026-08-03 and verified via service-role.
 - Radio and Mesh sections remain informational; Mesh/LoRa hardware remains
   blocked by G-05.

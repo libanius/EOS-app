@@ -90,8 +90,9 @@ Mesh/LoRa continua bloqueado por G-05. A UI pode explicar como operar canais
 combinados no plano, mas não pode prometer rede mesh/off-grid enquanto não houver
 hardware, adapter e gate de prioridade aprovados.
 
-Migration criada: `20260803000000_circle_messages.sql`. Até ela ser aplicada no
-Supabase, `/comms` deve degradar com estado indisponível em vez de quebrar.
+Migration `20260803000000_circle_messages.sql` aplicada pelo dono em 2026-08-03
+e verificada via service-role. A tela ainda deve degradar com estado
+indisponível se o endpoint falhar, porque Comms não pode fingir entrega.
 
 ---
 

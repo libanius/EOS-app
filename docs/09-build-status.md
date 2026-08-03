@@ -55,7 +55,7 @@
 | | D-066 / PLAN-T00 — spec dos Planos de Emergência da Família (`docs/18-family-plans.md`) (2026-07-27) |
 | | D-064 / FAM-T01→T04 — localização familiar ao vivo, consentimento próprio e remoção dos mocks do mapa (2026-07-27) |
 | **Migration** | ✅ `20260730000000_family_plan_triggers.sql` aplicada pelo dono em 2026-07-30 e verificada. Gatilho gravando ponta a ponta no teste de navegador. |
-| **Migration** | ⏳ `20260803000000_circle_messages.sql` criada para COMMS-T01. Precisa ser aplicada no Supabase antes do chat persistir em produção. |
+| **Migration** | ✅ `20260803000000_circle_messages.sql` aplicada pelo dono em 2026-08-03 e verificada via service-role (`circle_messages` responde 200; count=0). |
 | **Migration** | ✅ `20260731000000_multiple_family_plans.sql` aplicada pelo dono em 2026-07-31. Remove o índice antigo de plano ativo único e libera múltiplos planos por círculo. Tentei verificar via REST `pg_indexes`, mas a view não está exposta no schema cache. |
 | **Migration** | ✅ `20260729000000_family_plans.sql` aplicada pelo dono em 2026-07-29 e verificada (5 tabelas + índice de plano ativo único). |
 | **Migration** | ✅ `20260728010000_simulation_join_token.sql` aplicada pelo dono em 2026-07-28 e verificada. |
