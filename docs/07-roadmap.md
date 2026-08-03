@@ -255,6 +255,7 @@ product phase sequenced.
 | PREP-T00 | Spec + decisão do Preparedness Engine | ✅ COMPLETE | 2026-08-03 — D-085 / `docs/20-preparedness-engine.md`; no code/migration authorized |
 | PREP-T01 | Unificar Checklist + Recursos em Preparação | ✅ COMPLETE | 2026-08-03 — D-086; `/preparedness` is the single surface, `/inventory` and `/checklist` redirect |
 | COMMS-T01 | Criar aba Comms app-level | ✅ COMPLETE | 2026-08-03 — D-087 / `docs/21-comms.md`; `/comms` agora tem chat do círculo, guia de rádio e limite explícito de Mesh/LoRa |
+| COMMS-T02 | Inserir referência de frequências familiares | ✅ COMPLETE | 2026-08-03 — D-088; canais VHF/UHF, NOAA, nacionais/emergência, MURS/GMRS/FRS e guia Baofeng na aba Comms |
 | EDU-T01 | Conteúdo educativo como fonte oficial EOS | PENDING | Owner YouTube channel can feed EDU catalog and internal RAG after ingestion/versioning spec |
 | ONB-T01 | Onboarding contextual por convite de simulação | PENDING | New users enter through the scenario that invited them, not a generic tutorial |
 | SIM-T11 | Simulação gera preparação acionável | PENDING | Scenario outcomes create confirmed checklist/resource tasks, not silent writes |

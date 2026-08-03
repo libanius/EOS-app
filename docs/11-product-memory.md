@@ -94,6 +94,15 @@ Migration `20260803000000_circle_messages.sql` aplicada pelo dono em 2026-08-03
 e verificada via service-role. A tela ainda deve degradar com estado
 indisponível se o endpoint falhar, porque Comms não pode fingir entrega.
 
+D-088 adicionou na própria `/comms` a referência familiar owner-provided de
+rádio: canais VHF/UHF 1-6, NOAA, chamadas nacionais, marítima, serviços para
+escuta, MURS/GMRS/FRS e guia rápido de Baofeng UV-5R. Isto é conteúdo
+operacional estático, não editor de frequências e não fonte legal definitiva.
+
+Próxima evolução correta, se o dono priorizar Comms, é `circle_radio_profiles`:
+frequências configuráveis por círculo, editáveis por Admin/Editor, com histórico
+e aviso legal. Não enfiar isso em `circle_messages`.
+
 ---
 
 ## Rota EOS é compromisso; Google Maps é navegador por ruas (2026-07-31)

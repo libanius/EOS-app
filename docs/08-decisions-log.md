@@ -4,6 +4,41 @@
 
 ---
 
+## D-088 — Comms inclui referência de frequências familiares pré-programadas
+
+**Date**: 2026-08-03
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: Depois do chat do círculo entrar em COMMS-T01, o dono forneceu uma
+referência visual com canais VHF/UHF da família, frequências nacionais, serviços
+para escuta, opções MURS/GMRS/FRS e guia rápido de Baofeng UV-5R. O objetivo é
+que a aba Comms tenha utilidade real antes de qualquer Mesh/LoRa.
+
+**Decision**:
+
+1. `/comms` passa a mostrar uma referência estática owner-provided de rádio:
+   canais familiares VHF/UHF, frequências nacionais, NOAA, marítima, serviços
+   de emergência para escuta, MURS/GMRS/FRS e guia rápido de uso.
+2. Essa referência é conteúdo operacional do EOS, não fonte legal definitiva.
+3. A tela deve manter aviso explícito: transmissão VHF/UHF de radioamador nos
+   EUA exige licença apropriada em operação normal; em risco imediato, priorizar
+   911/autoridades quando disponíveis e confirmar regras FCC/locais antes de
+   transmitir.
+4. Não há migration nesta etapa. Frequências editáveis por círculo ficam para
+   evolução futura.
+5. Mesh/LoRa continua bloqueado por G-05.
+
+**Consequences**:
+
+- `/comms` deixa de ter apenas um guia genérico de rádio e passa a carregar a
+  tabela operacional inicial da família.
+- O próximo passo natural em Comms, se priorizado, é tornar frequências
+  configuráveis por círculo com permissões de Admin/Editor.
+- A presença das frequências no app não transforma o EOS em rádio, SMS,
+  dispatch, scanner garantido ou rede off-grid.
+
+---
+
 ## D-087 — Comms começa como chat do círculo + guia de rádio, sem Mesh hardware
 
 **Date**: 2026-08-03

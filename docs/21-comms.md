@@ -79,10 +79,34 @@ queries.
 5. Mesh/LoRa status remains informational until G-05 is cleared.
 6. The UI must show when no circle exists.
 7. The UI must degrade cleanly when the migration is not applied.
+8. Radio frequencies shown in the UI are owner-provided operational references,
+   not legal advice and not proof of transmission rights.
 
 ---
 
-## 5. Critérios De Aceitação
+## 5. Radio Reference — D-088
+
+COMMS-T02 adds the initial family radio reference to `/comms`:
+
+- Family VHF channels 1-3: 145.500, 146.550, 146.520 MHz.
+- Family UHF channels 4-6: 446.100, 446.050, 446.000 MHz.
+- NOAA Weather Radio list: 162.400 through 162.550 MHz.
+- National amateur references: 146.520 MHz and 446.000 MHz.
+- Marine listen reference: 156.800 MHz / Channel 16.
+- Emergency-service listen references supplied by the owner.
+- MURS, GMRS and FRS reference bands/options.
+- Quick Baofeng UV-5R / similar-radio usage guide.
+
+The legal line is required: normal amateur VHF/UHF transmission in the US needs
+the appropriate license; in immediate danger, prioritize 911/authorities when
+available and verify FCC/local rules before transmitting.
+
+This is static content in COMMS-T02. Editable per-circle frequencies require a
+future data model and permission decision.
+
+---
+
+## 6. Critérios De Aceitação
 
 COMMS-T01 is complete when:
 
@@ -96,7 +120,7 @@ COMMS-T01 is complete when:
 
 ---
 
-## 6. Fora Do Escopo
+## 7. Fora Do Escopo
 
 - SMS;
 - email;
@@ -109,10 +133,12 @@ COMMS-T01 is complete when:
 - file/image/audio messages;
 - BLE/LoRa hardware;
 - CarPlay/Android Auto Comms.
+- editable radio profiles by circle;
+- legal/regulatory validation engine.
 
 ---
 
-## 7. Notas
+## 8. Notas
 
 Retention is intentionally simple in v1: messages persist until a future
 retention policy is defined. This is acceptable for app-level prep coordination
@@ -128,3 +154,9 @@ Implementation shipped on 2026-08-03:
   by the owner on 2026-08-03 and verified via service-role.
 - Radio and Mesh sections remain informational; Mesh/LoRa hardware remains
   blocked by G-05.
+
+Radio reference shipped on 2026-08-03:
+
+- `/comms` includes the owner-provided frequency reference from D-088.
+- No migration was added.
+- Frequencies are not editable yet.
