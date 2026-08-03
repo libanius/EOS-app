@@ -16,6 +16,7 @@ const PROTECTED_ROUTES = [
   '/checklist',
   '/checklist-legacy',
   '/comms',
+  '/edu',
   '/circles',
   '/settings',
   '/weather',

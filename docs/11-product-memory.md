@@ -110,6 +110,24 @@ persistente em produção.
 
 ---
 
+## EDU é catálogo aprovado antes de virar RAG (2026-08-03)
+
+D-090 / EDU-T01 criou o caminho correto para conteúdo educativo do dono: primeiro
+entra em `edu_content`, com fonte, URL, tags de cenário, resumo, transcript/notas,
+status, versão e `rag_enabled`. Usuários veem conteúdo aprovado em `/edu`; o dono
+alimenta e edita em `/admin/edu`.
+
+Regra: **YouTube não entra direto no RAG**. O vídeo precisa virar item aprovado,
+versionado e com transcript/summary antes de qualquer embedding. `rag_enabled`
+significa elegível para ingestão futura, não ingestão feita. A próxima etapa
+correta é um job que leia `edu_content` aprovado e grave `knowledge_base`
+mantendo `edu_content.id` + `version` como proveniência.
+
+Migration criada: `20260803002000_edu_content.sql`. Até ser aplicada, `/edu`
+degrada com conteúdo padrão e `/admin/edu` não persiste.
+
+---
+
 ## Rota EOS é compromisso; Google Maps é navegador por ruas (2026-07-31)
 
 PLAN-T10 adicionou handoff multi-stop: a rota desenhada no plano (`LineString`)

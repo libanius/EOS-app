@@ -257,7 +257,7 @@ product phase sequenced.
 | COMMS-T01 | Criar aba Comms app-level | ✅ COMPLETE | 2026-08-03 — D-087 / `docs/21-comms.md`; `/comms` agora tem chat do círculo, guia de rádio e limite explícito de Mesh/LoRa |
 | COMMS-T02 | Inserir referência de frequências familiares | ✅ COMPLETE | 2026-08-03 — D-088; canais VHF/UHF, NOAA, nacionais/emergência, MURS/GMRS/FRS e guia Baofeng na aba Comms |
 | COMMS-T03 | Tornar referência de rádio editável por círculo | ✅ COMPLETE | 2026-08-03 — D-089; `circle_radio_profiles`, `/api/comms/radio`, leitura por membro e edição Admin/Editor |
-| EDU-T01 | Conteúdo educativo como fonte oficial EOS | PENDING | Owner YouTube channel can feed EDU catalog and internal RAG after ingestion/versioning spec |
+| EDU-T01 | Conteúdo educativo como fonte oficial EOS | ✅ COMPLETE | 2026-08-03 — D-090; `edu_content`, `/edu`, `/admin/edu`, fonte visível, aprovação/versionamento e RAG futuro sem ingestão automática |
 | ONB-T01 | Onboarding contextual por convite de simulação | PENDING | New users enter through the scenario that invited them, not a generic tutorial |
 | SIM-T11 | Simulação gera preparação acionável | PENDING | Scenario outcomes create confirmed checklist/resource tasks, not silent writes |
 | PILOT-T08 | Pilot como educador situacional | PENDING | Pilot instructs, asks, validates, and guides preparation without bypassing rules/confirmation |

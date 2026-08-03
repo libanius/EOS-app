@@ -4,6 +4,39 @@
 
 ---
 
+## D-090 — EDU vira catálogo aprovado antes de alimentar RAG
+
+**Date**: 2026-08-03
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: O dono quer usar o próprio canal do YouTube como fonte para EDU e
+RAG do EOS. O risco é ligar YouTube/RAG direto sem catálogo, aprovação,
+versionamento ou fonte visível, fazendo o Pilot responder com conteúdo sem
+proveniência operacional.
+
+**Decision**:
+
+1. EDU-T01 cria um catálogo oficial `edu_content`.
+2. Usuários autenticados veem apenas conteúdo `approved` em `/edu`.
+3. O dono/admin (`ADMIN_EMAILS`) alimenta e edita o catálogo em `/admin/edu`.
+4. Cada item guarda tipo de fonte, URL, tags de cenário, resumo, transcript/notas,
+   status, versão e `rag_enabled`.
+5. `rag_enabled` não escreve embeddings e não altera `knowledge_base`; é apenas
+   a intenção de ingestão futura.
+6. YouTube entra por URL/transcript/summary aprovados. Integração com YouTube API
+   e ingestão automática ficam fora desta tarefa.
+
+**Consequences**:
+
+- Nova migration `20260803002000_edu_content.sql`.
+- Novo endpoint `/api/edu`.
+- Novas superfícies `/edu` e `/admin/edu`.
+- Próxima evolução correta é um job de ingestão aprovado que leia `edu_content`
+  e grave chunks em `knowledge_base` mantendo `edu_content.id/version` como
+  proveniência.
+
+---
+
 ## D-089 — Frequências de rádio são editáveis por círculo
 
 **Date**: 2026-08-03

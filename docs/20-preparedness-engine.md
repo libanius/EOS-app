@@ -184,3 +184,22 @@ The BottomNav now has:
 `/comms` is intentionally only a first navigable surface. Chat, radio/frequency
 contracts, permissions, retention, alert escalation, and Mesh/LoRa boundaries
 belong to COMMS-T01.
+
+---
+
+## 9. EDU-T01 Result
+
+**Decision:** D-090
+**Date:** 2026-08-03
+
+EDU-T01 created the official educational content catalog:
+
+- `edu_content` stores approved/draft/archived content with source type, URL,
+  scenario tags, summary, transcript/notes, version and `rag_enabled`.
+- `/edu` shows approved content to authenticated users.
+- `/admin/edu` lets the owner/admin create and update content.
+- `/api/edu` is the catalog/publishing contract.
+
+RAG ingestion is deliberately not automatic. `rag_enabled=true` means eligible
+for a future ingestion job, not that embeddings already exist in
+`knowledge_base`.

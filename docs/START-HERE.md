@@ -21,7 +21,7 @@ adapters, not separate products.
 | Field | Value |
 |---|---|
 | **Phase** | PHASE 0B complete; next product lane is Preparedness Engine |
-| **Current Task** | EDU-T01 — specify educational content as an official EOS source |
+| **Current Task** | ONB-T01 — contextual onboarding by simulation invitation |
 | **Last Updated** | 2026-08-03 |
 
 Full details: `docs/09-build-status.md`
@@ -85,6 +85,8 @@ Full details: `docs/09-build-status.md`
 | `app/(app)/scenario/page.tsx` | Scenario simulator |
 | `app/(app)/preparedness/page.tsx` | Unified readiness, resources, and checklist/tasks |
 | `app/(app)/comms/page.tsx` | App-level Comms: circle chat, editable family radio frequencies, quick radio guide, and Mesh boundary |
+| `app/(app)/edu/page.tsx` | Approved EDU catalog by scenario tag |
+| `app/(app)/admin/edu/page.tsx` | Owner/admin EDU publishing surface |
 | `app/(app)/inventory/page.tsx` | Redirects to `/preparedness` |
 | `app/(app)/checklist/page.tsx` | Redirects to `/preparedness` |
 | `app/(app)/family/page.tsx` | Family location/readiness command surface |
@@ -92,6 +94,7 @@ Full details: `docs/09-build-status.md`
 | `app/(app)/checklist/page.tsx` | Preparedness checklist |
 | `app/(app)/circles/page.tsx` | Community resilience groups |
 | `app/api/pilot/chat/route.ts` | Pilot conversation endpoint |
+| `app/api/edu/route.ts` | EDU catalog and owner/admin publishing endpoint |
 | `app/api/analyze/route.ts` | Legacy/analyze AI orchestration endpoint |
 | `lib/knowledge.ts` | RAG retrieval via pgvector (`match_documents` RPC) |
 | `lib/offline-storage.ts` | IndexedDB offline cache |
@@ -105,6 +108,7 @@ Full details: `docs/09-build-status.md`
 | `docs/15-eos-pilot.md` | EOS Pilot product concept/spec |
 | `docs/20-preparedness-engine.md` | Preparedness Engine spec |
 | `docs/21-comms.md` | App-level Comms spec |
+| `docs/22-edu.md` | EDU catalog and future RAG provenance spec |
 
 ---
 

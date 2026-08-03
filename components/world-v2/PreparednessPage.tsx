@@ -590,6 +590,18 @@ export default function PreparednessPage() {
           autonomyDays={autonomyDays}
         />
 
+        <a href="/edu" style={{ ...S.card, display: 'block', textDecoration: 'none', marginBottom: 18 }}>
+          <p style={{ fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' as const, color: 'var(--mu)', margin: 0 }}>EOS EDU</p>
+          <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--tx)', margin: '6px 0 4px' }}>
+            {language === 'pt' ? 'Conteúdo educativo aprovado' : 'Approved educational content'}
+          </h2>
+          <p style={{ fontSize: 14, color: 'var(--mu)', margin: 0, lineHeight: 1.5 }}>
+            {language === 'pt'
+              ? 'Guias e vídeos versionados por cenário, com fonte visível antes de virarem tarefa ou RAG.'
+              : 'Scenario-tagged guides and videos with visible source before becoming a task or RAG input.'}
+          </p>
+        </a>
+
         <div style={S.aiCard}>
           <div style={S.aiHeader}>
             <div>

@@ -193,6 +193,31 @@ rights.
 | chunk_index | integer | position in source document |
 | created_at | timestamptz | |
 
+### edu_content
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid | PK |
+| title | text | Required educational item title |
+| source_type | text | `youtube`, `manual`, `pdf`, or `external` |
+| source_url | text | Optional source URL |
+| scenario_tags | text[] | Scenario tags used by `/edu` filters |
+| summary | text | User-facing content summary |
+| transcript | text | Transcript, notes, or teaching body |
+| status | text | `draft`, `approved`, or `archived` |
+| version | integer | Increments on owner/admin update |
+| rag_enabled | boolean | Eligible for future RAG ingestion; not proof of ingestion |
+| rag_ingested_at | timestamptz | Null until a future explicit ingestion job writes embeddings |
+| created_by / updated_by | uuid | FK → profiles.id |
+| approved_at | timestamptz | Set when status becomes approved |
+| created_at / updated_at | timestamptz | |
+
+`edu_content` is the official EDU catalog (D-090 / EDU-T01). RLS is enabled
+with no direct policies. `/api/edu` returns approved content to authenticated
+users and lets only app owner/admin emails create/update content. It does not
+write to `knowledge_base`; YouTube/API ingestion and embedding generation are
+future explicit tasks that must preserve `edu_content.id` and `version` as
+provenance.
+
 ---
 
 ## Enums
