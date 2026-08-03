@@ -185,3 +185,5 @@ Radio reference shipped on 2026-08-03:
 - `/comms` includes the owner-provided frequency reference from D-088.
 - D-089 / COMMS-T03 adds persisted editing through
   `circle_radio_profiles` and `/api/comms/radio`.
+- Migration `20260803001000_circle_radio_profiles.sql` was applied by the owner
+  on 2026-08-03 and verified via service-role.

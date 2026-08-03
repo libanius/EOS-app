@@ -104,8 +104,9 @@ editáveis por Admin/Editor e lidas por todos os membros. Não enfiar isso em
 `circle_messages`. A próxima evolução, se priorizada, é histórico/versionamento
 e perfis por cenário.
 
-Migration criada: `20260803001000_circle_radio_profiles.sql`. Até ser aplicada,
-o app mostra a referência padrão e a API responde `migration_pending` ao salvar.
+Migration `20260803001000_circle_radio_profiles.sql` aplicada pelo dono em
+2026-08-03 e verificada via service-role. A edição de rádio agora tem tabela
+persistente em produção.
 
 ---
 
