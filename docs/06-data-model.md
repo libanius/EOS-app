@@ -197,6 +197,11 @@ item was explicitly confirmed from a simulation debrief proposal.
 item was explicitly confirmed from a Pilot proposal. Neither is an automatic
 write; both should be displayed as source/provenance in Preparação.
 
+`PATCH /api/checklist/[id]` owns checklist edits. When `item_name` changes, the
+route recalculates `canonical_key`; clients should not patch `canonical_key`
+directly. `DELETE /api/checklist/[id]` deletes only that row id, not all rows
+with the same canonical key.
+
 ### circles
 | Column | Type | Notes |
 |---|---|---|

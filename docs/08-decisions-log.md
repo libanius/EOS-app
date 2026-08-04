@@ -3492,3 +3492,27 @@ prontas para execução: verbos claros, sem minutagem, sem asteriscos, sem aspas
 no idioma correto do usuário.
 
 ---
+## D-121 — Checklist de Preparação editável e removível
+
+**Date**: 2026-08-04
+**Status**: DECIDED
+**Roadmap**: PREP-T02
+
+**Context**: EDU, Pilot e Simulação agora podem propor itens para Preparação.
+Isso torna obrigatório o usuário poder limpar o checklist: apagar itens que não
+fazem sentido e editar nome, quantidade, unidade e tier. Sem isso, o checklist
+vira acúmulo de sugestões e perde confiança.
+
+**Decision**:
+1. `/preparedness` deve permitir editar e excluir itens do checklist.
+2. Exclusão é por linha (`checklists.id`), não por `canonical_key`, para não
+   apagar o mesmo item em outros kits/fontes por acidente.
+3. Edição altera `item_name`, `quantity`, `unit` e `tier`.
+4. Quando `item_name` muda, a API recalcula `canonical_key` para manter dedupe,
+   toggle e futuras inserções coerentes.
+5. Não há nova migration; usa `PATCH/DELETE /api/checklist/[id]`.
+
+**Consequence**: Preparação deixa de ser só uma tela de consumo de sugestões e
+passa a ser uma lista operacional controlada pelo usuário.
+
+---

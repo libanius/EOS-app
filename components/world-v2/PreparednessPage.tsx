@@ -389,6 +389,8 @@ export default function PreparednessPage() {
 
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([])
   const [checklistGenerating, setChecklistGenerating] = useState(false)
+  const [editingItem, setEditingItem] = useState<ChecklistItem | null>(null)
+  const [deleteItem, setDeleteItem] = useState<ChecklistItem | null>(null)
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -547,6 +549,41 @@ export default function PreparednessPage() {
       setChecklistGenerating(false)
     }
   }, [])
+
+  const removeChecklistItem = useCallback(async (item: ChecklistItem) => {
+    setChecklistItems(prev => prev.filter(i => i.id !== item.id))
+    setDeleteItem(null)
+    try {
+      const res = await fetch(`/api/checklist/${item.id}`, { method: 'DELETE' })
+      if (!res.ok) await loadData()
+    } catch {
+      await loadData()
+    }
+  }, [loadData])
+
+  const saveChecklistEdit = useCallback(async (
+    item: ChecklistItem,
+    patch: Pick<ChecklistItem, 'item_name' | 'quantity' | 'unit' | 'tier'>,
+  ) => {
+    setChecklistItems(prev => prev.map(i => i.id === item.id ? { ...i, ...patch } : i))
+    setEditingItem(null)
+    try {
+      const res = await fetch(`/api/checklist/${item.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patch),
+      })
+      if (!res.ok) await loadData()
+      else {
+        const data = await res.json().catch(() => ({}))
+        if (data.item) {
+          setChecklistItems(prev => prev.map(i => i.id === item.id ? { ...i, ...data.item } : i))
+        }
+      }
+    } catch {
+      await loadData()
+    }
+  }, [loadData])
 
   function update<K extends keyof Inventory>(key: K, value: Inventory[K]) {
     const next = { ...inv, [key]: value }
@@ -901,30 +938,37 @@ export default function PreparednessPage() {
                       const kit = KIT_LABEL[item.kit_type] ?? { pt: item.kit_type, en: item.kit_type }
                       const showSource = item.kit_type !== 'GERAL'
                       return (
-                        <button
+                        <div
                           key={item.id}
-                          onClick={() => toggleChecklistItem(item.canonical_key, !item.acquired)}
                           style={{
                             width: '100%', textAlign: 'left' as const,
                             padding: '11px 16px', background: 'transparent',
                             border: 'none', borderBottom: '1px solid var(--bd)',
-                            color: 'var(--tx)', cursor: 'pointer',
-                            display: 'grid', gridTemplateColumns: '20px 1fr auto',
+                            color: 'var(--tx)',
+                            display: 'grid', gridTemplateColumns: '20px 1fr auto auto',
                             alignItems: 'center', gap: 12,
                           }}
                         >
-                          <span style={{
+                          <button
+                            type="button"
+                            role="checkbox"
+                            aria-checked={item.acquired}
+                            aria-label={item.item_name}
+                            onClick={() => toggleChecklistItem(item.canonical_key, !item.acquired)}
+                            style={{
                             width: 18, height: 18, borderRadius: 4, flexShrink: 0,
                             border: `1.5px solid ${item.acquired ? TIER_COLOR[item.tier] : 'var(--bd)'}`,
                             background: item.acquired ? TIER_COLOR[item.tier] : 'transparent',
                             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                            cursor: 'pointer',
+                            padding: 0,
                           }}>
                             {item.acquired && (
                               <svg viewBox="0 0 10 10" width="11" height="11" aria-hidden>
                                 <polyline points="1.5,5 4,7.5 8.5,2.5" fill="none" stroke="#0a0a0f" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                               </svg>
                             )}
-                          </span>
+                          </button>
                           <span style={{ display: 'flex', flexDirection: 'column' as const, gap: 4, minWidth: 0 }}>
                             <span style={{ fontSize: 14, color: item.acquired ? 'var(--mu)' : 'var(--tx)', textDecoration: item.acquired ? 'line-through' : 'none' }}>
                               {item.item_name}
@@ -938,7 +982,30 @@ export default function PreparednessPage() {
                           <span style={{ fontSize: 12, color: 'var(--mu)', fontFamily: 'ui-monospace,Menlo,monospace', flexShrink: 0 }}>
                             {item.quantity}{item.unit ? ` ${item.unit}` : ''}
                           </span>
-                        </button>
+                          <span style={{ display: 'inline-flex', gap: 6 }}>
+                            <button
+                              type="button"
+                              aria-label={`${language === 'pt' ? 'Editar' : 'Edit'} ${item.item_name}`}
+                              onClick={() => setEditingItem(item)}
+                              style={S.iconButton}
+                            >
+                              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" aria-hidden>
+                                <path d="M4 20h4.8L19 9.8 14.2 5 4 15.2V20Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+                                <path d="m13 6 5 5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+                              </svg>
+                            </button>
+                            <button
+                              type="button"
+                              aria-label={`${language === 'pt' ? 'Excluir' : 'Delete'} ${item.item_name}`}
+                              onClick={() => setDeleteItem(item)}
+                              style={{ ...S.iconButton, color: 'var(--ac3)', borderColor: 'rgba(255,107,107,0.28)' }}
+                            >
+                              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" aria-hidden>
+                                <path d="M6 6l12 12M18 6 6 18" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+                              </svg>
+                            </button>
+                          </span>
+                        </div>
                       )
                     })}
                   </div>
@@ -949,6 +1016,135 @@ export default function PreparednessPage() {
         </div>
 
         <div style={{ height: 24 }} />
+      </div>
+      {editingItem ? (
+        <ChecklistEditDialog
+          item={editingItem}
+          language={language}
+          onCancel={() => setEditingItem(null)}
+          onSave={patch => saveChecklistEdit(editingItem, patch)}
+        />
+      ) : null}
+      {deleteItem ? (
+        <ConfirmDialog
+          title={language === 'pt' ? 'Excluir item?' : 'Delete item?'}
+          body={deleteItem.item_name}
+          confirm={language === 'pt' ? 'Excluir' : 'Delete'}
+          cancel={language === 'pt' ? 'Cancelar' : 'Cancel'}
+          destructive
+          onCancel={() => setDeleteItem(null)}
+          onConfirm={() => removeChecklistItem(deleteItem)}
+        />
+      ) : null}
+    </div>
+  )
+}
+
+function ChecklistEditDialog({
+  item,
+  language,
+  onCancel,
+  onSave,
+}: {
+  item: ChecklistItem
+  language: 'pt' | 'en'
+  onCancel: () => void
+  onSave: (patch: Pick<ChecklistItem, 'item_name' | 'quantity' | 'unit' | 'tier'>) => void
+}) {
+  const [name, setName] = useState(item.item_name)
+  const [quantity, setQuantity] = useState(String(item.quantity))
+  const [unit, setUnit] = useState(item.unit ?? '')
+  const [tier, setTier] = useState<ChecklistTier>(item.tier)
+  const canSave = name.trim().length > 0
+
+  return (
+    <div style={S.modalBackdrop} role="dialog" aria-modal="true" aria-label={language === 'pt' ? 'Editar item' : 'Edit item'}>
+      <div style={S.modal}>
+        <h3 style={S.modalTitle}>{language === 'pt' ? 'Editar item' : 'Edit item'}</h3>
+        <label style={S.fieldLabel}>
+          {language === 'pt' ? 'Nome' : 'Name'}
+          <input value={name} onChange={event => setName(event.target.value)} style={S.textInput} autoFocus />
+        </label>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <label style={S.fieldLabel}>
+            {language === 'pt' ? 'Quantidade' : 'Quantity'}
+            <input value={quantity} inputMode="decimal" onChange={event => setQuantity(event.target.value)} style={S.textInput} />
+          </label>
+          <label style={S.fieldLabel}>
+            {language === 'pt' ? 'Unidade' : 'Unit'}
+            <input value={unit} onChange={event => setUnit(event.target.value)} style={S.textInput} />
+          </label>
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {CHECKLIST_TIERS.map(value => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setTier(value)}
+              style={{
+                ...S.tierButton,
+                color: tier === value ? '#0a0a0f' : TIER_COLOR[value],
+                background: tier === value ? TIER_COLOR[value] : 'transparent',
+                borderColor: TIER_COLOR[value],
+              }}
+            >
+              {value}
+            </button>
+          ))}
+        </div>
+        <div style={S.modalActions}>
+          <button type="button" onClick={onCancel} style={S.secondaryButton}>{language === 'pt' ? 'Cancelar' : 'Cancel'}</button>
+          <button
+            type="button"
+            disabled={!canSave}
+            onClick={() => onSave({
+              item_name: name.trim(),
+              quantity: Math.max(0, Number(quantity) || 0),
+              unit: unit.trim() || null,
+              tier,
+            })}
+            style={{ ...S.primaryButton, opacity: canSave ? 1 : 0.5 }}
+          >
+            {language === 'pt' ? 'Salvar' : 'Save'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ConfirmDialog({
+  title,
+  body,
+  confirm,
+  cancel,
+  destructive = false,
+  onCancel,
+  onConfirm,
+}: {
+  title: string
+  body: string
+  confirm: string
+  cancel: string
+  destructive?: boolean
+  onCancel: () => void
+  onConfirm: () => void
+}) {
+  return (
+    <div style={S.modalBackdrop} role="dialog" aria-modal="true" aria-label={title}>
+      <div style={S.modal}>
+        <h3 style={S.modalTitle}>{title}</h3>
+        <p style={S.modalBody}>{body}</p>
+        <div style={S.modalActions}>
+          <button type="button" onClick={onCancel} style={S.secondaryButton}>{cancel}</button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            style={{ ...S.primaryButton, background: destructive ? 'var(--ac3)' : 'var(--ac)' }}
+          >
+            {confirm}
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -1129,6 +1325,102 @@ const S: Record<string, React.CSSProperties> = {
     fontSize: 13,
     lineHeight: 1.5,
     color: 'var(--tx)',
+  },
+  iconButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    border: '1px solid var(--bd)',
+    background: 'rgba(255,255,255,0.03)',
+    color: 'var(--mu)',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+  },
+  modalBackdrop: {
+    position: 'fixed' as const,
+    inset: 0,
+    zIndex: 500,
+    background: 'rgba(0,0,0,0.62)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 18,
+  },
+  modal: {
+    width: 'min(420px, 100%)',
+    borderRadius: 16,
+    border: '1px solid var(--bd)',
+    background: 'var(--sf)',
+    padding: 16,
+    boxShadow: '0 24px 60px rgba(0,0,0,0.4)',
+  },
+  modalTitle: {
+    margin: '0 0 14px',
+    color: 'var(--tx)',
+    fontSize: 20,
+    fontWeight: 700,
+  },
+  modalBody: {
+    margin: '0 0 16px',
+    color: 'var(--mu)',
+    fontSize: 14,
+    lineHeight: 1.5,
+  },
+  fieldLabel: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: 6,
+    color: 'var(--mu)',
+    fontSize: 11,
+    fontWeight: 700,
+    letterSpacing: '0.8px',
+    textTransform: 'uppercase' as const,
+    marginBottom: 12,
+  },
+  textInput: {
+    width: '100%',
+    border: '1px solid var(--bd)',
+    borderRadius: 10,
+    background: 'rgba(0,0,0,0.18)',
+    color: 'var(--tx)',
+    padding: '10px 12px',
+    fontSize: 15,
+    outline: 'none',
+  },
+  tierButton: {
+    border: '1px solid var(--bd)',
+    borderRadius: 999,
+    padding: '7px 10px',
+    fontSize: 10,
+    fontWeight: 800,
+    letterSpacing: '0.8px',
+    cursor: 'pointer',
+  },
+  modalActions: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: 10,
+    marginTop: 16,
+  },
+  secondaryButton: {
+    border: '1px solid var(--bd)',
+    borderRadius: 10,
+    background: 'transparent',
+    color: 'var(--tx)',
+    padding: '10px 14px',
+    fontWeight: 700,
+    cursor: 'pointer',
+  },
+  primaryButton: {
+    border: 'none',
+    borderRadius: 10,
+    background: 'var(--ac)',
+    color: '#0a0a0f',
+    padding: '10px 14px',
+    fontWeight: 800,
+    cursor: 'pointer',
   },
 
   // ── ReadinessSummary ──────────────────────────────────────────────────────

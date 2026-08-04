@@ -275,4 +275,19 @@ EDU-T05 closes the first loop from learning to action:
 - v1 uses `checklists.kit_type='EDU_CONTENT'` instead of adding a new table;
 - Preparação labels the source as EDU.
 
+---
+
+## 14. PREP-T02 Result
+
+**Decision:** D-121
+**Date:** 2026-08-04
+
+Preparação must let the user maintain the checklist:
+
+- edit checklist item name, quantity, unit and tier;
+- delete unwanted items;
+- delete by row id, not shared canonical key;
+- recalculate `canonical_key` when a name changes;
+- use the existing checklist table and API, with no new migration.
+
 No database migration was needed. OpenAI remains the AI provider for Pilot/RAG.

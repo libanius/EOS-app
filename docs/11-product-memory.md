@@ -196,6 +196,11 @@ minutagem de vídeo e descrições longas, além de traduzir para o idioma da UI
 (`pt`/`en`). Se a IA falhar ou bater rate limit, o fallback local ainda limpa
 asteriscos/timestamps e devolve ações curtas o bastante para checklist.
 
+D-121 / PREP-T02 torna o checklist de `/preparedness` editável/removível. Regra:
+excluir usa `checklists.id` e remove só aquela linha; não usa `canonical_key`,
+porque o mesmo item pode existir em outra origem/kit. Editar nome recalcula
+`canonical_key` no servidor para manter dedupe e toggle coerentes.
+
 ---
 
 ## EDU é catálogo aprovado antes de virar RAG (2026-08-03)
