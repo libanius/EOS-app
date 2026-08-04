@@ -1,7 +1,6 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useLanguage } from '@/lib/i18n'
 
@@ -146,7 +145,6 @@ function sectionItems(items: InboxItem[], labels: Record<'today' | 'last7' | 'ea
 }
 
 export default function NotificationInbox() {
-  const router = useRouter()
   const { language } = useLanguage()
   const c = COPY[language]
   const [open, setOpen] = useState(false)
@@ -174,6 +172,18 @@ export default function NotificationInbox() {
       body: JSON.stringify({ action: 'mark_read', ids }),
     }).catch(() => null)
     setRows(current => current.map(row => (!ids || ids.includes(row.id)) ? { ...row, is_read: true } : row))
+    window.dispatchEvent(new Event('eos-comms-read'))
+  }, [])
+
+  const markReadKeepalive = useCallback((ids: string[]) => {
+    const body = JSON.stringify({ action: 'mark_read', ids })
+    void fetch('/api/comms/notifications', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+      keepalive: true,
+    }).catch(() => null)
+    setRows(current => current.map(row => ids.includes(row.id) ? { ...row, is_read: true } : row))
     window.dispatchEvent(new Event('eos-comms-read'))
   }, [])
 
@@ -217,8 +227,8 @@ export default function NotificationInbox() {
 
   function openItem(item: InboxItem) {
     setOpen(false)
-    void markRead(item.ids)
-    router.push(item.href || '/comms?view=chat')
+    markReadKeepalive(item.ids)
+    window.location.assign(item.href || '/comms?view=chat')
   }
 
   if (!open) return null

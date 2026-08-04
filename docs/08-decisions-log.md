@@ -278,6 +278,36 @@ como rota protegida; usuário não logado ia para login, o login ignorava
 
 ---
 
+## D-115 — Notificação de mensagem também atualiza o chat
+
+**Date**: 2026-08-04
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: No teste real do dono, a notificação de nova mensagem chegava, mas
+o chat nem sempre recebia a mensagem, e clicar no resumo podia parecer não fazer
+nada. O teste local com duas sessões confirmou que API e banco gravam a mensagem
+e criam o `href`, mas a UI dependia demais do realtime direto de
+`circle_messages` e de navegação client-side suave.
+
+**Decision**:
+
+1. O realtime de `circle_notifications` passa a ser fallback ativo do chat:
+   quando chegar uma notificação `kind='message'` do círculo aberto, `/comms`
+   recarrega as mensagens daquele círculo.
+2. O clique no Inbox usa navegação hard (`window.location.assign`) depois de
+   disparar `mark_read` com `keepalive`, para funcionar mesmo quando o App
+   Router/PWA estiver em estado intermediário.
+3. O realtime direto de `circle_messages` continua como caminho primário; polling
+   continua fallback lento.
+
+**Consequences**:
+
+- Não requer migration.
+- O sintoma "badge/notificação chega, mas conversa não atualiza" fica coberto
+  porque a própria notificação agora acorda o chat.
+
+---
+
 ## D-114 — Inbox deve navegar sem bloquear e `/comms` deve reagir à query
 
 **Date**: 2026-08-04

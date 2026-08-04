@@ -153,6 +153,13 @@ o usuário pode já estar dentro do App Router quando abre o Inbox. Mensagem foc
 usa scroll do container e o destaque expira, para novas mensagens voltarem ao
 auto-enquadramento no final do chat.
 
+D-115 / COMMS-T10 fecha a regressão observada em teste real: se a notificação de
+mensagem chega mas o realtime direto de `circle_messages` não acorda o chat, a
+própria notificação `kind='message'` força `/comms` a recarregar as mensagens do
+círculo aberto. O Inbox também voltou a usar navegação hard para o `href` depois
+de disparar `mark_read` com `keepalive`, reduzindo dependência do estado interno
+do App Router/PWA.
+
 ---
 
 ## EDU é catálogo aprovado antes de virar RAG (2026-08-03)

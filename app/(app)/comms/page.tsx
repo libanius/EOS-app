@@ -40,6 +40,12 @@ type NotificationRow = {
   is_read: boolean
 }
 
+type NotificationRealtimeRow = {
+  circle_id?: string | null
+  kind?: string | null
+  scope?: string | null
+}
+
 const COPY = {
   pt: {
     eyebrow: 'EOS · Comms',
@@ -365,7 +371,13 @@ function CommsContent() {
             table: 'circle_notifications',
             filter: `recipient_id=eq.${userId}`,
           },
-          () => { void loadNotifications(false) },
+          payload => {
+            void loadNotifications(false)
+            const row = (payload.new ?? {}) as NotificationRealtimeRow
+            if (row.kind === 'message' && row.circle_id && row.circle_id === circleId) {
+              void loadMessages(circleId, { silent: true })
+            }
+          },
         )
         .subscribe()
     })
@@ -374,7 +386,7 @@ function CommsContent() {
       mounted = false
       if (channel) void supabase.removeChannel(channel)
     }
-  }, [loadNotifications, view])
+  }, [circleId, loadMessages, loadNotifications])
 
   const loadRadio = useCallback(async (nextCircleId: string) => {
     if (!nextCircleId) return
