@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createCommsNotifications } from '@/lib/comms-notifications'
 import { fetchWeather, SEVERITY_RANK, type MonitorAlert } from '@/lib/monitor'
+import { avisarErrosNovos } from '@/lib/error-alerts'
 
 export const runtime = 'nodejs'
 
@@ -104,11 +105,15 @@ export async function GET(request: Request) {
    */
   const { data: podados, error: erroPoda } = await admin.rpc('prune_rate_limit_buckets')
 
+  const alerta = await avisarErrosNovos(admin)
+
   return NextResponse.json({
     ok: true,
     checked,
     matched,
     attempted: created,
     pruned: erroPoda ? `erro: ${erroPoda.message}` : (podados ?? 0),
+    errorAlert: alerta,
   })
 }
+

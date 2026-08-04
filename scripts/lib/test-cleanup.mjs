@@ -83,3 +83,20 @@ export function cleanupOnExit(admin) {
 
 /** Para quem quiser limpar explicitamente antes de sair. */
 export const cleanupNow = purge
+
+/**
+ * Encerra o script LIMPANDO antes.
+ *
+ * `process.exit()` **não dispara `beforeExit`** — o gancho onde a limpeza mora.
+ * Um script que termina com `process.exit(fail ? 1 : 0)` passa por cima de toda
+ * a proteção deste módulo sem avisar nada. Foi assim que `guardrails-test.mjs`
+ * deixou 7 contas no banco de produção depois do D-114 já estar em vigor: a
+ * rede existia e o teste pulou por fora dela.
+ *
+ * Todo script de teste deve terminar com `await finish(fail)` em vez de
+ * `process.exit(...)`.
+ */
+export async function finish(fail) {
+  await purge()
+  process.exit(fail ? 1 : 0)
+}

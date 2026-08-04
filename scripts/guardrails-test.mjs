@@ -27,7 +27,7 @@ import { spawn } from 'node:child_process'
 import { config } from 'dotenv'
 import { chromium } from 'playwright'
 config({ path: '.env.local' })
-import { track, cleanupOnExit } from './lib/test-cleanup.mjs'
+import { track, cleanupOnExit, finish } from './lib/test-cleanup.mjs'
 
 const URL = process.env.NEXT_PUBLIC_SUPABASE_URL
 const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -164,4 +164,6 @@ if (health?.checks?.errorLog === 'ok') {
 await browser.close()
 stopServer()
 console.log(`\n${pass} passaram, ${fail} falharam`)
-process.exit(fail ? 1 : 0)
+// `finish` limpa ANTES de sair: `process.exit()` sozinho pula o `beforeExit`
+// e foi exatamente assim que este teste deixou 7 contas no banco.
+await finish(fail)

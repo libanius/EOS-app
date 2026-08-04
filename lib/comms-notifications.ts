@@ -14,6 +14,8 @@ export type CommsNotificationKind =
   | 'edu_content_approved'
   | 'simulation_invite'
   | 'weather_alert'
+  // D-119: aviso ao dono de que apareceu erro novo em produção.
+  | 'error_alert'
 
 export type CommsNotificationScope = 'circle' | 'weather' | 'edu' | 'simulation' | 'system'
 

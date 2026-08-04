@@ -360,6 +360,58 @@ como rota protegida; usuário não logado ia para login, o login ignorava
 
 ---
 
+## D-119 — Erro na tela do usuário vira linha, e o dono fica sabendo
+
+**Contexto.** O D-118 tornou visível o erro do **servidor**. Faltavam as duas
+metades que sobraram: o erro de JavaScript no navegador da pessoa continuava
+morrendo ali mesmo, e o `error_log` dependia de alguém lembrar de consultar. Um
+registro que depende de memória humana ainda é meio invisível.
+
+**Decisão.** Nenhuma conta nova, nenhum fornecedor.
+
+*Captura.* `ClientErrorReporter` escuta `error` e `unhandledrejection` no layout
+**raiz** — não no autenticado. A tela de entrada é onde uma falha dói mais:
+quem não consegue entrar não consegue reportar nada.
+
+*Aviso.* `avisarErrosNovos()` pega carona no cron que já roda de quinze em
+quinze minutos e já tem o segredo. Nenhum agendador novo para configurar e para
+esquecer.
+
+**A marca d'água é a própria notificação anterior.** Guardar "até onde já
+avisei" pediria coluna nova e outra migration; a última notificação enviada já
+responde exatamente essa pergunta. Se o envio falhar, a marca não avança e a
+próxima rodada tenta de novo — nada se perde em silêncio.
+
+**Um reportador de erro mal-feito vira o próximo incidente.** Três travas: ele
+nunca reporta a própria falha de envio (senão o `fetch` que reporta erro gera
+erro, que gera erro); teto de cinco por sessão, porque uma tela quebrada dentro
+de um `requestAnimationFrame` dispara centenas de vezes por segundo; e a mesma
+mensagem viaja uma vez só.
+
+**A rota aceita anônimo, e por isso é tratada como hostil.** Teto por IP no
+Postgres, corpo limitado a 8 KB, e **query e hash removidos da URL antes de
+gravar** — um link de convite ou de recuperação de senha carrega token na query,
+e ele não pode virar log. O teste prova isso com um token de verdade na URL.
+
+**Bug encontrado no caminho, e ele é da mesma família.** `guardrails-test.mjs`
+terminava com `process.exit()`, e **`process.exit()` não dispara `beforeExit`** —
+o gancho onde mora a limpeza do D-114. O teste passou por fora da rede de
+proteção sem avisar nada e deixou **7 contas no banco de produção**. Corrigido
+com `finish(fail)` em `scripts/lib/test-cleanup.mjs`; todo script de teste passa
+a terminar por ali. As 7 contas foram removidas; restaram 0 de teste e 9 reais.
+
+**Prova.** `scripts/client-error-test.mjs`, 6/6, com **três controles
+negativos** — ruído conhecido não grava, 30 disparos da mesma falha gravam uma
+linha só, token na URL não aparece no log. Provar que grava é metade do
+trabalho; a outra metade é provar que não grava o que não deve. O push do
+passo 5 foi enviado de verdade (`enviados=1`).
+
+**O que continua fora.** Sem Sentry, não há agrupamento automático, nem *source
+map* (a pilha vem minificada), nem histórico por versão. É a diferença entre bom
+diagnóstico e nenhum diagnóstico que estava em jogo, e essa está resolvida.
+
+---
+
 ## D-118 — Guardrails de custo e visibilidade operacional
 
 **Date**: 2026-08-04

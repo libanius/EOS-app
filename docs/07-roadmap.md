@@ -252,6 +252,7 @@ product phase sequenced.
 
 | Task ID | Task | Status | Notes |
 |---|---|---|---|
+| SEC-T02 | Erro do navegador no log + aviso ao dono | ✅ COMPLETE | 2026-08-04 — D-119; `ClientErrorReporter` no layout raiz, `/api/client-error` com teto por IP, aviso por push de carona no cron; `client-error-test` 6/6 com 3 controles negativos |
 | SEC-T01 | Limite de uso no Pilot + visibilidade de erro de produção | ✅ COMPLETE | 2026-08-04 — D-118; `consume_rate_limit()` atômico no Postgres e `error_log`; `custom-activity` exige login; migration `20260804180000` aplicada pelo dono e `node scripts/guardrails-test.mjs` passou 5/5 |
 | NAV-T01 | Reordenar BottomNav: Clima primeiro, Cenário último | ✅ COMPLETE | 2026-08-04 — D-116; ordem visual: Clima, Família, Preparação, World, Comms, Círculos, Cenário |
 | NOTIF-T01 | Separar badges por ícone/surface | ✅ COMPLETE | 2026-08-04 — D-117; `unread_by_surface` alimenta Clima, Família, Preparação, Comms e Cenário; Inbox abre filtrado pela surface |

@@ -73,6 +73,9 @@ export async function GET(request: Request) {
     // aparecer, senão volta a ser esquecido.
     sentry: sentryConfigured() ? 'ok' : 'not_configured',
     cronSecret: process.env.CRON_SECRET ? 'ok' : 'not_configured',
+    // Sem destinatário, o erro é registrado e ninguém fica sabendo — que é
+    // metade do problema que o D-119 existe para resolver.
+    errorAlerts: process.env.ERROR_ALERT_USER_IDS ? 'ok' : 'not_configured',
     openai: process.env.OPENAI_API_KEY ? 'ok' : 'not_configured',
     push: process.env.VAPID_PRIVATE_KEY ? 'ok' : 'not_configured',
   }

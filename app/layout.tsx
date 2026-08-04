@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { LanguageProvider } from '@/lib/i18n'
 import AffiliateAttribution from '@/components/AffiliateAttribution'
+import ClientErrorReporter from '@/components/ClientErrorReporter'
 
 export const metadata: Metadata = {
   title: 'EOS — Emergency Operating System',
@@ -50,6 +51,8 @@ export default function RootLayout({
       </head>
       <body>
         <LanguageProvider>
+          {/* Raiz de propósito: cobre a tela de entrada, onde uma falha dói mais. */}
+          <ClientErrorReporter />
           <AffiliateAttribution />
           <div id="app">{children}</div>
         </LanguageProvider>
