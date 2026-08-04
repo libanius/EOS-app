@@ -1528,6 +1528,53 @@
   cursor: default;
 }
 
+.wv2-pilot-chat .chat-memory {
+  margin-top: var(--s4);
+  padding: var(--s3);
+  border: 1px solid rgba(255, 214, 10, 0.28);
+  border-radius: var(--r-tile);
+  background: rgba(255, 214, 10, 0.07);
+}
+.wv2-pilot-chat .chat-memory > p { margin: 0 0 var(--s2); }
+.wv2-pilot-chat .chat-memory-item {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--s3);
+  padding: var(--s2) 0;
+  border-top: 1px solid var(--sep);
+}
+.wv2-pilot-chat .chat-memory-item:first-of-type { border-top: 0; }
+.wv2-pilot-chat .chat-memory-item > span { min-width: 0; }
+.wv2-pilot-chat .chat-memory-item strong,
+.wv2-pilot-chat .chat-memory-item em {
+  display: block;
+  font-style: normal;
+}
+.wv2-pilot-chat .chat-memory-item code {
+  display: block;
+  margin-top: var(--s2);
+  white-space: pre-wrap;
+  color: var(--ink-2);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.75rem;
+}
+.wv2-pilot-chat .chat-memory-item button {
+  flex: none;
+  min-height: 36px;
+  padding: 0 var(--s4);
+  border: 0;
+  border-radius: var(--r-pill);
+  background: #ffd60a;
+  color: #171204;
+  font: inherit; font-size: 0.8125rem; font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.wv2-pilot-chat .chat-memory-item button.done {
+  background: transparent;
+  border: 1px solid var(--sep-strong);
+  color: var(--ink-3);
+  cursor: default;
+}
+
 .wv2-pilot-chat .chat-actions { display: flex; flex-wrap: wrap; gap: var(--s2); margin-top: var(--s4); }
 .wv2-pilot-chat .chat-thinking { margin: 0; }
 

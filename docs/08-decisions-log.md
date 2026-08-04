@@ -4,6 +4,36 @@
 
 ---
 
+## D-095 — Memória do Pilot só muda com confirmação e auditoria atômica
+
+**Date**: 2026-08-03
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: `pilot_memory_md` existia desde D-059, mas sem fluxo próprio para o
+Pilot propor uma memória e o usuário confirmar. PLAN-T07 depende desta trava:
+sem confirmação/auditoria, qualquer escrita do Pilot em estado persistente vira
+mutação silenciosa.
+
+**Decision**:
+
+1. Criar `pilot_memory_events` como trilha de auditoria por perfil.
+2. Criar RPC `confirm_pilot_memory(...)` para atualizar `pilot_memory_md` e
+   inserir o evento na mesma transação.
+3. Criar `POST /api/profile/personalization/memory` como rota autenticada de
+   confirmação.
+4. `/api/pilot/chat` pode retornar propostas `memory[]`, mas não grava.
+5. A UI do Pilot mostra título, motivo e Markdown exato antes do botão de salvar.
+6. O QR público continua sem expor memória do Pilot.
+
+**Consequences**:
+
+- UPP-03 desbloqueia trabalhos futuros em que Pilot propõe revisão de plano sem
+  escrita silenciosa.
+- Nova migration `20260803003000_pilot_memory_events.sql` precisa ser aplicada.
+- Se a migration não existir, a rota retorna 503 e não atualiza memória.
+
+---
+
 ## D-094 — Texto livre do simulador preenche painéis revisáveis
 
 **Date**: 2026-08-03

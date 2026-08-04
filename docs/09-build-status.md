@@ -10,7 +10,8 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Preparedness Engine (PREP/EDU/COMMS/ONB/PILOT) sobre Web/PWA |
-| **Last Completed Task** | **D-094 / SIM-T09 — texto livre do simulador preenche painéis revisáveis (2026-08-03)** |
+| **Last Completed Task** | **D-095 / UPP-03 — memória do Pilot com confirmação e auditoria (2026-08-03)** |
+| | **D-094 / SIM-T09 — texto livre do simulador preenche painéis revisáveis (2026-08-03)** |
 | | **D-093 / PILOT-T08 — Pilot educador com propostas confirmáveis de preparação (2026-08-03)** |
 | | **D-092 / SIM-T11 — debrief gera preparação acionável confirmável (2026-08-03)** |
 | | **D-091 / ONB-T01 — onboarding contextual por convite de simulação (2026-08-03)** |
@@ -62,6 +63,7 @@
 | | D-066 / PLAN-T00 — spec dos Planos de Emergência da Família (`docs/18-family-plans.md`) (2026-07-27) |
 | | D-064 / FAM-T01→T04 — localização familiar ao vivo, consentimento próprio e remoção dos mocks do mapa (2026-07-27) |
 | **Migration** | ✅ `20260730000000_family_plan_triggers.sql` aplicada pelo dono em 2026-07-30 e verificada. Gatilho gravando ponta a ponta no teste de navegador. |
+| **Migration** | ⏳ `20260803003000_pilot_memory_events.sql` criada para UPP-03. Precisa ser aplicada no Supabase antes do fluxo de salvar memória do Pilot persistir com auditoria. |
 | **Migration** | ⏳ `20260803002000_edu_content.sql` criada para EDU-T01. Precisa ser aplicada no Supabase antes do catálogo EDU persistir em produção. |
 | **Migration** | ✅ `20260803001000_circle_radio_profiles.sql` aplicada pelo dono em 2026-08-03 e verificada via service-role (`circle_radio_profiles` responde 200; count=0). |
 | **Migration** | ✅ `20260803000000_circle_messages.sql` aplicada pelo dono em 2026-08-03 e verificada via service-role (`circle_messages` responde 200; count=0). |
@@ -98,8 +100,8 @@
 | **In Progress** | — |
 | **Platform Alignment** | ✅ D-084: EOS é plataforma multi-superfície com um único core operacional. Web/PWA segue como superfície primária; iOS/Android serão adapters nativos futuros; Automotive é companion mode restrito; Mesh/LoRa segue bloqueado por G-05. `/mobile/` é template/conceitual, não app inicializado. |
 | **Fases pedidas pelo dono (2026-07-31)** | ✅ 1. Camadas de clima + rastreio de ciclone (D-078). 2. Reinventar a aba Família no design system da v2, com componentes dinâmicos. 3. WV2-T05 (a11y/perf), PLAN-T07 (Pilot propõe plano). |
-| **Next Task** | **UPP-03** — fluxo confirmado de escrita de memória do Pilot com auditoria. Desbloqueia PLAN-T07 sem escrita silenciosa. Alternativas abertas: WV2-T05 (a11y/perf), LA-T04 (Upstash), LA-T06 (códigos de afiliado; depende de params do dono). |
-| **Build** | ✅ Passing — `npm run type-check`, `npm run build`, `npm test -- --runInBand` (70/70) e `git diff --check` limpos para SIM-T09 (2026-08-03). Observação: uma primeira tentativa de Jest em paralelo com `next build` falhou lendo `.next/types/package.json` enquanto o build recriava `.next`; rerodado isolado passou. |
+| **Next Task** | **PLAN-T07** — Pilot propõe/revisa planos com confirmação elemento a elemento, agora desbloqueado por UPP-03. Alternativas abertas: WV2-T05 (a11y/perf), LA-T04 (Upstash), LA-T06 (códigos de afiliado; depende de params do dono). |
+| **Build** | ✅ Passing — `npm run type-check`, `npm run build`, `npm test -- --runInBand` (70/70) e `git diff --check` limpos para UPP-03 (2026-08-03). |
 | **Plano execução** | ✅ PLAN-T08 MVP: tocar no próprio rosto no mapa abre comando familiar; "Executar plano" carrega um plano escolhido, monta passos determinísticos do host (círculo → gatilhos → papéis → pontos → rotas → encerramento) e alerta o círculo com push preset "Execute o plano da família agora". Sem nova tabela ainda: timeline compartilhada fica para `family_plan_executions`. |
 | **Plano múltiplo** | ✅ PLAN-T09: o círculo pode ter vários planos ativos; `/plan` alterna/cria planos por nome, o executor escolhe qual plano rodar, passos fixos do EOS saem da lista numerada e há cancelar/falso alarme. Migration `20260731000000_multiple_family_plans.sql` aplicada pelo dono. |
 | **Rotas do plano** | ✅ PLAN-T10: cada rota desenhada no plano agora tem handoff "Google Maps" com origem, destino e paradas intermediárias na ordem da `LineString`. O EOS mantém o combinado offline; Google Maps calcula ruas/ETA quando abrir. |

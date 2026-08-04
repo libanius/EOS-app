@@ -128,6 +128,21 @@ degrada com conteúdo padrão e `/admin/edu` não persiste.
 
 ---
 
+## Memória do Pilot exige confirmação e evento de auditoria (2026-08-03)
+
+D-095 / UPP-03 criou o fluxo confirmado de memória. `/api/pilot/chat` pode
+retornar propostas `memory[]`; a UI mostra título, motivo e Markdown exato. Só
+depois do toque em "Salvar memória" a rota
+`POST /api/profile/personalization/memory` chama a RPC
+`confirm_pilot_memory(...)`.
+
+A RPC atualiza `profile_personalization.pilot_memory_md` e insere
+`pilot_memory_events` na mesma transação. Se a migration
+`20260803003000_pilot_memory_events.sql` não estiver aplicada, a rota retorna
+503 e não altera a memória.
+
+---
+
 ## Texto livre do simulador preenche painéis, não roda sozinho (2026-08-03)
 
 D-094 / SIM-T09 adicionou `POST /api/simulation/parse`. A rota usa OpenAI para

@@ -21,7 +21,7 @@ adapters, not separate products.
 | Field | Value |
 |---|---|
 | **Phase** | PHASE 0B complete; next product lane is Preparedness Engine |
-| **Current Task** | UPP-03 — confirmed Pilot memory writes with audit trail |
+| **Current Task** | PLAN-T07 — Pilot proposes/reviews family plans with element-by-element confirmation |
 | **Last Updated** | 2026-08-03 |
 
 Full details: `docs/09-build-status.md`
@@ -96,6 +96,7 @@ Full details: `docs/09-build-status.md`
 | `app/(app)/checklist/page.tsx` | Preparedness checklist |
 | `app/(app)/circles/page.tsx` | Community resilience groups |
 | `app/api/pilot/chat/route.ts` | Pilot conversation endpoint |
+| `app/api/profile/personalization/memory/route.ts` | Confirmed Pilot memory writes |
 | `app/api/simulation/parse/route.ts` | OpenAI parser for free-text simulator panels |
 | `app/api/edu/route.ts` | EDU catalog and owner/admin publishing endpoint |
 | `app/api/analyze/route.ts` | Legacy/analyze AI orchestration endpoint |
@@ -116,6 +117,7 @@ Full details: `docs/09-build-status.md`
 | `docs/24-simulation-preparedness-actions.md` | Simulation debrief to confirmed preparedness actions |
 | `docs/25-pilot-situational-educator.md` | Pilot educator to confirmed preparedness actions |
 | `docs/26-simulation-natural-language-panels.md` | Free-text simulator input to reviewable panels |
+| `docs/27-pilot-memory-confirmed-writes.md` | Confirmed Pilot memory writes and audit trail |
 
 ---
 

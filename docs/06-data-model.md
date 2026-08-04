@@ -51,6 +51,25 @@ be labelled `perfil`, never as a current position.
 This table is part of the authenticated Ficha Master experience but is not part
 of the public emergency QR contract.
 
+### pilot_memory_events
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid | PK |
+| profile_id | uuid | FK → profiles.id |
+| source | text | e.g. `pilot_chat` |
+| reason | text | Why the memory was useful enough to propose |
+| proposal_md | text | Exact Markdown the user confirmed |
+| previous_memory_md | text | Snapshot before confirmation |
+| next_memory_md | text | Snapshot after confirmation |
+| status | text | `confirmed` |
+| confirmed_at | timestamptz | |
+| created_at | timestamptz | |
+
+UPP-03 writes this table only through RPC `confirm_pilot_memory(...)`, which
+updates `profile_personalization.pilot_memory_md` and inserts the audit event in
+one database transaction. Browser clients have read-only RLS for their own
+events and no direct insert/update policy.
+
 ### Storage buckets
 
 | Bucket | Public | Contents | Access |

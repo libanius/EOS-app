@@ -171,6 +171,16 @@ Pilot may instruct, ask one short clarifying question, validate, and propose. It
 must not silently write to checklist, inventory, plans, Comms, or long-term
 memory.
 
+### Confirmed Pilot Memory (D-095 / UPP-03)
+
+When a conversation reveals durable context, Pilot may return a memory proposal.
+The UI shows the exact Markdown and the reason. The write only happens after the
+user confirms.
+
+Confirmed writes call `POST /api/profile/personalization/memory`, which delegates
+to RPC `confirm_pilot_memory(...)`. The RPC updates `pilot_memory_md` and writes
+`pilot_memory_events` in the same transaction.
+
 ---
 
 ## 4. Primary Prompt

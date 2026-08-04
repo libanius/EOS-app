@@ -37,7 +37,7 @@ import {
   type PilotIntentId,
   type PilotVerdict,
 } from './pilot-engine'
-import type { PilotDestination, PilotTask } from '@/app/api/pilot/chat/route'
+import type { PilotDestination, PilotMemoryProposal, PilotTask } from '@/app/api/pilot/chat/route'
 import { bearing, compassPoint, distanceKm } from '@/lib/world/shelters'
 import { directionsUrl, formatDistance } from '@/lib/world/navigation'
 
@@ -50,6 +50,7 @@ type Message = {
   factors?: Array<{ label: string; value: string }>
   actions?: PilotAnswer['actions']
   tasks?: PilotTask[]
+  memory?: PilotMemoryProposal[]
   destinations?: PilotDestination[]
   caveat?: string
 }
@@ -79,6 +80,9 @@ const COPY = {
       plan_review: 'Plano',
       comms_setup: 'Comms',
     },
+    memoryTitle: 'Memória do Pilot',
+    saveMemory: 'Salvar memória',
+    memorySaved: 'Memória salva',
     goTitle: 'Ir até lá',
     showOnMap: 'Ver no mapa',
     navigate: 'Abrir no app de mapas',
@@ -110,6 +114,9 @@ const COPY = {
       plan_review: 'Plan',
       comms_setup: 'Comms',
     },
+    memoryTitle: 'Pilot memory',
+    saveMemory: 'Save memory',
+    memorySaved: 'Memory saved',
     goTitle: 'Go there',
     showOnMap: 'Show on map',
     navigate: 'Open in maps app',
@@ -167,6 +174,7 @@ export default function Pilot({
   const [draft, setDraft] = useState('')
   const [busy, setBusy] = useState(false)
   const [addedTasks, setAddedTasks] = useState<Set<string>>(new Set())
+  const [savedMemory, setSavedMemory] = useState<Set<string>>(new Set())
   const streamRef = useRef<HTMLDivElement>(null)
 
   const opening = useMemo(() => askPilot('now', ctx), [ctx])
@@ -381,6 +389,7 @@ export default function Pilot({
       const data = (await response.json()) as {
         reply?: string | null
         tasks?: PilotTask[]
+        memory?: PilotMemoryProposal[]
         destinations?: PilotDestination[]
         error?: string
       }
@@ -389,6 +398,7 @@ export default function Pilot({
         role: 'pilot',
         text: data.reply || c.unavailable,
         tasks: data.tasks?.length ? data.tasks : undefined,
+        memory: data.memory?.length ? data.memory : undefined,
         destinations: data.destinations?.length ? data.destinations : undefined,
       })
     } catch {
@@ -414,6 +424,26 @@ export default function Pilot({
       setAddedTasks(current => {
         const next = new Set(current)
         next.delete(task.name)
+        return next
+      })
+    })
+  }
+
+  const saveMemory = async (memory: PilotMemoryProposal) => {
+    haptic.impact()
+    setSavedMemory(current => new Set(current).add(memory.proposal_md))
+    await fetch('/api/profile/personalization/memory', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        source: 'pilot_chat',
+        reason: memory.reason,
+        proposal_md: memory.proposal_md,
+      }),
+    }).catch(() => {
+      setSavedMemory(current => {
+        const next = new Set(current)
+        next.delete(memory.proposal_md)
         return next
       })
     })
@@ -504,6 +534,32 @@ export default function Pilot({
                                 onClick={() => addTask(task)}
                               >
                                 {done ? c.added : c.addTask}
+                              </button>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+
+                    {message.memory && (
+                      <div className="chat-memory">
+                        <p className="t-caps ink-3">{c.memoryTitle}</p>
+                        {message.memory.map(memory => {
+                          const done = savedMemory.has(memory.proposal_md)
+                          return (
+                            <div key={memory.proposal_md} className="chat-memory-item">
+                              <span>
+                                <strong className="t-sub">{memory.title}</strong>
+                                {memory.reason && <em className="t-foot ink-3">{memory.reason}</em>}
+                                <code>{memory.proposal_md}</code>
+                              </span>
+                              <button
+                                type="button"
+                                className={done ? 'done' : ''}
+                                disabled={done}
+                                onClick={() => saveMemory(memory)}
+                              >
+                                {done ? c.memorySaved : c.saveMemory}
                               </button>
                             </div>
                           )

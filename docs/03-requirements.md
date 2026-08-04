@@ -114,6 +114,7 @@
 | F10-3 | Pilot can read the personalization layer when producing contextual recommendations | ✅ IMPLEMENTED |
 | F10-4 | Pilot memory is stored separately from user-authored preferences and can be updated only through explicit user-controlled flows in the MVP | ✅ IMPLEMENTED |
 | F10-5 | Public emergency QR does not expose personalization, avatar, Pilot memory, or private preference context | ✅ IMPLEMENTED |
+| F10-6 | Pilot memory writes proposed by the model require explicit confirmation and audit trail | ✅ IMPLEMENTED — UPP-03 |
 
 ---
 

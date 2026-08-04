@@ -215,7 +215,7 @@ product phase sequenced.
 | UPP-00 | Spec + data model decision for profile personalization and Pilot memory | ✅ COMPLETE | 2026-07-21 — D-059; requirements, data model, Ficha Master and Pilot specs updated |
 | UPP-01 | MVP implementation: `profile_personalization` table, authenticated API, Ficha Master editor, avatar in World Dashboard | ✅ COMPLETE | 2026-07-21 — no public QR exposure; Pilot memory writes remain explicit/user-controlled |
 | UPP-02 | Profile photo upload pipeline using private storage policy | ✅ COMPLETE | 2026-07-21 — D-060; private `profile-photos` bucket, owner-only RLS, signed URL for authenticated components. Apply migration `20260721021000_profile_photo_storage.sql` in Supabase. |
-| UPP-03 | Pilot confirmed-write memory flow and audit trail | PENDING | No silent long-term memory mutation |
+| UPP-03 | Pilot confirmed-write memory flow and audit trail | ✅ COMPLETE | 2026-08-03 — D-095 / `docs/27-pilot-memory-confirmed-writes.md`; `pilot_memory_events` + RPC atômica; migration `20260803003000_pilot_memory_events.sql` pendente de aplicação |
 
 ---
 

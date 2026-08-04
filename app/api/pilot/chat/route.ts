@@ -32,6 +32,12 @@ export type PilotTask = {
   destination: string
 }
 
+export type PilotMemoryProposal = {
+  title: string
+  reason: string
+  proposal_md: string
+}
+
 type Body = {
   messages: Msg[]
   context: {
@@ -378,11 +384,11 @@ function normalizeTaskKind(kind: unknown): PilotTask['kind'] {
   return kind === 'resource' || kind === 'plan_review' || kind === 'comms_setup' ? kind : 'task'
 }
 
-function extractJson(raw: string, pt: boolean): { reply: string; tasks: PilotTask[]; destinations: PilotDestination[] } {
+function extractJson(raw: string, pt: boolean): { reply: string; tasks: PilotTask[]; destinations: PilotDestination[]; memory: PilotMemoryProposal[] } {
   const match = raw.match(/\{[\s\S]*\}/)
-  if (!match) return { reply: salvageReply(raw), tasks: [], destinations: [] }
+  if (!match) return { reply: salvageReply(raw), tasks: [], destinations: [], memory: [] }
   try {
-    const parsed = JSON.parse(match[0]) as { reply?: string; tasks?: unknown; destinations?: unknown }
+    const parsed = JSON.parse(match[0]) as { reply?: string; tasks?: unknown; destinations?: unknown; memory?: unknown }
     const tasks = Array.isArray(parsed.tasks)
       ? (parsed.tasks as PilotTask[])
           .filter(t => t && typeof t.name === 'string' && t.name.trim())
@@ -417,9 +423,19 @@ function extractJson(raw: string, pt: boolean): { reply: string; tasks: PilotTas
           .slice(0, 4)
           .map(d => ({ label: String(d.label ?? '').trim().slice(0, 60) || 'Destino', lat: d.lat, lng: d.lng }))
       : []
-    return { reply: String(parsed.reply ?? salvageReply(raw)).trim(), tasks, destinations }
+    const memory = Array.isArray(parsed.memory)
+      ? (parsed.memory as PilotMemoryProposal[])
+          .filter(m => m && typeof m.proposal_md === 'string' && m.proposal_md.trim())
+          .slice(0, 2)
+          .map(m => ({
+            title: String(m.title ?? (pt ? 'Salvar na memória' : 'Save to memory')).trim().slice(0, 80),
+            reason: String(m.reason ?? '').trim().slice(0, 180),
+            proposal_md: String(m.proposal_md).trim().slice(0, 1200),
+          }))
+      : []
+    return { reply: String(parsed.reply ?? salvageReply(raw)).trim(), tasks, destinations, memory }
   } catch {
-    return { reply: salvageReply(raw), tasks: [], destinations: [] }
+    return { reply: salvageReply(raw), tasks: [], destinations: [], memory: [] }
   }
 }
 
@@ -528,6 +544,9 @@ export async function POST(request: NextRequest) {
     pt
       ? 'MODO EDUCADOR SITUACIONAL: instrua em sequência lógica. Quando faltar contexto essencial, faça uma pergunta curta antes de concluir. Quando houver ação concreta, transforme em proposta de preparação; não diga apenas "considere". Classifique cada task com kind: resource para comprar/adquirir, task para fazer/verificar, plan_review para revisar plano familiar, comms_setup para rádio/comunicação.'
       : 'SITUATIONAL EDUCATOR MODE: instruct in a logical sequence. When essential context is missing, ask one short question before concluding. When there is a concrete action, turn it into a preparedness proposal; do not only say "consider". Classify each task with kind: resource for acquiring supplies, task for doing/checking, plan_review for reviewing the family plan, comms_setup for radio/communication setup.',
+    pt
+      ? 'MEMÓRIA DO PILOT: se o usuário disser uma preferência, restrição, rotina, equipamento recorrente, tolerância de risco, pessoa/necessidade familiar ou regra pessoal que será útil no futuro, proponha em memory. Não escreva como fato absoluto se foi incerto. Memory é proposta, não escrita automática.'
+      : 'PILOT MEMORY: if the user states a preference, constraint, routine, recurring equipment, risk tolerance, family need, or personal rule that will be useful later, propose it in memory. Do not write uncertain statements as absolute facts. Memory is a proposal, not an automatic write.',
 
     placesBlock,
     knowledge
@@ -543,8 +562,8 @@ export async function POST(request: NextRequest) {
       ? 'REGRAS INEGOCIÁVEIS: 1) Nunca invente abrigo, rota ou ordem de evacuação — evacuação só existe se houver ordem oficial. 2) Use os números reais da família acima; nada de conselho genérico. 3) Se faltar dado, diga que falta. 4) Nunca suavize um risco crítico. 5) NUNCA calcule distância, rumo ou coordenada por conta própria — use apenas os números já fornecidos acima. Ao mencionar direção ou distância, **copie o valor exato** que foi dado (ex.: "34.0 km a NO"); nunca parafraseie para outra direção nem arredonde o rumo. 6) Só cite posição de quem aparece na lista de posições consentidas.'
       : 'NON-NEGOTIABLE RULES: 1) Never invent a shelter, route or evacuation order — evacuation exists only under an official order. 2) Use the real household numbers above; no generic advice. 3) If data is missing, say so. 4) Never soften a critical risk. 5) NEVER compute a distance, bearing or coordinate yourself — use only the numbers given above. When mentioning a direction or distance, **copy the exact value** you were given (e.g. "34.0 km NW"); never paraphrase it into a different direction or round the bearing. 6) Only cite the position of people who appear in the consented positions list.',
     pt
-      ? 'Responda no mesmo idioma em que o usuário escreveu. RESPONDA SOMENTE com JSON: {"reply":"sua resposta","tasks":[{"name":"ação curta e executável","why":"por que","kind":"resource|task|plan_review|comms_setup","tier":"ESSENTIAL|MODERATE|EXCELLENT","quantity":1,"unit":null}],"destinations":[{"label":"nome do lugar","lat":0,"lng":0}]}. Inclua em tasks TODA ação concreta que você recomendar. Inclua em destinations TODO lugar para onde valha a pena ir — copiando as coordenadas exatas da lista acima, nunca inventando — para que o usuário possa iniciar a navegação com um toque. Se não houver, use [].'
-      : 'Reply in the language the user wrote in. ANSWER ONLY with JSON: {"reply":"your answer","tasks":[{"name":"short executable action","why":"why","kind":"resource|task|plan_review|comms_setup","tier":"ESSENTIAL|MODERATE|EXCELLENT","quantity":1,"unit":null}],"destinations":[{"label":"place name","lat":0,"lng":0}]}. Put EVERY concrete action into tasks. Put in destinations EVERY place worth travelling to — copying the exact coordinates from the list above, never inventing them — so the user can start navigation with one tap. Use [] when there are none.',
+      ? 'Responda no mesmo idioma em que o usuário escreveu. RESPONDA SOMENTE com JSON: {"reply":"sua resposta","tasks":[{"name":"ação curta e executável","why":"por que","kind":"resource|task|plan_review|comms_setup","tier":"ESSENTIAL|MODERATE|EXCELLENT","quantity":1,"unit":null}],"memory":[{"title":"memória curta","reason":"por que isso ajuda no futuro","proposal_md":"- Preferência/regra/necessidade em Markdown"}],"destinations":[{"label":"nome do lugar","lat":0,"lng":0}]}. Inclua em tasks TODA ação concreta que você recomendar. Use memory somente para preferências/necessidades duráveis. Inclua em destinations TODO lugar para onde valha a pena ir — copiando as coordenadas exatas da lista acima, nunca inventando. Se não houver, use [].'
+      : 'Reply in the language the user wrote in. ANSWER ONLY with JSON: {"reply":"your answer","tasks":[{"name":"short executable action","why":"why","kind":"resource|task|plan_review|comms_setup","tier":"ESSENTIAL|MODERATE|EXCELLENT","quantity":1,"unit":null}],"memory":[{"title":"short memory","reason":"why this helps later","proposal_md":"- Preference/rule/need in Markdown"}],"destinations":[{"label":"place name","lat":0,"lng":0}]}. Put EVERY concrete action into tasks. Use memory only for durable preferences/needs. Put in destinations EVERY place worth travelling to — copying exact coordinates from the list above, never inventing them. Use [] when there are none.',
   ]
     .filter(Boolean)
     .join('\n\n')
@@ -577,8 +596,8 @@ export async function POST(request: NextRequest) {
     }
 
     const raw = completion.choices[0]?.message?.content ?? ''
-    const { reply, tasks, destinations } = extractJson(raw, pt)
-    return NextResponse.json({ reply, tasks, destinations })
+    const { reply, tasks, destinations, memory } = extractJson(raw, pt)
+    return NextResponse.json({ reply, tasks, destinations, memory })
   } catch {
     return NextResponse.json({ error: 'unavailable', reply: null, tasks: [], destinations: [] }, { status: 200 })
   }
