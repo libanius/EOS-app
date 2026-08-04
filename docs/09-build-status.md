@@ -11,6 +11,7 @@
 |---|---|
 | **Current Phase** | Preparedness Engine (PREP/EDU/COMMS/ONB/PILOT) sobre Web/PWA |
 | **Last Completed Task** | **D-118 / LA-T04 — Rate limit distribuído + health/error log (2026-08-04)** |
+| | **D-118 / SEC-T01 — Limite de uso do Pilot no Postgres + `error_log` (2026-08-04) — AGUARDA MIGRATION** |
 | | **D-117 / NOTIF-T01 — Badges separados por ícone/surface (2026-08-04)** |
 | | **D-116 / NAV-T01 — BottomNav com Clima primeiro e Cenário último (2026-08-04)** |
 | | **D-115 / COMMS-T10 — Notificação de mensagem também atualiza o chat (2026-08-04)** |

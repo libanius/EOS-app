@@ -397,6 +397,58 @@ invisíveis enquanto Sentry não tivesse DSN.
 
 ---
 
+## D-118 — Limite de uso é do banco, e erro de produção deixa de ser invisível
+
+**Contexto.** A varredura do roteiro achou dois buracos que nenhum teste pegava
+porque nenhum teste olhava para eles.
+
+O primeiro custa dinheiro: `/api/pilot/chat` é o endpoint mais caro do produto —
+gpt-4.1, mais embedding, mais tradução da pergunta, mais busca no RAG — e não
+tinha limite **nenhum**. O cadastro é aberto. Uma conta criada em trinta segundos
+podia queimar a conta da OpenAI do dono num laço de `fetch`. Pior:
+`/api/weather-intelligence/custom-activity` chamava o modelo **sem exigir
+sequer login**.
+
+O segundo custa tempo: erro de servidor em produção não era registrado em lugar
+nenhum. O Sentry está no código desde o começo, e **sem DSN**. Foi assim que o
+push ficou meses quebrado sem ninguém saber, e assim que a rota do cron passou
+meses devolvendo 401 em silêncio.
+
+**Decisão.** Nenhum fornecedor novo: o Postgres que já paga a conta resolve os
+dois. `consume_rate_limit()` incrementa e decide numa única declaração —
+`INSERT ... ON CONFLICT DO UPDATE ... RETURNING` — sob o lock da linha. E
+`error_log` guarda onde, quando, qual mensagem e qual pilha.
+
+**Por que atômico, e não ler-depois-escrever.** Ler o contador e gravar em
+seguida deixa duas requisições simultâneas lerem 9 e passarem as duas. O limite
+vira decorativo justamente sob a carga em que ele importa.
+
+**Por que no banco, e não em memória.** O limitador já existia e caía para um
+`Map` de processo quando o Upstash não está configurado — que é o caso aqui.
+Em serverless, isso significa N instâncias vezes o limite. Isso não é teoria:
+com o fallback ativo, **as 14 chamadas seguidas ao Pilot passaram todas** no
+teste. É a medição que justifica a migration.
+
+**O que o log NUNCA guarda.** Conteúdo de conversa com o Pilot, ficha médica,
+posição da família, chaves. Um log existe para achar o defeito, não para ler a
+vida de ninguém — e um log com dado sensível é um vazamento esperando o primeiro
+acesso indevido. `lib/error-log.ts` filtra por nome de campo e só aceita
+escalares, porque um objeto aninhado carrega qualquer coisa dentro.
+
+**Falso verde encontrado no próprio verificador.** A primeira versão de
+`/api/health` consultava `error_log` com `select(head: true)` e respondeu **`ok`
+para uma tabela que não existia** — o PostgREST devolve PGRST205, e o código só
+tratava 42P01. Um verificador de saúde que dá verde no que está quebrado é pior
+que não ter verificador: cria confiança falsa. Agora faz leitura real e trata os
+dois códigos.
+
+**Prova.** `scripts/guardrails-test.mjs`, com navegador de verdade contra o
+servidor de produção compilado. Enquanto a migration não estiver aplicada, o
+teste **falha de propósito** e diz exatamente por quê — em vez de passar
+descrevendo um limite que não existe.
+
+---
+
 ## D-117 — Badges de notificação são separados por surface do app
 
 **Date**: 2026-08-04
