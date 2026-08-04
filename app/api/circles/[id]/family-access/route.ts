@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { createCommsNotifications, getCircleName, getProfileName } from '@/lib/comms-notifications'
 
 type Action = 'accept' | 'deny' | 'leave'
 
@@ -23,7 +24,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
 
   const { data: membership } = await admin
     .from('circle_members')
-    .select('family_access_status')
+    .select('family_access_status, family_access_requested_by')
     .eq('circle_id', params.id)
     .eq('user_id', user.id)
     .maybeSingle()
@@ -54,5 +55,25 @@ export async function POST(req: NextRequest, { params }: Ctx) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   if (!data?.length) return NextResponse.json({ error: 'Membro não encontrado.' }, { status: 404 })
+
+  if (body.action === 'accept' || body.action === 'deny') {
+    const requesterId = (membership.family_access_requested_by as string | null) ?? null
+    const [circleName, actorName] = await Promise.all([
+      getCircleName(admin, params.id),
+      getProfileName(admin, user.id),
+    ])
+    await createCommsNotifications({
+      admin,
+      circleId: params.id,
+      actorId: user.id,
+      recipientIds: requesterId ? [requesterId] : [],
+      kind: body.action === 'accept' ? 'family_invite_accepted' : 'family_invite_denied',
+      title: body.action === 'accept' ? `${actorName} aceitou Família íntima` : `${actorName} recusou Família íntima`,
+      body: body.action === 'accept'
+        ? `${actorName} aceitou compartilhar a ficha master com a Família íntima em ${circleName}.`
+        : `${actorName} recusou o convite de Família íntima em ${circleName}.`,
+      href: '/comms?view=notifications',
+    })
+  }
   return NextResponse.json({ ok: true, family_access_status: data[0].family_access_status })
 }

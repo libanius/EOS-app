@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { createCommsNotifications, getCircleName, getProfileName } from '@/lib/comms-notifications'
 
 /**
  * Papel e remoção de membros do círculo (D-077).
@@ -116,6 +117,22 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   if (!data?.length) {
     return NextResponse.json({ error: 'Membro não encontrado neste círculo.' }, { status: 404 })
+  }
+  if (familyAccess === 'requested') {
+    const [circleName, actorName] = await Promise.all([
+      getCircleName(admin, params.id),
+      getProfileName(admin, user.id),
+    ])
+    await createCommsNotifications({
+      admin,
+      circleId: params.id,
+      actorId: user.id,
+      recipientIds: [params.userId],
+      kind: 'family_invite',
+      title: `${actorName} convidou você para Família íntima`,
+      body: `Aceite para liberar sua ficha master ao Pilot da família em ${circleName}.`,
+      href: '/circles',
+    })
   }
   return NextResponse.json({ ok: true, role: data[0].role, family_access_status: data[0].family_access_status })
 }

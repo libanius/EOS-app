@@ -278,6 +278,33 @@ textarea.input { resize: vertical; min-height: 100px; line-height: 1.6; }
 
 .nb.on { color: var(--ac); }
 .nb:active { opacity: 0.7; }
+.nb-icon {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+}
+.nb-badge {
+  position: absolute;
+  top: -8px;
+  right: -12px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #ff3b30;
+  color: #fff;
+  border: 2px solid var(--sf);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0;
+  box-shadow: 0 8px 18px rgba(255, 59, 48, 0.35);
+}
 
 /* Raised home tab: the World dashboard. Bigger target, fixed position, and the
    only filled control in the bar — so "where do I get back to" is never a

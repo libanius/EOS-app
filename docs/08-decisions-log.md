@@ -278,6 +278,40 @@ como rota protegida; usuário não logado ia para login, o login ignorava
 
 ---
 
+## D-109 — Comms vira timeline social de notificações
+
+**Date**: 2026-08-04
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: O dono pediu que Comms mostre um número vermelho ao lado do ícone,
+como apps Apple/social, sempre que houver mensagem, convite aceito ou alguém
+entrar no círculo. Ao clicar, o usuário precisa ver uma timeline das interações,
+não apenas o chat.
+
+**Decision**:
+
+1. Criar `circle_notifications` como feed durável por usuário/círculo.
+2. A badge vermelha no ícone Comms usa a contagem de notificações não lidas.
+3. `/comms` passa a ter uma timeline de notificações com eventos recentes.
+4. Eventos iniciais:
+   - nova mensagem de círculo para os demais membros;
+   - pedido de entrada aprovado para o usuário aprovado;
+   - novo membro entrou para os membros existentes;
+   - convite de Família íntima enviado;
+   - convite de Família íntima aceito/recusado.
+5. Abrir a timeline marca as notificações como lidas via API explícita.
+6. Isto é app-level notification/timeline, não push garantido, SMS, alerta de
+   emergência ou dispatch.
+
+**Consequences**:
+
+- Comms deixa de ser só chat/rádio e passa a registrar interações sociais do
+  círculo.
+- Badge e timeline sobrevivem reload porque vêm do banco.
+- Migration necessária: `20260804012000_circle_notifications.sql`.
+
+---
+
 ## D-108 — Família íntima é convite aceito pelo dono da ficha
 
 **Date**: 2026-08-04

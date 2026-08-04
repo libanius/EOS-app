@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { createCommsNotifications, getCircleMemberIds, getCircleName, getProfileName } from '@/lib/comms-notifications'
 
 interface Ctx { params: { id: string; reqId: string } }
 
@@ -43,7 +44,9 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     return NextResponse.json({ error: `Request already ${request.status}` }, { status: 409 })
   }
 
+  let existingMemberIds: string[] = []
   if (action === 'approve') {
+    existingMemberIds = await getCircleMemberIds(admin, params.id)
     const { error: memErr } = await admin.from('circle_members').upsert(
       { circle_id: params.id, user_id: request.requester_id, role: 'Viewer', share_inventory: false },
       { onConflict: 'circle_id,user_id', ignoreDuplicates: true },
@@ -56,6 +59,33 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     .update({ status: action === 'approve' ? 'approved' : 'rejected', decided_at: new Date().toISOString(), decided_by: user.id })
     .eq('id', params.reqId)
   if (updErr) return NextResponse.json({ error: updErr.message }, { status: 500 })
+
+  if (action === 'approve') {
+    const [circleName, requesterName] = await Promise.all([
+      getCircleName(admin, params.id),
+      getProfileName(admin, request.requester_id),
+    ])
+    await Promise.all([
+      createCommsNotifications({
+        admin,
+        circleId: params.id,
+        actorId: user.id,
+        recipientIds: [request.requester_id],
+        kind: 'join_request_approved',
+        title: `Você entrou em ${circleName}`,
+        body: `Seu pedido para entrar em ${circleName} foi aceito.`,
+      }),
+      createCommsNotifications({
+        admin,
+        circleId: params.id,
+        actorId: request.requester_id,
+        recipientIds: existingMemberIds,
+        kind: 'member_joined',
+        title: `${requesterName} entrou no círculo`,
+        body: `${requesterName} agora faz parte de ${circleName}.`,
+      }),
+    ])
+  }
 
   return NextResponse.json({ ok: true, action })
 }

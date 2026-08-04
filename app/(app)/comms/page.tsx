@@ -24,6 +24,19 @@ type MessageRow = {
   is_me: boolean
 }
 
+type NotificationRow = {
+  id: string
+  circle_id: string
+  circle_name: string
+  actor_name: string | null
+  kind: string
+  title: string
+  body: string
+  href: string
+  created_at: string
+  is_read: boolean
+}
+
 const COPY = {
   pt: {
     eyebrow: 'EOS · Comms',
@@ -34,6 +47,11 @@ const COPY = {
     openCircles: 'Abrir círculos',
     openFamily: 'Família',
     chat: 'Chat do círculo',
+    timeline: 'Timeline',
+    timelineTitle: 'Notificações',
+    timelineEmpty: 'Nenhuma interação registrada ainda.',
+    timelineUnread: 'não lidas',
+    markRead: 'Marcar lidas',
     loading: 'Carregando mensagens...',
     empty: 'Nenhuma mensagem ainda.',
     unavailable: 'Mensagens indisponíveis agora.',
@@ -73,6 +91,11 @@ const COPY = {
     openCircles: 'Open circles',
     openFamily: 'Family',
     chat: 'Circle chat',
+    timeline: 'Timeline',
+    timelineTitle: 'Notifications',
+    timelineEmpty: 'No interactions recorded yet.',
+    timelineUnread: 'unread',
+    markRead: 'Mark read',
     loading: 'Loading messages...',
     empty: 'No messages yet.',
     unavailable: 'Messages are unavailable right now.',
@@ -116,6 +139,19 @@ function formatTime(value: string, language: 'pt' | 'en') {
   }
 }
 
+function formatTimelineTime(value: string, language: 'pt' | 'en') {
+  try {
+    return new Intl.DateTimeFormat(language === 'pt' ? 'pt-BR' : 'en-US', {
+      month: 'short',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(new Date(value))
+  } catch {
+    return ''
+  }
+}
+
 function linesToText(lines: string[]) {
   return lines.join('\n')
 }
@@ -132,6 +168,10 @@ export default function CommsPage() {
   const [messages, setMessages] = useState<MessageRow[]>([])
   const [circlesLoading, setCirclesLoading] = useState(true)
   const [messagesLoading, setMessagesLoading] = useState(false)
+  const [notifications, setNotifications] = useState<NotificationRow[]>([])
+  const [notificationsLoading, setNotificationsLoading] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [view, setView] = useState<'chat' | 'timeline'>('chat')
   const [sending, setSending] = useState(false)
   const [draft, setDraft] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -147,6 +187,10 @@ export default function CommsPage() {
     [circles, circleId],
   )
   const activeRadio = radioEditing ? radioDraft[language] : radioConfig[language]
+
+  useEffect(() => {
+    if (window.location.search.includes('view=notifications')) setView('timeline')
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -191,6 +235,36 @@ export default function CommsPage() {
     if (circleId) void loadMessages(circleId)
   }, [circleId, loadMessages])
 
+  const loadNotifications = useCallback(async (markRead = false) => {
+    setNotificationsLoading(true)
+    try {
+      const response = await fetch('/api/comms/notifications', { cache: 'no-store' })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data?.error ?? 'notifications unavailable')
+      const count = Number(data.unread_count ?? 0)
+      setNotifications((data.notifications ?? []) as NotificationRow[])
+      setUnreadCount(count)
+      if (markRead && count > 0) {
+        await fetch('/api/comms/notifications', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'mark_read' }),
+        })
+        setUnreadCount(0)
+        setNotifications(current => current.map(item => ({ ...item, is_read: true })))
+        window.dispatchEvent(new Event('eos-comms-read'))
+      }
+    } catch {
+      setNotifications([])
+    } finally {
+      setNotificationsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void loadNotifications(view === 'timeline')
+  }, [loadNotifications, view])
+
   const loadRadio = useCallback(async (nextCircleId: string) => {
     if (!nextCircleId) return
     setRadioStatus(null)
@@ -231,6 +305,7 @@ export default function CommsPage() {
       if (!response.ok) throw new Error(data?.error ?? 'send failed')
       setMessages(current => [...current, data.message as MessageRow])
       setDraft('')
+      void loadNotifications(false)
     } catch {
       setError(c.unavailable)
     } finally {
@@ -278,7 +353,70 @@ export default function CommsPage() {
           <h1 className="list-title">{c.title}</h1>
         </header>
 
-        {circlesLoading ? (
+        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            onClick={() => setView('chat')}
+            className={`wv2-chip ${view === 'chat' ? 'on' : ''}`}
+            style={view === 'chat' ? { borderColor: 'rgba(var(--accent-rgb),0.5)', color: 'var(--accent)' } : undefined}
+          >
+            {c.chat}
+          </button>
+          <button
+            type="button"
+            onClick={() => setView('timeline')}
+            className={`wv2-chip ${view === 'timeline' ? 'on' : ''}`}
+            style={view === 'timeline' ? { borderColor: 'rgba(var(--accent-rgb),0.5)', color: 'var(--accent)' } : undefined}
+          >
+            {c.timeline}
+            {unreadCount > 0 && <span style={{ marginLeft: 6, color: '#ff453a', fontWeight: 800 }}>{unreadCount}</span>}
+          </button>
+        </div>
+
+        {view === 'timeline' ? (
+          <Card style={{ marginBottom: '1rem' }}>
+            <SectionLabel trailing={unreadCount ? `${unreadCount} ${c.timelineUnread}` : undefined}>{c.timelineTitle}</SectionLabel>
+            {unreadCount > 0 && (
+              <button
+                type="button"
+                onClick={() => { void loadNotifications(true) }}
+                style={{ margin: '0.6rem 0 0.75rem', border: '1px solid rgba(255,69,58,0.35)', background: 'rgba(255,69,58,0.08)', color: '#ff453a', borderRadius: 999, padding: '0.35rem 0.75rem', fontWeight: 750, cursor: 'pointer' }}
+              >
+                {c.markRead}
+              </button>
+            )}
+            {notificationsLoading ? (
+              <p className="t-body ink-2" style={{ margin: '0.75rem 0 0' }}>{c.loading}</p>
+            ) : notifications.length === 0 ? (
+              <p className="t-body ink-2" style={{ margin: '0.75rem 0 0' }}>{c.timelineEmpty}</p>
+            ) : (
+              <div style={{ display: 'grid', gap: '0.65rem', marginTop: '0.75rem' }}>
+                {notifications.map(item => (
+                  <article
+                    key={item.id}
+                    style={{
+                      display: 'grid',
+                      gap: '0.2rem',
+                      padding: '0.85rem 0.9rem',
+                      borderRadius: 14,
+                      border: item.is_read ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(255,69,58,0.35)',
+                      background: item.is_read ? 'rgba(255,255,255,0.035)' : 'rgba(255,69,58,0.08)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'center' }}>
+                      <strong className="t-body" style={{ color: 'var(--ink)' }}>{item.title}</strong>
+                      {!item.is_read && <span style={{ width: 9, height: 9, borderRadius: 999, background: '#ff453a', flex: '0 0 auto' }} />}
+                    </div>
+                    <p className="t-foot ink-2" style={{ margin: 0 }}>{item.body}</p>
+                    <span className="t-caption ink-3">{item.circle_name} · {formatTimelineTime(item.created_at, language)}</span>
+                  </article>
+                ))}
+              </div>
+            )}
+          </Card>
+        ) : null}
+
+        {view === 'timeline' ? null : circlesLoading ? (
           <Card accented>
             <SectionLabel>{c.circle}</SectionLabel>
             <p className="t-body ink-2" style={{ margin: '0.75rem 0 0' }}>{c.loading}</p>

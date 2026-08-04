@@ -268,6 +268,26 @@ COMMS-T01). RLS is enabled with no direct policies: clients must not read or
 write this table directly. `/api/comms/messages` checks authenticated membership
 in `circle_members` before service-role reads/writes. Chat messages are not
 emergency alerts by default and do not imply SMS, dispatch, radio transmission,
+or guaranteed delivery.
+
+### circle_notifications
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid | PK |
+| circle_id | uuid | FK → circles.id, cascade delete |
+| recipient_id | uuid | FK → auth.users.id; badge/timeline owner |
+| actor_id | uuid | FK → auth.users.id; nullable actor who caused the event |
+| kind | text | `message`, `join_request_approved`, `member_joined`, `family_invite`, `family_invite_accepted`, `family_invite_denied` |
+| title | text | compact notification title |
+| body | text | timeline text |
+| href | text | app destination, default `/comms?view=notifications` |
+| metadata | jsonb | optional structured context |
+| read_at | timestamptz | null means unread |
+| created_at | timestamptz | server timestamp |
+
+`circle_notifications` is D-109 / COMMS-T04. It powers the Comms badge and the
+social-style interaction timeline. It is not push, SMS, dispatch, or emergency
+alert delivery.
 or Mesh/LoRa delivery.
 
 ### circle_radio_profiles

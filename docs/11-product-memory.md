@@ -108,6 +108,15 @@ Migration `20260803001000_circle_radio_profiles.sql` aplicada pelo dono em
 2026-08-03 e verificada via service-role. A edição de rádio agora tem tabela
 persistente em produção.
 
+D-109 / COMMS-T04 adiciona uma camada social persistente ao Comms:
+`circle_notifications`. O badge vermelho do ícone Comms vem da contagem não lida
+dessa tabela, e `/comms?view=notifications` abre a timeline das interações. Os
+eventos iniciais são mensagem de círculo, pedido de entrada aceito, novo membro
+no círculo, convite de Família íntima, e aceite/recusa de Família íntima. Isso
+continua sendo app-level timeline; não é push garantido, SMS, dispatch, nem
+alerta de emergência. Migration `20260804012000_circle_notifications.sql`
+precisa estar aplicada para persistir badge/timeline.
+
 ---
 
 ## EDU é catálogo aprovado antes de virar RAG (2026-08-03)

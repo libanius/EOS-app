@@ -208,6 +208,30 @@ CREATE INDEX IF NOT EXISTS circle_members_family_access_idx ON circle_members (c
 -- ------------------------------------------------------------
 -- 10. knowledge_base  (pgvector RAG store)
 -- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS circle_notifications (
+  id           uuid        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  circle_id    uuid        NOT NULL REFERENCES circles (id) ON DELETE CASCADE,
+  recipient_id uuid        NOT NULL REFERENCES auth.users (id) ON DELETE CASCADE,
+  actor_id     uuid        REFERENCES auth.users (id) ON DELETE SET NULL,
+  kind         text        NOT NULL,
+  title        text        NOT NULL,
+  body         text        NOT NULL,
+  href         text        NOT NULL DEFAULT '/comms?view=notifications',
+  metadata     jsonb       NOT NULL DEFAULT '{}'::jsonb,
+  read_at      timestamptz,
+  created_at   timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS circle_notifications_recipient_created_idx ON circle_notifications (recipient_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS circle_notifications_unread_idx ON circle_notifications (recipient_id, read_at) WHERE read_at IS NULL;
+CREATE INDEX IF NOT EXISTS circle_notifications_circle_idx ON circle_notifications (circle_id, created_at DESC);
+
+ALTER TABLE circle_notifications ENABLE ROW LEVEL SECURITY;
+
+
+-- ------------------------------------------------------------
+-- 10. knowledge_base  (pgvector RAG store)
+-- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS knowledge_base (
   id              uuid    PRIMARY KEY DEFAULT uuid_generate_v4(),
   content         text    NOT NULL,

@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useCallback, useEffect, useState } from 'react'
 import { useLanguage, type MessageKey } from '@/lib/i18n'
 
 type NavItem = { href: string; labelKey: MessageKey; icon: React.ReactNode }
@@ -60,7 +61,7 @@ const NAV_LEFT: NavItem[] = [
 
 const NAV_RIGHT: NavItem[] = [
   {
-    href: '/comms',
+    href: '/comms?view=notifications',
     labelKey: 'nav.comms',
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -101,11 +102,33 @@ const NAV_RIGHT: NavItem[] = [
 export default function BottomNav() {
   const pathname = usePathname()
   const { t } = useLanguage()
+  const [commsUnread, setCommsUnread] = useState(0)
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/')
+  const hrefPath = (href: string) => href.split('?')[0] || href
+
+  const loadCommsUnread = useCallback(async () => {
+    try {
+      const response = await fetch('/api/comms/notifications', { cache: 'no-store' })
+      const data = await response.json().catch(() => ({}))
+      if (response.ok) setCommsUnread(Number(data.unread_count ?? 0))
+    } catch {
+      /* Badge is additive; navigation must keep working without it. */
+    }
+  }, [])
+
+  useEffect(() => {
+    void loadCommsUnread()
+    const timer = window.setInterval(() => { void loadCommsUnread() }, 60_000)
+    window.addEventListener('eos-comms-read', loadCommsUnread)
+    return () => {
+      window.clearInterval(timer)
+      window.removeEventListener('eos-comms-read', loadCommsUnread)
+    }
+  }, [loadCommsUnread])
 
   const tab = ({ href, labelKey, icon }: NavItem) => {
-    const active = isActive(href)
+    const active = isActive(hrefPath(href))
     const label = t(labelKey)
     return (
       <Link
@@ -115,7 +138,14 @@ export default function BottomNav() {
         aria-label={label}
         aria-current={active ? 'page' : undefined}
       >
-        {icon}
+        <span className="nb-icon">
+          {icon}
+          {hrefPath(href) === '/comms' && commsUnread > 0 && (
+            <span className="nb-badge" aria-label={`${commsUnread} notificações não lidas`}>
+              {commsUnread > 99 ? '99+' : commsUnread}
+            </span>
+          )}
+        </span>
         <span>{label}</span>
       </Link>
     )

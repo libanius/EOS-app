@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { createCommsNotifications, getCircleMemberIds, getCircleName, getProfileName } from '@/lib/comms-notifications'
 
 type MessageRow = {
   id: string
@@ -115,6 +116,22 @@ export async function POST(req: NextRequest) {
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  const [memberIds, actorName, circleName] = await Promise.all([
+    getCircleMemberIds(guard.admin, circleId),
+    getProfileName(guard.admin, guard.user.id),
+    getCircleName(guard.admin, circleId),
+  ])
+  await createCommsNotifications({
+    admin: guard.admin,
+    circleId,
+    actorId: guard.user.id,
+    recipientIds: memberIds,
+    kind: 'message',
+    title: `${actorName} enviou uma mensagem`,
+    body: `${actorName} escreveu em ${circleName}: "${text.slice(0, 120)}${text.length > 120 ? '...' : ''}"`,
+    metadata: { message_id: (data as MessageRow).id },
+  })
 
   return NextResponse.json({
     message: {
