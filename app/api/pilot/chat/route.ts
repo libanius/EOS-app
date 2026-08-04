@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { generationParams, getOpenAIClient, getOpenAIModel } from '@/lib/openai'
 import { enforceAiBudget, rateLimitHeaders } from '@/lib/rate-limit'
 import { logError } from '@/lib/error-log'
+import { getHousehold } from '@/lib/household'
 import { getRelevantChunks } from '@/lib/knowledge'
 import { buildPilotCircleRecord, buildPilotFamilyRecord, type CircleVisibleMemberRecord } from '@/lib/pilot-family-record'
 
@@ -611,32 +612,39 @@ export async function POST(request: NextRequest) {
   let familyRecord = ''
   let circleRecord = ''
   try {
-    const [{ data: profile }, { data: members }, visibleCircleRecord] = await Promise.all([
+    const [{ data: profile }, casa, visibleCircleRecord] = await Promise.all([
       supabase
         .from('profiles')
         .select('name, location, blood_type, allergies, emergency_contact_name, emergency_contact_phone, medical_notes, medications')
         .eq('id', user.id)
         .maybeSingle(),
-      supabase
-        .from('family_members')
-        .select('name, age, medical_conditions, medical_notes, medications, mobility_impaired, is_infant')
-        .eq('profile_id', user.id)
-        .order('created_at', { ascending: true }),
+      // A casa (D-123): quem confirmou morar junto + os dependentes de cada um.
+      // Antes o Pilot só via a lista digitada à mão do próprio usuário e
+      // respondia sobre uma família que podia não ser a que mora ali.
+      getHousehold(user.id),
       loadPilotCircleRecord(user.id, pt),
     ])
     familyRecord = buildPilotFamilyRecord({
       profile: profile ?? null,
-      members: (members ?? []) as Array<{
-        name?: string | null
-        age?: number | null
-        medical_conditions?: string[] | null
-        medical_notes?: string | null
-        medications?: string[] | null
-        mobility_impaired?: boolean | null
-        is_infant?: boolean | null
-      }>,
+      members: casa.people.map(p => ({
+        name: p.name,
+        age: p.age,
+        medical_conditions: p.medicalConditions,
+        medical_notes: p.careNotes,
+        medications: p.medications,
+        mobility_impaired: p.mobilityImpaired,
+        is_infant: p.isInfant,
+      })),
       pt,
     })
+    if (casa.needsHidden > 0) {
+      // O Pilot precisa saber a diferença entre "ninguém precisa" e "não posso
+      // ver". Sem isto ele responderia com confiança sobre uma casa que não
+      // conhece — que é o pior jeito de responder sobre remédio.
+      familyRecord += pt
+        ? `\n(${casa.needsHidden} pessoa(s) da casa não compartilharam a ficha: pode haver necessidade que não aparece aqui.)`
+        : `\n(${casa.needsHidden} household member(s) have not shared their record: needs may exist that are not listed here.)`
+    }
     circleRecord = visibleCircleRecord
   } catch {
     familyRecord = pt

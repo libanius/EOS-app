@@ -85,6 +85,8 @@ const COPY = {
     people: 'pessoas',
     locatable: 'localizáveis agora',
     autonomy: 'Autonomia da casa',
+    pantries: 'despensas somadas',
+    inHouse: 'na casa (os demais não confirmaram morar junto)',
     days: 'dias',
     now: 'agora',
     profileOnly: 'endereço do perfil, não posição atual',
@@ -125,6 +127,8 @@ const COPY = {
     people: 'people',
     locatable: 'locatable now',
     autonomy: 'Household autonomy',
+    pantries: 'pantries pooled',
+    inHouse: 'in the house (the others have not confirmed living together)',
     days: 'days',
     now: 'now',
     profileOnly: 'profile address, not a current position',
@@ -184,6 +188,10 @@ export default function FamilyPage() {
   const [circle, setCircle] = useState<CircleMember[]>([])
   const [roles, setRoles] = useState<Array<{ member_user_id: string; responsibility: string }>>([])
   const [autonomy, setAutonomy] = useState<number | null>(null)
+  /** Tamanho da casa segundo o servidor — não o tamanho da lista desta tela. */
+  const [houseSize, setHouseSize] = useState<number | null>(null)
+  /** De quantas contas o inventário somado veio. */
+  const [contributors, setContributors] = useState(0)
   const [myCoords, setMyCoords] = useState<{ lat: number; lng: number } | null>(null)
   /** O círculo desta casa — é dele que sai o link de convite (D-112). */
   const [circleInfo, setCircleInfo] = useState<{ id: string; name: string; inviteCode: string } | null>(null)
@@ -194,10 +202,12 @@ export default function FamilyPage() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [fam, circles, inv] = await Promise.all([
+      const [fam, circles, casa] = await Promise.all([
         fetch('/api/family-members').then(r => (r.ok ? r.json() : null)).catch(() => null),
         fetch('/api/circles').then(r => (r.ok ? r.json() : null)).catch(() => null),
-        fetch('/api/inventory').then(r => (r.ok ? r.json() : null)).catch(() => null),
+        // A autonomia vem do servidor (D-123). Esta tela calculava a própria, e
+        // Preparação calculava outra: duas telas, duas contas, o mesmo usuário.
+        fetch('/api/household').then(r => (r.ok ? r.json() : null)).catch(() => null),
       ])
 
       setRoster(Array.isArray(fam?.members) ? fam.members : [])
@@ -221,11 +231,11 @@ export default function FamilyPage() {
         setRoles(plan?.roles ?? [])
       }
 
-      const people = Math.max(1, (Array.isArray(fam?.members) ? fam.members.length : 0) || 1)
-      const i = inv?.inventory
-      setAutonomy(
-        i ? Math.min(i.water_liters / (3 * people), i.food_days) : null,
-      )
+      // `null` quando a casa não pôde ser lida: um número inventado aqui vira
+      // uma família que não se prepara.
+      setAutonomy(typeof casa?.autonomyDays === 'number' ? casa.autonomyDays : null)
+      setHouseSize(typeof casa?.size === 'number' ? casa.size : null)
+      setContributors(casa?.inventory?.contributors ?? 0)
       setFailed(false)
     } catch {
       setFailed(true)
@@ -333,10 +343,25 @@ export default function FamilyPage() {
             <span className="t-foot ink-2">{people.length} {c.people}</span>
             <span className="t-foot ink-3">·</span>
             <span className="t-foot ink-2">{locatable} {c.locatable}</span>
+            {houseSize !== null && houseSize < people.length && (
+              <>
+                <span className="t-foot ink-3">·</span>
+                {/* O número que as contas usam é o da CASA, não o da lista.
+                    Quem aparece aqui e não confirmou morar junto não entra na
+                    conta de água — e a tela diz isso em vez de deixar a pessoa
+                    achar que está coberta. */}
+                <span className="t-foot warn">{houseSize} {c.inHouse}</span>
+              </>
+            )}
             {autonomy !== null && (
               <>
                 <span className="t-foot ink-3">·</span>
-                <span className="t-foot ink-2">{c.autonomy} {autonomy.toFixed(1)} {c.days}</span>
+                <span className="t-foot ink-2">
+                  {c.autonomy} {autonomy.toFixed(1)} {c.days}
+                  {/* De quantas despensas esse número saiu. Sem isso, "5 dias"
+                      da casa de quatro é indistinguível de "5 dias" só seus. */}
+                  {contributors > 1 && ` · ${contributors} ${c.pantries}`}
+                </span>
               </>
             )}
           </div>

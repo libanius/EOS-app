@@ -1,24 +1,7 @@
 import { NextResponse } from 'next/server'
+import { getHousehold } from '@/lib/household'
 import { createClient } from '@/lib/supabase/server'
 import { getOpenAIClient, getOpenAIModel } from '@/lib/openai'
-
-type FamilyMember = {
-  name: string
-  age: number | null
-  medical_conditions: string[] | null
-  mobility_impaired: boolean | null
-  is_infant: boolean | null
-}
-
-type InventoryRow = {
-  water_liters: number | null
-  food_days: number | null
-  fuel_liters: number | null
-  battery_percent: number | null
-  has_medical_kit: boolean | null
-  has_communication_device: boolean | null
-  cash_amount: number | null
-}
 
 type AIReadinessResponse = {
   overview: string
@@ -26,18 +9,6 @@ type AIReadinessResponse = {
   priorities: string[]
   strengths: string[]
   next_steps: string[]
-}
-
-function getFallbackInventory(row: InventoryRow | null) {
-  return {
-    water_liters: Number(row?.water_liters) || 0,
-    food_days: Number(row?.food_days) || 0,
-    fuel_liters: Number(row?.fuel_liters) || 0,
-    battery_percent: Number(row?.battery_percent) || 0,
-    has_medical_kit: Boolean(row?.has_medical_kit),
-    has_communication_device: Boolean(row?.has_communication_device),
-    cash_amount: Number(row?.cash_amount) || 0,
-  }
 }
 
 function extractJsonObject(raw: string): AIReadinessResponse {
@@ -79,40 +50,44 @@ export async function GET() {
     )
   }
 
-  const [{ data: members, error: familyError }, { data: inventoryRow, error: inventoryError }] = await Promise.all([
-    supabase
-      .from('family_members')
-      .select('name, age, medical_conditions, mobility_impaired, is_infant')
-      .eq('profile_id', user.id)
-      .order('created_at', { ascending: true }),
-    supabase
-      .from('resource_inventory')
-      .select(
-        'water_liters, food_days, fuel_liters, battery_percent, has_medical_kit, has_communication_device, cash_amount',
-      )
-      .eq('profile_id', user.id)
-      .maybeSingle(),
-  ])
-
-  if (familyError) {
-    console.error('[GET /api/ai/readiness] family', familyError.message)
-    return NextResponse.json({ error: familyError.message }, { status: 500 })
+  /*
+   * A casa inteira, com o inventário SOMADO (D-123).
+   *
+   * Antes esta rota lia só a lista digitada à mão e o inventário do próprio
+   * usuário. Uma casa de quatro contas era analisada como uma pessoa com uma
+   * despensa — e a prontidão saía otimista pelos dois lados.
+   */
+  const household = await getHousehold(user.id)
+  if (!household.known) {
+    return NextResponse.json(
+      { error: 'Não foi possível ler quem mora na sua casa. Analisar prontidão com o número errado de pessoas dá uma resposta que parece certa.' },
+      { status: 503 },
+    )
   }
 
-  if (inventoryError) {
-    console.error('[GET /api/ai/readiness] inventory', inventoryError.message)
-    return NextResponse.json({ error: inventoryError.message }, { status: 500 })
+  const family = household.people
+  const inventory = {
+    water_liters: household.inventory.waterLiters,
+    // A engine trabalha em dias; `foodPersonDays` divide pelo tamanho da casa.
+    food_days: household.size > 0 ? household.inventory.foodPersonDays / household.size : 0,
+    fuel_liters: household.inventory.fuelLiters,
+    battery_percent: household.inventory.batteryPercent,
+    has_medical_kit: household.inventory.hasMedicalKit,
+    has_communication_device: household.inventory.hasCommunicationDevice,
+    cash_amount: 0,
   }
-
-  const family = (members ?? []) as FamilyMember[]
-  const inventory = getFallbackInventory((inventoryRow ?? null) as InventoryRow | null)
-  const peopleCount = Math.max(family.length, 1)
-  const specialNeedsCount = family.filter(
-    (member) =>
-      Boolean(member.is_infant) ||
-      Boolean(member.mobility_impaired) ||
-      (member.medical_conditions?.length ?? 0) > 0,
-  ).length
+  const peopleCount = Math.max(household.size, 1)
+  // Necessidade que não podemos ler conta como necessidade: veja o mesmo
+  // raciocínio em `checklist/generate`.
+  const specialNeedsCount =
+    household.needsHidden +
+    family.filter(
+      (member) =>
+        member.isInfant ||
+        member.mobilityImpaired ||
+        member.medicalConditions.length > 0 ||
+        member.medications.length > 0,
+    ).length
 
   const client = getOpenAIClient()
   const model = getOpenAIModel()
@@ -135,14 +110,29 @@ Regras:
 - Se houver bebês, mobilidade reduzida ou condições médicas, priorize isso.
 - Seja específico e acionável.
 - Não invente dados ausentes.
+- Se needs_unknown_for for maior que zero, trate como necessidade possível e diga isso: há gente na casa cuja ficha não pode ser lida.
 - Português do Brasil.
 
 Dados da família:
 ${JSON.stringify(
     {
-      people_count: family.length,
+      people_count: household.size,
       special_needs_count: specialNeedsCount,
-      members: family,
+      // Dito ao modelo em vez de escondido: "não sabemos" não é "não tem", e um
+      // analista que confunde os dois recomenda menos do que a casa precisa.
+      needs_unknown_for: household.needsHidden,
+      contributing_inventories: household.inventory.contributors,
+      members: family.map(m => ({
+        name: m.name,
+        age: m.age,
+        is_infant: m.isInfant,
+        mobility_impaired: m.mobilityImpaired,
+        medical_conditions: m.medicalConditions,
+        medications: m.medications,
+        depends_on_someone: m.dependsOn !== null,
+        relationship: m.relationship,
+        medical_data_visible: m.medicalVisible,
+      })),
     },
     null,
     2,

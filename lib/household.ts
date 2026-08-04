@@ -43,6 +43,24 @@ export type HouseholdPerson = {
   dependsOn: string | null
   relationship: string | null
   careNotes: string | null
+  /**
+   * A ficha desta pessoa pode ser lida?
+   *
+   * Morar junto NÃO dá acesso à ficha médica de ninguém — são consentimentos
+   * diferentes. Quando isto é falso, as listas acima vêm vazias **porque não
+   * temos permissão**, não porque a pessoa não tem necessidade nenhuma.
+   *
+   * A diferença decide vidas: "ninguém na casa toma remédio contínuo" e "não
+   * sabemos o que três pessoas da casa tomam" levam a checklists opostos, e um
+   * deles manda a família viajar sem insulina.
+   */
+  medicalVisible: boolean
+  /**
+   * Cadastrada como dependente, mas já tem conta e ainda não confirmou morar
+   * junto. Conta como PESSOA e não traz despensa — as duas coisas na direção
+   * conservadora. Ver o comentário no lugar onde isto é decidido.
+   */
+  awaitingConfirmation: boolean
 }
 
 export type HouseholdInventory = {
@@ -84,6 +102,8 @@ export type Household = {
   size: number
   inventory: HouseholdInventory
   reachable: ReachablePerson[]
+  /** Quantas pessoas da casa têm necessidades que não podemos ler. */
+  needsHidden: number
   /**
    * Falso quando a leitura falhou.
    *
@@ -126,6 +146,8 @@ type MemberRow = {
   user_id: string
   household_status: string | null
   share_inventory: boolean | null
+  /** Consentimento SEPARADO do de morar junto: ver a ficha médica. */
+  family_access_status: string | null
 }
 
 /**
@@ -137,13 +159,13 @@ type MemberRow = {
  */
 export async function getHousehold(userId: string): Promise<Household> {
   const admin = createAdminClient()
-  if (!admin) return { people: [], size: 0, inventory: VAZIO, reachable: [], known: false }
+  if (!admin) return { people: [], size: 0, inventory: VAZIO, reachable: [], needsHidden: 0, known: false }
 
   try {
     // 1. Em quais círculos eu estou, e qual é a minha situação de casa.
     const { data: minhas, error: e1 } = await admin
       .from('circle_members')
-      .select('circle_id, user_id, household_status, share_inventory')
+      .select('circle_id, user_id, household_status, share_inventory, family_access_status')
       .eq('user_id', userId)
     if (e1) throw e1
 
@@ -157,7 +179,7 @@ export async function getHousehold(userId: string): Promise<Household> {
     const { data: todos, error: e2 } = ids.length
       ? await admin
           .from('circle_members')
-          .select('circle_id, user_id, household_status, share_inventory')
+          .select('circle_id, user_id, household_status, share_inventory, family_access_status')
           .in('circle_id', ids)
       : { data: [], error: null }
     if (e2) throw e2
@@ -182,7 +204,10 @@ export async function getHousehold(userId: string): Promise<Household> {
 
     // 3. Perfis, inventários e dependentes — só de quem está na casa.
     const [perfisRes, invRes, depsRes, circulosRes] = await Promise.all([
-      admin.from('profiles').select('id, name, location_lat, location_lng').in('id', idsCasa),
+      admin
+        .from('profiles')
+        .select('id, name, location_lat, location_lng, medical_notes, medications, allergies')
+        .in('id', idsCasa),
       admin
         .from('resource_inventory')
         .select('profile_id, water_liters, food_days, fuel_liters, battery_percent, has_medical_kit, has_communication_device')
@@ -198,29 +223,68 @@ export async function getHousehold(userId: string): Promise<Household> {
       ((perfisRes.data ?? []) as Array<{ id: string; name: string | null }>).map(p => [p.id, p.name ?? 'Sem nome']),
     )
 
-    const pessoas: HouseholdPerson[] = idsCasa.map(id => ({
-      userId: id,
-      name: id === userId ? 'Você' : perfis.get(id) ?? 'Sem nome',
-      isMe: id === userId,
-      age: null,
-      medicalConditions: [],
-      medications: [],
-      mobilityImpaired: false,
-      isInfant: false,
-      dependsOn: null,
-      relationship: null,
-      careNotes: null,
-    }))
+    /*
+     * De quem eu posso ler a ficha.
+     *
+     * A minha, sempre. A de outra conta da casa, só se ELA aprovou compartilhar
+     * — `family_access_status`, que é um consentimento diferente do de morar
+     * junto. O EOS conta a pessoa na casa de qualquer jeito; o que ele não faz é
+     * ler a ficha dela sem permissão, nem fingir que ela não tem necessidade.
+     */
+    const fichaLiberada = new Set<string>([userId])
+    for (const m of membros) {
+      if (contasDaCasa.has(m.user_id) && m.family_access_status === 'approved') fichaLiberada.add(m.user_id)
+    }
+
+    const meuPerfil = (perfisRes.data ?? []) as Array<{
+      id: string
+      medical_notes?: string | null
+      medications?: string[] | null
+      allergies?: string[] | null
+    }>
+    const fichaPorId = new Map(meuPerfil.map(p => [p.id, p]))
+
+    const pessoas: HouseholdPerson[] = idsCasa.map(id => {
+      const podeLer = fichaLiberada.has(id)
+      const f = podeLer ? fichaPorId.get(id) : null
+      return {
+        userId: id,
+        name: id === userId ? 'Você' : perfis.get(id) ?? 'Sem nome',
+        isMe: id === userId,
+        // Idade não existe em `profiles` — uma conta informa a própria ficha, não
+        // a própria idade. Fica nulo em vez de virar um palpite.
+        age: null,
+        medicalConditions: f?.medical_notes ? [f.medical_notes] : [],
+        medications: f?.medications ?? [],
+        mobilityImpaired: false,
+        isInfant: false,
+        dependsOn: null,
+        relationship: null,
+        careNotes: null,
+        medicalVisible: podeLer,
+        awaitingConfirmation: false,
+      }
+    })
 
     /*
-     * Dependentes.
+     * Dependentes — e o caso delicado da migração.
      *
-     * `linked_user_id` preenchido significa que aquela linha é a duplicata de
-     * uma conta que JÁ está na casa — contá-la somaria a mesma pessoa duas
-     * vezes. Ela é ignorada aqui e limpa na tela, com o usuário olhando.
+     * Se `linked_user_id` aponta para alguém que JÁ está na casa, a linha é
+     * duplicata da mesma pessoa e some daqui (a limpeza acontece na tela, com o
+     * usuário olhando).
+     *
+     * Mas se aponta para uma conta que ainda NÃO confirmou morar junto, sumir
+     * seria pior: a pessoa deixaria de ser contada e **a autonomia subiria** só
+     * porque alguém vinculou um cadastro a uma conta. Autonomia que sobe sozinha
+     * é exatamente o erro que faz uma família não se preparar.
+     *
+     * Então ela continua contando como pessoa, sem trazer despensa nenhuma:
+     * mais bocas e a mesma água, que são as duas direções seguras enquanto a
+     * confirmação não vem.
      */
     for (const d of (depsRes.data ?? []) as Array<Record<string, unknown>>) {
-      if (d.linked_user_id) continue
+      const vinculada = d.linked_user_id as string | null
+      if (vinculada && contasDaCasa.has(vinculada)) continue
       pessoas.push({
         userId: null,
         name: (d.name as string) ?? 'Sem nome',
@@ -233,6 +297,9 @@ export async function getHousehold(userId: string): Promise<Household> {
         dependsOn: (d.profile_id as string) ?? null,
         relationship: (d.relationship as string | null) ?? null,
         careNotes: (d.care_notes as string | null) ?? null,
+        // O dependente é cadastrado pelo cuidador, que é quem responde por ele.
+        medicalVisible: true,
+        awaitingConfirmation: Boolean(vinculada),
       })
     }
 
@@ -306,11 +373,12 @@ export async function getHousehold(userId: string): Promise<Household> {
       reachable = reachable.sort((a, b) => a.name.localeCompare(b.name))
     }
 
-    return { people: pessoas, size: pessoas.length, inventory, reachable, known: true }
+    const needsHidden = pessoas.filter(p => !p.medicalVisible).length
+    return { people: pessoas, size: pessoas.length, inventory, reachable, needsHidden, known: true }
   } catch {
     // Ver `known` no tipo: falhar em silêncio com "1 pessoa" produziria uma
     // autonomia inventada que ninguém teria como identificar como erro.
-    return { people: [], size: 0, inventory: VAZIO, reachable: [], known: false }
+    return { people: [], size: 0, inventory: VAZIO, reachable: [], needsHidden: 0, known: false }
   }
 }
 
@@ -320,6 +388,6 @@ export async function getHousehold(userId: string): Promise<Household> {
  */
 export async function getHouseholdFor(client: SupabaseClient): Promise<Household> {
   const { data } = await client.auth.getUser()
-  if (!data.user) return { people: [], size: 0, inventory: VAZIO, reachable: [], known: false }
+  if (!data.user) return { people: [], size: 0, inventory: VAZIO, reachable: [], needsHidden: 0, known: false }
   return getHousehold(data.user.id)
 }

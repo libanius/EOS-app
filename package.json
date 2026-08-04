@@ -30,6 +30,7 @@
     "test:client-error": "npx tsx scripts/client-error-test.mjs",
     "test:grouping": "npx tsx scripts/error-grouping-test.mjs",
     "test:roster": "node scripts/roster-page-test.mjs",
+    "test:household": "npx tsx scripts/household-test.mjs",
     "bench:rag": "node scripts/rag-bench.mjs"
   },
   "dependencies": {

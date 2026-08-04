@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { ensureProfile } from '@/lib/ensure-profile'
 import { getOpenAIClient, getOpenAIModel } from '@/lib/openai'
 import { enforceRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
+import { getHousehold } from '@/lib/household'
 import { getRelevantChunks } from '@/lib/knowledge'
 import {
   buildChecklistPrompt,
@@ -55,26 +56,54 @@ export async function POST(req: NextRequest) {
   const scenarioType = (body.scenarioType ?? 'GENERAL').toUpperCase()
   const scenarioId = body.scenarioId ?? null
 
-  const { data: family } = await supabase
-    .from('family_members')
-    .select('age, medical_conditions, medical_notes, medications, mobility_impaired, is_infant')
-    .eq('profile_id', user.id)
+  /*
+   * A casa, e não a lista digitada à mão (D-123).
+   *
+   * Antes isto lia `family_members` do usuário e ignorava o círculo: uma casa
+   * de quatro contas gerava checklist para uma pessoa. Agora conta quem
+   * confirmou morar junto + os dependentes de cada um.
+   */
+  const household = await getHousehold(user.id)
+  const family = household.people
 
-  const familySize = Math.max(1, family?.length ?? 1)
+  /*
+   * Casa desconhecida NÃO vira casa de um.
+   *
+   * Se a leitura falhou, gerar uma lista para uma pessoa seria pior que não
+   * gerar: ela parece certa. Aqui a rota para e diz.
+   */
+  if (!household.known) {
+    return NextResponse.json(
+      { error: 'Não foi possível ler quem mora na sua casa. Tente de novo — gerar uma lista para o número errado de pessoas é pior que não gerar.' },
+      { status: 503 },
+    )
+  }
+
+  const familySize = Math.max(1, household.size)
   const input: ChecklistGenerateInput = {
     kitType,
     scenarioType,
     scenarioDescription: body.scenarioDescription,
     familySize,
-    hasChildren: (family ?? []).some((m) => (m.age ?? 99) < 18),
-    hasInfants: (family ?? []).some((m) => (m.age ?? 99) < 2 || m.is_infant === true),
-    hasElderly: (family ?? []).some((m) => (m.age ?? 0) >= 65),
-    hasMedicalConditions: (family ?? []).some(
-      (m) =>
-        (Array.isArray(m.medical_conditions) && m.medical_conditions.length > 0) ||
-        !!m.medical_notes ||
-        (Array.isArray(m.medications) && m.medications.length > 0),
-    ),
+    hasChildren: family.some((m) => (m.age ?? 99) < 18),
+    hasInfants: family.some((m) => (m.age ?? 99) < 2 || m.isInfant),
+    hasElderly: family.some((m) => (m.age ?? 0) >= 65),
+    /*
+     * Necessidade OCULTA conta como necessidade.
+     *
+     * Quem mora junto não vê a ficha do outro sem permissão. Tratar "não sei" como
+     * "não tem" geraria uma lista sem remédio para uma casa que toma remédio —
+     * e nesta direção o erro é irreversível. Preparar a mais custa espaço;
+     * preparar a menos custa a pessoa.
+     */
+    hasMedicalConditions:
+      household.needsHidden > 0 ||
+      family.some(
+        (m) =>
+          m.medicalConditions.length > 0 ||
+          m.medications.length > 0 ||
+          m.mobilityImpaired,
+      ),
   }
 
   // RAG context from verified sources (FEMA, Red Cross, SAS, etc.)

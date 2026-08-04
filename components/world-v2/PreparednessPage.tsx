@@ -379,6 +379,15 @@ export default function PreparednessPage() {
   const { language, t } = useLanguage()
   const [inv, setInv] = useState<Inventory>(DEFAULT_INVENTORY)
   const [memberCount, setMemberCount] = useState(0)
+  /**
+   * A casa, vinda do servidor (D-123).
+   *
+   * O editor abaixo continua sendo a SUA despensa — você só pode mexer na sua.
+   * Mas a nota e a autonomia passam a ser da casa: com quatro pessoas morando
+   * juntas, avaliar a sua despensa sozinha contra quatro bocas dava uma nota
+   * ruim que não correspondia a nada.
+   */
+  const [house, setHouse] = useState<{ size: number; autonomyDays: number | null; contributors: number; water: number; foodPersonDays: number } | null>(null)
   const [loading, setLoading] = useState(true)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [aiError, setAiError] = useState<string | null>(null)
@@ -405,10 +414,11 @@ export default function PreparednessPage() {
       if (snap.memberCount != null) setMemberCount(snap.memberCount)
     }
     try {
-      const [invRes, famRes, clRes] = await Promise.all([
+      const [invRes, famRes, clRes, hhRes] = await Promise.all([
         fetch('/api/inventory'),
         fetch('/api/family-members'),
         fetch('/api/checklist', { cache: 'no-store' }),
+        fetch('/api/household'),
       ])
       let parsedInv: Record<string, unknown> | null = null
       if (invRes.ok) {
@@ -424,7 +434,22 @@ export default function PreparednessPage() {
           cash_amount:              Number(inventory.cash_amount)              || 0,
         })
       }
-      if (famRes.ok) {
+      if (hhRes?.ok) {
+        const h = await hhRes.json()
+        if (h?.known) {
+          setHouse({
+            size: h.size,
+            autonomyDays: typeof h.autonomyDays === 'number' ? h.autonomyDays : null,
+            contributors: h.inventory?.contributors ?? 0,
+            water: h.inventory?.waterLiters ?? 0,
+            foodPersonDays: h.inventory?.foodPersonDays ?? 0,
+          })
+          setMemberCount(h.size)
+          if (parsedInv) saveSnapshot('inventory', { inv: parsedInv, memberCount: h.size })
+        }
+      } else if (famRes.ok) {
+        // Sem a casa, a contagem antiga é melhor que zero — mas nunca substitui
+        // a autonomia, que fica nula em vez de virar palpite.
         const { members } = await famRes.json()
         const mc = Array.isArray(members) ? members.length : 0
         setMemberCount(mc)
@@ -592,8 +617,18 @@ export default function PreparednessPage() {
   }
 
   // ── Derived ────────────────────────────────────────────────────────────────
-  const { score, level } = calcReadiness(inv, memberCount)
-  const autonomyDays = Math.floor(inv.food_days)
+  /*
+   * Nota e autonomia olham a CASA; o editor continua pessoal.
+   *
+   * Antes: `Math.floor(inv.food_days)` — os meus dias de comida, sem dividir
+   * por ninguém e sem somar a água de quem mora junto. Numa casa de quatro isso
+   * errava para os dois lados ao mesmo tempo.
+   */
+  const invParaNota = house
+    ? { ...inv, water_liters: house.water, food_days: house.size > 0 ? house.foodPersonDays / house.size : 0 }
+    : inv
+  const { score, level } = calcReadiness(invParaNota, memberCount)
+  const autonomyDays = house?.autonomyDays != null ? Math.floor(house.autonomyDays) : Math.floor(inv.food_days)
   const batteryColor =
     inv.battery_percent >= 60 ? 'var(--ac)' :
     inv.battery_percent >= 30 ? 'var(--warn)' :
