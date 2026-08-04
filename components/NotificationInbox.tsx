@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useLanguage } from '@/lib/i18n'
+import { isNotificationSurface, type NotificationSurface } from '@/lib/notification-surface'
 
 type NotificationRow = {
   id: string
@@ -17,6 +18,7 @@ type NotificationRow = {
   href: string
   severity: string | null
   source_key: string | null
+  surface: NotificationSurface
   metadata: Record<string, unknown>
   created_at: string
   is_read: boolean
@@ -38,6 +40,12 @@ type InboxSection = {
 const COPY = {
   pt: {
     title: 'Inbox EOS',
+    titleWeather: 'Clima',
+    titleFamily: 'Família',
+    titleComms: 'Comms',
+    titlePreparedness: 'Preparação',
+    titleScenario: 'Cenário',
+    titleSystem: 'Sistema',
     unread: 'não lidas',
     empty: 'Nenhuma notificação nova.',
     loading: 'Carregando...',
@@ -52,6 +60,12 @@ const COPY = {
   },
   en: {
     title: 'EOS Inbox',
+    titleWeather: 'Weather',
+    titleFamily: 'Family',
+    titleComms: 'Comms',
+    titlePreparedness: 'Preparedness',
+    titleScenario: 'Scenario',
+    titleSystem: 'System',
     unread: 'unread',
     empty: 'No new notifications.',
     loading: 'Loading...',
@@ -79,11 +93,22 @@ function formatTime(value: string, language: 'pt' | 'en') {
   }
 }
 
-function iconFor(scope: NotificationRow['scope']) {
-  if (scope === 'weather') return '!'
-  if (scope === 'edu') return 'EDU'
-  if (scope === 'simulation') return 'SIM'
-  if (scope === 'circle') return 'MSG'
+function surfaceTitle(surface: NotificationSurface | null, labels: typeof COPY.pt | typeof COPY.en) {
+  if (surface === 'weather') return labels.titleWeather
+  if (surface === 'family') return labels.titleFamily
+  if (surface === 'comms') return labels.titleComms
+  if (surface === 'preparedness') return labels.titlePreparedness
+  if (surface === 'scenario') return labels.titleScenario
+  if (surface === 'system') return labels.titleSystem
+  return labels.title
+}
+
+function iconFor(surface: NotificationSurface) {
+  if (surface === 'weather') return '!'
+  if (surface === 'preparedness') return 'PREP'
+  if (surface === 'scenario') return 'SIM'
+  if (surface === 'family') return 'FAM'
+  if (surface === 'comms') return 'MSG'
   return 'EOS'
 }
 
@@ -148,10 +173,15 @@ export default function NotificationInbox() {
   const { language } = useLanguage()
   const c = COPY[language]
   const [open, setOpen] = useState(false)
+  const [surfaceFilter, setSurfaceFilter] = useState<NotificationSurface | null>(null)
   const [rows, setRows] = useState<NotificationRow[]>([])
   const [loading, setLoading] = useState(false)
-  const unreadCount = rows.filter(row => !row.is_read).length
-  const items = useMemo(() => groupNotifications(rows, language), [rows, language])
+  const visibleRows = useMemo(
+    () => surfaceFilter ? rows.filter(row => row.surface === surfaceFilter) : rows,
+    [rows, surfaceFilter],
+  )
+  const unreadCount = visibleRows.filter(row => !row.is_read).length
+  const items = useMemo(() => groupNotifications(visibleRows, language), [visibleRows, language])
   const sections = useMemo(() => sectionItems(items, c), [items, c])
 
   const load = useCallback(async () => {
@@ -188,7 +218,9 @@ export default function NotificationInbox() {
   }, [])
 
   useEffect(() => {
-    const openInbox = () => {
+    const openInbox = (event: Event) => {
+      const surface = (event as CustomEvent<{ surface?: unknown }>).detail?.surface
+      setSurfaceFilter(isNotificationSurface(surface) ? surface : null)
       setOpen(true)
       void load()
     }
@@ -233,13 +265,16 @@ export default function NotificationInbox() {
 
   if (!open) return null
 
+  const title = surfaceTitle(surfaceFilter, c)
+  const unreadIds = visibleRows.filter(row => !row.is_read).map(row => row.id)
+
   return (
-    <div className="inbox-scrim" role="dialog" aria-modal="true" aria-label={c.title}>
+    <div className="inbox-scrim" role="dialog" aria-modal="true" aria-label={title}>
       <section className="inbox-panel">
         <header className="inbox-head">
           <div>
             <p className="inbox-kicker">EOS</p>
-            <h2>{c.title}</h2>
+            <h2>{title}</h2>
           </div>
           <button type="button" className="inbox-close" onClick={() => setOpen(false)} aria-label={c.close}>
             x
@@ -249,7 +284,7 @@ export default function NotificationInbox() {
         <div className="inbox-actions">
           <span>{unreadCount} {c.unread}</span>
           {unreadCount > 0 ? (
-            <button type="button" onClick={() => { void markRead() }}>{c.markAll}</button>
+            <button type="button" onClick={() => { void markRead(surfaceFilter ? unreadIds : undefined) }}>{c.markAll}</button>
           ) : null}
         </div>
 
@@ -263,8 +298,8 @@ export default function NotificationInbox() {
               <section key={section.key} className="inbox-section">
                 <h3>{section.title}</h3>
                 {section.items.map(item => (
-                  <button key={item.id} type="button" className={`inbox-item ${item.scope}${item.is_read ? ' read' : ''}`} onClick={() => { void openItem(item) }}>
-                    <span className="inbox-icon">{iconFor(item.scope)}</span>
+                  <button key={item.id} type="button" className={`inbox-item ${item.surface}${item.is_read ? ' read' : ''}`} onClick={() => { void openItem(item) }}>
+                    <span className="inbox-icon">{iconFor(item.surface)}</span>
                     <span className="inbox-copy">
                       <strong>{item.displayTitle}</strong>
                       <span>{item.displayBody}</span>

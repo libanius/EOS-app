@@ -164,6 +164,12 @@ D-116 / NAV-T01 fixa a ordem operacional do BottomNav: Clima é o primeiro ícon
 da esquerda para a direita; Cenário é o último. World continua central; Comms
 mantém o comportamento de abrir Inbox quando houver badge.
 
+D-117 / NOTIF-T01 separa badges por surface do app. A tabela continua única, mas
+`notificationSurface()` deriva `weather`, `family`, `comms`, `preparedness`,
+`scenario` ou `system` a partir de `metadata.surface`, `scope` e `kind`.
+`/api/comms/notifications` retorna `unread_by_surface`; BottomNav mostra badge
+por ícone; clicar em ícone com badge abre Inbox filtrado pela surface.
+
 ---
 
 ## EDU é catálogo aprovado antes de virar RAG (2026-08-03)

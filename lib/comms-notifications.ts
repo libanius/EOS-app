@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { notificationSurface, type NotificationSurface } from '@/lib/notification-surface'
 
 type AdminClient = SupabaseClient
 
@@ -21,6 +22,7 @@ type NotifyInput = {
   actorId?: string | null
   recipientIds: string[]
   scope?: CommsNotificationScope
+  surface?: NotificationSurface
   kind: CommsNotificationKind
   title: string
   body: string
@@ -53,6 +55,7 @@ export async function createCommsNotifications({
   actorId = null,
   recipientIds,
   scope = 'circle',
+  surface,
   kind,
   title,
   body,
@@ -76,6 +79,11 @@ export async function createCommsNotifications({
     if (!unique.length) return
   }
 
+  const nextMetadata = {
+    ...metadata,
+    surface: surface ?? notificationSurface({ scope, kind, metadata }),
+  }
+
   const rows = unique.map(recipient_id => ({
     circle_id: circleId,
     recipient_id,
@@ -87,7 +95,7 @@ export async function createCommsNotifications({
     href,
     severity,
     source_key: sourceKey,
-    metadata,
+    metadata: nextMetadata,
   }))
 
   const { error } = await admin.from('circle_notifications').insert(rows)

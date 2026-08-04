@@ -253,6 +253,7 @@ product phase sequenced.
 | Task ID | Task | Status | Notes |
 |---|---|---|---|
 | NAV-T01 | Reordenar BottomNav: Clima primeiro, Cenário último | ✅ COMPLETE | 2026-08-04 — D-116; ordem visual: Clima, Família, Preparação, World, Comms, Círculos, Cenário |
+| NOTIF-T01 | Separar badges por ícone/surface | ✅ COMPLETE | 2026-08-04 — D-117; `unread_by_surface` alimenta Clima, Família, Preparação, Comms e Cenário; Inbox abre filtrado pela surface |
 | PREP-T00 | Spec + decisão do Preparedness Engine | ✅ COMPLETE | 2026-08-03 — D-085 / `docs/20-preparedness-engine.md`; no code/migration authorized |
 | PREP-T01 | Unificar Checklist + Recursos em Preparação | ✅ COMPLETE | 2026-08-03 — D-086; `/preparedness` is the single surface, `/inventory` and `/checklist` redirect |
 | COMMS-T01 | Criar aba Comms app-level | ✅ COMPLETE | 2026-08-03 — D-087 / `docs/21-comms.md`; `/comms` agora tem chat do círculo, guia de rádio e limite explícito de Mesh/LoRa |

@@ -360,6 +360,46 @@ como rota protegida; usuário não logado ia para login, o login ignorava
 
 ---
 
+## D-117 — Badges de notificação são separados por surface do app
+
+**Date**: 2026-08-04
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: O dono decidiu separar as notificações por ícone/página. Tudo que é
+Comms deve aparecer no ícone Comms; Weather no ícone Clima; Preparação no ícone
+Preparação; Família no ícone Família; e Cenário no ícone Cenário. O badge
+global em Comms misturava sinais diferentes demais.
+
+**Decision**:
+
+1. A tabela única de notificações permanece, sem migration nova.
+2. Cada notificação recebe uma `surface` canônica derivada de `metadata.surface`,
+   `scope` e `kind`.
+3. Surfaces v1: `weather`, `family`, `comms`, `preparedness`, `scenario`,
+   `system`.
+4. `/api/comms/notifications` retorna `unread_by_surface`.
+5. BottomNav mostra badges separados em Clima, Família, Preparação, Comms e
+   Cenário.
+6. Clicar em um ícone com badge abre o Inbox filtrado por aquela surface; clicar
+   em um item continua levando ao `href` correto.
+
+**Mapping v1**:
+
+- `weather_alert` / `scope=weather` → `weather`.
+- `message` → `comms`.
+- `edu_content_approved` / `scope=edu` → `preparedness`.
+- `simulation_invite` / `scope=simulation` → `scenario`.
+- `join_request_approved`, `member_joined`, `family_invite`,
+  `family_invite_accepted`, `family_invite_denied` → `family`.
+
+**Consequences**:
+
+- Notificações antigas continuam funcionando porque a surface é derivada.
+- Novas notificações passam a gravar `metadata.surface` pelo helper.
+- `system` fica disponível para notificações futuras fora do BottomNav.
+
+---
+
 ## D-116 — BottomNav prioriza Clima no primeiro item
 
 **Date**: 2026-08-04

@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { emptySurfaceCounts, notificationSurface } from '@/lib/notification-surface'
 
 type NotificationRow = {
   id: string
@@ -18,6 +19,12 @@ type NotificationRow = {
   created_at: string
 }
 
+type UnreadSurfaceRow = {
+  scope: string | null
+  kind: string | null
+  metadata: Record<string, unknown> | null
+}
+
 export async function GET() {
   const supabase = await createClient()
   const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -26,7 +33,7 @@ export async function GET() {
   const admin = createAdminClient()
   if (!admin) return NextResponse.json({ error: 'Service role not configured' }, { status: 503 })
 
-  const [{ data: rows, error }, { count, error: countError }] = await Promise.all([
+  const [{ data: rows, error }, { data: unreadRows, error: unreadError }] = await Promise.all([
     admin
       .from('circle_notifications')
       .select('id, circle_id, actor_id, scope, kind, title, body, href, severity, source_key, metadata, read_at, created_at')
@@ -35,16 +42,22 @@ export async function GET() {
       .limit(80),
     admin
       .from('circle_notifications')
-      .select('*', { count: 'exact', head: true })
+      .select('scope, kind, metadata')
       .eq('recipient_id', user.id)
       .is('read_at', null),
   ])
 
-  if (error || countError) {
-    return NextResponse.json({ notifications: [], unread_count: 0, migration_pending: true })
+  if (error || unreadError) {
+    return NextResponse.json({ notifications: [], unread_count: 0, unread_by_surface: emptySurfaceCounts(), migration_pending: true })
   }
 
   const notifications = ((rows ?? []) as NotificationRow[])
+  const unreadBySurface = emptySurfaceCounts()
+  for (const row of (unreadRows ?? []) as UnreadSurfaceRow[]) {
+    const surface = notificationSurface(row)
+    unreadBySurface[surface] += 1
+  }
+  const unreadCount = Object.values(unreadBySurface).reduce((total, value) => total + value, 0)
   const circleIds = Array.from(new Set(notifications.map(row => row.circle_id).filter((id): id is string => Boolean(id))))
   const actorIds = Array.from(new Set(notifications.map(row => row.actor_id).filter((id): id is string => Boolean(id))))
   const circleNames = new Map<string, string>()
@@ -60,9 +73,11 @@ export async function GET() {
   }
 
   return NextResponse.json({
-    unread_count: count ?? 0,
+    unread_count: unreadCount,
+    unread_by_surface: unreadBySurface,
     notifications: notifications.map(row => ({
       ...row,
+      surface: notificationSurface(row),
       circle_name: row.circle_id ? (circleNames.get(row.circle_id) ?? 'Círculo') : null,
       actor_name: row.actor_id ? (actorNames.get(row.actor_id) ?? 'Alguém') : null,
       is_read: Boolean(row.read_at),

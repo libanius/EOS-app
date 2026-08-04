@@ -4,9 +4,10 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import { useLanguage, type MessageKey } from '@/lib/i18n'
+import { emptySurfaceCounts, type NotificationSurface } from '@/lib/notification-surface'
 import { createClient } from '@/lib/supabase/client'
 
-type NavItem = { href: string; labelKey: MessageKey; icon: React.ReactNode }
+type NavItem = { href: string; labelKey: MessageKey; surface?: NotificationSurface; icon: React.ReactNode }
 
 /**
  * The World dashboard is the app's home, so it does not compete as one tab
@@ -29,6 +30,7 @@ const NAV_LEFT: NavItem[] = [
   {
     href: '/weather',
     labelKey: 'nav.weather',
+    surface: 'weather',
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="12" cy="8" r="4" />
@@ -40,6 +42,7 @@ const NAV_LEFT: NavItem[] = [
   {
     href: '/family',
     labelKey: 'nav.family',
+    surface: 'family',
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -52,6 +55,7 @@ const NAV_LEFT: NavItem[] = [
   {
     href: '/preparedness',
     labelKey: 'nav.preparedness',
+    surface: 'preparedness',
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
@@ -66,6 +70,7 @@ const NAV_RIGHT: NavItem[] = [
   {
     href: '/comms?view=chat',
     labelKey: 'nav.comms',
+    surface: 'comms',
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M4.9 19.1a10 10 0 0 1 0-14.2" />
@@ -92,6 +97,7 @@ const NAV_RIGHT: NavItem[] = [
   {
     href: '/scenario',
     labelKey: 'nav.scenario',
+    surface: 'scenario',
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
@@ -103,30 +109,40 @@ const NAV_RIGHT: NavItem[] = [
 export default function BottomNav() {
   const pathname = usePathname()
   const { t } = useLanguage()
-  const [commsUnread, setCommsUnread] = useState(0)
+  const [unreadBySurface, setUnreadBySurface] = useState<Record<NotificationSurface, number>>(() => emptySurfaceCounts())
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/')
   const hrefPath = (href: string) => href.split('?')[0] || href
 
-  const loadCommsUnread = useCallback(async () => {
+  const loadNotificationBadges = useCallback(async () => {
     try {
       const response = await fetch('/api/comms/notifications', { cache: 'no-store' })
       const data = await response.json().catch(() => ({}))
-      if (response.ok) setCommsUnread(Number(data.unread_count ?? 0))
+      if (response.ok) {
+        const counts = { ...emptySurfaceCounts(), ...(data.unread_by_surface ?? {}) }
+        setUnreadBySurface({
+          weather: Number(counts.weather ?? 0),
+          family: Number(counts.family ?? 0),
+          comms: Number(counts.comms ?? 0),
+          preparedness: Number(counts.preparedness ?? 0),
+          scenario: Number(counts.scenario ?? 0),
+          system: Number(counts.system ?? 0),
+        })
+      }
     } catch {
       /* Badge is additive; navigation must keep working without it. */
     }
   }, [])
 
   useEffect(() => {
-    void loadCommsUnread()
-    const timer = window.setInterval(() => { void loadCommsUnread() }, 15_000)
-    window.addEventListener('eos-comms-read', loadCommsUnread)
+    void loadNotificationBadges()
+    const timer = window.setInterval(() => { void loadNotificationBadges() }, 15_000)
+    window.addEventListener('eos-comms-read', loadNotificationBadges)
     return () => {
       window.clearInterval(timer)
-      window.removeEventListener('eos-comms-read', loadCommsUnread)
+      window.removeEventListener('eos-comms-read', loadNotificationBadges)
     }
-  }, [loadCommsUnread])
+  }, [loadNotificationBadges])
 
   useEffect(() => {
     const supabase = createClient()
@@ -146,7 +162,7 @@ export default function BottomNav() {
             table: 'circle_notifications',
             filter: `recipient_id=eq.${userId}`,
           },
-          () => { void loadCommsUnread() },
+          () => { void loadNotificationBadges() },
         )
         .subscribe()
     })
@@ -155,20 +171,20 @@ export default function BottomNav() {
       mounted = false
       if (channel) void supabase.removeChannel(channel)
     }
-  }, [loadCommsUnread])
+  }, [loadNotificationBadges])
 
-  const tab = ({ href, labelKey, icon }: NavItem) => {
+  const tab = ({ href, labelKey, surface, icon }: NavItem) => {
     const active = isActive(hrefPath(href))
     const label = t(labelKey)
-    const isComms = hrefPath(href) === '/comms'
+    const unreadCount = surface ? unreadBySurface[surface] ?? 0 : 0
     return (
       <Link
         key={href}
         href={href}
         onClick={event => {
-          if (isComms && commsUnread > 0) {
+          if (surface && unreadCount > 0) {
             event.preventDefault()
-            window.dispatchEvent(new Event('eos-open-inbox'))
+            window.dispatchEvent(new CustomEvent('eos-open-inbox', { detail: { surface } }))
           }
         }}
         className={`nb${active ? ' on' : ''}`}
@@ -177,9 +193,9 @@ export default function BottomNav() {
       >
         <span className="nb-icon">
           {icon}
-          {isComms && commsUnread > 0 && (
-            <span className="nb-badge" aria-label={`${commsUnread} notificações não lidas`}>
-              {commsUnread > 99 ? '99+' : commsUnread}
+          {unreadCount > 0 && (
+            <span className="nb-badge" aria-label={`${unreadCount} notificações não lidas`}>
+              {unreadCount > 99 ? '99+' : unreadCount}
             </span>
           )}
         </span>
