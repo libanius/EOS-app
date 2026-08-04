@@ -271,9 +271,14 @@ rights.
 | content | text | chunk text |
 | embedding | vector(1536) | text-embedding-3-small |
 | source | text | filename without extension |
+| source_version | text | For EDU ingestion: `v<edu_content.version>` |
 | scenario_type | scenario_type_enum | inferred from filename |
 | chunk_index | integer | position in source document |
 | created_at | timestamptz | |
+
+EDU-T03 also writes approved educational content into `knowledge_base` using
+`source='edu:<edu_content.id>'` and `source_version='v<edu_content.version>'`.
+This preserves provenance without a new table or schema change.
 
 ### edu_content
 | Column | Type | Notes |

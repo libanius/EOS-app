@@ -278,6 +278,40 @@ como rota protegida; usuário não logado ia para login, o login ignorava
 
 ---
 
+## D-103 — EDU aprovado pode ser ingerido para o RAG com proveniência
+
+**Date**: 2026-08-04
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: EDU-T01 criou o catálogo aprovado e `rag_enabled`; EDU-T02 tornou
+o vídeo consumível no app. O próximo passo é permitir que conteúdo aprovado do
+dono alimente o RAG sem virar busca genérica nem escrita silenciosa em
+`knowledge_base`.
+
+**Decision**:
+
+1. EDU-T03 cria ingestão admin-only de conteúdo `edu_content` para
+   `knowledge_base`.
+2. Só conteúdo `status='approved'` e `rag_enabled=true` pode ser ingerido.
+3. O texto ingerido vem de `title`, `summary`, `transcript/notas`,
+   `source_url` e tags. Não há YouTube API nem transcript automático.
+4. A proveniência fica em `knowledge_base.source = 'edu:<edu_content.id>'` e
+   `knowledge_base.source_version = 'v<edu_content.version>'`.
+5. Reingerir um item apaga os chunks anteriores daquele `source` e grava chunks
+   novos com embeddings OpenAI `text-embedding-3-small`.
+6. Depois de inserir, `edu_content.rag_ingested_at` é atualizado.
+
+**Consequences**:
+
+- O Pilot/RAG passa a poder recuperar conteúdo aprovado do dono quando
+  semanticamente relevante.
+- Não há nova migration nesta fase; o schema atual de `knowledge_base` já tem
+  `source_version`.
+- Captura automática de transcript, scraping de YouTube e criação de tarefas a
+  partir de EDU continuam fora até decisão própria.
+
+---
+
 ## D-102 — Rotas admin exigem privilégio no middleware
 
 **Date**: 2026-08-04

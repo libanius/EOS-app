@@ -1,7 +1,7 @@
 # 22 — EDU
 
-> **Status:** IMPLEMENTED — EDU-T01 / EDU-T02
-> **Decision:** D-090 / D-101
+> **Status:** IMPLEMENTED — EDU-T01 / EDU-T02 / EDU-T03
+> **Decision:** D-090 / D-101 / D-103
 > **Date:** 2026-08-04
 > **Owner:** Paulo Libânio Neto
 > **Surface:** Web/PWA core first
@@ -37,6 +37,13 @@ EDU-T02 adds one consumption behavior:
 5. **In-app video consumption** — approved YouTube content with a recognizable
    `source_url` renders an embedded video player inside `/edu`. The source link
    remains visible. Non-YouTube or unrecognized URLs degrade to the source link.
+
+EDU-T03 adds one ingestion behavior:
+
+6. **Approved RAG ingestion** — owner/admin can ingest an approved item marked
+   `rag_enabled=true` into `knowledge_base`. The ingestion uses owner-provided
+   title, summary, transcript/notes, tags and URL; it does not fetch YouTube
+   data automatically.
 
 ---
 
@@ -84,6 +91,16 @@ RLS is enabled with no direct policies. Reads/writes go through `/api/edu`.
 - Increments version on update.
 - Does not write to `knowledge_base`.
 
+`POST /api/admin/edu/ingest`
+
+- Requires authenticated owner/admin email from `ADMIN_EMAILS`.
+- Body: `{ "id": "<edu_content.id>" }`.
+- Requires `status='approved'` and `rag_enabled=true`.
+- Deletes previous `knowledge_base` chunks for `source='edu:<id>'`.
+- Inserts fresh chunks using OpenAI `text-embedding-3-small`.
+- Stores provenance in `source='edu:<id>'` and `source_version='v<version>'`.
+- Updates `edu_content.rag_ingested_at`.
+
 ---
 
 ## 5. Regras De Negócio
@@ -99,6 +116,9 @@ RLS is enabled with no direct policies. Reads/writes go through `/api/edu`.
 7. Archived content should not show in user catalog.
 8. Embedded video is presentation only. It does not imply transcript capture,
    RAG ingestion, task creation, or completion tracking.
+9. RAG ingestion is explicit owner/admin action. `rag_enabled=true` makes content
+   eligible, but ingestion only happens after the admin triggers it.
+10. Reingestion replaces chunks for the same EDU item source.
 
 ---
 
@@ -115,6 +135,8 @@ EDU-T01 is complete when:
 7. RAG ingestion is explicitly out of scope for this task.
 8. YouTube videos can be watched inside `/edu` when the URL can be safely
    converted to an embed URL.
+9. Owner/admin can ingest approved, RAG-enabled content into `knowledge_base`
+   with `edu_content.id/version` preserved as provenance.
 
 ---
 
@@ -122,8 +144,7 @@ EDU-T01 is complete when:
 
 - YouTube API integration;
 - automatic transcript fetching;
-- automatic embeddings;
-- direct writes to `knowledge_base`;
+- automatic embeddings without explicit admin action;
 - task/checklist creation from EDU;
 - per-circle EDU assignments;
 - video hosting outside provider embeds;

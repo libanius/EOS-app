@@ -259,6 +259,7 @@ product phase sequenced.
 | COMMS-T03 | Tornar referência de rádio editável por círculo | ✅ COMPLETE | 2026-08-03 — D-089; `circle_radio_profiles`, `/api/comms/radio`, leitura por membro e edição Admin/Editor |
 | EDU-T01 | Conteúdo educativo como fonte oficial EOS | ✅ COMPLETE | 2026-08-03 — D-090; `edu_content`, `/edu`, `/admin/edu`, fonte visível, aprovação/versionamento e RAG futuro sem ingestão automática |
 | EDU-T02 | Consumo de vídeo aprovado dentro do EOS | ✅ COMPLETE | 2026-08-04 — D-101; `/edu` renderiza player YouTube embutido para `source_url` reconhecida e mantém link de fonte visível |
+| EDU-T03 | Ingestão aprovada de EDU para RAG | ✅ COMPLETE | 2026-08-04 — D-103; admin ingere item `approved` + `rag_enabled`, grava chunks em `knowledge_base` com `source=edu:<id>` e `source_version=v<version>` |
 | ONB-T01 | Onboarding contextual por convite de simulação | ✅ COMPLETE | 2026-08-03 — D-091 / `docs/23-onboarding-by-simulation.md`; `/sim/[token]` preserva contexto, login/signup mantêm redirect e `/onboarding` devolve ao convite |
 | SIM-T11 | Simulação gera preparação acionável | ✅ COMPLETE | 2026-08-03 — D-092 / `docs/24-simulation-preparedness-actions.md`; debrief gera propostas confirmáveis com fonte e salva em `SIMULATION_DEBRIEF` |
 | PILOT-T08 | Pilot como educador situacional | ✅ COMPLETE | 2026-08-03 — D-093 / `docs/25-pilot-situational-educator.md`; propostas do Pilot têm tipo/fonte/destino, confirmação explícita e `PILOT_RECOMMENDATION` |

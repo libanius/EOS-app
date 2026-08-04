@@ -134,6 +134,14 @@ embutido usando `youtube-nocookie.com` e mantém o link de fonte visível. Isso
 não captura transcript, não marca progresso, não cria tarefas e não escreve no
 RAG.
 
+D-103 / EDU-T03 permite ingestão explícita no RAG pelo Admin EDU. O item precisa
+estar `approved` e `rag_enabled=true`; o dono clica "Ingerir RAG". A rota
+`POST /api/admin/edu/ingest` gera embeddings OpenAI `text-embedding-3-small`,
+remove chunks antigos de `knowledge_base.source='edu:<id>'`, insere os novos e
+marca `rag_ingested_at`. A proveniência é `source='edu:<edu_content.id>'` e
+`source_version='v<edu_content.version>'`. Não há YouTube API nem transcript
+automático.
+
 ---
 
 ## Memória do Pilot exige confirmação e evento de auditoria (2026-08-03)

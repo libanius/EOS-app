@@ -23,6 +23,7 @@ export default function AdminEduPage() {
   const [items, setItems] = useState<EduContent[]>([])
   const [form, setForm] = useState(EMPTY)
   const [busy, setBusy] = useState(false)
+  const [ingestingId, setIngestingId] = useState<string | null>(null)
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
 
   const load = useCallback(async () => {
@@ -73,6 +74,26 @@ export default function AdminEduPage() {
       rag_enabled: item.rag_enabled,
     })
     window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  async function ingest(item: EduContent) {
+    setIngestingId(item.id)
+    setMsg(null)
+    try {
+      const response = await fetch('/api/admin/edu/ingest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: item.id }),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data.error ?? 'Erro ao ingerir.')
+      setMsg({ ok: true, text: `RAG atualizado: ${data.chunks} chunk(s) · ${data.sourceVersion}.` })
+      await load()
+    } catch (error) {
+      setMsg({ ok: false, text: error instanceof Error ? error.message : 'Erro ao ingerir.' })
+    } finally {
+      setIngestingId(null)
+    }
   }
 
   if (authorized === null) return <main style={s.page}><p style={s.muted}>Carregando...</p></main>
@@ -151,9 +172,23 @@ export default function AdminEduPage() {
           <article key={item.id} style={s.item}>
             <div>
               <strong>{item.title}</strong>
-              <p style={s.muted}>{item.status} · v{item.version} · {item.source_type} · {item.scenario_tags.join(', ') || 'sem tags'}</p>
+              <p style={s.muted}>
+                {item.status} · v{item.version} · {item.source_type} · {item.scenario_tags.join(', ') || 'sem tags'}
+                {item.rag_ingested_at ? ` · RAG ${new Date(item.rag_ingested_at).toLocaleString()}` : ''}
+              </p>
+              {item.rag_enabled ? <p style={s.ragHint}>Elegível para RAG</p> : null}
             </div>
-            <button style={s.secondary} onClick={() => edit(item)}>Editar</button>
+            <div style={s.itemActions}>
+              <button style={s.secondary} onClick={() => edit(item)}>Editar</button>
+              <button
+                style={{ ...s.secondary, opacity: item.status === 'approved' && item.rag_enabled && ingestingId !== item.id ? 1 : 0.5 }}
+                onClick={() => ingest(item)}
+                disabled={item.status !== 'approved' || !item.rag_enabled || ingestingId === item.id}
+                title={item.status !== 'approved' || !item.rag_enabled ? 'Aprove e marque como elegível para RAG primeiro.' : 'Ingerir no RAG'}
+              >
+                {ingestingId === item.id ? 'Ingerindo...' : 'Ingerir RAG'}
+              </button>
+            </div>
           </article>
         ))}
       </div>
@@ -177,4 +212,6 @@ const s: Record<string, React.CSSProperties> = {
   btn: { minHeight: 48, padding: '13px 18px', background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.35)', borderRadius: 14, color: '#22c55e', fontSize: 15, fontWeight: 650, cursor: 'pointer' },
   secondary: { minHeight: 40, padding: '10px 14px', background: 'transparent', border: '1px solid rgba(255,255,255,0.14)', borderRadius: 12, color: '#e5e7eb', cursor: 'pointer' },
   item: { display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', padding: 14, border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, background: 'rgba(255,255,255,0.03)' },
+  itemActions: { display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' },
+  ragHint: { margin: '-10px 0 0', color: '#22c55e', fontSize: 12, fontWeight: 650 },
 }
