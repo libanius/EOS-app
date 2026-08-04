@@ -145,6 +145,7 @@
 | **Supabase** | ✅ Healthy — project ref `alxurmgpyxjhvnliivbf` |
 | **Notificações de clima** | ✅ Funcionando (2026-08-04). `CRON_SECRET` criado na Vercel e no GitHub; execução manual do workflow **verde** (`ping` 7 s). Cadência de 15 min via GitHub Actions, de graça; cron diário da Vercel (`0 11 * * *`) fica como rede de segurança — o plano Hobby não aceita mais que isso, e um `*/15` no `vercel.json` **bloqueia todo deploy**. |
 | **⚠️ Pendência — agendador** | Dois pontos a vigiar: (1) o GitHub **desativa workflows agendados após 60 dias sem commits** no repositório — se o projeto parar, as notificações param junto e nada avisa; (2) decidir se vale Vercel Pro para trazer o agendador de volta para casa e eliminar a dependência do GitHub. |
+| **Banco de produção** | ✅ Limpo em 2026-08-04: 32 contas de teste, 24 perfis órfãos e 8 círculos removidos; as **8 contas reais intactas**. Causa corrigida em `scripts/lib/test-cleanup.mjs` (D-114) — a limpeza passa a rodar em qualquer saída, não só no fim feliz. |
 | **⚠️ Segurança** | Rotacionar segredos expostos em chat: Vercel token (`vcp_…`), Supabase PAT (`sbp_…`), Stripe test/Live keys, MapTiler. |
 
 ---

@@ -22,6 +22,7 @@ import { spawn } from 'node:child_process'
 import { config } from 'dotenv'
 import { chromium } from 'playwright'
 config({ path: '.env.local' })
+import { track, cleanupOnExit } from './lib/test-cleanup.mjs'
 
 const URL = process.env.NEXT_PUBLIC_SUPABASE_URL
 const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -34,6 +35,11 @@ const admin = (p, o = {}) => fetch(`${URL}${p}`, {
   ...o,
   headers: { 'Content-Type': 'application/json', apikey: KEY, Authorization: `Bearer ${KEY}`, Prefer: 'return=representation', ...o.headers },
 })
+
+// D-114: a limpeza acontece em QUALQUER saída — inclusive quando uma asserção
+// estoura no meio. Foi o "só limpa no fim" que deixou 32 contas de teste no
+// banco de produção.
+cleanupOnExit(admin)
 
 let pass = 0, fail = 0
 const ok = (l, d = '') => { pass++; console.log(`✅ ${l}${d ? ': ' + d : ''}`) }
@@ -66,6 +72,7 @@ async function mkUser(name) {
       last_location_at: new Date().toISOString(),
     }),
   })
+  track.user(u.id)
   return { id: u.id, email, name }
 }
 
@@ -105,6 +112,7 @@ const circle = await admin('/rest/v1/circles', { method: 'POST', body: JSON.stri
   name: 'Pino Teste', leader_id: eu.id,
   invite_code: Math.random().toString(36).slice(2, 8).toUpperCase().padEnd(6, '0').slice(0, 6),
 }) }).then(r => r.json())
+track.circle(circle[0]?.id)
 await admin('/rest/v1/circle_members', { method: 'POST', body: JSON.stringify([
   { circle_id: circle[0].id, user_id: eu.id, role: 'Admin', share_inventory: true, shared_fields: ['location'] },
   { circle_id: circle[0].id, user_id: outra.id, role: 'Editor', share_inventory: true, shared_fields: ['location'] },

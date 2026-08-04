@@ -27,6 +27,7 @@ import { spawn } from 'node:child_process'
 import { config } from 'dotenv'
 import { chromium } from 'playwright'
 config({ path: '.env.local' })
+import { track, cleanupOnExit } from './lib/test-cleanup.mjs'
 
 const URL = process.env.NEXT_PUBLIC_SUPABASE_URL
 const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -67,6 +68,11 @@ const admin = (p, o = {}) => fetch(`${URL}${p}`, {
   ...o,
   headers: { 'Content-Type': 'application/json', apikey: KEY, Authorization: `Bearer ${KEY}`, Prefer: 'return=representation', ...o.headers },
 })
+
+// D-114: a limpeza acontece em QUALQUER saída — inclusive quando uma asserção
+// estoura no meio. Foi o "só limpa no fim" que deixou 32 contas de teste no
+// banco de produção.
+cleanupOnExit(admin)
 
 let pass = 0, fail = 0
 const ok = (l, d = '') => { pass++; console.log(`✅ ${l}${d ? ': ' + d : ''}`) }

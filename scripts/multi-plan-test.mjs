@@ -7,6 +7,7 @@
  */
 import { config } from 'dotenv'
 config({ path: '.env.local' })
+import { track, cleanupOnExit } from './lib/test-cleanup.mjs'
 import { spawn } from 'node:child_process'
 import { chromium } from 'playwright'
 const URL=process.env.NEXT_PUBLIC_SUPABASE_URL, KEY=process.env.SUPABASE_SERVICE_ROLE_KEY
