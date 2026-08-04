@@ -252,7 +252,7 @@ product phase sequenced.
 
 | Task ID | Task | Status | Notes |
 |---|---|---|---|
-| SEC-T01 | Limite de uso no Pilot + visibilidade de erro de produção | 🟡 AGUARDA MIGRATION | 2026-08-04 — D-118; `consume_rate_limit()` atômico no Postgres e `error_log`; `custom-activity` passa a exigir login; falta aplicar `20260804180000` |
+| SEC-T01 | Limite de uso no Pilot + visibilidade de erro de produção | ✅ COMPLETE | 2026-08-04 — D-118; `consume_rate_limit()` atômico no Postgres e `error_log`; `custom-activity` exige login; migration `20260804180000` aplicada pelo dono e `node scripts/guardrails-test.mjs` passou 5/5 |
 | NAV-T01 | Reordenar BottomNav: Clima primeiro, Cenário último | ✅ COMPLETE | 2026-08-04 — D-116; ordem visual: Clima, Família, Preparação, World, Comms, Círculos, Cenário |
 | NOTIF-T01 | Separar badges por ícone/surface | ✅ COMPLETE | 2026-08-04 — D-117; `unread_by_surface` alimenta Clima, Família, Preparação, Comms e Cenário; Inbox abre filtrado pela surface |
 | PREP-T00 | Spec + decisão do Preparedness Engine | ✅ COMPLETE | 2026-08-03 — D-085 / `docs/20-preparedness-engine.md`; no code/migration authorized |

@@ -96,22 +96,17 @@ await page.locator('button').last().click()
 await page.waitForURL(/dashboard|ficha|onboarding|preparedness/, { timeout: 30000 }).catch(() => {})
 
 // ── 2. rajada barrada, com frase legível ────────────────────────────────────
-// 14 chamadas contra um teto de 12 por minuto. As primeiras podem chegar ao
-// modelo; o que importa é que as últimas sejam recusadas ANTES disso.
+// 14 chamadas contra um teto de 12 por minuto. Elas precisam ser paralelas e
+// com JSON inválido de propósito: o limitador roda antes do parse e antes do
+// modelo, então o teste prova o guardrail sem gastar OpenAI.
 const rajada = await page.evaluate(async () => {
-  const respostas = []
-  for (let i = 0; i < 14; i += 1) {
-    const r = await fetch('/api/pilot/chat', {
+  const requests = Array.from({ length: 14 }, () => fetch('/api/pilot/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messages: [{ role: 'user', content: 'oi' }],
-        context: { pt: true, riskState: 'safe', score: 10, headline: 'teste', people: 1, hasInfants: false, hasMedicalConditions: false, mobilityImpaired: 0, autonomyDays: 1, waterDays: 1, foodDays: 1, powerDays: 1, fuelDays: 1, checklistPct: 0, alerts: [] },
-      }),
-    })
-    respostas.push(await r.json().catch(() => null))
-  }
-  return respostas.map(x => ({ erro: x?.error ?? null, reply: (x?.reply ?? '').slice(0, 60) }))
+      body: 'isto nao e json',
+    }).then(async r => ({ status: r.status, body: await r.json().catch(() => null) })))
+  const respostas = await Promise.all(requests)
+  return respostas.map(x => ({ status: x.status, erro: x.body?.error ?? null, reply: (x.body?.reply ?? '').slice(0, 60) }))
 })
 
 const barradas = rajada.filter(r => r.erro === 'rate_limited')

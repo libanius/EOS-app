@@ -177,6 +177,9 @@ fica só como fallback de degradação. Rotas OpenAI caras (`/api/pilot/chat` e
 `custom-activity` exige login. Enquanto Sentry não tiver DSN, `error_log` guarda
 erro sanitizado; `/api/health` mostra rate limit, error log, Sentry, OpenAI,
 push e cron. Migration: `20260804180000_rate_limit_and_error_log.sql`.
+O dono aplicou a migration em 2026-08-04; `node scripts/guardrails-test.mjs`
+passou 5/5. O teste de rajada usa chamadas paralelas com JSON inválido de
+propósito para provar o rate limit antes do parse e antes de gastar OpenAI.
 
 ---
 

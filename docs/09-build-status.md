@@ -11,7 +11,7 @@
 |---|---|
 | **Current Phase** | Preparedness Engine (PREP/EDU/COMMS/ONB/PILOT) sobre Web/PWA |
 | **Last Completed Task** | **D-118 / LA-T04 — Rate limit distribuído + health/error log (2026-08-04)** |
-| | **D-118 / SEC-T01 — Limite de uso do Pilot no Postgres + `error_log` (2026-08-04) — AGUARDA MIGRATION** |
+| | **D-118 / SEC-T01 — Limite de uso do Pilot no Postgres + `error_log` (2026-08-04) — migration aplicada e guardrails 5/5** |
 | | **D-117 / NOTIF-T01 — Badges separados por ícone/surface (2026-08-04)** |
 | | **D-116 / NAV-T01 — BottomNav com Clima primeiro e Cenário último (2026-08-04)** |
 | | **D-115 / COMMS-T10 — Notificação de mensagem também atualiza o chat (2026-08-04)** |
@@ -88,7 +88,7 @@
 | | D-064 / FAM-T01→T04 — localização familiar ao vivo, consentimento próprio e remoção dos mocks do mapa (2026-07-27) |
 | **Migration** | ✅ `20260730000000_family_plan_triggers.sql` aplicada pelo dono em 2026-07-30 e verificada. Gatilho gravando ponta a ponta no teste de navegador. |
 | **Migration** | ✅ `20260804014000_inbox_eos_notifications.sql` aplicada pelo dono em 2026-08-04. Evolui `circle_notifications` para Inbox EOS app-level (`scope`, `severity`, `source_key`, `circle_id` nullable). |
-| **Migration** | ⏳ `20260804180000_rate_limit_and_error_log.sql` pendente de aplicação pelo dono. Adiciona `rate_limit_buckets`, RPC `consume_rate_limit` e `error_log`; `/api/health` mostra `migration_pending` até aplicar. |
+| **Migration** | ✅ `20260804180000_rate_limit_and_error_log.sql` aplicada pelo dono em 2026-08-04 e verificada com `/api/health` + `node scripts/guardrails-test.mjs` (5/5). Adiciona `rate_limit_buckets`, RPC `consume_rate_limit` e `error_log`. |
 | **Migration** | ⏳ `20260804015000_edu_view_count.sql` pendente de aplicação pelo dono. Adiciona `edu_content.view_count` para destaque do vídeo mais clicado. |
 | **Migration** | ✅ `20260804013000_comms_realtime.sql` aplicada pelo dono em 2026-08-04. Libera leitura RLS controlada e publicação realtime para `circle_messages` e `circle_notifications`. |
 | **Migration** | ✅ `20260804012000_circle_notifications.sql` aplicada pelo dono em 2026-08-04. Cria `circle_notifications` para badge vermelho do Comms e timeline social de interações. |
@@ -132,8 +132,8 @@
 | **In Progress** | — |
 | **Platform Alignment** | ✅ D-084: EOS é plataforma multi-superfície com um único core operacional. Web/PWA segue como superfície primária; iOS/Android serão adapters nativos futuros; Automotive é companion mode restrito; Mesh/LoRa segue bloqueado por G-05. `/mobile/` é template/conceitual, não app inicializado. |
 | **Fases pedidas pelo dono (2026-07-31)** | ✅ 1. Camadas de clima + rastreio de ciclone (D-078). 2. Reinventar a aba Família no design system da v2, com componentes dinâmicos. 3. WV2-T05 (a11y/perf), PLAN-T07 (Pilot propõe plano). |
-| **Next Task** | Operacional: aplicar `20260804180000_rate_limit_and_error_log.sql` e `20260804015000_edu_view_count.sql`; depois rodar `node scripts/guardrails-test.mjs` para verificar rate limit distribuído + `error_log`. |
-| **Build** | ✅ D-118 validado em 2026-08-04 com `npm run type-check`, `npm test -- --runInBand` (88/88), `npm run build` e `git diff --check`. Guardrails E2E (`node scripts/guardrails-test.mjs`) depende da migration `20260804180000_rate_limit_and_error_log.sql`. |
+| **Next Task** | Operacional: aplicar `20260804015000_edu_view_count.sql` se ainda estiver pendente; depois seguir o próximo item aberto do roadmap. |
+| **Build** | ✅ D-118 validado em 2026-08-04 com `npm run type-check`, `npm test -- --runInBand` (88/88), `npm run build`, `git diff --check` e `node scripts/guardrails-test.mjs` (5/5 após migration). |
 | **Plano execução** | ✅ PLAN-T08 MVP: tocar no próprio rosto no mapa abre comando familiar; "Executar plano" carrega um plano escolhido, monta passos determinísticos do host (círculo → gatilhos → papéis → pontos → rotas → encerramento) e alerta o círculo com push preset "Execute o plano da família agora". Sem nova tabela ainda: timeline compartilhada fica para `family_plan_executions`. |
 | **Plano múltiplo** | ✅ PLAN-T09: o círculo pode ter vários planos ativos; `/plan` alterna/cria planos por nome, o executor escolhe qual plano rodar, passos fixos do EOS saem da lista numerada e há cancelar/falso alarme. Migration `20260731000000_multiple_family_plans.sql` aplicada pelo dono. |
 | **Rotas do plano** | ✅ PLAN-T10: cada rota desenhada no plano agora tem handoff "Google Maps" com origem, destino e paradas intermediárias na ordem da `LineString`. O EOS mantém o combinado offline; Google Maps calcula ruas/ETA quando abrir. |
