@@ -19,8 +19,9 @@
  * pelo `linked_user_id`, e o que falta é dito na cara: quem não tem conta não
  * aparece no mapa, e a tela explica por quê em vez de omitir a pessoa.
  *
- * O cadastro continua existindo em `/family-legacy`. Ele não foi jogado fora —
- * só deixou de ser a primeira coisa que a família vê.
+ * O cadastro continua existindo em `/family/cadastro`. Ele não foi jogado fora
+ * — só deixou de ser a primeira coisa que a família vê. (Até o D-122 ele vivia
+ * em `/family-legacy` e era uma tela de outro app; agora é a mesma linguagem.)
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -352,7 +353,7 @@ export default function FamilyPage() {
           <Card accented>
             <strong className="t-title2">{c.empty}</strong>
             <p className="t-body ink-2">{c.emptyWhy}</p>
-            <Link className="wv2-pill primary" href="/family-legacy">{c.add}</Link>
+            <Link className="wv2-pill primary" href="/family/cadastro">{c.add}</Link>
           </Card>
         ) : (
           <>
@@ -494,7 +495,7 @@ export default function FamilyPage() {
                   pt={pt}
                 />
               )}
-              <Link className="wv2-pill" href="/family-legacy">{c.manage}</Link>
+              <Link className="wv2-pill" href="/family/cadastro">{c.manage}</Link>
               <Link className="wv2-pill" href="/circles">{c.inviteCircle}</Link>
             </div>
           </>

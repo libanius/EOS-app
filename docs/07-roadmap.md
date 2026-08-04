@@ -252,6 +252,7 @@ product phase sequenced.
 
 | Task ID | Task | Status | Notes |
 |---|---|---|---|
+| FAM-T03 | Cadastro da família reconstruído no design system | ✅ COMPLETE | 2026-08-04 — D-122; `/family-legacy` era a ação primária da aba e saía do app; virou `/family/cadastro`, com "o que falta" no lugar do painel de métricas; 9/9 com controles negativos |
 | SEC-T03 | Agrupamento automático de defeitos | ✅ COMPLETE | 2026-08-04 — D-121; impressão digital no `context`, `/api/errors` com a lista de defeitos, aviso passa a ser por defeito novo; 11 testes unitários + 6/6 de integração |
 | CI-T01 | Portão automático no `main` | ✅ COMPLETE | 2026-08-04 — D-120; tipos, lint, 91 testes unitários e build a cada push/PR; testes de navegador ficam fora porque escrevem no banco de produção |
 | SEC-T02 | Erro do navegador no log + aviso ao dono | ✅ COMPLETE | 2026-08-04 — D-119; `ClientErrorReporter` no layout raiz, `/api/client-error` com teto por IP, aviso por push de carona no cron; `client-error-test` 6/6 com 3 controles negativos |

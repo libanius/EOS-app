@@ -360,6 +360,78 @@ como rota protegida; usuário não logado ia para login, o login ignorava
 
 ---
 
+## D-122 — A ação principal da aba Família saía do aplicativo
+
+**Contexto.** O dono abriu `/family-legacy` e disse que "não estava condizente".
+Estava certo, e o problema era maior do que estética: **aquela não era uma
+página esquecida**. `FamilyPage` mandava o usuário para lá em "Cadastrar a
+família" e em "Editar cadastro" — ou seja, a ação primária da aba levava a uma
+tela de outro aplicativo.
+
+O que havia lá: verde neon `#0DE864`, tipografia mono em caixa alta, botões
+cortados em paralelogramo por `clip-path` e **três controles que mentiam** — um
+hambúrguer que não abria nada, um sino com bolinha vermelha permanente e uma
+pílula "CONNECTED · Family Grid" que não media conexão nenhuma. Sem botão de
+voltar: quem entrava ficava preso. Erro em `alert()` do navegador.
+
+**O que foi cortado, e por quê.** A tela abria com "SECURITY SCORE 00", três
+mostradores e um feed de 24 horas — um painel de métricas antes da tarefa. A
+pergunta que se faz ali é *"meu cadastro está completo?"*, não *"qual é o meu
+score"*; o score já existe na aba Família, que é onde ele decide alguma coisa.
+Controle decorativo saiu inteiro: um controle que promete um menu inexistente é
+uma mentira, não um enfeite.
+
+**O que entrou no lugar.** O que falta em cada pessoa, dito na cara: *"Falta:
+idade, informação de saúde"*. O EOS calcula água, comida e rota POR PESSOA — uma
+idade em branco não é campo vazio, é conta errada. Essa é a única razão da tela
+existir, então é ela que ocupa o topo. Tudo que a tela antiga fazia de útil
+ficou: cadastro, sugestão de etiquetas por IA, medicamentos, leitura de ficha
+por QR e vínculo com a conta do círculo.
+
+**A rota mudou para `/family/cadastro`.** "legacy" nunca foi um endereço para
+onde se manda um usuário. `/family-legacy` virou redirecionamento, porque um 404
+seria uma segunda falha em cima da primeira.
+
+**Dois defeitos meus, achados pelo teste de navegador e pela captura de tela.**
+
+O primeiro: eu dei `z-index: 60` ao painel do formulário, e a barra de navegação
+é `100`. **O botão Salvar ficava atrás da barra** — no telefone não dava para
+salvar. Uma tarefa modal cobre o fundo, e a barra é fundo. O segundo veio da
+captura: o material da folha era translúcido demais e a tela de baixo continuava
+legível através dela, com "Isadora" e "Falta: idade" competindo com o formulário.
+`--mat-thick` existe para a folha do mapa, onde ver o mapa é a razão da
+translucidez; aqui atrás não há nada que ajude a decidir. Superfície maior lê
+como vidro mais grosso — e legibilidade não pode depender de o `backdrop-filter`
+ter sido renderizado.
+
+Também ficou o teclado: o botão de salvar mora no rodapé, que é exatamente onde
+o teclado sobe. `dvh` não encolhe com o teclado no iOS, então a altura vem do
+`visualViewport`.
+
+**A armadilha do ASI pela TERCEIRA vez, e desta vez com trava.** Uma linha
+começando com `/regex/` logo depois de `)` é lida como divisão, e o teste passa
+verde testando outra coisa. Aconteceu no teste de push, no de convite e agora
+neste. A causa de repetir é que `next lint` só olha `app/`, `lib/` e
+`components/` — `scripts/` nunca foi verificado. Agora existe
+`.eslintrc.scripts.json` com `eslint:recommended`, `npm run lint:scripts`, e o
+passo entrou no CI. Confirmado com controle negativo: a regra
+`no-unexpected-multiline` acusa o padrão exato.
+
+**Prova.** `scripts/roster-page-test.mjs`, 9/9, com controles negativos que
+importam mais que os positivos: não basta a tela nova existir, **a antiga não
+pode ter sobrado** — o teste varre o DOM procurando o verde `#0DE864` em
+qualquer propriedade que pinte, `clip-path: polygon`, e os textos "CONNECTED",
+"Family Grid" e "SECURITY SCORE". Também confirma que nenhum `alert()` do
+navegador dispara, que o caminho de volta existe **e volta**, e que o aviso de
+informação faltando some quando o dado é preenchido.
+
+**O que fica pendente.** Sobraram `/dashboard-legacy`, `/scenario-legacy` e
+`/checklist-legacy`. Nenhuma delas é alvo de link no produto — são arquivo, não
+caminho de usuário. Só valem o mesmo tratamento se alguma voltar a ser
+alcançável.
+
+---
+
 ## D-121 — Agrupamento automático de defeitos, sem Sentry
 
 **Contexto.** O D-119 fechou a visibilidade: erro de servidor e de navegador

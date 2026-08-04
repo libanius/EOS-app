@@ -58,6 +58,14 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # Os scripts de teste ficam fora do `next lint` (que só olha app/, lib/ e
+      # components/), e foi ali que a mesma armadilha de sintaxe passou TRÊS
+      # vezes: uma linha começando com `/regex/` depois de `)` é lida como
+      # divisão, e o teste roda "verde" testando outra coisa. `eslint:recommended`
+      # pega isso mecanicamente — melhor que eu lembrar.
+      - name: Lint dos scripts de teste
+        run: npm run lint:scripts
+
       - name: Testes unitários
         run: npm test
 

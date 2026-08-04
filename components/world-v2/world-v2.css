@@ -3147,3 +3147,311 @@
 .invite-share-family em { font-style: normal; font-size: 0.75rem; color: var(--ink-3, #71717a); }
 .invite-share-note { font-size: 0.75rem; color: var(--ink-2, #a1a1aa); overflow-wrap: anywhere; margin: 0; }
 .wv2-family-page .family-invite { display: grid; gap: var(--s2); }
+
+/* ═══ Cadastro da família (D-122) ═══════════════════════════════════════════
+   A tela anterior vivia fora do sistema: verde neon, mono em caixa alta e
+   botões cortados em paralelogramo. Aqui não há um único valor novo — tudo sai
+   dos tokens que as outras telas já usam, que é o que faz o app ler como um
+   app só. */
+
+.wv2.wv2-roster-page {
+  position: static;
+  inset: auto;
+  overflow: visible;
+  min-height: 100dvh;
+  background: #000;
+}
+.wv2-roster-page .roster-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+  max-width: 720px;
+  margin: 0 auto;
+  padding: calc(var(--s6) + env(safe-area-inset-top)) var(--edge) calc(var(--nav-inset) + var(--s8));
+}
+
+/* Wayfinding: a saída é a primeira coisa da tela. Área de toque de 44px mesmo
+   com o texto pequeno — o alvo é maior que o desenho. */
+.wv2-roster-page .roster-back {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1);
+  min-height: 44px;
+  padding: 0 var(--s2);
+  margin-left: calc(var(--s2) * -1);
+  color: var(--ink-2);
+  font-size: 1rem;
+  text-decoration: none;
+  transition: opacity 120ms ease-out;
+}
+.wv2-roster-page .roster-back:active { opacity: 0.55; }
+.wv2-roster-page .roster-back > span { font-size: 1.375rem; line-height: 1; }
+
+.wv2-roster-page .roster-head { padding: 0 var(--s2); display: grid; gap: var(--s2); }
+.wv2-roster-page .roster-title {
+  margin: 0;
+  /* Tracking negativo porque o texto é grande: letras crescidas leem
+     espaçadas demais com tracking neutro. */
+  font-size: clamp(1.75rem, 6.5vw, 2.25rem);
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  font-weight: 700;
+}
+.wv2-roster-page .roster-count { margin-top: var(--s1); }
+
+.wv2-roster-page .roster-actions { display: flex; gap: var(--s2); flex-wrap: wrap; }
+
+.wv2-roster-page .roster-person { display: grid; gap: var(--s3); }
+.wv2-roster-page .roster-person .row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+.wv2-roster-page .roster-person .id { display: grid; gap: 2px; min-width: 0; }
+.wv2-roster-page .roster-person .id em { font-style: normal; overflow-wrap: anywhere; }
+.wv2-roster-page .roster-person .chips { display: flex; gap: var(--s2); flex-wrap: wrap; }
+.wv2-roster-page .roster-person .link-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+  flex-wrap: wrap;
+  padding-top: var(--s2);
+  border-top: 1px solid var(--sep);
+}
+.wv2-roster-page .roster-candidates { margin: var(--s3) 0 0; padding-left: var(--s4); display: grid; gap: var(--s2); }
+
+/* ── Botões de texto ──────────────────────────────────────────────────────── */
+.wv2-roster-page .roster-plain {
+  justify-self: flex-start;
+  min-height: 44px;
+  padding: 0 var(--s2);
+  border: 0;
+  background: none;
+  color: var(--ink-3);
+  font: inherit;
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition: opacity 120ms ease-out;
+}
+.wv2-roster-page .roster-plain:active { opacity: 0.5; }
+.wv2-roster-page .roster-danger {
+  min-height: 48px;
+  padding: 0 var(--s4);
+  border-radius: var(--r-pill);
+  border: 1px solid rgba(255, 69, 58, 0.32);
+  background: rgba(255, 69, 58, 0.12);
+  color: #ff453a;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 100ms ease-out;
+}
+.wv2-roster-page .roster-danger:active { transform: scale(0.97); }
+
+/* ── A folha do formulário ────────────────────────────────────────────────── */
+.wv2-roster-page .roster-scrim {
+  position: fixed;
+  inset: 0;
+  /* Acima da barra de navegação (z-index 100) e do AppActions (200).
+     A primeira versão usava 60 e o botão Salvar ficava ATRÁS da barra — no
+     telefone não dava para salvar. Uma tarefa modal cobre o fundo; a barra é
+     fundo. O teste de navegador pegou isto antes do usuário. */
+  z-index: 900;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  /* Tarefa modal: escurece o fundo e o empurra para trás. */
+  background: rgba(0, 0, 0, 0.72);
+  animation: rosterScrim 220ms ease-out both;
+}
+.wv2-roster-page .roster-sheet {
+  width: min(100%, 720px);
+  /* O teclado do celular cobre a parte de baixo da tela, e é exatamente ali
+     que fica o botão de salvar. `--roster-keyboard` é medido pelo visualViewport
+     e sobe a folha na mesma altura. */
+  margin-bottom: var(--roster-keyboard, 0px);
+  max-height: calc(92dvh - var(--roster-keyboard, 0px));
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--r-sheet) var(--r-sheet) 0 0;
+  /* Material MAIS PESADO que o do mapa, de propósito.
+     `--mat-thick` (0.78) existe para a folha do mapa, onde ver o mapa por trás
+     é a razão da translucidez. Aqui atrás não há nada que ajude a decidir — e
+     a captura mostrou a tela de baixo legível ATRAVÉS da folha, com "Isadora" e
+     "Falta: idade" competindo com o formulário. Superfície maior lê como vidro
+     mais grosso, e a legibilidade não pode depender de o `backdrop-filter` ter
+     sido renderizado. */
+  background: rgba(20, 20, 23, 0.94);
+  border: 1px solid var(--sep);
+  border-bottom: 0;
+  backdrop-filter: blur(var(--mat-blur-lg)) saturate(var(--mat-sat));
+  -webkit-backdrop-filter: blur(var(--mat-blur-lg)) saturate(var(--mat-sat));
+  box-shadow: 0 -24px 60px -30px rgba(0, 0, 0, 1);
+  /* Materializa: o desfoque e a escala entram JUNTOS, para a superfície ler
+     como vidro chegando e não como opacidade mudando. Entra por baixo e sai
+     por baixo — o caminho de volta é o mesmo da ida. */
+  animation: rosterSheetIn 380ms cubic-bezier(0.2, 0.9, 0.25, 1) both;
+}
+@keyframes rosterScrim { from { opacity: 0 } to { opacity: 1 } }
+@keyframes rosterSheetIn {
+  from { transform: translate3d(0, 100%, 0) scale(0.97); opacity: 0.6 }
+  to   { transform: translate3d(0, 0, 0) scale(1); opacity: 1 }
+}
+
+.wv2-roster-page .roster-sheet .grab {
+  width: 36px;
+  height: 5px;
+  margin: var(--s2) auto 0;
+  border-radius: var(--r-pill);
+  background: var(--sep-strong);
+  flex: none;
+}
+.wv2-roster-page .sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding: var(--s3) var(--s4) var(--s2);
+  flex: none;
+}
+.wv2-roster-page .roster-close {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 0;
+  background: var(--fill-2);
+  color: var(--ink-2);
+  font-size: 0.9375rem;
+  cursor: pointer;
+  transition: transform 100ms ease-out;
+}
+.wv2-roster-page .roster-close:active { transform: scale(0.92); }
+
+.wv2-roster-page .sheet-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  display: grid;
+  gap: var(--s5);
+  padding: var(--s2) var(--s4) var(--s5);
+}
+.wv2-roster-page .sheet-foot {
+  flex: none;
+  padding: var(--s3) var(--s4) calc(var(--s4) + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--sep);
+  /* Borda de rolagem em vez de divisória dura: o conteúdo desaparece sob a
+     barra em vez de bater nela. */
+  background: linear-gradient(180deg, rgba(20, 20, 23, 0) 0%, rgba(20, 20, 23, 0.94) 40%);
+}
+
+.wv2-roster-page .field { display: grid; gap: var(--s2); }
+.wv2-roster-page .roster-input,
+.wv2-roster-page .roster-textarea {
+  width: 100%;
+  min-height: 48px;
+  padding: var(--s3);
+  border-radius: var(--r-tile);
+  border: 1px solid var(--sep);
+  background: var(--fill-2);
+  color: var(--ink);
+  font: inherit;
+  font-size: 1rem; /* 16px: abaixo disso o iOS dá zoom ao focar */
+  transition: border-color 140ms ease-out, background 140ms ease-out;
+}
+.wv2-roster-page .roster-textarea { min-height: 96px; resize: vertical; line-height: 1.5; }
+.wv2-roster-page .roster-input::placeholder,
+.wv2-roster-page .roster-textarea::placeholder { color: var(--ink-3); }
+.wv2-roster-page .roster-input:focus,
+.wv2-roster-page .roster-textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--fill-1);
+}
+.wv2-roster-page .med-row { display: flex; gap: var(--s2); align-items: center; }
+.wv2-roster-page .med-row .roster-input { flex: 1; min-width: 0; }
+.wv2-roster-page .med-list { list-style: none; margin: var(--s2) 0 0; padding: 0; display: grid; gap: var(--s1); }
+.wv2-roster-page .med-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+  padding: var(--s2) var(--s3);
+  border-radius: var(--r-tile);
+  background: var(--fill-2);
+}
+.wv2-roster-page .chips { display: flex; gap: var(--s2); flex-wrap: wrap; }
+
+/* ── Interruptor ──────────────────────────────────────────────────────────── */
+.wv2-roster-page .roster-switch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  width: 100%;
+  min-height: 56px;
+  padding: var(--s3) 0;
+  border: 0;
+  border-bottom: 1px solid var(--sep);
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.wv2-roster-page .roster-switch:last-of-type { border-bottom: 0; }
+.wv2-roster-page .roster-switch .txt { display: grid; gap: 2px; min-width: 0; }
+.wv2-roster-page .roster-switch .track {
+  flex: none;
+  width: 51px;
+  height: 31px;
+  border-radius: var(--r-pill);
+  background: var(--fill-1);
+  padding: 2px;
+  transition: background 220ms ease-out;
+}
+.wv2-roster-page .roster-switch .track > i {
+  display: block;
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  /* Amortecimento crítico: chega e para, sem oscilar. */
+  transition: transform 320ms cubic-bezier(0.2, 0.9, 0.25, 1);
+}
+.wv2-roster-page .roster-switch.on .track { background: var(--accent); }
+.wv2-roster-page .roster-switch.on .track > i { transform: translateX(20px); }
+
+.wv2-roster-page .danger { display: grid; gap: var(--s2); justify-items: start; }
+.wv2-roster-page .danger-acts { display: flex; gap: var(--s2); flex-wrap: wrap; }
+
+/* Movimento reduzido não é ausência de retorno: a folha continua chegando,
+   só que sem deslizar a tela inteira. */
+@media (prefers-reduced-motion: reduce) {
+  .wv2-roster-page .roster-sheet {
+    animation: rosterScrim 180ms ease-out both;
+    transform: none;
+  }
+  .wv2-roster-page .roster-switch .track > i { transition-duration: 1ms; }
+}
+
+/* Transparência reduzida: o vidro vira superfície sólida em vez de sumir. */
+@media (prefers-reduced-transparency: reduce) {
+  .wv2-roster-page .roster-sheet {
+    background: #18181b;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .wv2-roster-page .sheet-foot { background: #18181b; }
+}
+
+@media (prefers-contrast: more) {
+  .wv2-roster-page .roster-input,
+  .wv2-roster-page .roster-textarea { border-color: var(--sep-strong); background: #0c0c0e; }
+}
