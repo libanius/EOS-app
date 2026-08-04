@@ -1,7 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useLanguage } from '@/lib/i18n'
 import { cloneDefaultRadioConfig, type RadioConfig, type RadioLanguageConfig } from '@/lib/comms-radio'
 import { createClient } from '@/lib/supabase/client'
@@ -166,7 +167,8 @@ function textToLines(value: string) {
   return value.split('\n').map(line => line.trim()).filter(Boolean)
 }
 
-export default function CommsPage() {
+function CommsContent() {
+  const searchParams = useSearchParams()
   const { language } = useLanguage()
   const c = COPY[language]
   const [circles, setCircles] = useState<CircleRow[]>([])
@@ -200,14 +202,14 @@ export default function CommsPage() {
   const visibleNotifications = timelineExpanded ? notifications : notifications.slice(0, 4)
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    if (params.get('view') === 'notifications') setView('timeline')
-    if (params.get('view') === 'chat') setView('chat')
-    const nextCircleId = params.get('circleId')
-    const nextMessageId = params.get('messageId')
+    const requestedView = searchParams.get('view')
+    if (requestedView === 'notifications' || requestedView === 'timeline') setView('timeline')
+    if (requestedView === 'chat') setView('chat')
+    const nextCircleId = searchParams.get('circleId')
+    const nextMessageId = searchParams.get('messageId')
     if (nextCircleId) setCircleId(nextCircleId)
-    if (nextMessageId) setFocusedMessageId(nextMessageId)
-  }, [])
+    setFocusedMessageId(nextMessageId ?? '')
+  }, [searchParams])
 
   useEffect(() => {
     let cancelled = false
@@ -256,9 +258,23 @@ export default function CommsPage() {
 
   useEffect(() => {
     if (!focusedMessageId || !messages.length) return
-    window.setTimeout(() => {
-      document.getElementById(`message-${focusedMessageId}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    const timer = window.setTimeout(() => {
+      const target = document.getElementById(`message-${focusedMessageId}`)
+      const box = chatScrollRef.current
+      if (target && box) {
+        const top = target.offsetTop - box.offsetTop - ((box.clientHeight - target.clientHeight) / 2)
+        box.scrollTo({ top: Math.max(0, top), behavior: 'smooth' })
+      } else {
+        target?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      }
     }, 100)
+    const clearFocus = window.setTimeout(() => {
+      setFocusedMessageId(current => current === focusedMessageId ? '' : current)
+    }, 5000)
+    return () => {
+      window.clearTimeout(timer)
+      window.clearTimeout(clearFocus)
+    }
   }, [focusedMessageId, messages])
 
   useEffect(() => {
@@ -913,5 +929,13 @@ export default function CommsPage() {
         </Card>
       </div>
     </div>
+  )
+}
+
+export default function CommsPage() {
+  return (
+    <Suspense fallback={null}>
+      <CommsContent />
+    </Suspense>
   )
 }

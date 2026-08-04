@@ -278,6 +278,34 @@ como rota protegida; usuário não logado ia para login, o login ignorava
 
 ---
 
+## D-114 — Inbox deve navegar sem bloquear e `/comms` deve reagir à query
+
+**Date**: 2026-08-04
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: Em teste real, a notificação aparecia, mas clicar no resumo não
+levava de forma confiável para a mensagem, e o chat parecia parar de receber a
+conversa. A causa operacional é que o Inbox aguardava marcação como lida antes
+de navegar, e `/comms` lia `circleId`/`messageId` apenas no mount.
+
+**Decision**:
+
+1. Clique em item do Inbox navega imediatamente para o `href`; marcar como lido
+   roda em paralelo.
+2. `/comms` passa a observar `useSearchParams`, para reagir a mudanças de
+   `view`, `circleId` e `messageId` sem depender de reload completo.
+3. Scroll de mensagem focada usa o container do chat, não a página inteira.
+4. O foco visual da mensagem expira depois de alguns segundos, para novas
+   mensagens voltarem a auto-enquadrar no fim da conversa.
+
+**Consequences**:
+
+- Não requer migration.
+- O Inbox fica mais parecido com apps sociais: toque primeiro transporta; estado
+  de leitura atualiza em seguida.
+
+---
+
 ## D-113 — Inbox EOS segue padrão social Today / Last 7 days
 
 **Date**: 2026-08-04

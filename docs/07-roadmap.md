@@ -262,6 +262,7 @@ product phase sequenced.
 | COMMS-T06 | Inbox EOS global com destinos por notificação | ✅ COMPLETE | 2026-08-04 — D-111; Comms abre janela global quando há unread; EDU, simulação, chat e weather entram em `circle_notifications` app-level |
 | COMMS-T07 | Polimento Inbox/EDU pós-teste real | ✅ COMPLETE | 2026-08-04 — D-112; chat auto-scroll, timeline colapsada, EDU progressivo, destaque por `view_count` e notificação EDU admin-friendly |
 | COMMS-T08 | Inbox social Today/Last 7 days + chat enquadrado | ✅ COMPLETE | 2026-08-04 — D-113; Comms com badge abre Inbox global estilo social; itens levam direto ao destino; chat rola pelo container |
+| COMMS-T09 | Clique do Inbox transporta imediatamente para mensagem | ✅ COMPLETE | 2026-08-04 — D-114; Inbox não bloqueia navegação em mark-read e `/comms` reage a `circleId/messageId` por query |
 | EDU-T01 | Conteúdo educativo como fonte oficial EOS | ✅ COMPLETE | 2026-08-03 — D-090; `edu_content`, `/edu`, `/admin/edu`, fonte visível, aprovação/versionamento e RAG futuro sem ingestão automática |
 | EDU-T02 | Consumo de vídeo aprovado dentro do EOS | ✅ COMPLETE | 2026-08-04 — D-101; `/edu` renderiza player YouTube embutido para `source_url` reconhecida e mantém link de fonte visível |
 | EDU-T03 | Ingestão aprovada de EDU para RAG | ✅ COMPLETE | 2026-08-04 — D-103; admin ingere item `approved` + `rag_enabled`, grava chunks em `knowledge_base` com `source=edu:<id>` e `source_version=v<version>` |

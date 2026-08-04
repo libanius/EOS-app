@@ -146,6 +146,13 @@ deve navegar direto para a timeline interna. O feed mostra notificações recent
 lidas e não lidas; o badge conta só não lidas. Chat deve rolar o próprio
 container (`scrollTop = scrollHeight`), não depender só de `scrollIntoView`.
 
+D-114 / COMMS-T09 corrige a navegação real do Inbox: clicar no resumo deve
+transportar imediatamente para o `href` antes de esperar `mark_read`. `/comms`
+precisa reagir a mudanças de `view`, `circleId` e `messageId` via query, porque
+o usuário pode já estar dentro do App Router quando abre o Inbox. Mensagem focada
+usa scroll do container e o destaque expira, para novas mensagens voltarem ao
+auto-enquadramento no final do chat.
+
 ---
 
 ## EDU é catálogo aprovado antes de virar RAG (2026-08-03)

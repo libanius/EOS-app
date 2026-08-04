@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useLanguage } from '@/lib/i18n'
 
@@ -145,6 +146,7 @@ function sectionItems(items: InboxItem[], labels: Record<'today' | 'last7' | 'ea
 }
 
 export default function NotificationInbox() {
+  const router = useRouter()
   const { language } = useLanguage()
   const c = COPY[language]
   const [open, setOpen] = useState(false)
@@ -213,9 +215,10 @@ export default function NotificationInbox() {
     }
   }, [load])
 
-  async function openItem(item: InboxItem) {
-    await markRead(item.ids)
-    window.location.href = item.href
+  function openItem(item: InboxItem) {
+    setOpen(false)
+    void markRead(item.ids)
+    router.push(item.href || '/comms?view=chat')
   }
 
   if (!open) return null
