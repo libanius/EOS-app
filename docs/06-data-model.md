@@ -215,6 +215,10 @@ write; both should be displayed as source/provenance in Preparação.
 | joined_at | timestamptz | |
 | share_inventory | boolean | member shares resources with the circle |
 | shared_fields | text[] | which fields are shared |
+| family_access_status | text | `none`, `requested`, `approved`, `denied` |
+| family_access_requested_at | timestamptz | when the member requested inner-family access |
+| family_access_approved_at | timestamptz | when an Admin approved/denied inner-family access |
+| family_access_approved_by | uuid | Admin who last approved/denied inner-family access |
 
 **`shared_fields` semantics (D-064):**
 
@@ -224,16 +228,28 @@ write; both should be displayed as source/provenance in Preparação.
 | `emergency_contact` | emergency contact name/phone |
 | `location` | **both** the live point and the profile point on the map |
 
-**D-106 extension for Pilot context**: `medical` also gates the member's visible
-medical ficha for `/api/pilot/chat` when another circle member asks the Pilot:
-`blood_type`, `allergies`, `medications`, and `medical_notes`. This keeps the UI
-toggle stable while making the Pilot useful in family-circle emergencies.
+**D-107 correction**: `medical` does **not** make another circle member part of
+the user's intimate family. It gates medical inventory/resource sharing only.
+Pilot access to another user's master medical ficha requires
+`family_access_status='approved'` on that member's `circle_members` row.
 
 An **empty array means "share all"** for the inventory/contact fields — that legacy
 default predates D-064. `location` is deliberately **excluded from that default**:
 it is only shared when the string `location` is explicitly present. Members who
 never touched the toggle must not start broadcasting position because of a legacy
 convention.
+
+**Family access semantics (D-107):**
+
+| Value | Meaning |
+|---|---|
+| `none` | member is in the broader circle only |
+| `requested` | member asked to enter the intimate family layer |
+| `approved` | Admin authorized intimate-family access; Pilot may use master ficha fields |
+| `denied` | request was denied; member remains in the broader circle |
+
+Family access does not replace `location` consent. Live/profile location remains
+visible only when `shared_fields` contains `location` or when viewing yourself.
 
 ### circle_messages
 | Column | Type | Notes |

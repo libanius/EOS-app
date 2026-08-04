@@ -16,6 +16,18 @@ type MemberProfile = {
 }
 
 type CircleRole = 'Admin' | 'Editor' | 'Viewer'
+type FamilyAccessStatus = 'none' | 'requested' | 'approved' | 'denied'
+type CircleMembershipRow = {
+  circle_id: string
+  user_id?: string
+  role?: string | null
+  share_inventory?: boolean | null
+  shared_fields?: string[] | null
+  family_access_status?: FamilyAccessStatus | null
+  family_access_requested_at?: string | null
+  family_access_approved_at?: string | null
+  family_access_approved_by?: string | null
+}
 
 /** Beyond this the live point is history, not a position — fall back to profile. */
 const LIVE_POINT_MAX_AGE_MS = 30 * 60 * 1000
@@ -66,11 +78,19 @@ export async function GET() {
 
   const { data: memberships, error: mErr } = await supabase
     .from('circle_members')
-    .select('circle_id, role, share_inventory, shared_fields')
+    .select('circle_id, role, share_inventory, shared_fields, family_access_status, family_access_requested_at, family_access_approved_at, family_access_approved_by')
     .eq('user_id', user.id)
-  if (mErr) return NextResponse.json({ error: mErr.message }, { status: 500 })
+  let myMemberships = memberships as CircleMembershipRow[] | null
+  if (mErr) {
+    const { data: legacyMemberships, error: legacyErr } = await supabase
+      .from('circle_members')
+      .select('circle_id, role, share_inventory, shared_fields')
+      .eq('user_id', user.id)
+    if (legacyErr) return NextResponse.json({ error: legacyErr.message }, { status: 500 })
+    myMemberships = legacyMemberships as CircleMembershipRow[] | null
+  }
 
-  const circleIds = (memberships ?? []).map(m => m.circle_id)
+  const circleIds = (myMemberships ?? []).map(m => m.circle_id)
   const { data: ledCircles } = await supabase.from('circles').select('id').eq('leader_id', user.id)
   const allIds = Array.from(new Set<string>([...circleIds, ...((ledCircles ?? []).map(c => c.id) as string[])]))
   if (allIds.length === 0) return NextResponse.json({ circles: [] })
@@ -86,13 +106,20 @@ export async function GET() {
     const [{ data: pooled }, { data: members }] = await Promise.all([
       supabase.rpc('circle_pooled_inventory', { circle_uuid: c.id }),
       supabase.from('circle_members')
-        .select('user_id, role, share_inventory, shared_fields')
+        .select('user_id, role, share_inventory, shared_fields, family_access_status, family_access_requested_at, family_access_approved_at, family_access_approved_by')
         .eq('circle_id', c.id),
     ])
+    let circleMembers = members as CircleMembershipRow[] | null
+    if (!circleMembers) {
+      const { data: legacyMembers } = await supabase.from('circle_members')
+        .select('user_id, role, share_inventory, shared_fields')
+        .eq('circle_id', c.id)
+      circleMembers = legacyMembers as CircleMembershipRow[] | null
+    }
     // circle_members.user_id references auth.users, and profiles is owner-only
     // under RLS — so resolve co-members' identities with the service-role client
     // (the caller is a member of this circle, which we are iterating).
-    const memberIds = (members ?? []).map(m => m.user_id)
+    const memberIds = (circleMembers ?? []).map(m => m.user_id)
     const profileById = new Map<string, MemberProfile>()
     if (admin && memberIds.length) {
       const { data: profs } = await admin
@@ -135,7 +162,7 @@ export async function GET() {
       communication_device_count: Number(row?.communication_device_count ?? 0),
       member_count: Number(row?.member_count ?? 0),
     })
-    const myMembership = memberships?.find(m => m.circle_id === c.id)
+    const myMembership = myMemberships?.find(m => m.circle_id === c.id)
     const myRole = (myMembership?.role as CircleRole | undefined) ?? (c.leader_id === user.id ? 'Admin' : 'Viewer')
     results.push({
       ...c,
@@ -145,7 +172,7 @@ export async function GET() {
       shared_fields: (myMembership?.shared_fields as string[] | undefined) ?? [],
       pooled: row,
       score,
-      members: (members ?? []).map(m => {
+      members: (circleMembers ?? []).filter((m): m is CircleMembershipRow & { user_id: string } => typeof m.user_id === 'string').map(m => {
         const p = profileById.get(m.user_id) ?? null
         const sharedFields = (m.shared_fields as string[] | undefined) ?? []
         const sharesContact = m.share_inventory && (sharedFields.length === 0 || sharedFields.includes('emergency_contact'))
@@ -168,6 +195,10 @@ export async function GET() {
           emergency_contact_name: sharesContact ? (p?.emergency_contact_name ?? null) : null,
           emergency_contact_phone: sharesContact ? (p?.emergency_contact_phone ?? null) : null,
           share_inventory: m.share_inventory as boolean,
+          family_access_status: ((m.family_access_status as FamilyAccessStatus | undefined) ?? 'none'),
+          family_access_requested_at: (m.family_access_requested_at as string | undefined) ?? null,
+          family_access_approved_at: (m.family_access_approved_at as string | undefined) ?? null,
+          family_access_approved_by: (m.family_access_approved_by as string | undefined) ?? null,
           is_me: isMe,
         }
       }),

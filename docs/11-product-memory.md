@@ -159,13 +159,18 @@ notas, local) e seus `family_members` detalhados antes de montar o prompt. Se um
 campo estiver vazio, o prompt diz "não consta" e manda não inventar.
 
 D-106 corrigiu a segunda metade da lacuna: membros reais do círculo não podem
-ser tratados como inexistentes pelo Pilot. `/api/pilot/chat` agora monta um bloco
-server-side com fichas visíveis dos círculos do usuário autenticado. Para outro
-usuário do círculo, `medical` libera tipo sanguíneo/alergias/medicamentos/notas,
-`emergency_contact` libera contato, e `location` continua exigindo consentimento
-explícito. Se Daniela está no círculo mas não compartilhou `medical`, o Pilot
-deve dizer "ficha médica não compartilhada neste círculo", não "Daniela não
-existe no sistema".
+ser tratados como inexistentes pelo Pilot. D-107 refinou isso imediatamente:
+**membro do círculo não é membro da família íntima**. Círculo é coordenação ampla
+(chat, plano, simulação, recursos, localização consentida). Família íntima é uma
+camada dentro do círculo, registrada por
+`circle_members.family_access_status`.
+
+Regra D-107: o Pilot só lê ficha master médica/contato de outro usuário do
+círculo quando `family_access_status='approved'`. `shared_fields.medical` voltou
+a significar compartilhamento de recurso médico/estoque, não ficha master.
+`location` segue separado e explícito. Se Daniela está no círculo, mas ainda não
+foi aprovada como Família íntima, o Pilot deve dizer que ela está no círculo mas
+a ficha master dela não está autorizada para o Pilot da família.
 
 D-095 / UPP-03 criou o fluxo confirmado de memória. `/api/pilot/chat` pode
 retornar propostas `memory[]`; a UI mostra título, motivo e Markdown exato. Só

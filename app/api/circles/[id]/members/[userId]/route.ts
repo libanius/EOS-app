@@ -21,6 +21,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 
 type CircleRole = 'Admin' | 'Editor' | 'Viewer'
 const VALID_ROLES: CircleRole[] = ['Admin', 'Editor', 'Viewer']
+type FamilyAccessStatus = 'none' | 'requested' | 'approved' | 'denied'
+const VALID_FAMILY_ACCESS: FamilyAccessStatus[] = ['none', 'requested', 'approved', 'denied']
 
 interface Ctx { params: { id: string; userId: string } }
 
@@ -37,17 +39,24 @@ async function assertAdmin(circleId: string, userId: string) {
   return { admin, ok: data?.role === 'Admin' }
 }
 
-/** PATCH /api/circles/:id/members/:userId — muda o papel (só Admin). */
+/** PATCH /api/circles/:id/members/:userId — muda papel ou Família íntima (só Admin). */
 export async function PATCH(req: NextRequest, { params }: Ctx) {
   const supabase = await createClient()
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  let body: { role?: string }
+  let body: { role?: string; family_access_status?: string }
   try { body = await req.json() } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }) }
-  const newRole = body.role as CircleRole
-  if (!VALID_ROLES.includes(newRole)) {
+  const newRole = body.role as CircleRole | undefined
+  const familyAccess = body.family_access_status as FamilyAccessStatus | undefined
+  if (newRole !== undefined && !VALID_ROLES.includes(newRole)) {
     return NextResponse.json({ error: 'role must be Admin | Editor | Viewer' }, { status: 400 })
+  }
+  if (familyAccess !== undefined && !VALID_FAMILY_ACCESS.includes(familyAccess)) {
+    return NextResponse.json({ error: 'family_access_status inválido.' }, { status: 400 })
+  }
+  if (newRole === undefined && familyAccess === undefined) {
+    return NextResponse.json({ error: 'Informe role ou family_access_status.' }, { status: 400 })
   }
 
   const { admin, ok } = await assertAdmin(params.id, user.id)
@@ -56,7 +65,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
 
   // Um círculo sem Admin não tem como ser administrado de volta pela interface.
   // Rebaixar o último Admin fica bloqueado, inclusive quando é a própria pessoa.
-  if (newRole !== 'Admin') {
+  if (newRole !== undefined && newRole !== 'Admin') {
     const [{ count }, target] = await Promise.all([
       admin
         .from('circle_members')
@@ -75,18 +84,27 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     }
   }
 
+  const patch: Record<string, unknown> = {}
+  if (newRole !== undefined) patch.role = newRole
+  if (familyAccess !== undefined) {
+    patch.family_access_status = familyAccess
+    patch.family_access_approved_at = familyAccess === 'approved' || familyAccess === 'denied' ? new Date().toISOString() : null
+    patch.family_access_approved_by = familyAccess === 'approved' || familyAccess === 'denied' ? user.id : null
+    if (familyAccess === 'none') patch.family_access_requested_at = null
+  }
+
   const { data, error } = await admin
     .from('circle_members')
-    .update({ role: newRole })
+    .update(patch)
     .eq('circle_id', params.id)
     .eq('user_id', params.userId)
-    .select('user_id, role')
+    .select('user_id, role, family_access_status')
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   if (!data?.length) {
     return NextResponse.json({ error: 'Membro não encontrado neste círculo.' }, { status: 404 })
   }
-  return NextResponse.json({ ok: true, role: data[0].role })
+  return NextResponse.json({ ok: true, role: data[0].role, family_access_status: data[0].family_access_status })
 }
 
 /** DELETE /api/circles/:id/members/:userId — remove um membro (só Admin). */

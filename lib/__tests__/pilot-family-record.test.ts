@@ -49,6 +49,7 @@ describe('pilot family record', () => {
           circleName: 'Família',
           name: 'Daniela Oliveira',
           role: 'Editor',
+          familyAccessApproved: true,
           medicalShared: true,
           contactShared: true,
           locationShared: true,
@@ -64,6 +65,7 @@ describe('pilot family record', () => {
     })
 
     expect(record).toContain('Daniela Oliveira')
+    expect(record).toContain('Família íntima aprovada')
     expect(record).toContain('tipo sanguíneo A+')
     expect(record).toContain('amendoim')
     expect(record).toContain('EpiPen')

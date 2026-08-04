@@ -24,6 +24,7 @@ export type CircleVisibleMemberRecord = {
   name?: string | null
   role?: string | null
   isMe?: boolean | null
+  familyAccessApproved?: boolean | null
   medicalShared: boolean
   contactShared: boolean
   locationShared: boolean
@@ -122,6 +123,9 @@ export function buildPilotCircleRecord({
     const name = text(member.name, empty)
     const role = text(member.role, empty)
     const self = member.isMe ? (pt ? ' · é o usuário' : ' · is the user') : ''
+    const familyAccess = member.familyAccessApproved
+      ? (pt ? ' · Família íntima aprovada' : ' · intimate family approved')
+      : ''
     const medical = member.medicalShared
       ? pt
         ? `ficha médica: tipo sanguíneo ${text(member.blood_type, empty)}; alergias ${list(member.allergies, empty)}; medicamentos ${list(member.medications, empty)}; notas ${text(member.medical_notes, empty)}`
@@ -144,7 +148,7 @@ export function buildPilotCircleRecord({
         ? `localização/endereço: ${notShared}`
         : `location/address: ${notShared}`
 
-    lines.push(`- ${name} (${role}${self}): ${medical}; ${contact}; ${location}.`)
+    lines.push(`- ${name} (${role}${self}${familyAccess}): ${medical}; ${contact}; ${location}.`)
   }
 
   return lines.join('\n')

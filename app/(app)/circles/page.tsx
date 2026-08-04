@@ -12,6 +12,7 @@ type MyRequest = { id: string; circle_id: string; status: string; circle_name: s
 type SearchResult = { id: string; name: string; member_count: number; is_member: boolean; request_status: string | null }
 
 type CircleRole = 'Admin' | 'Editor' | 'Viewer'
+type FamilyAccessStatus = 'none' | 'requested' | 'approved' | 'denied'
 type Severity = 'CRITICAL' | 'HIGH' | 'WATCH' | 'MODERATE' | 'CLEAR'
 
 const SEV_COLOR: Record<Severity, string> = {
@@ -40,6 +41,10 @@ interface CircleMember {
   name: string
   is_me: boolean
   share_inventory: boolean
+  family_access_status: FamilyAccessStatus
+  family_access_requested_at: string | null
+  family_access_approved_at: string | null
+  family_access_approved_by: string | null
   emergency_contact_name: string | null
   emergency_contact_phone: string | null
 }
@@ -301,6 +306,34 @@ export default function CirclesPage() {
         body: JSON.stringify({ role }),
       })
       if (!res.ok) throw new Error((await res.json()).error)
+      await load()
+    } catch (e) { setError(e instanceof Error ? e.message : t('common.error')) }
+    finally { setBusy(false) }
+  }, [load, t])
+
+  const requestFamilyAccess = useCallback(async (circleId: string, action: 'request' | 'cancel') => {
+    setBusy(true)
+    try {
+      const res = await fetch(`/api/circles/${circleId}/family-access`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      })
+      const d = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(d.error ?? `HTTP ${res.status}`)
+      await load()
+    } catch (e) { setError(e instanceof Error ? e.message : t('common.error')) }
+    finally { setBusy(false) }
+  }, [load, t])
+
+  const decideFamilyAccess = useCallback(async (circleId: string, userId: string, status: 'approved' | 'denied' | 'none') => {
+    setBusy(true)
+    try {
+      const res = await fetch(`/api/circles/${circleId}/members/${userId}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ family_access_status: status }),
+      })
+      const d = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(d.error ?? `HTTP ${res.status}`)
       await load()
     } catch (e) { setError(e instanceof Error ? e.message : t('common.error')) }
     finally { setBusy(false) }
@@ -639,11 +672,22 @@ export default function CirclesPage() {
                     {t('circles.members')}
                   </div>
                   <div style={{ display: 'grid', gap: 6 }}>
-                    {c.members.map(m => (
-                      <div key={m.user_id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: '#0f0f17', borderRadius: 8 }}>
-                        <span style={{ flex: 1, fontSize: 14 }}>
+                    {c.members.map(m => {
+                      const familyLabels: Record<FamilyAccessStatus, { label: string; color: string }> = {
+                        none: { label: 'Círculo', color: '#71717a' },
+                        requested: { label: 'Família solicitada', color: '#eab308' },
+                        approved: { label: 'Família íntima', color: '#22c55e' },
+                        denied: { label: 'Família negada', color: '#ef4444' },
+                      }
+                      const family = familyLabels[m.family_access_status ?? 'none']
+                      return (
+                      <div key={m.user_id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: '#0f0f17', borderRadius: 8, flexWrap: 'wrap' }}>
+                        <span style={{ flex: '1 1 160px', fontSize: 14 }}>
                           {m.name}
                           {m.is_me && <span style={{ fontSize: 11, color: '#8a8a99', marginLeft: 6 }}>(você)</span>}
+                          <span style={{ display: 'block', marginTop: 3, fontSize: 10, fontWeight: 800, letterSpacing: 0.7, textTransform: 'uppercase', color: family.color }}>
+                            {family.label}
+                          </span>
                         </span>
                         {c.is_admin && !m.is_me ? (
                           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -657,6 +701,20 @@ export default function CirclesPage() {
                               <option value="Editor">Editor</option>
                               <option value="Viewer">Viewer</option>
                             </select>
+                            {m.family_access_status === 'requested' ? (
+                              <>
+                                <button onClick={() => decideFamilyAccess(c.id, m.user_id, 'approved')} disabled={busy} style={{ fontSize: 11, padding: '2px 8px', background: '#22c55e', color: '#0a0a0f', border: 'none', borderRadius: 4, fontWeight: 700, cursor: 'pointer' }}>
+                                  Família
+                                </button>
+                                <button onClick={() => decideFamilyAccess(c.id, m.user_id, 'denied')} disabled={busy} style={{ fontSize: 11, padding: '2px 8px', background: 'transparent', color: '#ef4444', border: '1px solid rgba(239,68,68,0.4)', borderRadius: 4, cursor: 'pointer' }}>
+                                  Negar
+                                </button>
+                              </>
+                            ) : m.family_access_status === 'approved' ? (
+                              <button onClick={() => decideFamilyAccess(c.id, m.user_id, 'none')} disabled={busy} style={{ fontSize: 11, padding: '2px 8px', background: 'transparent', color: '#eab308', border: '1px solid rgba(234,179,8,0.4)', borderRadius: 4, cursor: 'pointer' }}>
+                                Remover família
+                              </button>
+                            ) : null}
                             <button onClick={() => removeMember(c.id, m.user_id)} disabled={busy} style={{ fontSize: 11, padding: '2px 8px', background: 'transparent', color: '#ef4444', border: '1px solid rgba(239,68,68,0.4)', borderRadius: 4, cursor: 'pointer' }}>
                               ×
                             </button>
@@ -666,13 +724,31 @@ export default function CirclesPage() {
                             {m.role}
                           </span>
                         )}
+                        {m.is_me && (
+                          <span style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                            {m.family_access_status === 'approved' ? (
+                              <span style={{ fontSize: 11, color: '#22c55e', padding: '2px 8px', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 6 }}>
+                                Ficha liberada ao Pilot da família
+                              </span>
+                            ) : m.family_access_status === 'requested' ? (
+                              <button onClick={() => requestFamilyAccess(c.id, 'cancel')} disabled={busy} style={{ fontSize: 11, padding: '2px 8px', background: 'transparent', color: '#eab308', border: '1px solid rgba(234,179,8,0.4)', borderRadius: 4, cursor: 'pointer' }}>
+                                Cancelar pedido família
+                              </button>
+                            ) : (
+                              <button onClick={() => requestFamilyAccess(c.id, 'request')} disabled={busy} style={{ fontSize: 11, padding: '2px 8px', background: 'rgba(34,197,94,0.12)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.35)', borderRadius: 4, cursor: 'pointer' }}>
+                                Pedir Família íntima
+                              </button>
+                            )}
+                          </span>
+                        )}
                         {m.emergency_contact_name && (
                           <a href={m.emergency_contact_phone ? `tel:${m.emergency_contact_phone}` : undefined} style={{ fontSize: 11, color: '#22c55e', textDecoration: 'none', flexShrink: 0, padding: '2px 8px', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 6 }}>
                             📞 {m.emergency_contact_name}
                           </a>
                         )}
                       </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 </div>
               )}

@@ -192,6 +192,7 @@ type CircleMembership = {
   role: string | null
   share_inventory: boolean | null
   shared_fields: string[] | null
+  family_access_status?: string | null
 }
 
 type CircleProfile = {
@@ -207,11 +208,7 @@ type CircleProfile = {
 }
 
 const sharedFieldsOf = (value: unknown) => (Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [])
-const legacyShareAll = (member: CircleMembership, fields: string[]) => member.share_inventory === true && fields.length === 0
-const sharesField = (member: CircleMembership, field: string) => {
-  const fields = sharedFieldsOf(member.shared_fields)
-  return member.share_inventory === true && (legacyShareAll(member, fields) || fields.includes(field))
-}
+const hasFamilyAccess = (member: CircleMembership, userId: string) => member.user_id === userId || member.family_access_status === 'approved'
 
 async function loadPilotCircleRecord(userId: string, pt: boolean) {
   const admin = createAdminClient()
@@ -230,10 +227,17 @@ async function loadPilotCircleRecord(userId: string, pt: boolean) {
   const circleIds = Array.from(new Set((mine as CircleMembership[]).map(m => m.circle_id)))
   const [{ data: circles }, { data: members }] = await Promise.all([
     admin.from('circles').select('id, name').in('id', circleIds),
-    admin.from('circle_members').select('circle_id, user_id, role, share_inventory, shared_fields').in('circle_id', circleIds),
+    admin.from('circle_members').select('circle_id, user_id, role, share_inventory, shared_fields, family_access_status').in('circle_id', circleIds),
   ])
 
-  const memberships = (members ?? []) as CircleMembership[]
+  let memberships = (members ?? []) as CircleMembership[]
+  if (!members) {
+    const { data: legacyMembers } = await admin
+      .from('circle_members')
+      .select('circle_id, user_id, role, share_inventory, shared_fields')
+      .in('circle_id', circleIds)
+    memberships = (legacyMembers ?? []) as CircleMembership[]
+  }
   if (!memberships.length) return ''
 
   const profileIds = Array.from(new Set(memberships.map(m => m.user_id)))
@@ -256,9 +260,9 @@ async function loadPilotCircleRecord(userId: string, pt: boolean) {
       const profile = profileById.get(member.user_id) ?? null
       const fields = sharedFieldsOf(member.shared_fields)
       const isMe = member.user_id === userId
-      const shareAll = legacyShareAll(member, fields)
-      const medicalShared = isMe || (member.share_inventory === true && (shareAll || fields.includes('medical')))
-      const contactShared = isMe || sharesField(member, 'emergency_contact')
+      const familyApproved = hasFamilyAccess(member, userId)
+      const medicalShared = familyApproved
+      const contactShared = familyApproved
       const locationShared = isMe || fields.includes('location')
 
       return {
@@ -266,6 +270,7 @@ async function loadPilotCircleRecord(userId: string, pt: boolean) {
         name: profile?.name ?? null,
         role: member.role ?? null,
         isMe,
+        familyAccessApproved: familyApproved && !isMe,
         medicalShared,
         contactShared,
         locationShared,

@@ -190,12 +190,18 @@ CREATE TABLE IF NOT EXISTS circle_members (
   user_id          uuid              NOT NULL REFERENCES auth.users (id) ON DELETE CASCADE,
   role             circle_role_enum  NOT NULL DEFAULT 'MEMBER',
   share_inventory  boolean           NOT NULL DEFAULT false,
+  family_access_status text          NOT NULL DEFAULT 'none'
+    CHECK (family_access_status IN ('none', 'requested', 'approved', 'denied')),
+  family_access_requested_at timestamptz,
+  family_access_approved_at timestamptz,
+  family_access_approved_by uuid     REFERENCES auth.users (id) ON DELETE SET NULL,
   joined_at        timestamptz       NOT NULL DEFAULT now(),
   UNIQUE (circle_id, user_id)
 );
 
 CREATE INDEX IF NOT EXISTS circle_members_circle_id_idx ON circle_members (circle_id);
 CREATE INDEX IF NOT EXISTS circle_members_user_id_idx   ON circle_members (user_id);
+CREATE INDEX IF NOT EXISTS circle_members_family_access_idx ON circle_members (circle_id, family_access_status);
 
 
 -- ------------------------------------------------------------

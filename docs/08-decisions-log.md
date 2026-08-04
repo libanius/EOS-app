@@ -278,6 +278,44 @@ como rota protegida; usuário não logado ia para login, o login ignorava
 
 ---
 
+## D-107 — Círculo não é Família íntima
+
+**Date**: 2026-08-04
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: D-106 corrigiu o Pilot para reconhecer membros reais do círculo,
+mas ainda confundia dois níveis de confiança. Entrar em um círculo permite
+coordenação, chat, simulação, plano e compartilhamentos limitados. Isso não deve
+equivaler a entrar na família íntima nem autorizar automaticamente leitura de
+ficha master de outra pessoa pelo Pilot.
+
+**Decision**:
+
+1. Círculo e Família íntima passam a ser conceitos separados.
+2. Um usuário pode ser membro do círculo sem ser membro da Família íntima.
+3. Entrar na Família íntima exige pedido/autorizaçao própria dentro do círculo.
+4. `circle_members.family_access_status` registra `none`, `requested`,
+   `approved` ou `denied`.
+5. Apenas `family_access_status='approved'` autoriza o Pilot a ler ficha master
+   médica/contato de outro usuário do círculo.
+6. `shared_fields.medical` volta a significar compartilhamento operacional do
+   item médico/estoque do círculo, não acesso íntimo à ficha master.
+7. Localização continua independente: `location` em `shared_fields` segue sendo
+   o consentimento explícito para mapa/Pilot citar posição.
+
+**Consequences**:
+
+- O Pilot não lê ficha master de um conhecido/vizinho do círculo só porque essa
+  pessoa participa do círculo.
+- O painel de Círculos passa a mostrar o estado Família íntima por membro e
+  permitir pedido, cancelamento, aprovação e negação.
+- Migration necessária: `20260804010000_circle_family_access.sql`.
+- D-106 fica refinada por D-107: "ficha visível do círculo" significa
+  identificação e permissões operacionais; ficha master íntima exige aprovação
+  de Família.
+
+---
+
 ## D-106 — Pilot lê fichas visíveis do círculo
 
 **Date**: 2026-08-04
