@@ -360,6 +360,38 @@ como rota protegida; usuário não logado ia para login, o login ignorava
 
 ---
 
+## D-123 Fase 3 — o dependente pertence a um cuidador
+
+**A resposta do dono, nas palavras dele:** *"na ficha master, por exemplo, de
+uma pessoa que cuida de idoso, ela deve ter um espaço que ele inclui esse idoso,
+e o Pilot e toda a engine EOS contabiliza. Então na ficha dessa cuidadora ela
+conta ela + 1. Tem que ter campo para descrever sobre o idoso."*
+
+Isso mudou o desenho para melhor. Um dependente não é uma linha solta na conta:
+ele **pertence a alguém**, e essa relação é dado que o plano usa — um dependente
+não se desloca sozinho, por definição, então alguém vai buscá-lo.
+
+**Dois campos novos, e a diferença entre eles é o ponto.** `relationship` diz
+quem a pessoa é para o cuidador ("avó", "filho"). `care_notes` é **instrução de
+resgate, não ficha médica**: *"3º andar sem elevador, não ouve bem, tem medo de
+sirene"*. É o que faria diferença para quem chega na porta, e é diferente do que
+um médico precisaria saber. Misturar os dois colocaria prontuário num campo que
+outras pessoas do plano vão ler.
+
+**A Ficha passa a dizer a conta.** *"Você conta como 3 pessoas na casa: você +
+2"*, com cada dependente listado e a instrução de resgate à vista. Enquanto
+carrega, a lista é `null` e não `[]` — mostrar "ninguém depende de você" para
+quem cuida de alguém, mesmo por um segundo, faz a pessoa fechar a tela achando
+que cadastrou errado.
+
+**Prova.** `roster-page-test` 11/11: os dois campos chegam ao banco pela
+interface (`"avó"` · `"3º andar sem elevador, não ouve bem"`) e a Ficha mostra a
+contagem certa. O teste também sobreviveu a uma armadilha própria — com a
+segunda área de texto na tela, o seletor antigo virou ambíguo e o Playwright
+recusou em vez de preencher a errada em silêncio.
+
+---
+
 ## D-123 Fase 2 — a casa se monta na tela, e os dois consentimentos param de usar a mesma palavra
 
 **O que o dono viu.** Abrindo Círculos, o rótulo "Família íntima" nomeava

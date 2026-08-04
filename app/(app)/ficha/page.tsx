@@ -60,6 +60,26 @@ const EMPTY_PERSONALIZATION: Personalization = {
 
 export default function FichaPage() {
   const { t, language } = useLanguage()
+  const pt = language === 'pt'
+
+  /**
+   * Quem depende de mim (D-123).
+   *
+   * `null` enquanto carrega — e não `[]`, que renderizaria "ninguém depende de
+   * você" antes de a resposta chegar. Dizer que a pessoa não cuida de ninguém
+   * quando ela cuida é o tipo de mentira momentânea que faz alguém fechar a
+   * tela achando que cadastrou errado.
+   */
+  const [dependentes, setDependentes] = useState<Array<{
+    id: string; name: string; relationship: string | null; care_notes: string | null
+  }> | null>(null)
+
+  useEffect(() => {
+    fetch('/api/family-members')
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => setDependentes(Array.isArray(d?.members) ? d.members.filter((m: { linked_user_id: string | null }) => !m.linked_user_id) : []))
+      .catch(() => setDependentes([]))
+  }, [])
   const [ficha, setFicha] = useState<Ficha>(EMPTY)
   const [personalization, setPersonalization] = useState<Personalization>(EMPTY_PERSONALIZATION)
   const [loading, setLoading] = useState(true)
@@ -540,6 +560,49 @@ export default function FichaPage() {
             </div>
           </div>
         )}
+
+        {/*
+          Quem depende de mim (D-123).
+          Pedido do dono, nas palavras dele: "na ficha da cuidadora ela conta
+          ela + 1, e tem que ter campo para descrever sobre o idoso". Um
+          dependente não tem conta, não aparece no mapa e não recebe mensagem —
+          quem responde por ele é esta pessoa, e a engine inteira soma assim.
+        */}
+        <div style={S.section}>
+          <h2 style={S.sectionTitle}>{pt ? 'Quem depende de mim' : 'Who depends on me'}</h2>
+          {dependentes === null ? (
+            <p style={{ fontSize: 13, color: '#8a8a99' }}>…</p>
+          ) : dependentes.length === 0 ? (
+            <p style={{ fontSize: 13, color: '#8a8a99', lineHeight: 1.5 }}>
+              {pt
+                ? 'Ninguém. Se você cuida de uma criança, de alguém idoso ou de quem não usa celular, cadastre — a conta de água, a lista de itens e o plano passam a contar essa pessoa.'
+                : 'Nobody. If you care for a child, an older person or someone without a phone, add them — the water maths, the supplies list and the plan will all count them.'}
+            </p>
+          ) : (
+            <div style={{ display: 'grid', gap: 8 }}>
+              <p style={{ fontSize: 13, color: '#22c55e', margin: 0 }}>
+                {pt
+                  ? `Você conta como ${dependentes.length + 1} pessoas na casa: você + ${dependentes.length}.`
+                  : `You count as ${dependentes.length + 1} people in the household: you + ${dependentes.length}.`}
+              </p>
+              {dependentes.map(d => (
+                <div key={d.id} style={{ padding: '10px 12px', background: '#0f0f17', border: '1px solid #252535', borderRadius: 10 }}>
+                  <strong style={{ fontSize: 14 }}>{d.name}</strong>
+                  {d.relationship && <span style={{ fontSize: 12, color: '#8a8a99' }}> · {d.relationship}</span>}
+                  {d.care_notes && (
+                    <p style={{ margin: '4px 0 0', fontSize: 12, color: '#a1a1aa', lineHeight: 1.45 }}>{d.care_notes}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          <a
+            href="/family/cadastro"
+            style={{ display: 'inline-block', marginTop: 10, fontSize: 13, color: '#22c55e', textDecoration: 'none' }}
+          >
+            {pt ? 'Gerenciar dependentes →' : 'Manage dependents →'}
+          </a>
+        </div>
 
         {/* Tipo sanguíneo */}
         <div style={S.section}>

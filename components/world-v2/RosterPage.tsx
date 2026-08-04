@@ -46,12 +46,18 @@ type Member = {
   mobility_impaired: boolean
   is_infant: boolean
   linked_user_id: string | null
+  /** D-123: quem essa pessoa é para o cuidador. */
+  relationship: string | null
+  /** O que quem for buscá-la precisa saber. NÃO é ficha médica. */
+  care_notes: string | null
 }
 
 type CircleCandidate = { user_id: string; name: string; circleName: string }
 
 type Form = {
   name: string
+  relationship: string
+  care_notes: string
   age: number | null
   medical_conditions: string[]
   medical_notes: string
@@ -62,6 +68,8 @@ type Form = {
 
 const EMPTY: Form = {
   name: '',
+  relationship: '',
+  care_notes: '',
   age: null,
   medical_conditions: [],
   medical_notes: '',
@@ -69,6 +77,9 @@ const EMPTY: Form = {
   mobility_impaired: false,
   is_infant: false,
 }
+
+/** Sugestões, não uma lista fechada: a família de cada um tem o formato dela. */
+const RELACOES = ['mãe', 'pai', 'filho', 'filha', 'avó', 'avô', 'irmã', 'irmão', 'sogra', 'sogro', 'tia', 'tio']
 
 const COPY = {
   pt: {
@@ -109,6 +120,12 @@ const COPY = {
     name: 'Nome',
     namePlaceholder: 'Como você chama essa pessoa',
     nameRequired: 'O nome é obrigatório.',
+    relationship: 'Quem é essa pessoa para você',
+    relationshipPlaceholder: 'mãe, filho, avó…',
+    relationshipWhy: 'O plano precisa saber quem responde por quem. Um dependente não se desloca sozinho — alguém vai buscá-lo.',
+    care: 'O que quem for buscar precisa saber',
+    carePlaceholder: 'Ex.: mora no 3º andar sem elevador; não ouve bem; tem medo de sirene',
+    careWhy: 'Instrução de resgate, não ficha médica. Escreva o que faria diferença para quem chegar na porta.',
     age: 'Idade',
     ageWhy: 'A idade muda a conta de água e o tempo de caminhada no plano.',
     clearAge: 'Deixar em branco',
@@ -180,6 +197,12 @@ const COPY = {
     name: 'Name',
     namePlaceholder: 'What you call this person',
     nameRequired: 'A name is required.',
+    relationship: 'Who this person is to you',
+    relationshipPlaceholder: 'mother, son, grandmother…',
+    relationshipWhy: 'The plan needs to know who answers for whom. A dependent does not move unaided — someone collects them.',
+    care: 'What whoever collects them needs to know',
+    carePlaceholder: 'e.g. third floor, no lift; hard of hearing; frightened by sirens',
+    careWhy: 'Rescue instruction, not a medical record. Write what would matter to whoever arrives at the door.',
     age: 'Age',
     ageWhy: 'Age changes the water maths and the walking time in the plan.',
     clearAge: 'Leave blank',
@@ -344,6 +367,8 @@ export default function RosterPage() {
   function openEdit(m: Member) {
     setForm({
       name: m.name,
+      relationship: m.relationship ?? '',
+      care_notes: m.care_notes ?? '',
       age: m.age,
       medical_conditions: m.medical_conditions ?? [],
       medical_notes: m.medical_notes ?? '',
@@ -407,6 +432,8 @@ export default function RosterPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: form.name.trim(),
+          relationship: form.relationship.trim() || null,
+          care_notes: form.care_notes.trim() || null,
           age: form.age,
           medical_conditions: form.medical_conditions,
           medical_notes: form.medical_notes.trim() || null,
@@ -562,7 +589,10 @@ export default function RosterPage() {
                 <Card key={m.id} className="roster-person">
                   <div className="row">
                     <div className="id">
-                      <strong className="t-title2">{m.name}</strong>
+                      <strong className="t-title2">
+                        {m.name}
+                        {m.relationship && <span className="ink-3"> · {m.relationship}</span>}
+                      </strong>
                       <em className="t-foot ink-2">
                         {m.age === null ? c.noAge : `${m.age} ${m.age === 1 ? c.year : c.years}`}
                         {m.medications.length > 0 &&
@@ -653,6 +683,23 @@ export default function RosterPage() {
                   disabled={isPending}
                   autoFocus
                 />
+              </label>
+
+              <label className="field">
+                <span className="t-caps ink-3">{c.relationship}</span>
+                <input
+                  className="roster-input"
+                  type="text"
+                  value={form.relationship}
+                  placeholder={c.relationshipPlaceholder}
+                  onChange={e => setForm(f => ({ ...f, relationship: e.target.value }))}
+                  disabled={isPending}
+                  list="eos-relacoes"
+                />
+                <datalist id="eos-relacoes">
+                  {RELACOES.map(r => <option key={r} value={r} />)}
+                </datalist>
+                <span className="t-foot ink-3">{c.relationshipWhy}</span>
               </label>
 
               <div className="field">
@@ -769,6 +816,19 @@ export default function RosterPage() {
                   </ul>
                 )}
               </div>
+
+              <label className="field">
+                <span className="t-caps ink-3">{c.care}</span>
+                <textarea
+                  className="roster-textarea"
+                  rows={3}
+                  value={form.care_notes}
+                  placeholder={c.carePlaceholder}
+                  onChange={e => setForm(f => ({ ...f, care_notes: e.target.value }))}
+                  disabled={isPending}
+                />
+                <span className="t-foot ink-3">{c.careWhy}</span>
+              </label>
 
               <div className="field">
                 <span className="t-caps ink-3">{c.special}</span>

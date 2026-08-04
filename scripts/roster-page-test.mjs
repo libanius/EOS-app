@@ -137,7 +137,7 @@ await page.getByRole('button', { name: /Adicionar pessoa/i }).first().click()
 await page.locator('.roster-sheet').waitFor({ timeout: 8000 })
 await page.locator('.roster-sheet input.roster-input').first().fill('Isadora Teste')
 // Sem idade de propósito: é assim que se prova o item 6.
-await page.locator('.roster-sheet .roster-textarea').fill('asma leve, usa bombinha no inverno')
+await page.locator('.roster-sheet .roster-textarea').first().fill('asma leve, usa bombinha no inverno')
 await page.getByRole('button', { name: /^Cadastrar$/ }).click()
 await page.locator('.roster-sheet').waitFor({ state: 'detached', timeout: 15000 }).catch(() => {})
 await page.waitForTimeout(1200)
@@ -175,6 +175,31 @@ const avisoDepois = await cartao.locator('.warn').count()
 comIdade?.age > 0 && avisoDepois === 0
   ? ok('preenchida a idade, o aviso some', `idade=${comIdade.age} avisos=${avisoDepois}`)
   : no('o aviso não acompanhou o dado', `idade=${comIdade?.age ?? 'null'} avisos=${avisoDepois}`)
+
+// ── 7. relação e instrução de resgate chegam ao banco (D-123 fase 3) ────────
+await page.goto(`${B}/family/cadastro`, { waitUntil: 'networkidle' })
+await page.getByRole('button', { name: /Adicionar pessoa/i }).first().click()
+await page.locator('.roster-sheet').waitFor({ timeout: 8000 })
+const campos = page.locator('.roster-sheet input.roster-input')
+await campos.nth(0).fill('Dona Ana')
+await campos.nth(1).fill('avó')
+await page.locator('.roster-sheet .roster-textarea').nth(1).fill('3º andar sem elevador, não ouve bem')
+await page.getByRole('button', { name: /^Cadastrar$/ }).click()
+await page.locator('.roster-sheet').waitFor({ state: 'detached', timeout: 15000 }).catch(() => {})
+await page.waitForTimeout(1200)
+const dep = await admin(`/rest/v1/family_members?profile_id=eq.${u.id}&name=eq.Dona%20Ana&select=relationship,care_notes`).then(r => r.json())
+dep?.[0]?.relationship === 'avó' && /elevador/.test(dep?.[0]?.care_notes ?? '')
+  ? ok('relação e instrução de resgate chegam ao banco', `"${dep[0].relationship}" · "${dep[0].care_notes}"`)
+  : no('campos do dependente não gravaram', JSON.stringify(dep).slice(0, 200))
+
+// ── 8. a Ficha diz "você conta como N" ──────────────────────────────────────
+await page.goto(`${B}/ficha`, { waitUntil: 'networkidle' })
+await page.waitForTimeout(1500)
+const textoFicha = await page.locator('body').innerText()
+const contaCerto = /Você conta como 3 pessoas/.test(textoFicha) && /Dona Ana/.test(textoFicha)
+contaCerto
+  ? ok('a Ficha mostra quem depende de mim e a contagem', 'você + 2')
+  : no('a Ficha não reflete os dependentes', textoFicha.slice(0, 200).replace(/\n/g, ' | '))
 
 // ── controle negativo: nenhum diálogo do navegador ──────────────────────────
 alertas === 0
