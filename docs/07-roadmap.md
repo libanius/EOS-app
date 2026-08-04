@@ -264,6 +264,7 @@ product phase sequenced.
 | ONB-T01 | Onboarding contextual por convite de simulação | ✅ COMPLETE | 2026-08-03 — D-091 / `docs/23-onboarding-by-simulation.md`; `/sim/[token]` preserva contexto, login/signup mantêm redirect e `/onboarding` devolve ao convite |
 | SIM-T11 | Simulação gera preparação acionável | ✅ COMPLETE | 2026-08-03 — D-092 / `docs/24-simulation-preparedness-actions.md`; debrief gera propostas confirmáveis com fonte e salva em `SIMULATION_DEBRIEF` |
 | PILOT-T08 | Pilot como educador situacional | ✅ COMPLETE | 2026-08-03 — D-093 / `docs/25-pilot-situational-educator.md`; propostas do Pilot têm tipo/fonte/destino, confirmação explícita e `PILOT_RECOMMENDATION` |
+| PILOT-T09 | Pilot lê ficha master e membros detalhados | ✅ COMPLETE | 2026-08-04 — D-105; `/api/pilot/chat` injeta ficha master + dependentes no prompt e não depende só dos agregados do cliente |
 
 ---
 

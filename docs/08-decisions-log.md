@@ -278,6 +278,40 @@ como rota protegida; usuário não logado ia para login, o login ignorava
 
 ---
 
+## D-105 — Pilot lê ficha master e membros familiares no servidor
+
+**Date**: 2026-08-04
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: O dono perguntou por que o Pilot não estava lendo a ficha da
+família. O código enviava ao Pilot apenas agregados (`people`, bebê, condições
+médicas e mobilidade), calculados no cliente a partir de `/api/family-members`.
+A ficha master (`/api/profile/ficha`) com alergias, medicamentos, tipo sanguíneo,
+contato de emergência e notas médicas não entrava no prompt conversacional.
+
+**Decision**:
+
+1. `/api/pilot/chat` passa a buscar a ficha master do usuário autenticado no
+   servidor antes de chamar o modelo.
+2. A mesma rota também busca os membros familiares do usuário com idade,
+   condições, medicamentos, notas, bebê e mobilidade reduzida.
+3. Esses dados entram no prompt como "FICHA DA FAMÍLIA / FAMILY RECORD".
+4. O cliente continua podendo enviar agregados para cálculos rápidos, mas o
+   servidor é a fonte para a ficha detalhada usada pelo Pilot conversacional.
+5. O Pilot deve dizer "não consta na ficha" quando um dado sensível não estiver
+   preenchido, em vez de inventar.
+
+**Consequences**:
+
+- Perguntas sobre alergias, medicamentos, contato de emergência, tipo sanguíneo
+  e necessidades de membros podem ser respondidas pelo Pilot.
+- Não expõe ficha de outros usuários/círculo: a rota lê apenas o usuário
+  autenticado e seus `family_members`.
+- O motor local/offline continua usando agregados; ficha detalhada é enriquecida
+  pela rota online do Pilot.
+
+---
+
 ## D-104 — EDU bloqueia ingestão RAG sem texto instrucional suficiente
 
 **Date**: 2026-08-04

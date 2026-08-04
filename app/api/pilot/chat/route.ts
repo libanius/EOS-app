@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { generationParams, getOpenAIClient, getOpenAIModel } from '@/lib/openai'
 import { getRelevantChunks } from '@/lib/knowledge'
+import { buildPilotFamilyRecord } from '@/lib/pilot-family-record'
 
 /**
  * POST /api/pilot/chat — the Pilot's conversational layer.
@@ -469,6 +470,39 @@ export async function POST(request: NextRequest) {
   const pt = context.pt
   const question = messages[messages.length - 1]?.content ?? ''
 
+  let familyRecord = ''
+  try {
+    const [{ data: profile }, { data: members }] = await Promise.all([
+      supabase
+        .from('profiles')
+        .select('name, location, blood_type, allergies, emergency_contact_name, emergency_contact_phone, medical_notes, medications')
+        .eq('id', user.id)
+        .maybeSingle(),
+      supabase
+        .from('family_members')
+        .select('name, age, medical_conditions, medical_notes, medications, mobility_impaired, is_infant')
+        .eq('profile_id', user.id)
+        .order('created_at', { ascending: true }),
+    ])
+    familyRecord = buildPilotFamilyRecord({
+      profile: profile ?? null,
+      members: (members ?? []) as Array<{
+        name?: string | null
+        age?: number | null
+        medical_conditions?: string[] | null
+        medical_notes?: string | null
+        medications?: string[] | null
+        mobility_impaired?: boolean | null
+        is_infant?: boolean | null
+      }>,
+      pt,
+    })
+  } catch {
+    familyRecord = pt
+      ? 'FICHA DA FAMÍLIA: não consegui carregar a ficha detalhada nesta resposta.'
+      : 'FAMILY RECORD: could not load the detailed family record for this answer.'
+  }
+
   // Ground the answer in the EOS knowledge base (FEMA, Red Cross, WHO, SAS).
   let knowledge = ''
   try {
@@ -508,6 +542,11 @@ export async function POST(request: NextRequest) {
       ? `SITUAÇÃO: índice de risco ${context.score ?? '—'} (${context.riskState}). ${context.headline}`
       : `SITUATION: risk index ${context.score ?? '—'} (${context.riskState}). ${context.headline}`,
     pt ? `FAMÍLIA: ${household}` : `HOUSEHOLD: ${household}`,
+    familyRecord
+      ? (pt
+          ? `FICHA DA FAMÍLIA QUE VOCÊ PODE USAR AGORA:\n${familyRecord}\n\nSe um campo disser "não consta", trate como dado ausente e não invente.`
+          : `FAMILY RECORD YOU MAY USE NOW:\n${familyRecord}\n\nIf a field says "not recorded", treat it as missing and do not invent it.`)
+      : '',
     pt ? `RECURSOS: ${reserves}` : `RESOURCES: ${reserves}`,
     pt
       ? `DADOS AO VIVO QUE VOCÊ TEM AGORA (leitura real dos sensores e provedores do EOS):\n${situationReport(context)}`

@@ -151,6 +151,13 @@ mostra essa contagem e a API bloqueia link-only mesmo se chamada manualmente.
 
 ## Memória do Pilot exige confirmação e evento de auditoria (2026-08-03)
 
+D-105 corrigiu uma lacuna importante: o Pilot conversacional não lia a ficha
+master; recebia só agregados do cliente (`people`, bebê, condição médica,
+mobilidade). Agora `/api/pilot/chat` busca server-side a ficha do usuário
+autenticado (`profiles`: alergias, medicamentos, tipo sanguíneo, contato,
+notas, local) e seus `family_members` detalhados antes de montar o prompt. Se um
+campo estiver vazio, o prompt diz "não consta" e manda não inventar.
+
 D-095 / UPP-03 criou o fluxo confirmado de memória. `/api/pilot/chat` pode
 retornar propostas `memory[]`; a UI mostra título, motivo e Markdown exato. Só
 depois do toque em "Salvar memória" a rota
