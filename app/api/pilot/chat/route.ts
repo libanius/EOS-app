@@ -2,6 +2,8 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { generationParams, getOpenAIClient, getOpenAIModel } from '@/lib/openai'
+import { enforceAiBudget, rateLimitHeaders } from '@/lib/rate-limit'
+import { logError } from '@/lib/error-log'
 import { getRelevantChunks } from '@/lib/knowledge'
 import { buildPilotCircleRecord, buildPilotFamilyRecord, type CircleVisibleMemberRecord } from '@/lib/pilot-family-record'
 
@@ -549,6 +551,40 @@ export async function POST(request: NextRequest) {
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 })
 
+  /**
+   * Limite de uso (D-118).
+   *
+   * Esta é a rota mais cara do produto: modelo forte, embedding, tradução da
+   * consulta e RAG, tudo por pergunta. Ela não tinha limite NENHUM, e cadastro é
+   * aberto — uma conta podia consumir a fatura da OpenAI sozinha.
+   *
+   * Duas janelas: a de minuto protege a experiência (um botão preso não vira
+   * cem chamadas); a diária protege a FATURA, que nenhuma janela de um minuto
+   * detém ao longo de horas.
+   *
+   * Os números são generosos de propósito: numa emergência de verdade a pessoa
+   * VAI perguntar muito, e um copiloto que trava no momento do susto é pior que
+   * a fatura que ele evitou.
+   */
+  const excedeu = await enforceAiBudget(`pilot:${user.id}`, { perMinute: 12, perDay: 200 })
+  if (excedeu) {
+    const segundos = Math.max(1, Math.ceil((excedeu.result.reset - Date.now()) / 1000))
+    return NextResponse.json(
+      {
+        error: 'rate_limited',
+        // A resposta cai no mesmo campo que a UI já sabe mostrar, então o
+        // usuário lê uma frase — não um erro cru nem um silêncio.
+        reply:
+          excedeu.scope === 'day'
+            ? 'Você já conversou bastante comigo hoje. O limite diário se renova em algumas horas — o resto do EOS continua funcionando normalmente.'
+            : `Muitas perguntas em sequência. Tente de novo em ${segundos}s.`,
+        tasks: [],
+        destinations: [],
+      },
+      { status: 200, headers: rateLimitHeaders(excedeu.result) },
+    )
+  }
+
   let body: Body
   try {
     body = (await request.json()) as Body
@@ -750,7 +786,13 @@ export async function POST(request: NextRequest) {
     const raw = completion.choices[0]?.message?.content ?? ''
     const { reply, tasks, destinations, memory } = extractJson(raw, pt)
     return NextResponse.json({ reply, tasks, destinations, memory })
-  } catch {
+  } catch (error) {
+    // Antes este catch era mudo: a rota devolvia "unavailable" e o defeito
+    // morria ali. Agora fica registrado — a resposta ao usuário não muda.
+    await logError('api/pilot/chat', error, {
+      userId: user.id,
+      context: { model: getOpenAIModel(), riskState: context.riskState },
+    })
     return NextResponse.json({ error: 'unavailable', reply: null, tasks: [], destinations: [] }, { status: 200 })
   }
 }

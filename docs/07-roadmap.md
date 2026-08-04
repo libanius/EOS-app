@@ -92,7 +92,7 @@ product phase sequenced.
 | LA-T01 | Stripe test payment: complete Checkout with test card and verify webhook updates `profiles.plan` | ✅ COMPLETE | 2026-07-20 — `BrightScale Group` updated to `plan=family`, `plan_status=active`, `stripe_subscription_id=sub_...` |
 | LA-T02 | Stripe Live cutover: create Live products/keys/webhook, swap env vars test → live, redeploy | ✅ COMPLETE | 2026-07-21 — conta Live `acct_1TuL40IaCSStSVaq` (EOS, US, ativada). Produtos/preços Live ($9.90/$19.90), webhook Live e as 4 env vars da Vercel trocadas para live; deploy fresco. IDs sandbox obsoletos limpos dos profiles. Statement descriptor já = "EOS BRIGHTSCALE". |
 | LA-T03 | Optional hazard provider keys (WeatherKit/Xweather/etc.) | DRAFT | Not required for launch; keyless providers already live |
-| LA-T04 | Upstash Redis rate-limit validation | DRAFT | App currently falls back to in-memory limiter |
+| LA-T04 | Rate limit distribuído + health/error log | ✅ COMPLETE | 2026-08-04 — D-118; Upstash continua opcional, Supabase/Postgres vira guardrail distribuído v1; `/api/health` expõe estado operacional |
 | LA-T05 | Gift codes (sem Stripe): criação owner-only + resgate + expiração lazy | ✅ COMPLETE | 2026-07-22 — D-061; `/admin/gift-codes` (ADMIN_EMAILS), `/api/billing/redeem`, `lib/plan.ts`, resgate em Settings |
 | LA-T06 | Códigos de afiliado (Stripe): cupom "100% off · once" + promotion codes | ✅ COMPLETE | 2026-08-04 — D-099 / `docs/30-affiliate-codes.md`; `/admin/affiliates`, Stripe promotion code, captura `?ref=`, tracker de referrals/conversões e comissão owed. Aplicar migration `20260804000000_affiliate_codes.sql`. |
 

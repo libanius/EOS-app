@@ -360,6 +360,43 @@ como rota protegida; usuário não logado ia para login, o login ignorava
 
 ---
 
+## D-118 — Guardrails de custo e visibilidade operacional
+
+**Date**: 2026-08-04
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: O roadmap mantinha `LA-T04` em DRAFT porque o rate limit dependia
+de Upstash Redis, mas o app caía para um `Map` em memória quando Upstash não
+estava configurado. Em serverless, esse fallback não é limite distribuído: cada
+instância tem o próprio contador. Ao mesmo tempo, rotas caras de IA podiam
+consumir OpenAI sem orçamento diário robusto, e erros de produção ficavam
+invisíveis enquanto Sentry não tivesse DSN.
+
+**Decision**:
+
+1. Não bloquear `LA-T04` em Upstash. Supabase/Postgres passa a ser o guardrail
+   distribuído v1, usando a função atômica `consume_rate_limit`.
+2. `lib/rate-limit.ts` mantém a ordem: Upstash se existir, Postgres distribuído,
+   memória apenas como fallback de degradação.
+3. Rotas de IA caras passam a usar orçamento por minuto e por dia:
+   `/api/pilot/chat` e `/api/weather-intelligence/custom-activity`.
+4. `custom-activity` passa a exigir autenticação para que exista identidade a
+   limitar.
+5. Enquanto Sentry estiver sem DSN, `error_log` no Postgres guarda erro
+   sanitizado por `scope`, `message`, `stack`, `user_id` e contexto escalar.
+6. `/api/health` expõe o estado operacional de rate limit, error log, Sentry,
+   OpenAI, push e cron sem expor segredo.
+
+**Consequences**:
+
+- Requer migration `20260804180000_rate_limit_and_error_log.sql`.
+- Sem migration, o app degrada para memória e `/api/health` mostra
+  `migration_pending`.
+- Não registra conteúdo de conversa, ficha médica, coordenadas, tokens, cookies
+  ou chaves.
+
+---
+
 ## D-117 — Badges de notificação são separados por surface do app
 
 **Date**: 2026-08-04

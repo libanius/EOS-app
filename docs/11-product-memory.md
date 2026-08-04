@@ -170,6 +170,14 @@ D-117 / NOTIF-T01 separa badges por surface do app. A tabela continua única, ma
 `/api/comms/notifications` retorna `unread_by_surface`; BottomNav mostra badge
 por ícone; clicar em ícone com badge abre Inbox filtrado pela surface.
 
+D-118 / LA-T04 fecha o draft antigo de rate-limit sem depender de Upstash:
+Supabase/Postgres é o guardrail distribuído v1 via `consume_rate_limit`; memória
+fica só como fallback de degradação. Rotas OpenAI caras (`/api/pilot/chat` e
+`/api/weather-intelligence/custom-activity`) têm orçamento por minuto e por dia.
+`custom-activity` exige login. Enquanto Sentry não tiver DSN, `error_log` guarda
+erro sanitizado; `/api/health` mostra rate limit, error log, Sentry, OpenAI,
+push e cron. Migration: `20260804180000_rate_limit_and_error_log.sql`.
+
 ---
 
 ## EDU é catálogo aprovado antes de virar RAG (2026-08-03)
