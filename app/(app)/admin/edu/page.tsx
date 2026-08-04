@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import type { EduContent, EduSourceType, EduStatus } from '@/lib/edu'
+import { eduRagInstructionChars, eduRagReady, MIN_EDU_RAG_INSTRUCTION_CHARS } from '@/lib/edu-rag'
 
 const SOURCE_TYPES: EduSourceType[] = ['youtube', 'manual', 'pdf', 'external']
 const STATUSES: EduStatus[] = ['draft', 'approved', 'archived']
@@ -168,29 +169,38 @@ export default function AdminEduPage() {
 
       <h2 style={s.h2}>Conteúdos ({items.length})</h2>
       <div style={{ display: 'grid', gap: 12 }}>
-        {items.map(item => (
-          <article key={item.id} style={s.item}>
-            <div>
-              <strong>{item.title}</strong>
-              <p style={s.muted}>
-                {item.status} · v{item.version} · {item.source_type} · {item.scenario_tags.join(', ') || 'sem tags'}
-                {item.rag_ingested_at ? ` · RAG ${new Date(item.rag_ingested_at).toLocaleString()}` : ''}
-              </p>
-              {item.rag_enabled ? <p style={s.ragHint}>Elegível para RAG</p> : null}
-            </div>
-            <div style={s.itemActions}>
-              <button style={s.secondary} onClick={() => edit(item)}>Editar</button>
-              <button
-                style={{ ...s.secondary, opacity: item.status === 'approved' && item.rag_enabled && ingestingId !== item.id ? 1 : 0.5 }}
-                onClick={() => ingest(item)}
-                disabled={item.status !== 'approved' || !item.rag_enabled || ingestingId === item.id}
-                title={item.status !== 'approved' || !item.rag_enabled ? 'Aprove e marque como elegível para RAG primeiro.' : 'Ingerir no RAG'}
-              >
-                {ingestingId === item.id ? 'Ingerindo...' : 'Ingerir RAG'}
-              </button>
-            </div>
-          </article>
-        ))}
+        {items.map(item => {
+          const instructionChars = eduRagInstructionChars(item)
+          const ready = eduRagReady(item)
+          const canIngest = item.status === 'approved' && item.rag_enabled && ready && ingestingId !== item.id
+          return (
+            <article key={item.id} style={s.item}>
+              <div>
+                <strong>{item.title}</strong>
+                <p style={s.muted}>
+                  {item.status} · v{item.version} · {item.source_type} · {item.scenario_tags.join(', ') || 'sem tags'}
+                  {item.rag_ingested_at ? ` · RAG ${new Date(item.rag_ingested_at).toLocaleString()}` : ''}
+                </p>
+                {item.rag_enabled ? (
+                  <p style={{ ...s.ragHint, color: ready ? '#22c55e' : '#f59e0b' }}>
+                    RAG texto: {instructionChars}/{MIN_EDU_RAG_INSTRUCTION_CHARS} caracteres instrucionais
+                  </p>
+                ) : null}
+              </div>
+              <div style={s.itemActions}>
+                <button style={s.secondary} onClick={() => edit(item)}>Editar</button>
+                <button
+                  style={{ ...s.secondary, opacity: canIngest ? 1 : 0.5 }}
+                  onClick={() => ingest(item)}
+                  disabled={!canIngest}
+                  title={!ready ? 'Adicione resumo/notas instrucionais antes de ingerir.' : item.status !== 'approved' || !item.rag_enabled ? 'Aprove e marque como elegível para RAG primeiro.' : 'Ingerir no RAG'}
+                >
+                  {ingestingId === item.id ? 'Ingerindo...' : 'Ingerir RAG'}
+                </button>
+              </div>
+            </article>
+          )
+        })}
       </div>
     </main>
   )

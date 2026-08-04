@@ -142,6 +142,11 @@ marca `rag_ingested_at`. A proveniência é `source='edu:<edu_content.id>'` e
 `source_version='v<edu_content.version>'`. Não há YouTube API nem transcript
 automático.
 
+D-104 adicionou o guardrail contra RAG vazio: título, URL e tags entram como
+metadados/proveniência, mas não contam para liberar ingestão. O admin precisa de
+pelo menos 160 caracteres instrucionais em `summary + transcript`; `/admin/edu`
+mostra essa contagem e a API bloqueia link-only mesmo se chamada manualmente.
+
 ---
 
 ## Memória do Pilot exige confirmação e evento de auditoria (2026-08-03)

@@ -1,7 +1,7 @@
 # 22 — EDU
 
-> **Status:** IMPLEMENTED — EDU-T01 / EDU-T02 / EDU-T03
-> **Decision:** D-090 / D-101 / D-103
+> **Status:** IMPLEMENTED — EDU-T01 / EDU-T02 / EDU-T03 / EDU-T04
+> **Decision:** D-090 / D-101 / D-103 / D-104
 > **Date:** 2026-08-04
 > **Owner:** Paulo Libânio Neto
 > **Surface:** Web/PWA core first
@@ -44,6 +44,12 @@ EDU-T03 adds one ingestion behavior:
    `rag_enabled=true` into `knowledge_base`. The ingestion uses owner-provided
    title, summary, transcript/notes, tags and URL; it does not fetch YouTube
    data automatically.
+
+EDU-T04 adds one quality guardrail:
+
+7. **RAG readiness guard** — RAG ingestion requires enough owner-provided
+   instructional text in `summary` and/or `transcript`. Title, URL and tags are
+   provenance/metadata; they do not count as instructional content.
 
 ---
 
@@ -100,6 +106,8 @@ RLS is enabled with no direct policies. Reads/writes go through `/api/edu`.
 - Inserts fresh chunks using OpenAI `text-embedding-3-small`.
 - Stores provenance in `source='edu:<id>'` and `source_version='v<version>'`.
 - Updates `edu_content.rag_ingested_at`.
+- Rejects content with less than 160 instructional characters from
+  `summary + transcript`.
 
 ---
 
@@ -119,6 +127,8 @@ RLS is enabled with no direct policies. Reads/writes go through `/api/edu`.
 9. RAG ingestion is explicit owner/admin action. `rag_enabled=true` makes content
    eligible, but ingestion only happens after the admin triggers it.
 10. Reingestion replaces chunks for the same EDU item source.
+11. A link-only video must not be ingested into RAG. Owner/admin must provide
+   enough summary or notes first.
 
 ---
 
@@ -137,6 +147,7 @@ EDU-T01 is complete when:
    converted to an embed URL.
 9. Owner/admin can ingest approved, RAG-enabled content into `knowledge_base`
    with `edu_content.id/version` preserved as provenance.
+10. Admin sees RAG text readiness and cannot ingest link-only content.
 
 ---
 

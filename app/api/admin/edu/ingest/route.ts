@@ -6,9 +6,12 @@ import { getOpenAIClient } from '@/lib/openai'
 import {
   buildEduRagText,
   chunkEduRagText,
+  eduRagInstructionChars,
+  eduRagReady,
   eduRagSource,
   eduRagSourceVersion,
   inferEduScenarioType,
+  MIN_EDU_RAG_INSTRUCTION_CHARS,
 } from '@/lib/edu-rag'
 import type { EduContent } from '@/lib/edu'
 
@@ -47,6 +50,13 @@ export async function POST(req: Request) {
   }
   if (!content.rag_enabled) {
     return NextResponse.json({ error: 'Marque o conteúdo como elegível para RAG antes de ingerir.' }, { status: 400 })
+  }
+  if (!eduRagReady(content)) {
+    return NextResponse.json({
+      error: `Adicione resumo/notas com pelo menos ${MIN_EDU_RAG_INSTRUCTION_CHARS} caracteres instrucionais antes de ingerir no RAG.`,
+      instructionChars: eduRagInstructionChars(content),
+      requiredInstructionChars: MIN_EDU_RAG_INSTRUCTION_CHARS,
+    }, { status: 400 })
   }
 
   const text = buildEduRagText(content)

@@ -2,6 +2,7 @@ import type { EduContent } from './edu'
 
 const CHUNK_SIZE = 1500
 const CHUNK_OVERLAP = 200
+export const MIN_EDU_RAG_INSTRUCTION_CHARS = 160
 
 const SCENARIO_TAGS: Record<string, string> = {
   hurricane: 'HURRICANE',
@@ -39,6 +40,19 @@ export function buildEduRagText(item: Pick<EduContent, 'title' | 'summary' | 'tr
     item.source_url ? `Source URL: ${item.source_url}` : '',
     item.scenario_tags.length ? `Scenario tags: ${item.scenario_tags.join(', ')}` : '',
   ].filter(Boolean).join('\n\n').trim()
+}
+
+export function eduRagInstructionChars(item: Pick<EduContent, 'summary' | 'transcript'>) {
+  return [item.summary, item.transcript]
+    .filter(Boolean)
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .length
+}
+
+export function eduRagReady(item: Pick<EduContent, 'summary' | 'transcript'>) {
+  return eduRagInstructionChars(item) >= MIN_EDU_RAG_INSTRUCTION_CHARS
 }
 
 export function chunkEduRagText(text: string): string[] {

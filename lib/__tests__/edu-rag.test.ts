@@ -1,6 +1,8 @@
 import {
   buildEduRagText,
   chunkEduRagText,
+  eduRagInstructionChars,
+  eduRagReady,
   eduRagSource,
   eduRagSourceVersion,
   inferEduScenarioType,
@@ -32,5 +34,14 @@ describe('edu rag helpers', () => {
     expect(text).toContain('Transcript / notes:')
     expect(chunkEduRagText(text)).toHaveLength(1)
     expect(chunkEduRagText('')).toEqual([])
+  })
+
+  it('requires real instructional text before RAG ingestion', () => {
+    expect(eduRagReady({ summary: '', transcript: '' })).toBe(false)
+    expect(eduRagReady({ summary: 'Short URL-only description.', transcript: '' })).toBe(false)
+
+    const notes = 'Store water for every family member, define the shelter room, seal exterior gaps, keep a battery radio available, prepare medication copies, and review the plan before the event.'
+    expect(eduRagInstructionChars({ summary: notes, transcript: '' })).toBeGreaterThanOrEqual(160)
+    expect(eduRagReady({ summary: notes, transcript: '' })).toBe(true)
   })
 })

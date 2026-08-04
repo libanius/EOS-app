@@ -278,6 +278,36 @@ como rota protegida; usuário não logado ia para login, o login ignorava
 
 ---
 
+## D-104 — EDU bloqueia ingestão RAG sem texto instrucional suficiente
+
+**Date**: 2026-08-04
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: Depois de EDU-T03, o dono perguntou o que acontece se um vídeo for
+ingerido sem `Transcript / notas`. A resposta correta é que EOS só teria título,
+resumo, URL e tags; isso cria risco de falso RAG, em que um link parece conteúdo
+ingerido mas não contém instrução suficiente para o Pilot responder com fonte.
+
+**Decision**:
+
+1. EDU-T04 adiciona um guardrail de qualidade antes da ingestão RAG.
+2. O texto instrucional contado para ingestão vem apenas de `summary` e
+   `transcript/notas`.
+3. `title`, `source_url` e tags continuam entrando como metadados no chunk, mas
+   não bastam para liberar a ingestão.
+4. A ingestão exige no mínimo 160 caracteres de texto instrucional.
+5. O Admin EDU mostra a contagem de caracteres instrucionais por item e desabilita
+   "Ingerir RAG" quando o conteúdo é insuficiente.
+
+**Consequences**:
+
+- Um vídeo só com URL não entra no RAG.
+- O dono precisa adicionar resumo/notas antes de ingerir.
+- YouTube API/transcript automático continuam fora; esta fase só impede ingestão
+  vazia ou enganosa.
+
+---
+
 ## D-103 — EDU aprovado pode ser ingerido para o RAG com proveniência
 
 **Date**: 2026-08-04
