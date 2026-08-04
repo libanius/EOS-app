@@ -21,7 +21,7 @@ adapters, not separate products.
 | Field | Value |
 |---|---|
 | **Phase** | PHASE 0B complete; next product lane is Preparedness Engine |
-| **Current Task** | PLAN-T07 — Pilot proposes/reviews family plans with element-by-element confirmation |
+| **Current Task** | WV2-T05 — production validation for World v2: a11y/perf, provider cost and privacy/provenance review |
 | **Last Updated** | 2026-08-03 |
 
 Full details: `docs/09-build-status.md`

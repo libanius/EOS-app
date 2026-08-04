@@ -123,8 +123,10 @@ significa elegível para ingestão futura, não ingestão feita. A próxima etap
 correta é um job que leia `edu_content` aprovado e grave `knowledge_base`
 mantendo `edu_content.id` + `version` como proveniência.
 
-Migration criada: `20260803002000_edu_content.sql`. Até ser aplicada, `/edu`
-degrada com conteúdo padrão e `/admin/edu` não persiste.
+Migration `20260803002000_edu_content.sql` aplicada pelo dono em 2026-08-03 e
+verificada via service-role (`edu_content` responde 200; count=0). `/edu` e
+`/admin/edu` podem persistir catálogo educativo; se a tabela ficar indisponível,
+o fallback de conteúdo padrão continua sendo apenas degradação operacional.
 
 ---
 
@@ -137,9 +139,24 @@ depois do toque em "Salvar memória" a rota
 `confirm_pilot_memory(...)`.
 
 A RPC atualiza `profile_personalization.pilot_memory_md` e insere
-`pilot_memory_events` na mesma transação. Se a migration
-`20260803003000_pilot_memory_events.sql` não estiver aplicada, a rota retorna
-503 e não altera a memória.
+`pilot_memory_events` na mesma transação. Migration
+`20260803003000_pilot_memory_events.sql` aplicada pelo dono em 2026-08-03 e
+verificada via service-role (`pilot_memory_events` responde 200; count=0). Se a
+tabela ou RPC ficarem indisponíveis em outro ambiente, a rota retorna 503 e não
+altera a memória.
+
+---
+
+## Pilot revisa planos sem escrita silenciosa (2026-08-03)
+
+D-096 / PLAN-T07 implementou a Revisão do Pilot em `/plan`. O Pilot gera
+propostas pequenas de `trigger` e `role`, mostra motivo e conteúdo, e cada item
+precisa ser aplicado ao rascunho individualmente. Nada persiste nesse clique; o
+salvamento continua sendo o botão "Salvar plano", com versionamento, push e
+acknowledgement. A lógica vive em `lib/plan-pilot-review.ts` e é determinística
+para não inventar coordenadas, rotas ou membros. Se uma evolução usar modelo, o
+provider de AI permanece OpenAI e a confirmação elemento a elemento continua
+obrigatória.
 
 ---
 

@@ -197,7 +197,7 @@ product phase sequenced.
 | PLAN-T04 | Versionamento, push ao círculo e reconhecimento explícito | ✅ COMPLETE | 2026-07-30 — versão e idade sempre visíveis; push ao salvar; reconhecimento explícito e lista de quem já viu. Teste prova que a v2 **invalida** o ack da v1. |
 | PLAN-T05 | Cache offline do plano + execução sem rede | ✅ COMPLETE | 2026-07-30 — D-075. IndexedDB por círculo com versão e sincronização; `GET /api/plans` NetworkOnly para o cache do SW não mentir idade. Verificado com a rede derrubada no navegador. |
 | PLAN-T06 | Envelope do plano + carta offline | ✅ COMPLETE | 2026-07-30 — `lib/plan-envelope.ts` (bounds com margem, área corrigida pelo cosseno da latitude, projeção e barra de escala; 11 testes) + `PlanChart.tsx`, desenho SVG do plano **sem tile nenhum**. Download de tiles fica fora por termos de provedor: CARTO keyless não autoriza cache em massa e não há chave MapTiler. |
-| PLAN-T07 | Pilot propõe/revisa planos com confirmação elemento a elemento | PENDING | Depende de UPP-03; sem escrita silenciosa |
+| PLAN-T07 | Pilot propõe/revisa planos com confirmação elemento a elemento | ✅ COMPLETE | 2026-08-03 — D-096 / `docs/28-pilot-plan-review.md`; `/plan` mostra propostas do Pilot e aplica cada item só ao rascunho; persistência continua no salvar versionado |
 | PLAN-T08 | Executar Plano: Pilot host situacional + painel de ação familiar | ✅ COMPLETE (MVP local) | 2026-07-31 — D-079. Tocar no próprio rosto no mapa abre ferramentas de comando; o host deriva passos da versão atual do plano e alerta o círculo para executar agora. Timeline compartilhada e `family_plan_executions` ficam como próxima evolução. |
 | PLAN-T09 | Múltiplos planos + cancelar execução | ✅ COMPLETE | 2026-07-31 — D-080. Remove a regra de um plano ativo por círculo, permite criar/alternar planos por situação e torna cancelamento/falso alarme explícito. Passos fixos do EOS saem da lista numerada editável. |
 | PLAN-T10 | Handoff de rota multi-stop para Google Maps | ✅ COMPLETE | 2026-07-31 — D-082. A rota autoral/offline do EOS abre o Google Maps com origem, destino e paradas intermediárias na ordem do traçado. Sem migration. |
@@ -215,7 +215,7 @@ product phase sequenced.
 | UPP-00 | Spec + data model decision for profile personalization and Pilot memory | ✅ COMPLETE | 2026-07-21 — D-059; requirements, data model, Ficha Master and Pilot specs updated |
 | UPP-01 | MVP implementation: `profile_personalization` table, authenticated API, Ficha Master editor, avatar in World Dashboard | ✅ COMPLETE | 2026-07-21 — no public QR exposure; Pilot memory writes remain explicit/user-controlled |
 | UPP-02 | Profile photo upload pipeline using private storage policy | ✅ COMPLETE | 2026-07-21 — D-060; private `profile-photos` bucket, owner-only RLS, signed URL for authenticated components. Apply migration `20260721021000_profile_photo_storage.sql` in Supabase. |
-| UPP-03 | Pilot confirmed-write memory flow and audit trail | ✅ COMPLETE | 2026-08-03 — D-095 / `docs/27-pilot-memory-confirmed-writes.md`; `pilot_memory_events` + RPC atômica; migration `20260803003000_pilot_memory_events.sql` pendente de aplicação |
+| UPP-03 | Pilot confirmed-write memory flow and audit trail | ✅ COMPLETE | 2026-08-03 — D-095 / `docs/27-pilot-memory-confirmed-writes.md`; `pilot_memory_events` + RPC atômica; migration `20260803003000_pilot_memory_events.sql` aplicada pelo dono e verificada via service-role |
 
 ---
 

@@ -26,6 +26,7 @@ import { distanceKm, bearing, compassPoint } from '@/lib/world/shelters'
 import { formatDistance, googleMapsRouteUrlFromLineString, walkingMinutes } from '@/lib/world/navigation'
 import { getFamilyPlan, saveFamilyPlan } from '@/lib/offline-storage'
 import { planEnvelope } from '@/lib/plan-envelope'
+import { reviewPlanWithPilot, type PlanPilotProposal } from '@/lib/plan-pilot-review'
 import {
   PLACE_KINDS,
   RENDEZVOUS,
@@ -78,6 +79,12 @@ const COPY = {
     places: 'Lugares importantes',
     placesHint: 'Escola, trabalho, casa de parente. É de onde alguém pode estar quando o plano começar.',
     roles: 'Quem busca quem',
+    pilotReview: 'Revisão do Pilot',
+    pilotReviewBody: 'O Pilot revisa o rascunho e propõe mudanças pequenas. Nada é gravado sozinho: aplique um item por vez e salve o plano depois.',
+    pilotApply: 'Aplicar ao rascunho',
+    pilotAllClear: 'Sem novas propostas para este rascunho.',
+    pilotTrigger: 'Gatilho',
+    pilotRole: 'Papel',
     triggers: 'Quando executar',
     routes: 'Rotas',
     routesHint: 'Nenhuma rota desenhada. A rota da família carrega o que roteador nenhum sabe: qual ponte alaga, qual portão fica aberto.',
@@ -168,6 +175,12 @@ const COPY = {
     places: 'Important places',
     placesHint: 'School, work, a relative’s house. It is where someone might be when the plan starts.',
     roles: 'Who fetches whom',
+    pilotReview: 'Pilot review',
+    pilotReviewBody: 'Pilot reviews the draft and proposes small changes. Nothing is saved automatically: apply one item at a time and save the plan afterwards.',
+    pilotApply: 'Apply to draft',
+    pilotAllClear: 'No new proposals for this draft.',
+    pilotTrigger: 'Trigger',
+    pilotRole: 'Role',
     triggers: 'When to execute',
     routes: 'Routes',
     routesHint: 'No route drawn yet. A family route carries what no routing engine knows: which bridge floods, which gate stays open.',
@@ -273,8 +286,8 @@ export default function PlanPage() {
   const [drawing, setDrawing] = useState<{ index: number | null } | null>(null)
   const [profilePlace, setProfilePlace] = useState<{ label: string; lat: number; lng: number } | null>(null)
 
-  const circle = circles.find(x => x.id === circleId) ?? null
-  const members = circle?.members ?? []
+  const circle = useMemo(() => circles.find(x => x.id === circleId) ?? null, [circleId, circles])
+  const members = useMemo(() => circle?.members ?? [], [circle])
   // O endereço do perfil serve de ponto de PARTIDA para a casa — nunca é adotado
   // sozinho, porque é o centroide da cidade e a tela precisa dizer isso.
   useEffect(() => {
@@ -407,6 +420,10 @@ export default function PlanPage() {
 
   const gaps = useMemo(() => planGaps({ waypoints, roles }, pt), [waypoints, roles, pt])
   const envelope = useMemo(() => planEnvelope(waypoints, routes), [waypoints, routes])
+  const pilotProposals = useMemo(
+    () => reviewPlanWithPilot({ pt, members, waypoints, roles, triggers }),
+    [members, pt, roles, triggers, waypoints],
+  )
   // A casa tem cartão próprio no topo; repeti-la aqui faria parecer que são
   // dois endereços diferentes.
   const places = waypoints.filter(w => !isRendezvous(w.kind) && w.kind !== 'home')
@@ -469,6 +486,24 @@ export default function PlanPage() {
     } finally {
       setSaving(false)
     }
+  }
+
+  const applyPilotProposal = (proposal: PlanPilotProposal) => {
+    setDirty(true)
+    if (proposal.kind === 'trigger') {
+      setTriggers(list => {
+        const exists = list.some(trigger => trigger.condition.trim().toLowerCase() === proposal.trigger.condition.trim().toLowerCase())
+        return exists ? list : [...list, proposal.trigger]
+      })
+      return
+    }
+    setRoles(list => {
+      const exists = list.some(role =>
+        role.member_user_id === proposal.role.member_user_id &&
+        role.responsibility.trim().toLowerCase() === proposal.role.responsibility.trim().toLowerCase(),
+      )
+      return exists ? list : [...list, proposal.role]
+    })
   }
 
   const acknowledge = async () => {
@@ -623,6 +658,34 @@ export default function PlanPage() {
               </ul>
             </Card>
           )}
+
+          <SectionLabel trailing={pilotProposals.length ? String(pilotProposals.length) : undefined}>
+            {c.pilotReview}
+          </SectionLabel>
+          <Card className="wv2-plan-pilot">
+            <p className="t-foot ink-3">{c.pilotReviewBody}</p>
+            {pilotProposals.length === 0 ? (
+              <p className="t-foot ok">{c.pilotAllClear}</p>
+            ) : (
+              <div className="wv2-plan-pilot-list">
+                {pilotProposals.map(proposal => (
+                  <div key={proposal.id} className="wv2-plan-pilot-item">
+                    <span className="t-caps ink-3">{proposal.kind === 'trigger' ? c.pilotTrigger : c.pilotRole}</span>
+                    <strong className="t-sub">{proposal.title}</strong>
+                    <p className="t-foot ink-2">{proposal.reason}</p>
+                    {proposal.kind === 'trigger' ? (
+                      <p className="t-foot ink-3">{proposal.trigger.condition} → {proposal.trigger.action}</p>
+                    ) : (
+                      <p className="t-foot ink-3">
+                        {members.find(member => member.user_id === proposal.role.member_user_id)?.name ?? c.who}: {proposal.role.responsibility}
+                      </p>
+                    )}
+                    <Pill onClick={() => applyPilotProposal(proposal)}>{c.pilotApply}</Pill>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
 
           {/* ── the chart: the plan drawn from its own coordinates ─────── */}
           {waypoints.length > 0 && (

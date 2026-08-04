@@ -2475,6 +2475,21 @@
 .wv2 .ok { color: var(--accent); }
 
 .wv2-plan-page .wv2-plan-ack { display: grid; gap: var(--s3); justify-items: start; }
+.wv2-plan-page .wv2-plan-pilot { display: grid; gap: var(--s3); }
+.wv2-plan-page .wv2-plan-pilot-list { display: grid; gap: var(--s2); }
+.wv2-plan-page .wv2-plan-pilot-item {
+  display: grid;
+  gap: var(--s2);
+  justify-items: start;
+  padding: var(--s3);
+  border-radius: var(--r-tile);
+  border: 1px solid var(--sep);
+  background: var(--fill-2);
+}
+.wv2-plan-page .wv2-plan-pilot-item strong,
+.wv2-plan-page .wv2-plan-pilot-item p {
+  overflow-wrap: anywhere;
+}
 
 /* ── the rendezvous ladder ── */
 .wv2-plan-page .wv2-plan-step { display: grid; gap: var(--s2); }

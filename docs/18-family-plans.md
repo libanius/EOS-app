@@ -342,7 +342,7 @@ círculo (Admin/Editor). Endpoints públicos de ficha **nunca** tocam estas tabe
 | **PLAN-T04** | ✅ Versão e idade da cópia sempre na tela; mudança dispara push ao círculo; membro precisa reconhecer explicitamente, e o autor vê quem já viu. Uma nova versão **invalida** o reconhecimento anterior — provado em teste. |
 | **PLAN-T05** | ✅ Documento inteiro em IndexedDB por círculo, com versão e instante da sincronização. `GET /api/plans` é NetworkOnly de propósito (D-075): sem isso o service worker devolvia cópia velha como se fosse ao vivo. |
 | **PLAN-T06** | ✅ Envelope calculado (`lib/plan-envelope.ts`) + **carta do plano** em SVG que desenha lugares, escada numerada, traçados, norte e escala **sem tile nenhum**. Download de tiles segue fora por termos de provedor (§10). |
-| **PLAN-T07** | Pilot propõe/revisa planos com confirmação explícita (§9) |
+| **PLAN-T07** | ✅ Pilot propõe/revisa gatilhos e papéis como itens confirmáveis; aplicar muda só o rascunho e o plano só persiste no salvar versionado (§9) |
 | **PLAN-T08** | ✅ Executar Plano MVP: painel da pessoa no mapa abre um host situacional, deriva passos da versão atual do plano e permite alertar o círculo para executar agora. Persistência multiusuário fica para `family_plan_executions`. |
 | **PLAN-T09** | ✅ Múltiplos planos por círculo + execução cancelável: selecionar/criar planos por situação, cancelar falso alarme e remover passos fixos da lista editável. |
 | **PLAN-T10** | ✅ Handoff multi-stop: cada rota desenhada no EOS pode abrir o Google Maps com origem, destino e paradas intermediárias na ordem do traçado. O EOS guarda o combinado offline; o app de mapas calcula ruas quando houver rede. |

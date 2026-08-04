@@ -4,6 +4,36 @@
 
 ---
 
+## D-096 — Pilot revisa planos como propostas confirmáveis
+
+**Date**: 2026-08-03
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: PLAN-T07 estava bloqueado até UPP-03 porque o Pilot só poderia
+propor ou revisar planos se a arquitetura já impedisse escrita silenciosa. O
+plano da família é dado sensível e operacional: uma alteração invisível em ponto,
+papel, rota ou gatilho pode fazer membros executarem versões diferentes.
+
+**Decision**:
+
+1. `/plan` ganha uma seção "Revisão do Pilot".
+2. O Pilot propõe elementos pequenos, não substitui o documento inteiro.
+3. A proposta pode virar apenas rascunho local depois do clique do usuário.
+4. Persistência continua exclusiva do botão "Salvar plano", com versionamento,
+   push ao círculo e reconhecimento explícito.
+5. A implementação inicial é determinística para não inventar coordenadas,
+   rotas, membros ou autoridade externa.
+6. Qualquer evolução com modelo deve usar OpenAI como provider de AI e manter a
+   mesma confirmação elemento a elemento.
+
+**Consequences**:
+
+- PLAN-T07 fica concluído sem nova migration.
+- O Pilot pode revisar gatilhos e papéis sem gravar nada sozinho.
+- Rotas e pontos continuam autorais; o Pilot não cria coordenadas fictícias.
+
+---
+
 ## D-095 — Memória do Pilot só muda com confirmação e auditoria atômica
 
 **Date**: 2026-08-03
