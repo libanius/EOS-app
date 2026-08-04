@@ -189,7 +189,7 @@ invoices.
 | unit | text | Nullable |
 | acquired | boolean | |
 | acquired_at | timestamptz | Nullable |
-| kit_type | text | Source/grouping: `GERAL`, `BUG_OUT`, `SIMULATION_DEBRIEF`, etc. |
+| kit_type | text | Source/grouping: `GERAL`, `BUG_OUT`, `EDU_CONTENT`, `SIMULATION_DEBRIEF`, etc. |
 
 `SIMULATION_DEBRIEF` is the v1 persistence marker for SIM-T11. It means the
 item was explicitly confirmed from a simulation debrief proposal.

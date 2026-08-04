@@ -185,6 +185,11 @@ propósito para provar o rate limit antes do parse e antes de gastar OpenAI.
 2026-08-04, `edu_content?select=id,view_count` respondeu 200 via service-role.
 Isso libera o destaque v1 do vídeo EDU mais clicado.
 
+D-119 / EDU-T05 fecha o primeiro loop EDU → Preparação: `/edu` extrai propostas
+determinísticas de `summary + transcript`, mostra as ações ao usuário e só salva
+após clique. Persistência v1: `checklists.kit_type='EDU_CONTENT'`. Não há nova
+migration nem escrita automática; conteúdo link-only não gera ação.
+
 ---
 
 ## EDU é catálogo aprovado antes de virar RAG (2026-08-03)

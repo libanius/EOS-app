@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useLanguage } from '@/lib/i18n'
 import type { EduContent } from '@/lib/edu'
 import { youtubeEmbedUrl, youtubeThumbnailUrl } from '@/lib/edu'
+import { buildEduPreparednessProposals } from '@/lib/edu-actions'
 import { Card, PillLink, SectionLabel } from '@/components/world-v2/primitives'
 import '@/components/world-v2/world-v2.css'
 
@@ -23,6 +24,10 @@ const COPY = {
     more: 'Mais',
     less: 'Recolher',
     featured: 'Mais clicado no EOS',
+    prepare: 'Adicionar à preparação',
+    savingPrep: 'Salvando...',
+    savedPrep: 'Salvo em Preparação',
+    noActions: 'Sem ações detectadas',
   },
   en: {
     eyebrow: 'EOS · EDU',
@@ -39,6 +44,10 @@ const COPY = {
     more: 'More',
     less: 'Collapse',
     featured: 'Most clicked in EOS',
+    prepare: 'Add to preparedness',
+    savingPrep: 'Saving...',
+    savedPrep: 'Saved to Preparedness',
+    noActions: 'No actions detected',
   },
 } as const
 
@@ -189,6 +198,25 @@ function EduCard({
 }) {
   const embedUrl = item.source_type === 'youtube' ? youtubeEmbedUrl(item.source_url) : null
   const thumbUrl = item.source_type === 'youtube' ? youtubeThumbnailUrl(item.source_url) : null
+  const proposals = useMemo(() => buildEduPreparednessProposals(item), [item])
+  const [savingPrep, setSavingPrep] = useState(false)
+  const [prepSaved, setPrepSaved] = useState(false)
+
+  async function savePreparedness() {
+    if (proposals.length === 0) return
+    setSavingPrep(true)
+    setPrepSaved(false)
+    try {
+      const response = await fetch('/api/checklist/save-items', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kitType: 'EDU_CONTENT', items: proposals }),
+      })
+      if (response.ok) setPrepSaved(true)
+    } finally {
+      setSavingPrep(false)
+    }
+  }
 
   return (
     <Card id={`edu-${item.id}`} style={focused ? { borderColor: 'rgba(0,229,160,0.72)', background: 'rgba(0,229,160,0.08)' } : undefined}>
@@ -236,6 +264,22 @@ function EduCard({
       {expanded && detailsOpen ? (
         <div style={{ marginTop: '0.9rem' }}>
           <p className="t-body ink-2" style={{ margin: 0 }}>{item.summary}</p>
+          <div style={{ marginTop: '0.9rem', display: 'flex', gap: '0.55rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="wv2-pill primary"
+              onClick={savePreparedness}
+              disabled={savingPrep || proposals.length === 0}
+              style={proposals.length === 0 ? { opacity: 0.55, cursor: 'not-allowed' } : undefined}
+            >
+              {savingPrep ? copy.savingPrep : prepSaved ? copy.savedPrep : proposals.length === 0 ? copy.noActions : copy.prepare}
+            </button>
+            {proposals.slice(0, 3).map(proposal => (
+              <span key={proposal.name} className="t-foot ink-3" style={{ border: '1px solid rgba(255,255,255,0.12)', borderRadius: 999, padding: '0.3rem 0.5rem' }}>
+                {proposal.name}
+              </span>
+            ))}
+          </div>
           {item.source_url ? (
             <a className="t-foot" href={item.source_url} target="_blank" rel="noreferrer" style={{ display: 'inline-block', marginTop: '0.75rem', color: 'var(--accent)' }}>
               {copy.source}

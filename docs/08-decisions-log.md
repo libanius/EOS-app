@@ -3434,3 +3434,31 @@ FEATURE_GATES = {
 3. `app/(app)/ficha/page.tsx`: em resposta 401 no load ou no save, redireciona para `/auth/login?redirectTo=/ficha` (trata expiração de sessão no meio do uso, em vez de mostrar o erro).
 
 **Consequence**: sessão inválida em página autenticada leva ao login (com retorno), não a uma tela quebrada. A ficha pública permanece aberta. Aplica o mesmo padrão de proteção que as demais telas do app já tinham.
+## D-119 — EDU aprovado vira ação confirmável de Preparação
+
+**Date**: 2026-08-04
+**Status**: DECIDED
+**Roadmap**: EDU-T05
+
+**Context**: EDU já permite assistir conteúdo aprovado, ingerir no RAG com
+proveniência e destacar o vídeo mais clicado. Ainda faltava o elo de produto
+mais importante do Preparedness Engine: o usuário sair de uma aula/vídeo com
+ações concretas de preparação, sem o EOS escrever nada automaticamente.
+
+**Decision**:
+1. Conteúdo EDU aprovado pode gerar propostas determinísticas de preparação a
+   partir de `summary + transcript`.
+2. A primeira versão não usa IA nem nova tabela: identifica linhas numeradas,
+   bullets ou comandos operacionais e as apresenta como itens revisáveis.
+3. O usuário precisa clicar para salvar. A persistência usa o contrato v1
+   existente de `checklists`, com `kit_type='EDU_CONTENT'`.
+4. Preparação deve mostrar a origem como "Fonte: EDU" para esses itens.
+5. Itens EDU não viram inventário automaticamente; só entram no checklist de
+   preparação. O sync checklist→inventário existente continua valendo apenas
+   quando o usuário marca um item adquirido/concluído.
+
+**Consequence**: EDU deixa de ser só catálogo/vídeo e passa a alimentar a rotina
+de preparação do usuário, mantendo confirmação explícita e sem abrir nova
+migration antes da decisão de uma tabela dedicada de Preparedness Items.
+
+---

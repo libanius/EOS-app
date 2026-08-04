@@ -259,4 +259,20 @@ PILOT-T08 made the Pilot follow the same confirmed-action contract:
 - confirmed Pilot proposals use `kit_type=PILOT_RECOMMENDATION`;
 - Preparação shows "Fonte: Recomendação do Pilot" for those rows.
 
+---
+
+## 13. EDU-T05 Result
+
+**Decision:** D-119
+**Date:** 2026-08-04
+
+EDU-T05 closes the first loop from learning to action:
+
+- approved EDU content can propose concrete preparation checklist items;
+- proposals are derived from owner-provided summary/notes, not from generic web
+  search;
+- the user must explicitly confirm before anything is saved;
+- v1 uses `checklists.kit_type='EDU_CONTENT'` instead of adding a new table;
+- Preparação labels the source as EDU.
+
 No database migration was needed. OpenAI remains the AI provider for Pilot/RAG.

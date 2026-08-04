@@ -31,6 +31,7 @@ const TIER_COLOR: Record<ChecklistTier, string> = {
 
 const KIT_LABEL: Record<string, { pt: string; en: string }> = {
   GERAL: { pt: 'Geral', en: 'General' },
+  EDU_CONTENT: { pt: 'EDU', en: 'EDU' },
   SIMULATION_DEBRIEF: { pt: 'Debrief da simulação', en: 'Simulation debrief' },
   PILOT_RECOMMENDATION: { pt: 'Recomendação do Pilot', en: 'Pilot recommendation' },
   BUG_OUT: { pt: 'Bug Out', en: 'Bug Out' },

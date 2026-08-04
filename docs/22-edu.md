@@ -1,7 +1,7 @@
 # 22 — EDU
 
-> **Status:** IMPLEMENTED — EDU-T01 / EDU-T02 / EDU-T03 / EDU-T04
-> **Decision:** D-090 / D-101 / D-103 / D-104
+> **Status:** IMPLEMENTED — EDU-T01 / EDU-T02 / EDU-T03 / EDU-T04 / EDU-T05
+> **Decision:** D-090 / D-101 / D-103 / D-104 / D-119
 > **Date:** 2026-08-04
 > **Owner:** Paulo Libânio Neto
 > **Surface:** Web/PWA core first
@@ -50,6 +50,12 @@ EDU-T04 adds one quality guardrail:
 7. **RAG readiness guard** — RAG ingestion requires enough owner-provided
    instructional text in `summary` and/or `transcript`. Title, URL and tags are
    provenance/metadata; they do not count as instructional content.
+
+EDU-T05 adds one preparedness behavior:
+
+8. **Confirmed preparedness actions** — approved content can propose concrete
+   checklist items from owner-provided summary/notes. The user must confirm
+   before saving; v1 persists as `checklists.kit_type='EDU_CONTENT'`.
 
 ---
 
@@ -128,7 +134,11 @@ RLS is enabled with no direct policies. Reads/writes go through `/api/edu`.
    eligible, but ingestion only happens after the admin triggers it.
 10. Reingestion replaces chunks for the same EDU item source.
 11. A link-only video must not be ingested into RAG. Owner/admin must provide
-   enough summary or notes first.
+    enough summary or notes first.
+12. EDU proposals are not silent writes. A user click is required before any
+    checklist item is created.
+13. EDU proposals use the existing checklist contract until a dedicated
+    Preparedness Items table is formally decided.
 
 ---
 
@@ -148,6 +158,9 @@ EDU-T01 is complete when:
 9. Owner/admin can ingest approved, RAG-enabled content into `knowledge_base`
    with `edu_content.id/version` preserved as provenance.
 10. Admin sees RAG text readiness and cannot ingest link-only content.
+11. Approved content can expose concrete preparation proposals.
+12. Confirming EDU proposals saves them to the checklist as `EDU_CONTENT`.
+13. Preparação displays those rows with visible EDU provenance.
 
 ---
 
@@ -161,3 +174,20 @@ EDU-T01 is complete when:
 - video hosting outside provider embeds;
 - video progress/completion tracking;
 - moderation/review workflows beyond owner/admin status.
+- automatic task creation without user confirmation.
+
+---
+
+## 8. EDU-T05 Result
+
+**Decision:** D-119
+**Date:** 2026-08-04
+
+Approved EDU content now closes the learning-to-action loop:
+
+- `/edu` extracts deterministic preparation proposals from `summary` and
+  `transcript`;
+- the user sees the proposed actions before saving;
+- confirmation writes to `checklists` with `kit_type='EDU_CONTENT'`;
+- `/preparedness` labels those rows as source EDU;
+- no new migration is required.
