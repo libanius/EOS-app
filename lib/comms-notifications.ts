@@ -27,6 +27,7 @@ type NotifyInput = {
   href?: string
   severity?: string | null
   sourceKey?: string | null
+  excludeActor?: boolean
   metadata?: Record<string, unknown>
 }
 
@@ -58,9 +59,10 @@ export async function createCommsNotifications({
   href = '/comms?view=notifications',
   severity = null,
   sourceKey = null,
+  excludeActor = true,
   metadata = {},
 }: NotifyInput) {
-  let unique = Array.from(new Set(recipientIds.filter(id => id && id !== actorId)))
+  let unique = Array.from(new Set(recipientIds.filter(id => id && (!excludeActor || id !== actorId))))
   if (!unique.length) return
 
   if (sourceKey) {

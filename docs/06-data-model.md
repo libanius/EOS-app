@@ -339,6 +339,7 @@ This preserves provenance without a new table or schema change.
 | transcript | text | Transcript, notes, or teaching body |
 | status | text | `draft`, `approved`, or `archived` |
 | version | integer | Increments on owner/admin update |
+| view_count | integer | D-112 lightweight platform click count for the featured video |
 | rag_enabled | boolean | Eligible for future RAG ingestion; not proof of ingestion |
 | rag_ingested_at | timestamptz | Null until a future explicit ingestion job writes embeddings |
 | created_by / updated_by | uuid | FK → profiles.id |

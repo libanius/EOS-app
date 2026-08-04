@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useLanguage } from '@/lib/i18n'
 import { cloneDefaultRadioConfig, type RadioConfig, type RadioLanguageConfig } from '@/lib/comms-radio'
@@ -54,6 +54,8 @@ const COPY = {
     timelineEmpty: 'Nenhuma interação registrada ainda.',
     timelineUnread: 'não lidas',
     markRead: 'Marcar lidas',
+    showOlder: 'Ver antigas',
+    hideOlder: 'Recolher antigas',
     loading: 'Carregando mensagens...',
     empty: 'Nenhuma mensagem ainda.',
     unavailable: 'Mensagens indisponíveis agora.',
@@ -98,6 +100,8 @@ const COPY = {
     timelineEmpty: 'No interactions recorded yet.',
     timelineUnread: 'unread',
     markRead: 'Mark read',
+    showOlder: 'Show older',
+    hideOlder: 'Collapse older',
     loading: 'Loading messages...',
     empty: 'No messages yet.',
     unavailable: 'Messages are unavailable right now.',
@@ -175,6 +179,7 @@ export default function CommsPage() {
   const [unreadCount, setUnreadCount] = useState(0)
   const [view, setView] = useState<'chat' | 'timeline'>('chat')
   const [focusedMessageId, setFocusedMessageId] = useState('')
+  const [timelineExpanded, setTimelineExpanded] = useState(false)
   const [sending, setSending] = useState(false)
   const [draft, setDraft] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -190,6 +195,8 @@ export default function CommsPage() {
     [circles, circleId],
   )
   const activeRadio = radioEditing ? radioDraft[language] : radioConfig[language]
+  const chatEndRef = useRef<HTMLDivElement | null>(null)
+  const visibleNotifications = timelineExpanded ? notifications : notifications.slice(0, 4)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -252,6 +259,11 @@ export default function CommsPage() {
       document.getElementById(`message-${focusedMessageId}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' })
     }, 100)
   }, [focusedMessageId, messages])
+
+  useEffect(() => {
+    if (view !== 'chat' || !messages.length || focusedMessageId) return
+    chatEndRef.current?.scrollIntoView({ block: 'end', behavior: 'smooth' })
+  }, [messages, view, focusedMessageId])
 
   useEffect(() => {
     if (!circleId) return
@@ -329,7 +341,7 @@ export default function CommsPage() {
             table: 'circle_notifications',
             filter: `recipient_id=eq.${userId}`,
           },
-          () => { void loadNotifications(view === 'timeline') },
+          () => { void loadNotifications(false) },
         )
         .subscribe()
     })
@@ -466,7 +478,7 @@ export default function CommsPage() {
               <p className="t-body ink-2" style={{ margin: '0.75rem 0 0' }}>{c.timelineEmpty}</p>
             ) : (
               <div style={{ display: 'grid', gap: '0.65rem', marginTop: '0.75rem' }}>
-                {notifications.map(item => (
+                {visibleNotifications.map(item => (
                   <article
                     key={item.id}
                     style={{
@@ -486,6 +498,16 @@ export default function CommsPage() {
                     <span className="t-caption ink-3">{item.circle_name ? `${item.circle_name} · ` : ''}{formatTimelineTime(item.created_at, language)}</span>
                   </article>
                 ))}
+                {notifications.length > 4 ? (
+                  <button
+                    type="button"
+                    className="wv2-pill"
+                    onClick={() => setTimelineExpanded(current => !current)}
+                    style={{ justifySelf: 'start' }}
+                  >
+                    {timelineExpanded ? c.hideOlder : `${c.showOlder} (${notifications.length - 4})`}
+                  </button>
+                ) : null}
               </div>
             )}
           </Card>
@@ -568,6 +590,7 @@ export default function CommsPage() {
                     </p>
                   </article>
                 ))}
+                <div ref={chatEndRef} />
               </div>
 
               <form onSubmit={submitMessage} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0.75rem' }}>

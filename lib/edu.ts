@@ -11,6 +11,7 @@ export type EduContent = {
   transcript: string
   status: EduStatus
   version: number
+  view_count?: number
   rag_enabled: boolean
   rag_ingested_at: string | null
   updated_at: string | null
@@ -33,6 +34,7 @@ export const DEFAULT_EDU_CONTENT: EduContent[] = [
     ].join('\n'),
     status: 'approved',
     version: 1,
+    view_count: 0,
     rag_enabled: false,
     rag_ingested_at: null,
     updated_at: null,
@@ -109,4 +111,11 @@ export function youtubeEmbedUrl(sourceUrl: string | null | undefined): string | 
 
   if (!videoId || !/^[A-Za-z0-9_-]{11}$/.test(videoId)) return null
   return `https://www.youtube-nocookie.com/embed/${videoId}`
+}
+
+export function youtubeThumbnailUrl(sourceUrl: string | null | undefined): string | null {
+  const embed = youtubeEmbedUrl(sourceUrl)
+  if (!embed) return null
+  const videoId = embed.split('/').pop()
+  return videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : null
 }

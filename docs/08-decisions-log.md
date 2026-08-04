@@ -278,6 +278,41 @@ como rota protegida; usuário não logado ia para login, o login ignorava
 
 ---
 
+## D-112 — Inbox/EDU polish e notificações operacionais verificáveis
+
+**Date**: 2026-08-04
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: O teste real confirmou que mensagens no Comms ficaram
+instantâneas, mas revelou ajustes de experiência: chat precisa permanecer
+enquadrado na última mensagem, timeline precisa colapsar histórico antigo, EDU
+precisa mostrar menos metadados por padrão, e notificações de EDU/simulação
+precisam aparecer de forma verificável.
+
+**Decision**:
+
+1. O chat do círculo mantém scroll automático para a última mensagem quando o
+   usuário está no chat.
+2. A timeline do Comms mostra 4 notificações por padrão e permite expandir para
+   consultar as antigas.
+3. EDU mostra título e vídeo por padrão; resumo/metadados/transcript ficam
+   recolhidos atrás de "Mais".
+4. O vídeo mais clicado no EOS fica em destaque; os demais começam como títulos,
+   expandem para thumbnail/vídeo e depois para detalhes.
+5. EDU aprovado notifica também o usuário admin que publicou, para teste e
+   auditoria do próprio dono.
+6. Convite de simulação permanece com pop-up, mas também precisa entrar no
+   Inbox EOS como histórico acionável.
+
+**Consequences**:
+
+- Requer migration `20260804015000_edu_view_count.sql`.
+- `edu_content.view_count` é métrica simples de destaque v1, não analytics
+  completo.
+- O Inbox segue app-level; não muda push/SMS/dispatch.
+
+---
+
 ## D-111 — Comms vira Inbox EOS global
 
 **Date**: 2026-08-04

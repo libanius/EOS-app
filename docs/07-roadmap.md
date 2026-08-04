@@ -260,6 +260,7 @@ product phase sequenced.
 | COMMS-T04 | Badge e timeline social de notificações | ✅ COMPLETE | 2026-08-04 — D-109; `circle_notifications`, badge vermelho em Comms e timeline de mensagens/convites/entrada/Família íntima |
 | COMMS-T05 | Realtime para chat e badge do Comms | ✅ COMPLETE | 2026-08-04 — D-110; Supabase Realtime com RLS controlada para `circle_messages` e `circle_notifications`; polling fica fallback |
 | COMMS-T06 | Inbox EOS global com destinos por notificação | ✅ COMPLETE | 2026-08-04 — D-111; Comms abre janela global quando há unread; EDU, simulação, chat e weather entram em `circle_notifications` app-level |
+| COMMS-T07 | Polimento Inbox/EDU pós-teste real | ✅ COMPLETE | 2026-08-04 — D-112; chat auto-scroll, timeline colapsada, EDU progressivo, destaque por `view_count` e notificação EDU admin-friendly |
 | EDU-T01 | Conteúdo educativo como fonte oficial EOS | ✅ COMPLETE | 2026-08-03 — D-090; `edu_content`, `/edu`, `/admin/edu`, fonte visível, aprovação/versionamento e RAG futuro sem ingestão automática |
 | EDU-T02 | Consumo de vídeo aprovado dentro do EOS | ✅ COMPLETE | 2026-08-04 — D-101; `/edu` renderiza player YouTube embutido para `source_url` reconhecida e mantém link de fonte visível |
 | EDU-T03 | Ingestão aprovada de EDU para RAG | ✅ COMPLETE | 2026-08-04 — D-103; admin ingere item `approved` + `rag_enabled`, grava chunks em `knowledge_base` com `source=edu:<id>` e `source_version=v<version>` |

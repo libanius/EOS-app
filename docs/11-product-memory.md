@@ -134,6 +134,12 @@ weather WATCH+ entram no mesmo feed. Abrir o Inbox não marca como lido; clicar
 em item marca só aquele item e navega pelo `href`. Weather é cron servidor a
 cada 15 minutos, protegido por `CRON_SECRET`; não é SMS/push garantido/dispatch.
 
+D-112 / COMMS-T07 é polimento guiado por teste real: chat do círculo deve
+auto-enquadrar a última mensagem; timeline do Comms mostra 4 itens e expande
+histórico sob demanda; EDU mostra título/vídeo por padrão, detalhes só em
+"Mais"; o destaque do EDU usa `edu_content.view_count`; e EDU aprovado deve
+notificar também o admin publicador para validar o fluxo na própria conta.
+
 ---
 
 ## EDU é catálogo aprovado antes de virar RAG (2026-08-03)

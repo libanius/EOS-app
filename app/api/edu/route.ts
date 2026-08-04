@@ -27,6 +27,7 @@ async function notifyApprovedEdu(
     body: content.summary?.trim() || 'Novo material educativo aprovado no EOS.',
     href: `/edu?contentId=${encodeURIComponent(content.id)}`,
     sourceKey: `edu:${content.id}:v${content.version ?? 1}`,
+    excludeActor: false,
     metadata: { content_id: content.id, version: content.version ?? 1 },
   })
 }
@@ -44,7 +45,7 @@ export async function GET(req: NextRequest) {
 
   let query = client
     .from('edu_content')
-    .select('id, title, source_type, source_url, scenario_tags, summary, transcript, status, version, rag_enabled, rag_ingested_at, updated_at, approved_at')
+    .select('id, title, source_type, source_url, scenario_tags, summary, transcript, status, version, view_count, rag_enabled, rag_ingested_at, updated_at, approved_at')
     .order('updated_at', { ascending: false })
 
   if (!adminMode || !owner) query = query.eq('status', 'approved')
@@ -111,7 +112,7 @@ export async function POST(req: NextRequest) {
         approved_at: body.status === 'approved' ? new Date().toISOString() : null,
       })
       .eq('id', body.id)
-      .select('id, title, source_type, source_url, scenario_tags, summary, transcript, status, version, rag_enabled, rag_ingested_at, updated_at, approved_at')
+      .select('id, title, source_type, source_url, scenario_tags, summary, transcript, status, version, view_count, rag_enabled, rag_ingested_at, updated_at, approved_at')
       .single()
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     await notifyApprovedEdu(admin, user.id, data as { id: string; title: string; summary?: string | null; version?: number | null; status?: string | null })
@@ -133,7 +134,7 @@ export async function POST(req: NextRequest) {
       updated_by: user.id,
       approved_at: body.status === 'approved' ? new Date().toISOString() : null,
     })
-    .select('id, title, source_type, source_url, scenario_tags, summary, transcript, status, version, rag_enabled, rag_ingested_at, updated_at, approved_at')
+    .select('id, title, source_type, source_url, scenario_tags, summary, transcript, status, version, view_count, rag_enabled, rag_ingested_at, updated_at, approved_at')
     .single()
 
   if (error && tableMissing(error)) return NextResponse.json({ error: 'migration_pending' }, { status: 200 })
