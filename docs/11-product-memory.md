@@ -140,6 +140,12 @@ histórico sob demanda; EDU mostra título/vídeo por padrão, detalhes só em
 "Mais"; o destaque do EDU usa `edu_content.view_count`; e EDU aprovado deve
 notificar também o admin publicador para validar o fluxo na própria conta.
 
+D-113 / COMMS-T08 esclarece o padrão do ícone Comms: com badge, ele abre Inbox
+EOS global estilo rede social, com seções Today / Last 7 days / Earlier. Não
+deve navegar direto para a timeline interna. O feed mostra notificações recentes
+lidas e não lidas; o badge conta só não lidas. Chat deve rolar o próprio
+container (`scrollTop = scrollHeight`), não depender só de `scrollIntoView`.
+
 ---
 
 ## EDU é catálogo aprovado antes de virar RAG (2026-08-03)

@@ -195,6 +195,7 @@ export default function CommsPage() {
     [circles, circleId],
   )
   const activeRadio = radioEditing ? radioDraft[language] : radioConfig[language]
+  const chatScrollRef = useRef<HTMLDivElement | null>(null)
   const chatEndRef = useRef<HTMLDivElement | null>(null)
   const visibleNotifications = timelineExpanded ? notifications : notifications.slice(0, 4)
 
@@ -262,7 +263,14 @@ export default function CommsPage() {
 
   useEffect(() => {
     if (view !== 'chat' || !messages.length || focusedMessageId) return
-    chatEndRef.current?.scrollIntoView({ block: 'end', behavior: 'smooth' })
+    const scrollToEnd = () => {
+      const box = chatScrollRef.current
+      if (box) box.scrollTop = box.scrollHeight
+      chatEndRef.current?.scrollIntoView({ block: 'nearest' })
+    }
+    requestAnimationFrame(scrollToEnd)
+    const timer = window.setTimeout(scrollToEnd, 80)
+    return () => window.clearTimeout(timer)
   }, [messages, view, focusedMessageId])
 
   useEffect(() => {
@@ -551,6 +559,7 @@ export default function CommsPage() {
             <Card>
               <SectionLabel>{c.chat}</SectionLabel>
               <div
+                ref={chatScrollRef}
                 style={{
                   display: 'flex',
                   flexDirection: 'column',

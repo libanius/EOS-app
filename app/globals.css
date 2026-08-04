@@ -311,15 +311,15 @@ textarea.input { resize: vertical; min-height: 100px; line-height: 1.6; }
   inset: 0;
   z-index: 9000;
   display: grid;
-  place-items: end center;
-  padding: 16px 16px calc(104px + env(safe-area-inset-bottom));
+  place-items: center;
+  padding: 16px 16px calc(96px + env(safe-area-inset-bottom));
   background: rgba(0, 0, 0, 0.45);
   backdrop-filter: blur(14px);
 }
 
 .inbox-panel {
-  width: min(560px, 100%);
-  max-height: min(72vh, 680px);
+  width: min(620px, 100%);
+  max-height: min(82vh, 760px);
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 24px;
@@ -388,10 +388,22 @@ textarea.input { resize: vertical; min-height: 100px; line-height: 1.6; }
 
 .inbox-list {
   display: grid;
-  gap: 8px;
-  max-height: calc(min(72vh, 680px) - 130px);
+  gap: 18px;
+  max-height: calc(min(82vh, 760px) - 130px);
   overflow-y: auto;
   padding: 8px 12px 14px;
+}
+
+.inbox-section {
+  display: grid;
+  gap: 8px;
+}
+
+.inbox-section h3 {
+  margin: 0 4px 2px;
+  color: var(--tx);
+  font-size: 16px;
+  line-height: 1.1;
 }
 
 .inbox-empty {
@@ -414,6 +426,10 @@ textarea.input { resize: vertical; min-height: 100px; line-height: 1.6; }
   color: var(--tx);
   text-align: left;
   cursor: pointer;
+}
+
+.inbox-item.read {
+  opacity: 0.72;
 }
 
 .inbox-item.weather {

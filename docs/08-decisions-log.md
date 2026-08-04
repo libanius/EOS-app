@@ -278,6 +278,35 @@ como rota protegida; usuário não logado ia para login, o login ignorava
 
 ---
 
+## D-113 — Inbox EOS segue padrão social Today / Last 7 days
+
+**Date**: 2026-08-04
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: O dono esclareceu que o clique no ícone Comms com badge não deve
+levar para a timeline interna do Comms. A experiência esperada é mais próxima do
+Instagram: clicar no ícone de notificações abre uma tela/lista social com
+seções como Today e Last 7 days; clicar em "EOS off grid enviou uma msg" leva
+direto para a mensagem.
+
+**Decision**:
+
+1. Comms com badge sempre abre o Inbox EOS global, nunca `/comms?view=timeline`.
+2. Inbox mostra notificações recentes lidas e não lidas, agrupadas em Today,
+   Last 7 days e Earlier.
+3. O badge continua contando apenas não lidas.
+4. Clicar em um item marca aquele grupo como lido e navega para o `href`.
+5. O chat do círculo usa scroll do container para enquadrar a última mensagem,
+   porque `scrollIntoView` sozinho pode rolar a página, não a caixa do chat.
+
+**Consequences**:
+
+- Não requer migration.
+- A timeline interna de `/comms` permanece acessível, mas deixa de ser o destino
+  do ícone Comms quando há badge.
+
+---
+
 ## D-112 — Inbox/EDU polish e notificações operacionais verificáveis
 
 **Date**: 2026-08-04

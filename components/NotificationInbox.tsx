@@ -29,6 +29,12 @@ type InboxItem = NotificationRow & {
   displayBody: string
 }
 
+type InboxSection = {
+  key: 'today' | 'last7' | 'earlier'
+  title: string
+  items: InboxItem[]
+}
+
 const COPY = {
   pt: {
     title: 'Inbox EOS',
@@ -38,6 +44,9 @@ const COPY = {
     markAll: 'Marcar todas',
     close: 'Fechar',
     open: 'Abrir',
+    today: 'Hoje',
+    last7: 'Últimos 7 dias',
+    earlier: 'Anteriores',
     messages: 'msgs',
     message: 'msg',
   },
@@ -49,6 +58,9 @@ const COPY = {
     markAll: 'Mark all',
     close: 'Close',
     open: 'Open',
+    today: 'Today',
+    last7: 'Last 7 days',
+    earlier: 'Earlier',
     messages: 'msgs',
     message: 'msg',
   },
@@ -76,10 +88,9 @@ function iconFor(scope: NotificationRow['scope']) {
 }
 
 function groupNotifications(rows: NotificationRow[], language: 'pt' | 'en'): InboxItem[] {
-  const unread = rows.filter(row => !row.is_read)
   const groups = new Map<string, NotificationRow[]>()
 
-  for (const row of unread) {
+  for (const row of rows) {
     const key = row.kind === 'message'
       ? `message:${row.circle_id ?? 'none'}:${row.actor_name ?? row.actor_id ?? 'unknown'}`
       : row.id
@@ -110,7 +121,27 @@ function groupNotifications(rows: NotificationRow[], language: 'pt' | 'en'): Inb
       displayTitle: latest.title,
       displayBody: latest.body,
     }
-  })
+  }).sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))
+}
+
+function sectionItems(items: InboxItem[], labels: Record<'today' | 'last7' | 'earlier', string>): InboxSection[] {
+  const now = new Date()
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+  const last7Start = Date.now() - 7 * 24 * 60 * 60 * 1000
+  const sections: InboxSection[] = [
+    { key: 'today', title: labels.today, items: [] },
+    { key: 'last7', title: labels.last7, items: [] },
+    { key: 'earlier', title: labels.earlier, items: [] },
+  ]
+
+  for (const item of items) {
+    const time = Date.parse(item.created_at)
+    if (time >= todayStart) sections[0].items.push(item)
+    else if (time >= last7Start) sections[1].items.push(item)
+    else sections[2].items.push(item)
+  }
+
+  return sections.filter(section => section.items.length > 0)
 }
 
 export default function NotificationInbox() {
@@ -121,6 +152,7 @@ export default function NotificationInbox() {
   const [loading, setLoading] = useState(false)
   const unreadCount = rows.filter(row => !row.is_read).length
   const items = useMemo(() => groupNotifications(rows, language), [rows, language])
+  const sections = useMemo(() => sectionItems(items, c), [items, c])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -214,16 +246,21 @@ export default function NotificationInbox() {
           <p className="inbox-empty">{c.empty}</p>
         ) : (
           <div className="inbox-list">
-            {items.map(item => (
-              <button key={item.id} type="button" className={`inbox-item ${item.scope}`} onClick={() => { void openItem(item) }}>
-                <span className="inbox-icon">{iconFor(item.scope)}</span>
-                <span className="inbox-copy">
-                  <strong>{item.displayTitle}</strong>
-                  <span>{item.displayBody}</span>
-                  <em>{item.circle_name ? `${item.circle_name} · ` : ''}{formatTime(item.created_at, language)}</em>
-                </span>
-                {item.severity ? <span className="inbox-severity">{item.severity}</span> : null}
-              </button>
+            {sections.map(section => (
+              <section key={section.key} className="inbox-section">
+                <h3>{section.title}</h3>
+                {section.items.map(item => (
+                  <button key={item.id} type="button" className={`inbox-item ${item.scope}${item.is_read ? ' read' : ''}`} onClick={() => { void openItem(item) }}>
+                    <span className="inbox-icon">{iconFor(item.scope)}</span>
+                    <span className="inbox-copy">
+                      <strong>{item.displayTitle}</strong>
+                      <span>{item.displayBody}</span>
+                      <em>{item.circle_name ? `${item.circle_name} · ` : ''}{formatTime(item.created_at, language)}</em>
+                    </span>
+                    {item.severity ? <span className="inbox-severity">{item.severity}</span> : null}
+                  </button>
+                ))}
+              </section>
             ))}
           </div>
         )}
