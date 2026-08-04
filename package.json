@@ -25,6 +25,8 @@
     "test:multiplan": "node scripts/multi-plan-test.mjs",
     "test:family": "node scripts/family-page-test.mjs",
     "test:invite": "node scripts/invite-link-test.mjs",
+    "test:guardrails": "node scripts/guardrails-test.mjs",
+    "test:client-error": "npx tsx scripts/client-error-test.mjs",
     "bench:rag": "node scripts/rag-bench.mjs"
   },
   "dependencies": {
