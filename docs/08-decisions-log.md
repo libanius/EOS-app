@@ -4,6 +4,38 @@
 
 ---
 
+## D-099 — Afiliados usam Stripe Promotion Codes e tracker próprio
+
+**Date**: 2026-08-04
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: O dono quer criar códigos/links de afiliado pelo admin, começando
+por `EOSPARTNER`, com 100% off uma vez e comissão de 70% sobre o primeiro valor
+real pago. Isso não é gift code: gift code dá acesso sem Stripe; afiliado precisa
+passar por Checkout e preservar atribuição financeira.
+
+**Decision**:
+
+1. Criar `/admin/affiliates` owner-only.
+2. Criar tabelas `affiliate_codes`, `affiliate_referrals` e
+   `affiliate_conversions`.
+3. Criar Stripe coupon `100% off once` e promotion code por afiliado.
+4. Capturar `?ref=CODE` em cookie/local storage.
+5. Enviar o código para `/api/billing/checkout` e preaplicar o promotion code no
+   Checkout quando válido.
+6. Registrar referral no `checkout.session.completed`.
+7. Registrar conversão/commission owed apenas em invoice paga com
+   `amount_paid > 0`.
+
+**Consequences**:
+
+- LA-T06 fica implementada; ainda exige aplicar a nova migration no Supabase e
+  ter Stripe Live configurado para criar promotion codes reais.
+- A comissão é calculada sobre dados reais do Stripe, sem hardcode de preço.
+- O app não realiza payout automático; o admin mostra quanto deve ser pago.
+
+---
+
 ## D-098 — WV2-T07 foi absorvida por entregas específicas da v2
 
 **Date**: 2026-08-04

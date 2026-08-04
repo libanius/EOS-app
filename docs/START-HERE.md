@@ -21,7 +21,7 @@ adapters, not separate products.
 | Field | Value |
 |---|---|
 | **Phase** | PHASE 0B complete; next product lane is Preparedness Engine |
-| **Current Task** | BLOCKED — LA-T06 needs owner/Stripe affiliate-code parameters before execution |
+| **Current Task** | Operational follow-up — apply `20260804000000_affiliate_codes.sql`, then sync `EOSPARTNER` in `/admin/affiliates` |
 | **Last Updated** | 2026-08-03 |
 
 Full details: `docs/09-build-status.md`

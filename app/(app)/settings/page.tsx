@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useLanguage, type Language, type MessageKey } from '@/lib/i18n'
 import { canAccess, type Plan } from '@/lib/feature-gates'
 import { createClient } from '@/lib/supabase/client'
+import { AFFILIATE_STORAGE_KEY, normalizeAffiliateCode } from '@/lib/affiliate'
 
 // ─── Language selector ────────────────────────────────────────────────────────
 
@@ -63,6 +64,7 @@ export default function SettingsPage() {
   const [busy, setBusy] = useState<null | 'logout' | 'delete'>(null)
   const [billingBusy, setBillingBusy] = useState<null | Plan | 'portal'>(null)
   const [billingMsg, setBillingMsg] = useState<'success' | 'cancelled' | null>(null)
+  const [affiliateCode, setAffiliateCode] = useState<string | null>(null)
   const [redeemCode, setRedeemCode] = useState('')
   const [redeemState, setRedeemState] = useState<null | 'sending' | 'ok' | 'err'>(null)
   const [redeemMsg, setRedeemMsg] = useState('')
@@ -83,6 +85,13 @@ export default function SettingsPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const b = params.get('billing')
+    const ref = normalizeAffiliateCode(params.get('ref') ?? params.get('affiliate'))
+    if (ref) {
+      try { localStorage.setItem(AFFILIATE_STORAGE_KEY, ref) } catch {}
+      setAffiliateCode(ref)
+    } else {
+      try { setAffiliateCode(normalizeAffiliateCode(localStorage.getItem(AFFILIATE_STORAGE_KEY)) || null) } catch {}
+    }
     if (b === 'success' || b === 'cancelled') {
       setBillingMsg(b)
       // Clean the URL so a refresh doesn't re-show the banner.
@@ -96,7 +105,7 @@ export default function SettingsPage() {
       const res = await fetch('/api/billing/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan: targetPlan }),
+        body: JSON.stringify({ plan: targetPlan, affiliateCode }),
       })
       const d = await res.json().catch(() => ({}))
       if (res.ok && d.url) {
@@ -316,6 +325,12 @@ export default function SettingsPage() {
           {billingMsg && (
             <div style={{ ...styles.billingBanner, ...(billingMsg === 'success' ? styles.billingSuccess : styles.billingCancelled) }}>
               {billingMsg === 'success' ? t('settings.billingSuccess') : t('settings.billingCancelled')}
+            </div>
+          )}
+
+          {affiliateCode && userPlan !== 'premium' && (
+            <div style={{ ...styles.billingBanner, ...styles.billingSuccess }}>
+              {en ? `Affiliate code applied: ${affiliateCode}` : `Código de afiliado aplicado: ${affiliateCode}`}
             </div>
           )}
 

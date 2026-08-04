@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { AFFILIATE_COOKIE, normalizeAffiliateCode } from '@/lib/affiliate'
 
 const PROTECTED_ROUTES = [
   '/admin',
@@ -29,6 +30,9 @@ const PROTECTED_EXACT = ['/ficha']
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
+  const affiliateRef = normalizeAffiliateCode(
+    request.nextUrl.searchParams.get('ref') ?? request.nextUrl.searchParams.get('affiliate'),
+  )
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -66,8 +70,24 @@ export async function middleware(request: NextRequest) {
   if (isProtected && !user) {
     const loginUrl = request.nextUrl.clone()
     loginUrl.pathname = '/auth/login'
-    loginUrl.searchParams.set('redirectTo', pathname)
-    return NextResponse.redirect(loginUrl)
+    loginUrl.searchParams.set('redirectTo', `${pathname}${request.nextUrl.search}`)
+    const redirect = NextResponse.redirect(loginUrl)
+    if (affiliateRef) {
+      redirect.cookies.set(AFFILIATE_COOKIE, affiliateRef, {
+        path: '/',
+        maxAge: 60 * 60 * 24 * 90,
+        sameSite: 'lax',
+      })
+    }
+    return redirect
+  }
+
+  if (affiliateRef) {
+    supabaseResponse.cookies.set(AFFILIATE_COOKIE, affiliateRef, {
+      path: '/',
+      maxAge: 60 * 60 * 24 * 90,
+      sameSite: 'lax',
+    })
   }
 
   return supabaseResponse

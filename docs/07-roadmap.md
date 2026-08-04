@@ -94,7 +94,7 @@ product phase sequenced.
 | LA-T03 | Optional hazard provider keys (WeatherKit/Xweather/etc.) | DRAFT | Not required for launch; keyless providers already live |
 | LA-T04 | Upstash Redis rate-limit validation | DRAFT | App currently falls back to in-memory limiter |
 | LA-T05 | Gift codes (sem Stripe): criação owner-only + resgate + expiração lazy | ✅ COMPLETE | 2026-07-22 — D-061; `/admin/gift-codes` (ADMIN_EMAILS), `/api/billing/redeem`, `lib/plan.ts`, resgate em Settings |
-| LA-T06 | Códigos de afiliado (Stripe): cupom "100% off · once" + promotion codes | BLOCKED | falta params do dono + Stripe Live key; checkout já aceita promo code |
+| LA-T06 | Códigos de afiliado (Stripe): cupom "100% off · once" + promotion codes | ✅ COMPLETE | 2026-08-04 — D-099 / `docs/30-affiliate-codes.md`; `/admin/affiliates`, Stripe promotion code, captura `?ref=`, tracker de referrals/conversões e comissão owed. Aplicar migration `20260804000000_affiliate_codes.sql`. |
 
 ---
 

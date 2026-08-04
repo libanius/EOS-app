@@ -70,6 +70,57 @@ updates `profile_personalization.pilot_memory_md` and inserts the audit event in
 one database transaction. Browser clients have read-only RLS for their own
 events and no direct insert/update policy.
 
+### affiliate_codes
+| Column | Type | Notes |
+|---|---|---|
+| code | text | PK; customer-facing Stripe promotion code, e.g. `EOSPARTNER` |
+| tag | text | Admin label/campaign tag |
+| active | boolean | Whether checkout may use it |
+| eligible_plans | text[] | `family` and/or `premium` |
+| discount_percent_off | integer | Current D-099 default: 100 |
+| discount_duration | text | Current D-099 value: `once` |
+| commission_percent | numeric | Current `EOSPARTNER` default: 70 |
+| max_redemptions | integer | Nullable = unlimited |
+| stripe_coupon_id | text | Stripe coupon backing the discount |
+| stripe_promotion_code_id | text | Stripe promotion code ID used by Checkout `discounts` |
+| stripe_promotion_code | text | Human-facing code |
+| created_by | uuid | Admin user who created/synced it |
+| created_at / updated_at | timestamptz | |
+
+### affiliate_referrals
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid | PK |
+| affiliate_code | text | FK → `affiliate_codes.code` |
+| profile_id | uuid | User attributed to the checkout |
+| plan | text | `family` or `premium` |
+| stripe_customer_id | text | |
+| stripe_subscription_id | text | Unique when known |
+| stripe_checkout_session_id | text | Unique |
+| status | text | `pending`, `converted`, `canceled` |
+| created_at / converted_at | timestamptz | |
+
+### affiliate_conversions
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid | PK |
+| affiliate_code | text | FK → `affiliate_codes.code` |
+| referral_id | uuid | FK → `affiliate_referrals.id` |
+| profile_id | uuid | User who paid |
+| plan | text | `family` or `premium` |
+| stripe_customer_id / stripe_subscription_id | text | |
+| stripe_invoice_id | text | Unique; source of payment truth |
+| amount_paid_cents | integer | Stripe `amount_paid`; must be > 0 |
+| currency | text | |
+| commission_percent | numeric | Snapshot from code at conversion time |
+| commission_cents | integer | Calculated owed amount |
+| status | text | `owed`, `paid`, or `void` |
+| occurred_at / created_at | timestamptz | |
+
+Affiliate tables are RLS-enabled with no browser policies. Owner/admin routes and
+Stripe webhook use service-role access. No commission is recorded for zero-dollar
+invoices.
+
 ### Storage buckets
 
 | Bucket | Public | Contents | Access |

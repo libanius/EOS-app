@@ -187,9 +187,23 @@ marcadores de família pertencem à trilha FAM. Daqui para frente, não usar
 "copiar HWD v1" como tarefa aberta: cada necessidade de mapa deve virar tarefa
 específica no roadmap.
 
-O próximo item PENDING virou bloqueio operacional: LA-T06 precisa dos parâmetros
-do dono/Stripe. Sem isso, não há task PENDING executável; promover LA-T04 ou
-outra frente de DRAFT exige decisão nova.
+O próximo item PENDING virou bloqueio operacional até o dono definir parâmetros
+de afiliado; isso foi resolvido em D-099.
+
+---
+
+## Afiliados são Stripe promotion codes + tracker (2026-08-04)
+
+D-099 / LA-T06 implementou os parâmetros do dono: primeiro código
+`EOSPARTNER`, tag `Teste Afiliado app`, válido para Family e Premium, limite
+ilimitado por padrão mas customizável no admin, 100% off uma vez e comissão de
+70% sobre o primeiro valor real pago. Gift code e afiliado não são a mesma
+coisa: gift code dá acesso sem Stripe; afiliado passa por Checkout, usa Stripe
+promotion code e só vira comissão quando o webhook recebe invoice com
+`amount_paid > 0`. O admin não faz payout automático; apenas calcula o valor
+owed para repasse manual. Migration `20260804000000_affiliate_codes.sql` precisa
+ser aplicada; depois o dono deve abrir `/admin/affiliates` e sincronizar/criar
+`EOSPARTNER` para gravar os IDs reais de Stripe coupon/promotion code.
 
 ---
 

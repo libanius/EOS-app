@@ -1,9 +1,16 @@
 import { NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ensureProfile } from '@/lib/ensure-profile'
 import { getStripe, priceIdForPlan } from '@/lib/stripe'
 import { getSiteUrl } from '@/lib/site-url'
+import {
+  AFFILIATE_COOKIE,
+  normalizeAffiliateCode,
+  planAllowed,
+  type AffiliateCodeRow,
+} from '@/lib/affiliate'
 import type { Plan } from '@/lib/feature-gates'
 
 export const runtime = 'nodejs'
@@ -33,6 +40,14 @@ export async function POST(req: Request) {
   }
 
   try {
+    const admin = createAdminClient()
+    const affiliateCode = normalizeAffiliateCode(
+      body?.affiliateCode ?? cookies().get(AFFILIATE_COOKIE)?.value,
+    )
+    const affiliate = affiliateCode && admin
+      ? await loadAffiliate(admin, affiliateCode, plan)
+      : null
+
     // Reuse an existing Stripe customer if we already created one for this user.
     const { data: profile } = await supabase
       .from('profiles')
@@ -61,7 +76,6 @@ export async function POST(req: Request) {
       })
       customerId = customer.id
       // Persist immediately (service role — column is not user-writable via RLS forms).
-      const admin = createAdminClient()
       if (admin) {
         await admin.from('profiles').update({ stripe_customer_id: customerId }).eq('id', user.id)
       }
@@ -73,11 +87,34 @@ export async function POST(req: Request) {
       customer: customerId,
       client_reference_id: user.id,
       line_items: [{ price: priceId, quantity: 1 }],
-      subscription_data: { metadata: { user_id: user.id } },
-      allow_promotion_codes: true,
+      subscription_data: {
+        metadata: {
+          user_id: user.id,
+          ...(affiliate ? { affiliate_code: affiliate.code } : {}),
+        },
+      },
+      metadata: {
+        user_id: user.id,
+        plan,
+        ...(affiliate ? { affiliate_code: affiliate.code } : {}),
+      },
+      ...(affiliate?.stripe_promotion_code_id
+        ? { discounts: [{ promotion_code: affiliate.stripe_promotion_code_id }] }
+        : { allow_promotion_codes: true }),
       success_url: `${base}/settings?billing=success`,
       cancel_url: `${base}/settings?billing=cancelled`,
     })
+
+    if (affiliate && admin) {
+      await admin.from('affiliate_referrals').upsert({
+        affiliate_code: affiliate.code,
+        profile_id: user.id,
+        plan,
+        stripe_customer_id: customerId,
+        stripe_checkout_session_id: session.id,
+        status: 'pending',
+      }, { onConflict: 'stripe_checkout_session_id' })
+    }
 
     return NextResponse.json({ url: session.url })
   } catch (err) {
@@ -86,4 +123,26 @@ export async function POST(req: Request) {
     console.error('[billing/checkout]', msg)
     return NextResponse.json({ error: msg }, { status: 500 })
   }
+}
+
+type Admin = NonNullable<ReturnType<typeof createAdminClient>>
+
+async function loadAffiliate(admin: Admin, code: string, plan: Plan): Promise<AffiliateCodeRow | null> {
+  const { data, error } = await admin
+    .from('affiliate_codes')
+    .select('*')
+    .eq('code', code)
+    .eq('active', true)
+    .maybeSingle()
+  if (error) {
+    if (/does not exist|schema cache/i.test(error.message)) return null
+    throw new Error(`Affiliate lookup failed: ${error.message}`)
+  }
+  const row = data as AffiliateCodeRow | null
+  if (!row) return null
+  if (!planAllowed(row, plan)) return null
+  if (!row.stripe_promotion_code_id) {
+    throw new Error(`Código afiliado ${code} ainda não foi sincronizado com Stripe.`)
+  }
+  return row
 }
