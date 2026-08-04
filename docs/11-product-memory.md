@@ -158,6 +158,15 @@ autenticado (`profiles`: alergias, medicamentos, tipo sanguíneo, contato,
 notas, local) e seus `family_members` detalhados antes de montar o prompt. Se um
 campo estiver vazio, o prompt diz "não consta" e manda não inventar.
 
+D-106 corrigiu a segunda metade da lacuna: membros reais do círculo não podem
+ser tratados como inexistentes pelo Pilot. `/api/pilot/chat` agora monta um bloco
+server-side com fichas visíveis dos círculos do usuário autenticado. Para outro
+usuário do círculo, `medical` libera tipo sanguíneo/alergias/medicamentos/notas,
+`emergency_contact` libera contato, e `location` continua exigindo consentimento
+explícito. Se Daniela está no círculo mas não compartilhou `medical`, o Pilot
+deve dizer "ficha médica não compartilhada neste círculo", não "Daniela não
+existe no sistema".
+
 D-095 / UPP-03 criou o fluxo confirmado de memória. `/api/pilot/chat` pode
 retornar propostas `memory[]`; a UI mostra título, motivo e Markdown exato. Só
 depois do toque em "Salvar memória" a rota

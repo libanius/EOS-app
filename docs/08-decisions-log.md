@@ -278,6 +278,44 @@ como rota protegida; usuário não logado ia para login, o login ignorava
 
 ---
 
+## D-106 — Pilot lê fichas visíveis do círculo
+
+**Date**: 2026-08-04
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: O dono perguntou pela ficha master de Daniela Oliveira pelo Pilot.
+Depois de D-105, o Pilot já lia a ficha master do usuário autenticado e seus
+dependentes cadastrados em `family_members`, mas não lia os perfis dos outros
+usuários que participam do mesmo círculo. Isso fazia o Pilot responder que a
+pessoa não existia no sistema, mesmo quando ela estava no círculo.
+
+**Decision**:
+
+1. `/api/pilot/chat` passa a montar, no servidor, um bloco de contexto com os
+   membros dos círculos do usuário autenticado.
+2. O Pilot só pode usar campos de outro usuário quando a participação desse
+   usuário no círculo autorizar o compartilhamento.
+3. O campo `medical` em `circle_members.shared_fields` também libera a ficha
+   médica visível ao Pilot: tipo sanguíneo, alergias, medicamentos e notas
+   médicas. A semântica anterior de `medical` para pool de recursos continua.
+4. `emergency_contact` libera nome/telefone do contato de emergência.
+5. `location` continua exigindo consentimento explícito e não entra no legado
+   "array vazio = compartilhar tudo".
+6. Se a ficha existir mas o campo não estiver compartilhado, o Pilot deve dizer
+   que o dado não está compartilhado no círculo. Se estiver compartilhado mas
+   vazio, deve dizer que não consta.
+
+**Consequences**:
+
+- O Pilot deixa de tratar membros reais do círculo como inexistentes.
+- Perguntas como "o que diz a ficha master da Daniela?" podem ser respondidas
+  com os campos compartilhados por Daniela no círculo.
+- Não há migration: o compartilhamento usa `shared_fields` existente.
+- O uso de service-role fica restrito à rota server-side depois de confirmar que
+  o usuário autenticado pertence aos círculos consultados.
+
+---
+
 ## D-105 — Pilot lê ficha master e membros familiares no servidor
 
 **Date**: 2026-08-04

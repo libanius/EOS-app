@@ -1,8 +1,9 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { generationParams, getOpenAIClient, getOpenAIModel } from '@/lib/openai'
 import { getRelevantChunks } from '@/lib/knowledge'
-import { buildPilotFamilyRecord } from '@/lib/pilot-family-record'
+import { buildPilotCircleRecord, buildPilotFamilyRecord, type CircleVisibleMemberRecord } from '@/lib/pilot-family-record'
 
 /**
  * POST /api/pilot/chat — the Pilot's conversational layer.
@@ -183,6 +184,102 @@ function haversineKm(from: { lat: number; lng: number }, to: { lat: number; lng:
   const a =
     Math.sin(dLat / 2) ** 2 + Math.cos(rad(from.lat)) * Math.cos(rad(to.lat)) * Math.sin(dLng / 2) ** 2
   return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)))
+}
+
+type CircleMembership = {
+  circle_id: string
+  user_id: string
+  role: string | null
+  share_inventory: boolean | null
+  shared_fields: string[] | null
+}
+
+type CircleProfile = {
+  id: string
+  name?: string | null
+  location?: string | null
+  blood_type?: string | null
+  allergies?: string[] | null
+  emergency_contact_name?: string | null
+  emergency_contact_phone?: string | null
+  medical_notes?: string | null
+  medications?: string[] | null
+}
+
+const sharedFieldsOf = (value: unknown) => (Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [])
+const legacyShareAll = (member: CircleMembership, fields: string[]) => member.share_inventory === true && fields.length === 0
+const sharesField = (member: CircleMembership, field: string) => {
+  const fields = sharedFieldsOf(member.shared_fields)
+  return member.share_inventory === true && (legacyShareAll(member, fields) || fields.includes(field))
+}
+
+async function loadPilotCircleRecord(userId: string, pt: boolean) {
+  const admin = createAdminClient()
+  if (!admin) {
+    return pt
+      ? 'MEMBROS VISÍVEIS DO CÍRCULO: service-role indisponível; não consegui carregar fichas do círculo nesta resposta.'
+      : 'VISIBLE CIRCLE MEMBERS: service role unavailable; could not load circle records for this answer.'
+  }
+
+  const { data: mine, error: mineError } = await admin
+    .from('circle_members')
+    .select('circle_id, user_id, role, share_inventory, shared_fields')
+    .eq('user_id', userId)
+  if (mineError || !mine?.length) return ''
+
+  const circleIds = Array.from(new Set((mine as CircleMembership[]).map(m => m.circle_id)))
+  const [{ data: circles }, { data: members }] = await Promise.all([
+    admin.from('circles').select('id, name').in('id', circleIds),
+    admin.from('circle_members').select('circle_id, user_id, role, share_inventory, shared_fields').in('circle_id', circleIds),
+  ])
+
+  const memberships = (members ?? []) as CircleMembership[]
+  if (!memberships.length) return ''
+
+  const profileIds = Array.from(new Set(memberships.map(m => m.user_id)))
+  const { data: profiles } = await admin
+    .from('profiles')
+    .select('id, name, location, blood_type, allergies, emergency_contact_name, emergency_contact_phone, medical_notes, medications')
+    .in('id', profileIds)
+
+  const circleNameById = new Map((circles ?? []).map(c => [c.id as string, (c.name as string | null) ?? '']))
+  const profileById = new Map<string, CircleProfile>()
+  for (const profile of profiles ?? []) profileById.set(profile.id as string, profile as CircleProfile)
+
+  const visible: CircleVisibleMemberRecord[] = memberships
+    .sort((a, b) => {
+      const byCircle = (circleNameById.get(a.circle_id) ?? '').localeCompare(circleNameById.get(b.circle_id) ?? '')
+      if (byCircle !== 0) return byCircle
+      return (profileById.get(a.user_id)?.name ?? '').localeCompare(profileById.get(b.user_id)?.name ?? '')
+    })
+    .map(member => {
+      const profile = profileById.get(member.user_id) ?? null
+      const fields = sharedFieldsOf(member.shared_fields)
+      const isMe = member.user_id === userId
+      const shareAll = legacyShareAll(member, fields)
+      const medicalShared = isMe || (member.share_inventory === true && (shareAll || fields.includes('medical')))
+      const contactShared = isMe || sharesField(member, 'emergency_contact')
+      const locationShared = isMe || fields.includes('location')
+
+      return {
+        circleName: circleNameById.get(member.circle_id) ?? '',
+        name: profile?.name ?? null,
+        role: member.role ?? null,
+        isMe,
+        medicalShared,
+        contactShared,
+        locationShared,
+        location: locationShared ? (profile?.location ?? null) : null,
+        blood_type: medicalShared ? (profile?.blood_type ?? null) : null,
+        allergies: medicalShared ? (profile?.allergies ?? null) : null,
+        medications: medicalShared ? (profile?.medications ?? null) : null,
+        medical_notes: medicalShared ? (profile?.medical_notes ?? null) : null,
+        emergency_contact_name: contactShared ? (profile?.emergency_contact_name ?? null) : null,
+        emergency_contact_phone: contactShared ? (profile?.emergency_contact_phone ?? null) : null,
+      }
+    })
+
+  return buildPilotCircleRecord({ members: visible, pt }).slice(0, 5000)
 }
 
 const toC = (f: number) => Math.round(((f - 32) * 5) / 9)
@@ -471,8 +568,9 @@ export async function POST(request: NextRequest) {
   const question = messages[messages.length - 1]?.content ?? ''
 
   let familyRecord = ''
+  let circleRecord = ''
   try {
-    const [{ data: profile }, { data: members }] = await Promise.all([
+    const [{ data: profile }, { data: members }, visibleCircleRecord] = await Promise.all([
       supabase
         .from('profiles')
         .select('name, location, blood_type, allergies, emergency_contact_name, emergency_contact_phone, medical_notes, medications')
@@ -483,6 +581,7 @@ export async function POST(request: NextRequest) {
         .select('name, age, medical_conditions, medical_notes, medications, mobility_impaired, is_infant')
         .eq('profile_id', user.id)
         .order('created_at', { ascending: true }),
+      loadPilotCircleRecord(user.id, pt),
     ])
     familyRecord = buildPilotFamilyRecord({
       profile: profile ?? null,
@@ -497,10 +596,14 @@ export async function POST(request: NextRequest) {
       }>,
       pt,
     })
+    circleRecord = visibleCircleRecord
   } catch {
     familyRecord = pt
       ? 'FICHA DA FAMÍLIA: não consegui carregar a ficha detalhada nesta resposta.'
       : 'FAMILY RECORD: could not load the detailed family record for this answer.'
+    circleRecord = pt
+      ? 'MEMBROS VISÍVEIS DO CÍRCULO: não consegui carregar as fichas do círculo nesta resposta.'
+      : 'VISIBLE CIRCLE MEMBERS: could not load circle records for this answer.'
   }
 
   // Ground the answer in the EOS knowledge base (FEMA, Red Cross, WHO, SAS).
@@ -546,6 +649,11 @@ export async function POST(request: NextRequest) {
       ? (pt
           ? `FICHA DA FAMÍLIA QUE VOCÊ PODE USAR AGORA:\n${familyRecord}\n\nSe um campo disser "não consta", trate como dado ausente e não invente.`
           : `FAMILY RECORD YOU MAY USE NOW:\n${familyRecord}\n\nIf a field says "not recorded", treat it as missing and do not invent it.`)
+      : '',
+    circleRecord
+      ? (pt
+          ? `FICHAS DO CÍRCULO QUE VOCÊ PODE USAR AGORA:\n${circleRecord}\n\nUse somente campos marcados como compartilhados. Se um campo disser "não compartilhado neste círculo", diga isso claramente e não trate como inexistente.`
+          : `CIRCLE RECORDS YOU MAY USE NOW:\n${circleRecord}\n\nUse only fields marked as shared. If a field says "not shared in this circle", say that clearly and do not treat it as nonexistent.`)
       : '',
     pt ? `RECURSOS: ${reserves}` : `RESOURCES: ${reserves}`,
     pt

@@ -224,6 +224,11 @@ write; both should be displayed as source/provenance in Preparação.
 | `emergency_contact` | emergency contact name/phone |
 | `location` | **both** the live point and the profile point on the map |
 
+**D-106 extension for Pilot context**: `medical` also gates the member's visible
+medical ficha for `/api/pilot/chat` when another circle member asks the Pilot:
+`blood_type`, `allergies`, `medications`, and `medical_notes`. This keeps the UI
+toggle stable while making the Pilot useful in family-circle emergencies.
+
 An **empty array means "share all"** for the inventory/contact fields — that legacy
 default predates D-064. `location` is deliberately **excluded from that default**:
 it is only shared when the string `location` is explicitly present. Members who
