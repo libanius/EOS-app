@@ -160,6 +160,23 @@ obrigatória.
 
 ---
 
+## World v2 tem gate de produção reproduzível (2026-08-04)
+
+D-097 / WV2-T05 criou `scripts/world-v2-validation.mjs` e `npm run
+test:world-v2`. O teste sobe contra um app em execução, cria usuário Supabase
+temporário, audita `/dashboard` em mobile 390x844 e desktop 1440x960, mede
+load/recursos/bytes, valida equivalente textual, proveniência, `aria-hidden` do
+mapa visual, nomes acessíveis e target size dos controles EOS, depois remove o
+usuário. Última execução local: mobile 494ms/665KB, desktop 166ms/708KB, 0
+console errors, 0 controles sem nome e 0 alvos pequenos em controles EOS.
+
+Postura de custo registrada: dashboard load não chama OpenAI; OpenAI segue como
+único provider de AI em fluxos submit-driven. Sem `NEXT_PUBLIC_MAPTILER_KEY`, a
+base padrão é CARTO keyless e satélite usa ESRI com atribuição; weather/hazard
+atual usa fontes keyless, enquanto adapters pagos permanecem `not_configured`.
+
+---
+
 ## Texto livre do simulador preenche painéis, não roda sozinho (2026-08-03)
 
 D-094 / SIM-T09 adicionou `POST /api/simulation/parse`. A rota usa OpenAI para

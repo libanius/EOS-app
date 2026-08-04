@@ -21,7 +21,7 @@ adapters, not separate products.
 | Field | Value |
 |---|---|
 | **Phase** | PHASE 0B complete; next product lane is Preparedness Engine |
-| **Current Task** | WV2-T05 — production validation for World v2: a11y/perf, provider cost and privacy/provenance review |
+| **Current Task** | WV2-T07 — reconcile HWD v1 features that still matter on World v2 according to demand |
 | **Last Updated** | 2026-08-03 |
 
 Full details: `docs/09-build-status.md`

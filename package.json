@@ -20,6 +20,7 @@
     "test:circle": "node scripts/circle-admin-test.mjs",
     "test:weather": "node scripts/weather-layers-test.mjs",
     "test:pilot": "node scripts/pilot-abilities-test.mjs",
+    "test:world-v2": "node scripts/world-v2-validation.mjs",
     "test:marker": "node scripts/marker-stability-test.mjs",
     "test:multiplan": "node scripts/multi-plan-test.mjs",
     "test:family": "node scripts/family-page-test.mjs",

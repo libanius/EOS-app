@@ -4,6 +4,37 @@
 
 ---
 
+## D-097 — World v2 tem validação reproduzível de produção
+
+**Date**: 2026-08-04
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: WV2-T05 herdou os gates de HWD-06: E2E de navegador, a11y/perf,
+custo de provider e privacidade/proveniência. O rollout para `/dashboard` já
+tinha ocorrido por decisão do dono (D-063), então faltava transformar a revisão
+em evidência repetível.
+
+**Decision**:
+
+1. Criar `scripts/world-v2-validation.mjs`.
+2. Adicionar `npm run test:world-v2`.
+3. Auditar `/dashboard` em mobile e desktop com Playwright real.
+4. Medir tempo de navegação, recursos e bytes transferidos.
+5. Validar existência de equivalente textual, proveniência, nomes acessíveis e
+   tamanho mínimo dos controles EOS.
+6. Registrar postura de custo por provider sem congelar preços.
+
+**Consequences**:
+
+- WV2-T05 fica concluído com relatório em
+  `docs/29-world-v2-production-validation.md`.
+- A validação atual passou com 0 console errors, 0 controles sem nome e 0 alvos
+  pequenos em controles EOS.
+- O script cria e remove usuário de teste via Supabase service role, como os
+  outros testes de navegador do projeto.
+
+---
+
 ## D-096 — Pilot revisa planos como propostas confirmáveis
 
 **Date**: 2026-08-03

@@ -10,7 +10,8 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Preparedness Engine (PREP/EDU/COMMS/ONB/PILOT) sobre Web/PWA |
-| **Last Completed Task** | **D-096 / PLAN-T07 — Pilot revisa planos com confirmação elemento a elemento (2026-08-03)** |
+| **Last Completed Task** | **D-097 / WV2-T05 — validação reproduzível de produção da World v2 (2026-08-04)** |
+| | **D-096 / PLAN-T07 — Pilot revisa planos com confirmação elemento a elemento (2026-08-03)** |
 | | **D-095 / UPP-03 — memória do Pilot com confirmação e auditoria (2026-08-03)** |
 | | **D-094 / SIM-T09 — texto livre do simulador preenche painéis revisáveis (2026-08-03)** |
 | | **D-093 / PILOT-T08 — Pilot educador com propostas confirmáveis de preparação (2026-08-03)** |
@@ -101,8 +102,8 @@
 | **In Progress** | — |
 | **Platform Alignment** | ✅ D-084: EOS é plataforma multi-superfície com um único core operacional. Web/PWA segue como superfície primária; iOS/Android serão adapters nativos futuros; Automotive é companion mode restrito; Mesh/LoRa segue bloqueado por G-05. `/mobile/` é template/conceitual, não app inicializado. |
 | **Fases pedidas pelo dono (2026-07-31)** | ✅ 1. Camadas de clima + rastreio de ciclone (D-078). 2. Reinventar a aba Família no design system da v2, com componentes dinâmicos. 3. WV2-T05 (a11y/perf), PLAN-T07 (Pilot propõe plano). |
-| **Next Task** | **WV2-T05** — completar validação de produção da v2: a11y/perf medidos, custo de provider e revisão de privacidade/proveniência. Alternativas abertas: WV2-T07, LA-T04 (Upstash), LA-T06 (códigos de afiliado; depende de params do dono). |
-| **Build** | ✅ Passing — `npm run type-check`, `npm run build`, `npm test -- --runInBand` (73/73) e `git diff --check` limpos para PLAN-T07 (2026-08-03). |
+| **Next Task** | **WV2-T07** — reconciliar no roadmap as features do HWD v1 que ainda fazem sentido na v2 conforme demanda. Alternativas abertas: LA-T04 (Upstash), LA-T06 (códigos de afiliado; depende de params do dono). |
+| **Build** | ✅ Passing — `npm run type-check`, `npm run build`, `npm test -- --runInBand` (73/73), `npm run test:world-v2` e `git diff --check` limpos para WV2-T05/PLAN-T07 (2026-08-04). |
 | **Plano execução** | ✅ PLAN-T08 MVP: tocar no próprio rosto no mapa abre comando familiar; "Executar plano" carrega um plano escolhido, monta passos determinísticos do host (círculo → gatilhos → papéis → pontos → rotas → encerramento) e alerta o círculo com push preset "Execute o plano da família agora". Sem nova tabela ainda: timeline compartilhada fica para `family_plan_executions`. |
 | **Plano múltiplo** | ✅ PLAN-T09: o círculo pode ter vários planos ativos; `/plan` alterna/cria planos por nome, o executor escolhe qual plano rodar, passos fixos do EOS saem da lista numerada e há cancelar/falso alarme. Migration `20260731000000_multiple_family_plans.sql` aplicada pelo dono. |
 | **Rotas do plano** | ✅ PLAN-T10: cada rota desenhada no plano agora tem handoff "Google Maps" com origem, destino e paradas intermediárias na ordem da `LineString`. O EOS mantém o combinado offline; Google Maps calcula ruas/ETA quando abrir. |
