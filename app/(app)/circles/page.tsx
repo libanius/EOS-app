@@ -581,7 +581,7 @@ export default function CirclesPage() {
                     </button>
                     {/* D-112: o código continua aí para quem prefere ditar; o link
                         existe porque ditar seis letras é onde o convite morre. */}
-                    <InviteShare circleId={c.id} circleName={c.name} inviteCode={c.invite_code} pt={language === 'pt'} compact />
+                    <InviteShare circleId={c.id} circleName={c.name} inviteCode={c.invite_code} pt={language === 'pt'} />
                     {c.is_admin && (
                       <>
                         <button onClick={() => renameCircle(c.id, c.name)} disabled={busy} style={{ fontSize: 11, padding: '2px 8px', background: 'transparent', border: '1px solid #2a2a3a', borderRadius: 4, color: '#8a8a99', cursor: 'pointer' }}>

@@ -492,7 +492,6 @@ export default function FamilyPage() {
                   circleName={circleInfo.name}
                   inviteCode={circleInfo.inviteCode}
                   pt={pt}
-                  compact
                 />
               )}
               <Link className="wv2-pill" href="/family-legacy">{c.manage}</Link>

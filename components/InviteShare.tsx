@@ -31,7 +31,14 @@ export default function InviteShare({
   circleName: string
   inviteCode: string
   pt: boolean
-  /** Em listas densas, só o botão principal. */
+  /**
+   * Só o botão, sem a opção de Família íntima.
+   *
+   * NÃO usar nas telas onde a pessoa vai de fato convidar: eu comecei com
+   * `compact` em Círculos e o resultado foi um convite que nunca conseguia
+   * incluir a Família íntima — metade da feature invisível, sem nenhum aviso.
+   * Existe para encaixes futuros realmente apertados.
+   */
   compact?: boolean
 }) {
   const [withFamily, setWithFamily] = useState(false)

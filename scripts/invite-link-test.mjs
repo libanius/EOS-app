@@ -9,6 +9,8 @@
  *   3. ao APROVAR, o membro nasce com Família íntima PENDENTE — nunca aprovada
  *   4. quem já é membro recebe "você já faz parte", não um pedido duplicado
  *   5. código inexistente falha com mensagem, sem criar nada
+ *   6. o botão E a caixa de Família íntima existem nas DUAS telas — comecei com
+ *      a variante compacta em Círculos e metade da feature ficou invisível
  *
  * O item 3 é a trava que importa: um link pode FAZER a pergunta sobre a ficha
  * médica de alguém, nunca respondê-la. Se algum dia isto virar 'approved', a
@@ -146,6 +148,24 @@ const recusou = /não deu para entrar|não existe mais/i.test(invalido)
 recusou && pedidosDoConvidado.length === 1
   ? ok('código inexistente falha com mensagem e não cria nada')
   : no('código inválido não tratado', `${invalido.slice(0, 100).replace(/\n+/g, ' ')} · pedidos=${pedidosDoConvidado.length}`)
+
+// ── 6. o convite existe nas duas telas, com a opção de Família íntima ───────
+// Eu usei a variante `compact` em Círculos e a caixa sumiu: dava para mandar o
+// link, mas nunca para incluir alguém na Família íntima — metade da feature
+// invisível, sem nenhum aviso. Contar os dois elementos é o que impede a volta.
+const telas = []
+for (const rota of ['/circles', '/family']) {
+  await owner.goto(`${B}${rota}`, { waitUntil: 'networkidle' })
+  await owner.waitForTimeout(3000)
+  telas.push({
+    rota,
+    botao: await owner.locator('.invite-share-btn').count(),
+    caixa: await owner.locator('.invite-share-family input[type=checkbox]').count(),
+  })
+}
+telas.every(t => t.botao > 0 && t.caixa > 0)
+  ? ok('convite com Família íntima nas duas telas', telas.map(t => `${t.rota} ${t.botao}/${t.caixa}`).join(' · '))
+  : no('convite ausente ou sem a opção de Família íntima', JSON.stringify(telas))
 
 await browser.close()
 stopServer()
