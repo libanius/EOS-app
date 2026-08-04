@@ -3,7 +3,7 @@
  * admin surfaces. Configurable via ADMIN_EMAILS (comma-separated); defaults to
  * the app owner. Server-only — never gate solely on the client.
  */
-const DEFAULT_ADMINS = ['eosoffgrid@gmail.com']
+const DEFAULT_ADMINS = ['eosoffgrid@gmail.com', 'paulolibanionetousa@gmail.com']
 
 export function adminEmails(): string[] {
   const env = process.env.ADMIN_EMAILS
