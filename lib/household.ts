@@ -1,0 +1,325 @@
+/**
+ * Quem é a casa, e quanto ela tem (D-123).
+ *
+ * ESTA É A ÚNICA RESPOSTA. Antes, cada cálculo montava a sua: `analyze`,
+ * `readiness`, `checklist/generate`, `pilot/chat` e duas telas liam
+ * `family_members` direto — uma lista digitada à mão — e nenhum deles olhava o
+ * círculo. Cinco contas reais no círculo e a conta de água dizia uma pessoa.
+ *
+ * O MODELO:
+ *
+ *   Casa = as contas que confirmaram morar juntas
+ *        + os dependentes dessas contas
+ *
+ *   Alcançável = quem está no círculo mas NÃO mora na casa
+ *
+ * A distinção não é burocrática: a água do vizinho não está na sua casa. Somar
+ * as duas produz um número de autonomia que parece bom e não existe — e um
+ * número de autonomia errado para cima é pior que nenhum, porque leva a família
+ * a não se preparar.
+ *
+ * POR QUE USA O CLIENTE ADMIN. Somar o inventário da casa exige ler o
+ * inventário de outra pessoa, e a RLS — corretamente — impede isso. O
+ * consentimento que autoriza a leitura é o `household_status = 'confirmed'`, que
+ * a própria pessoa deu. Por isso o conjunto é derivado **primeiro** do vínculo
+ * confirmado, e só então os inventários desse conjunto são lidos. Nunca se lê
+ * inventário de quem não confirmou.
+ */
+
+import type { SupabaseClient } from '@supabase/supabase-js'
+import { createAdminClient } from '@/lib/supabase/admin'
+
+export type HouseholdPerson = {
+  /** Conta EOS. `null` para dependente. */
+  userId: string | null
+  name: string
+  isMe: boolean
+  age: number | null
+  medicalConditions: string[]
+  medications: string[]
+  mobilityImpaired: boolean
+  isInfant: boolean
+  /** Dependente: quem cuida dele, e o que essa pessoa é para o cuidador. */
+  dependsOn: string | null
+  relationship: string | null
+  careNotes: string | null
+}
+
+export type HouseholdInventory = {
+  waterLiters: number
+  /**
+   * PESSOA-DIA, não dias.
+   *
+   * A unidade está no nome porque foi exatamente aqui que eu errei, e o teste
+   * unitário pegou: `food_days` na tela significa "dias que a MINHA casa
+   * aguenta". Somar o campo de duas contas daria oito dias onde há quatro —
+   * a autonomia dobraria sem a comida dobrar.
+   *
+   * Convertendo para pessoa-dia (dias × pessoas cobertas por aquela conta), a
+   * soma passa a ser legítima e a divisão pelo tamanho da casa devolve dias.
+   * Para uma casa de uma conta o resultado é idêntico ao de antes.
+   */
+  foodPersonDays: number
+  fuelLiters: number
+  batteryPercent: number
+  hasMedicalKit: boolean
+  hasCommunicationDevice: boolean
+  /** De quantas contas este total veio. 1 = só a sua. */
+  contributors: number
+}
+
+export type ReachablePerson = {
+  userId: string
+  name: string
+  circleName: string
+  lat: number | null
+  lng: number | null
+  /** Só quando a pessoa marcou compartilhar; caso contrário `null`. */
+  sharedInventory: { waterLiters: number; foodDays: number } | null
+}
+
+export type Household = {
+  people: HouseholdPerson[]
+  /** Contas + dependentes. É este o número que divide água e comida. */
+  size: number
+  inventory: HouseholdInventory
+  reachable: ReachablePerson[]
+  /**
+   * Falso quando a leitura falhou.
+   *
+   * Regra herdada de `simulation-debrief`: **nunca presumir uma casa de um**.
+   * Uma falha de rede que vira "1 pessoa" produz uma autonomia inventada, e
+   * quem lê não tem como saber que aquilo é um erro e não um fato.
+   */
+  known: boolean
+}
+
+const VAZIO: HouseholdInventory = {
+  waterLiters: 0,
+  foodPersonDays: 0,
+  fuelLiters: 0,
+  batteryPercent: 0,
+  hasMedicalKit: false,
+  hasCommunicationDevice: false,
+  contributors: 0,
+}
+
+/** Litros por pessoa por dia. Referência usada em todo o app. */
+export const WATER_PER_PERSON_DAY = 3
+
+/**
+ * Dias que a casa aguenta.
+ *
+ * O menor entre água e comida: autonomia é definida pelo recurso que acaba
+ * primeiro, não pela média deles. Uma casa com trinta dias de comida e um dia de
+ * água tem um dia.
+ */
+export function autonomyDays(inv: HouseholdInventory, size: number): number {
+  if (size <= 0) return 0
+  const water = inv.waterLiters / (WATER_PER_PERSON_DAY * size)
+  const food = inv.foodPersonDays / size
+  return Math.max(0, Math.min(water, food))
+}
+
+type MemberRow = {
+  circle_id: string
+  user_id: string
+  household_status: string | null
+  share_inventory: boolean | null
+}
+
+/**
+ * Monta a casa de quem está perguntando.
+ *
+ * `client` é usado só para saber quem é o usuário quando a chamada vem de uma
+ * rota autenticada; toda a leitura cruzada usa o admin, pelo motivo explicado no
+ * topo do arquivo.
+ */
+export async function getHousehold(userId: string): Promise<Household> {
+  const admin = createAdminClient()
+  if (!admin) return { people: [], size: 0, inventory: VAZIO, reachable: [], known: false }
+
+  try {
+    // 1. Em quais círculos eu estou, e qual é a minha situação de casa.
+    const { data: minhas, error: e1 } = await admin
+      .from('circle_members')
+      .select('circle_id, user_id, household_status, share_inventory')
+      .eq('user_id', userId)
+    if (e1) throw e1
+
+    const meusCirculos = (minhas ?? []) as MemberRow[]
+    // A casa é um subconjunto de UM círculo — a pessoa mora em um lugar só, e o
+    // banco tem um índice único garantindo isso.
+    const circuloDaCasa = meusCirculos.find(m => m.household_status === 'confirmed')?.circle_id ?? null
+
+    // 2. Todos os membros dos meus círculos, para separar casa de alcançável.
+    const ids = meusCirculos.map(m => m.circle_id)
+    const { data: todos, error: e2 } = ids.length
+      ? await admin
+          .from('circle_members')
+          .select('circle_id, user_id, household_status, share_inventory')
+          .in('circle_id', ids)
+      : { data: [], error: null }
+    if (e2) throw e2
+
+    const membros = (todos ?? []) as MemberRow[]
+
+    /*
+     * Quem mora comigo. Sempre inclui a mim: mesmo sem círculo nenhum, uma casa
+     * de uma pessoa é uma casa — o que não pode acontecer é o contrário, uma
+     * casa de cinco ser lida como de uma.
+     */
+    const contasDaCasa = new Set<string>([userId])
+    if (circuloDaCasa) {
+      for (const m of membros) {
+        if (m.circle_id === circuloDaCasa && m.household_status === 'confirmed') {
+          contasDaCasa.add(m.user_id)
+        }
+      }
+    }
+
+    const idsCasa = Array.from(contasDaCasa)
+
+    // 3. Perfis, inventários e dependentes — só de quem está na casa.
+    const [perfisRes, invRes, depsRes, circulosRes] = await Promise.all([
+      admin.from('profiles').select('id, name, location_lat, location_lng').in('id', idsCasa),
+      admin
+        .from('resource_inventory')
+        .select('profile_id, water_liters, food_days, fuel_liters, battery_percent, has_medical_kit, has_communication_device')
+        .in('profile_id', idsCasa),
+      admin
+        .from('family_members')
+        .select('id, profile_id, name, age, medical_conditions, medications, mobility_impaired, is_infant, linked_user_id, relationship, care_notes')
+        .in('profile_id', idsCasa),
+      ids.length ? admin.from('circles').select('id, name').in('id', ids) : Promise.resolve({ data: [], error: null }),
+    ])
+
+    const perfis = new Map(
+      ((perfisRes.data ?? []) as Array<{ id: string; name: string | null }>).map(p => [p.id, p.name ?? 'Sem nome']),
+    )
+
+    const pessoas: HouseholdPerson[] = idsCasa.map(id => ({
+      userId: id,
+      name: id === userId ? 'Você' : perfis.get(id) ?? 'Sem nome',
+      isMe: id === userId,
+      age: null,
+      medicalConditions: [],
+      medications: [],
+      mobilityImpaired: false,
+      isInfant: false,
+      dependsOn: null,
+      relationship: null,
+      careNotes: null,
+    }))
+
+    /*
+     * Dependentes.
+     *
+     * `linked_user_id` preenchido significa que aquela linha é a duplicata de
+     * uma conta que JÁ está na casa — contá-la somaria a mesma pessoa duas
+     * vezes. Ela é ignorada aqui e limpa na tela, com o usuário olhando.
+     */
+    for (const d of (depsRes.data ?? []) as Array<Record<string, unknown>>) {
+      if (d.linked_user_id) continue
+      pessoas.push({
+        userId: null,
+        name: (d.name as string) ?? 'Sem nome',
+        isMe: false,
+        age: (d.age as number | null) ?? null,
+        medicalConditions: (d.medical_conditions as string[]) ?? [],
+        medications: (d.medications as string[]) ?? [],
+        mobilityImpaired: Boolean(d.mobility_impaired),
+        isInfant: Boolean(d.is_infant),
+        dependsOn: (d.profile_id as string) ?? null,
+        relationship: (d.relationship as string | null) ?? null,
+        careNotes: (d.care_notes as string | null) ?? null,
+      })
+    }
+
+    /*
+     * 4. O inventário da casa é a SOMA — é isto que "morar junto" compra.
+     *
+     * Água é absoluta: litros somam. Comida NÃO: o campo da tela é "dias que a
+     * minha casa aguenta", então antes de somar ele vira pessoa-dia,
+     * multiplicado por quanta gente aquela conta cobre (ela mesma + seus
+     * dependentes). Sem isso, duas pessoas com quatro dias cada leriam oito.
+     */
+    const cobertura = new Map<string, number>(idsCasa.map(id => [id, 1]))
+    for (const p of pessoas) {
+      if (p.userId === null && p.dependsOn) {
+        cobertura.set(p.dependsOn, (cobertura.get(p.dependsOn) ?? 1) + 1)
+      }
+    }
+
+    const inventarios = (invRes.data ?? []) as Array<Record<string, unknown>>
+    const inventory: HouseholdInventory = inventarios.reduce<HouseholdInventory>(
+      (acc, i) => ({
+        waterLiters: acc.waterLiters + (Number(i.water_liters) || 0),
+        foodPersonDays:
+          acc.foodPersonDays + (Number(i.food_days) || 0) * (cobertura.get(String(i.profile_id)) ?? 1),
+        fuelLiters: acc.fuelLiters + (Number(i.fuel_liters) || 0),
+        batteryPercent: Math.max(acc.batteryPercent, Number(i.battery_percent) || 0),
+        hasMedicalKit: acc.hasMedicalKit || Boolean(i.has_medical_kit),
+        hasCommunicationDevice: acc.hasCommunicationDevice || Boolean(i.has_communication_device),
+        contributors: acc.contributors + 1,
+      }),
+      { ...VAZIO },
+    )
+
+    // 5. Alcançável: no círculo, fora da casa. Aparece com distância, nunca
+    //    somado — a água que está a dois quilômetros não está na sua casa.
+    const nomeCirculo = new Map(
+      ((circulosRes.data ?? []) as Array<{ id: string; name: string }>).map(c => [c.id, c.name]),
+    )
+    const foraDaCasa = membros.filter(m => !contasDaCasa.has(m.user_id))
+    const idsFora = Array.from(new Set(foraDaCasa.map(m => m.user_id)))
+
+    let reachable: ReachablePerson[] = []
+    if (idsFora.length) {
+      const [pf, inv2] = await Promise.all([
+        admin.from('profiles').select('id, name, location_lat, location_lng').in('id', idsFora),
+        admin.from('resource_inventory').select('profile_id, water_liters, food_days').in('profile_id', idsFora),
+      ])
+      const porId = new Map(
+        ((pf.data ?? []) as Array<{ id: string; name: string | null; location_lat: number | null; location_lng: number | null }>)
+          .map(p => [p.id, p]),
+      )
+      const invPorId = new Map(
+        ((inv2.data ?? []) as Array<{ profile_id: string; water_liters: number; food_days: number }>)
+          .map(i => [i.profile_id, i]),
+      )
+      const vistos = new Set<string>()
+      for (const m of foraDaCasa) {
+        if (vistos.has(m.user_id)) continue
+        vistos.add(m.user_id)
+        const p = porId.get(m.user_id)
+        const i = m.share_inventory ? invPorId.get(m.user_id) : null
+        reachable.push({
+          userId: m.user_id,
+          name: p?.name ?? 'Sem nome',
+          circleName: nomeCirculo.get(m.circle_id) ?? 'Círculo',
+          lat: p?.location_lat ?? null,
+          lng: p?.location_lng ?? null,
+          sharedInventory: i ? { waterLiters: Number(i.water_liters) || 0, foodDays: Number(i.food_days) || 0 } : null,
+        })
+      }
+      reachable = reachable.sort((a, b) => a.name.localeCompare(b.name))
+    }
+
+    return { people: pessoas, size: pessoas.length, inventory, reachable, known: true }
+  } catch {
+    // Ver `known` no tipo: falhar em silêncio com "1 pessoa" produziria uma
+    // autonomia inventada que ninguém teria como identificar como erro.
+    return { people: [], size: 0, inventory: VAZIO, reachable: [], known: false }
+  }
+}
+
+/**
+ * Versão que aceita o cliente autenticado e descobre o usuário sozinha.
+ * Conveniência para rotas que já têm o `supabase` em mãos.
+ */
+export async function getHouseholdFor(client: SupabaseClient): Promise<Household> {
+  const { data } = await client.auth.getUser()
+  if (!data.user) return { people: [], size: 0, inventory: VAZIO, reachable: [], known: false }
+  return getHousehold(data.user.id)
+}

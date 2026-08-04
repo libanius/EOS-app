@@ -360,6 +360,75 @@ como rota protegida; usuário não logado ia para login, o login ignorava
 
 ---
 
+## D-123 — A casa passa a existir (Fase 1: a fonte única)
+
+**Contexto.** O dono disse que o conceito estava confuso e caro: *"por que eu
+tenho que adicionar membros sendo que eles já fazem parte do círculo?"*. Ele
+estava descrevendo um defeito de modelagem, não de tela.
+
+A mesma pessoa vivia em três lugares que não se falavam — `profiles` (a conta),
+`circle_members` (o círculo) e `family_members` (uma lista digitada à mão). E
+**todos os cálculos liam a lista digitada à mão**: `analyze`, `readiness`,
+`checklist/generate`, `pilot/chat`, Preparação e Família. Cinco contas reais no
+círculo e a conta de água dizia uma pessoa. Pior: `share_inventory` nunca somou
+nada — era só uma marcação de visibilidade na tela de Círculos.
+
+**O modelo decidido com o dono.**
+
+    Pessoa      = uma conta EOS
+    Dependente  = quem não pode ter conta, SEMPRE ligado a um cuidador
+    Círculo     = quem você alcança e com quem troca informação
+    Casa        = membros do círculo que confirmaram morar juntos
+                  + os dependentes dessas pessoas
+
+**Três eixos, três consentimentos.** Estar no círculo, morar junto (entra na
+conta de água) e ver a ficha médica são coisas diferentes. Antes, "promover a
+família íntima" dava acesso à ficha médica de alguém como efeito colateral de
+uma decisão sobre logística. O dono escolheu separar: `household_status` é
+logística, `family_access_status` continua sendo a ficha — e essa só a própria
+pessoa aprova.
+
+**Morar junto exige CONFIRMAÇÃO.** Escolha minha, declarada: morar junto faz o
+inventário somar, e uma marcação unilateral deixaria qualquer um marcar o
+vizinho e passar a contar a água dele. É o mesmo otimismo que o dono rejeitou
+ao escolher que o círculo apareça com distância em vez de somado.
+
+**Uma pessoa mora em UMA casa** — índice único parcial no banco. Sem ele,
+alguém em dois círculos entraria nas duas contas, e as duas telas mostrariam
+autonomia que não existe, ambas parecendo certas.
+
+**O erro que o teste unitário pegou, e que teria passado.** Eu somei `food_days`
+de cada conta. Mas o campo na tela significa "dias que a MINHA casa aguenta" —
+somar duas contas de quatro dias daria oito, dobrando a autonomia sem dobrar a
+comida. A unidade correta é **pessoa-dia**: `dias × pessoas que aquela conta
+cobre`. A soma passa a ser legítima e a divisão pelo tamanho devolve dias. Para
+uma casa de uma conta o resultado é idêntico ao de antes, o que torna a mudança
+retrocompatível. O nome do campo carrega a unidade (`foodPersonDays`) porque foi
+exatamente ali que eu errei.
+
+**Por que `getHousehold` usa o cliente admin.** Somar o inventário da casa exige
+ler o inventário de outra pessoa, e a RLS — corretamente — impede. O
+consentimento que autoriza é o `household_status = 'confirmed'`, dado pela
+própria pessoa. Por isso o conjunto é derivado **primeiro** do vínculo
+confirmado, e só então os inventários desse conjunto são lidos.
+
+**O que esta fase NÃO faz, de propósito.** Nenhum cálculo foi religado ainda.
+Enquanto a migration não estiver aplicada, `household_status` não existe e todo
+cálculo cairia para "casa desconhecida" — uma regressão em produção para
+resolver um problema de modelagem. A fundação entra sozinha; o religamento vem
+depois da migration, com teste de integração.
+
+Também não apaga as linhas de `family_members` que têm `linked_user_id`
+preenchido — são duplicatas da mesma pessoa como registro e como conta. Apagar
+dado de família por script, sem a pessoa ver o que some, não é decisão para se
+tomar no escuro; a limpeza acontece na tela, com o usuário olhando.
+
+**Prova até aqui.** 8 casos unitários de autonomia, metade deles provando que a
+conta **não infla** — autonomia errada para cima é pior que nenhuma, porque a
+família lê "seis dias", não se prepara, e descobre no terceiro.
+
+---
+
 ## D-122 — A ação principal da aba Família saía do aplicativo
 
 **Contexto.** O dono abriu `/family-legacy` e disse que "não estava condizente".

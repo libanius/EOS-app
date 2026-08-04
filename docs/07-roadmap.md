@@ -147,6 +147,9 @@ product phase sequenced.
 | FAM-T00 | Decisão + spec: localização ao vivo, consentimento próprio, freshness, retenção | ✅ COMPLETE | 2026-07-27 — D-064; docs 06 e 12 atualizados |
 | FAM-T01 | Migration `20260727000000_live_location.sql`: `last_location_*` em profiles | ✅ COMPLETE | 2026-07-27 — aplicada em produção pelo dono e verificada por REST service-role. |
 | FAM-T02 | Corrigir vazamento: gatear `location_lat/lng` em `/api/circles` por `shared_fields` | ✅ COMPLETE | 2026-07-27 — sem consentimento não sai coordenada; retorna `location_source`/`location_at` para a UI rotular |
+| HH-T01 | Modelo da casa: fonte única de "quem é a casa e quanto ela tem" | 🟡 AGUARDA MIGRATION | 2026-08-04 — D-123 Fase 1; `lib/household.ts` + migration `20260804200000`; cálculos religados só depois de aplicada |
+| HH-T02 | Marcar "mora comigo" em Círculos com confirmação | ⬜ TODO | D-123 Fase 2 |
+| HH-T03 | Dependentes com cuidador, relação e descrição | ⬜ TODO | D-123 Fase 3; resposta do dono: "na ficha da cuidadora ela conta ela + 1" |
 | FAM-T03 | `POST /api/location` + hook de envio periódico enquanto o app está aberto | ✅ COMPLETE | 2026-07-27 — `LocationReporter` nunca dispara prompt de permissão; 2 min, só com aba visível; servidor grava só o último ponto |
 | FAM-T04 | Toggle próprio de localização na tela de Círculos + marcadores reais com freshness no mapa v2; remover mocks do `WorldMap` | ✅ COMPLETE | 2026-07-27 — mocks 'Paulo/Isadora/Ana' + rota + `SHELTER · mock` removidos das duas telas |
 | FAM-T05 | Fonte de rota/abrigo (dívida D-051 §5) | ✅ COMPLETE (decisão) | 2026-07-27 — **D-065**: FEMA NSS para abrigo; navegação entregue ao app de mapas; rumo/distância on-device. Dívida D-051 §5 resolvida. |
