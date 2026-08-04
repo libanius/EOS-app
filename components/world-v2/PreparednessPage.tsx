@@ -945,8 +945,8 @@ export default function PreparednessPage() {
                             padding: '11px 16px', background: 'transparent',
                             border: 'none', borderBottom: '1px solid var(--bd)',
                             color: 'var(--tx)',
-                            display: 'grid', gridTemplateColumns: '20px 1fr auto auto',
-                            alignItems: 'center', gap: 12,
+                            display: 'grid', gridTemplateColumns: '20px minmax(0, 1fr)',
+                            alignItems: 'flex-start', gap: 12,
                           }}
                         >
                           <button
@@ -978,32 +978,34 @@ export default function PreparednessPage() {
                                 {language === 'pt' ? 'Fonte: ' : 'Source: '}{language === 'pt' ? kit.pt : kit.en}
                               </span>
                             )}
-                          </span>
-                          <span style={{ fontSize: 12, color: 'var(--mu)', fontFamily: 'ui-monospace,Menlo,monospace', flexShrink: 0 }}>
-                            {item.quantity}{item.unit ? ` ${item.unit}` : ''}
-                          </span>
-                          <span style={{ display: 'inline-flex', gap: 6 }}>
-                            <button
-                              type="button"
-                              aria-label={`${language === 'pt' ? 'Editar' : 'Edit'} ${item.item_name}`}
-                              onClick={() => setEditingItem(item)}
-                              style={S.iconButton}
-                            >
-                              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" aria-hidden>
-                                <path d="M4 20h4.8L19 9.8 14.2 5 4 15.2V20Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
-                                <path d="m13 6 5 5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-                              </svg>
-                            </button>
-                            <button
-                              type="button"
-                              aria-label={`${language === 'pt' ? 'Excluir' : 'Delete'} ${item.item_name}`}
-                              onClick={() => setDeleteItem(item)}
-                              style={{ ...S.iconButton, color: 'var(--ac3)', borderColor: 'rgba(255,107,107,0.28)' }}
-                            >
-                              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" aria-hidden>
-                                <path d="M6 6l12 12M18 6 6 18" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
-                              </svg>
-                            </button>
+                            <span style={S.itemActionRow}>
+                              <span style={{ fontSize: 12, color: 'var(--mu)', fontFamily: 'ui-monospace,Menlo,monospace', flexShrink: 0 }}>
+                                {item.quantity}{item.unit ? ` ${item.unit}` : ''}
+                              </span>
+                              <button
+                                type="button"
+                                aria-label={`${language === 'pt' ? 'Editar' : 'Edit'} ${item.item_name}`}
+                                onClick={() => setEditingItem(item)}
+                                style={S.actionButton}
+                              >
+                                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" aria-hidden>
+                                  <path d="M4 20h4.8L19 9.8 14.2 5 4 15.2V20Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+                                  <path d="m13 6 5 5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+                                </svg>
+                                {language === 'pt' ? 'Editar' : 'Edit'}
+                              </button>
+                              <button
+                                type="button"
+                                aria-label={`${language === 'pt' ? 'Excluir' : 'Delete'} ${item.item_name}`}
+                                onClick={() => setDeleteItem(item)}
+                                style={{ ...S.actionButton, color: 'var(--ac3)', borderColor: 'rgba(255,107,107,0.28)', background: 'rgba(255,107,107,0.06)' }}
+                              >
+                                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" aria-hidden>
+                                  <path d="M6 6l12 12M18 6 6 18" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+                                </svg>
+                                {language === 'pt' ? 'Excluir' : 'Delete'}
+                              </button>
+                            </span>
                           </span>
                         </div>
                       )
@@ -1326,9 +1328,15 @@ const S: Record<string, React.CSSProperties> = {
     lineHeight: 1.5,
     color: 'var(--tx)',
   },
-  iconButton: {
-    width: 30,
-    height: 30,
+  itemActionRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+    marginTop: 8,
+  },
+  actionButton: {
+    minHeight: 30,
     borderRadius: 8,
     border: '1px solid var(--bd)',
     background: 'rgba(255,255,255,0.03)',
@@ -1336,6 +1344,10 @@ const S: Record<string, React.CSSProperties> = {
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 5,
+    padding: '6px 9px',
+    fontSize: 12,
+    fontWeight: 700,
     cursor: 'pointer',
   },
   modalBackdrop: {

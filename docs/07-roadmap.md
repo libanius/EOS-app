@@ -257,7 +257,7 @@ product phase sequenced.
 | NOTIF-T01 | Separar badges por ícone/surface | ✅ COMPLETE | 2026-08-04 — D-117; `unread_by_surface` alimenta Clima, Família, Preparação, Comms e Cenário; Inbox abre filtrado pela surface |
 | PREP-T00 | Spec + decisão do Preparedness Engine | ✅ COMPLETE | 2026-08-03 — D-085 / `docs/20-preparedness-engine.md`; no code/migration authorized |
 | PREP-T01 | Unificar Checklist + Recursos em Preparação | ✅ COMPLETE | 2026-08-03 — D-086; `/preparedness` is the single surface, `/inventory` and `/checklist` redirect |
-| PREP-T02 | Editar e excluir itens do checklist em Preparação | ✅ COMPLETE | 2026-08-04 — D-121; `/preparedness` edita/exclui itens; `PATCH /api/checklist/[id]` recalcula `canonical_key` no rename; exclusão é por linha |
+| PREP-T02 | Editar e excluir itens do checklist em Preparação | ✅ COMPLETE | 2026-08-04 — D-121; `/preparedness` edita/exclui itens com botões visíveis por linha; `PATCH /api/checklist/[id]` recalcula `canonical_key` no rename; exclusão é por linha |
 | COMMS-T01 | Criar aba Comms app-level | ✅ COMPLETE | 2026-08-03 — D-087 / `docs/21-comms.md`; `/comms` agora tem chat do círculo, guia de rádio e limite explícito de Mesh/LoRa |
 | COMMS-T02 | Inserir referência de frequências familiares | ✅ COMPLETE | 2026-08-03 — D-088; canais VHF/UHF, NOAA, nacionais/emergência, MURS/GMRS/FRS e guia Baofeng na aba Comms |
 | COMMS-T03 | Tornar referência de rádio editável por círculo | ✅ COMPLETE | 2026-08-03 — D-089; `circle_radio_profiles`, `/api/comms/radio`, leitura por membro e edição Admin/Editor |

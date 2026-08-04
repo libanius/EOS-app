@@ -199,7 +199,9 @@ asteriscos/timestamps e devolve ações curtas o bastante para checklist.
 D-121 / PREP-T02 torna o checklist de `/preparedness` editável/removível. Regra:
 excluir usa `checklists.id` e remove só aquela linha; não usa `canonical_key`,
 porque o mesmo item pode existir em outra origem/kit. Editar nome recalcula
-`canonical_key` no servidor para manter dedupe e toggle coerentes.
+`canonical_key` no servidor para manter dedupe e toggle coerentes. Correção UX:
+os controles precisam ser textuais e visíveis por linha (`Editar` / `Excluir`),
+não apenas ícones discretos na extrema direita.
 
 ---
 
