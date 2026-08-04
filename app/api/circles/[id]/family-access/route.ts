@@ -2,11 +2,11 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
-type Action = 'request' | 'cancel'
+type Action = 'accept' | 'deny' | 'leave'
 
 interface Ctx { params: { id: string } }
 
-/** POST /api/circles/:id/family-access — self request/cancel for inner family access. */
+/** POST /api/circles/:id/family-access — data owner accepts/denies/leaves intimate family access. */
 export async function POST(req: NextRequest, { params }: Ctx) {
   const supabase = await createClient()
   const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -14,8 +14,8 @@ export async function POST(req: NextRequest, { params }: Ctx) {
 
   let body: { action?: Action }
   try { body = await req.json() } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }) }
-  if (body.action !== 'request' && body.action !== 'cancel') {
-    return NextResponse.json({ error: 'action must be request or cancel' }, { status: 400 })
+  if (body.action !== 'accept' && body.action !== 'deny' && body.action !== 'leave') {
+    return NextResponse.json({ error: 'action must be accept, deny or leave' }, { status: 400 })
   }
 
   const admin = createAdminClient()
@@ -28,20 +28,22 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     .eq('user_id', user.id)
     .maybeSingle()
   if (!membership) return NextResponse.json({ error: 'Você não faz parte deste círculo.' }, { status: 403 })
+  if ((body.action === 'accept' || body.action === 'deny') && membership.family_access_status !== 'requested') {
+    return NextResponse.json({ error: 'Não há convite pendente para Família íntima.' }, { status: 400 })
+  }
 
-  const patch = body.action === 'request'
-    ? {
-        family_access_status: 'requested',
-        family_access_requested_at: new Date().toISOString(),
-        family_access_approved_at: null,
-        family_access_approved_by: null,
-      }
-    : {
-        family_access_status: 'none',
-        family_access_requested_at: null,
-        family_access_approved_at: null,
-        family_access_approved_by: null,
-      }
+  const now = new Date().toISOString()
+  const patch = body.action === 'accept'
+    ? { family_access_status: 'approved', family_access_approved_at: now, family_access_approved_by: user.id }
+    : body.action === 'deny'
+      ? { family_access_status: 'denied', family_access_approved_at: now, family_access_approved_by: user.id }
+      : {
+          family_access_status: 'none',
+          family_access_requested_at: null,
+          family_access_requested_by: null,
+          family_access_approved_at: null,
+          family_access_approved_by: null,
+        }
 
   const { data, error } = await admin
     .from('circle_members')

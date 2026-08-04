@@ -62,6 +62,12 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   const { admin, ok } = await assertAdmin(params.id, user.id)
   if (!admin) return NextResponse.json({ error: 'Indisponível.' }, { status: 503 })
   if (!ok) return NextResponse.json({ error: 'Só Admin pode mudar papéis.' }, { status: 403 })
+  if (familyAccess === 'requested' && params.userId === user.id) {
+    return NextResponse.json({ error: 'Você não precisa convidar a si mesmo para a Família íntima.' }, { status: 400 })
+  }
+  if (familyAccess === 'approved' || familyAccess === 'denied') {
+    return NextResponse.json({ error: 'A própria pessoa precisa aceitar ou recusar Família íntima na conta dela.' }, { status: 400 })
+  }
 
   // Um círculo sem Admin não tem como ser administrado de volta pela interface.
   // Rebaixar o último Admin fica bloqueado, inclusive quando é a própria pessoa.
@@ -88,9 +94,16 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   if (newRole !== undefined) patch.role = newRole
   if (familyAccess !== undefined) {
     patch.family_access_status = familyAccess
-    patch.family_access_approved_at = familyAccess === 'approved' || familyAccess === 'denied' ? new Date().toISOString() : null
-    patch.family_access_approved_by = familyAccess === 'approved' || familyAccess === 'denied' ? user.id : null
-    if (familyAccess === 'none') patch.family_access_requested_at = null
+    patch.family_access_approved_at = null
+    patch.family_access_approved_by = null
+    if (familyAccess === 'requested') {
+      patch.family_access_requested_at = new Date().toISOString()
+      patch.family_access_requested_by = user.id
+    }
+    if (familyAccess === 'none') {
+      patch.family_access_requested_at = null
+      patch.family_access_requested_by = null
+    }
   }
 
   const { data, error } = await admin

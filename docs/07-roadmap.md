@@ -267,6 +267,7 @@ product phase sequenced.
 | PILOT-T09 | Pilot lê ficha master e membros detalhados | ✅ COMPLETE | 2026-08-04 — D-105; `/api/pilot/chat` injeta ficha master + dependentes no prompt e não depende só dos agregados do cliente |
 | PILOT-T10 | Pilot lê fichas visíveis do círculo | ✅ COMPLETE | 2026-08-04 — D-106; `/api/pilot/chat` injeta membros do círculo com gates `medical`, `emergency_contact` e `location` |
 | FAM-T11 | Separar círculo de Família íntima | ✅ COMPLETE | 2026-08-04 — D-107; `family_access_status` cria pedido/aprovação dentro do círculo e o Pilot só lê ficha master de co-membro aprovado |
+| FAM-T12 | Convite de Família íntima aceito pelo dono da ficha | ✅ COMPLETE | 2026-08-04 — D-108; Admin convida outro membro, mas só o próprio membro aceita/nega acesso à ficha master |
 
 ---
 

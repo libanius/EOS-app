@@ -193,6 +193,7 @@ CREATE TABLE IF NOT EXISTS circle_members (
   family_access_status text          NOT NULL DEFAULT 'none'
     CHECK (family_access_status IN ('none', 'requested', 'approved', 'denied')),
   family_access_requested_at timestamptz,
+  family_access_requested_by uuid    REFERENCES auth.users (id) ON DELETE SET NULL,
   family_access_approved_at timestamptz,
   family_access_approved_by uuid     REFERENCES auth.users (id) ON DELETE SET NULL,
   joined_at        timestamptz       NOT NULL DEFAULT now(),

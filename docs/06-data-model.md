@@ -217,6 +217,7 @@ write; both should be displayed as source/provenance in Preparação.
 | shared_fields | text[] | which fields are shared |
 | family_access_status | text | `none`, `requested`, `approved`, `denied` |
 | family_access_requested_at | timestamptz | when the member requested inner-family access |
+| family_access_requested_by | uuid | Admin/head who invited this member into the intimate family layer |
 | family_access_approved_at | timestamptz | when an Admin approved/denied inner-family access |
 | family_access_approved_by | uuid | Admin who last approved/denied inner-family access |
 
@@ -244,9 +245,9 @@ convention.
 | Value | Meaning |
 |---|---|
 | `none` | member is in the broader circle only |
-| `requested` | member asked to enter the intimate family layer |
-| `approved` | Admin authorized intimate-family access; Pilot may use master ficha fields |
-| `denied` | request was denied; member remains in the broader circle |
+| `requested` | Admin/head invited the member into the intimate family layer; member must accept |
+| `approved` | data owner accepted intimate-family access; Pilot may use master ficha fields |
+| `denied` | data owner denied the request; member remains in the broader circle |
 
 Family access does not replace `location` consent. Live/profile location remains
 visible only when `shared_fields` contains `location` or when viewing yourself.

@@ -10,7 +10,8 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Preparedness Engine (PREP/EDU/COMMS/ONB/PILOT) sobre Web/PWA |
-| **Last Completed Task** | **D-107 / FAM-T11 — Círculo separado de Família íntima (2026-08-04)** |
+| **Last Completed Task** | **D-108 / FAM-T12 — Família íntima exige convite e aceite do dono da ficha (2026-08-04)** |
+| | **D-107 / FAM-T11 — Círculo separado de Família íntima (2026-08-04)** |
 | | **D-106 / PILOT-T10 — Pilot lê fichas visíveis do círculo (2026-08-04)** |
 | | **D-105 / PILOT-T09 — Pilot lê ficha master e membros detalhados (2026-08-04)** |
 | | **D-104 / EDU-T04 — guardrail impede RAG link-only no EDU (2026-08-04)** |
@@ -75,6 +76,7 @@
 | | D-066 / PLAN-T00 — spec dos Planos de Emergência da Família (`docs/18-family-plans.md`) (2026-07-27) |
 | | D-064 / FAM-T01→T04 — localização familiar ao vivo, consentimento próprio e remoção dos mocks do mapa (2026-07-27) |
 | **Migration** | ✅ `20260730000000_family_plan_triggers.sql` aplicada pelo dono em 2026-07-30 e verificada. Gatilho gravando ponta a ponta no teste de navegador. |
+| **Migration** | ⏳ `20260804011000_circle_family_access_requested_by.sql` pendente de aplicação pelo dono. Adiciona `family_access_requested_by` para registrar quem convidou o membro para a Família íntima. |
 | **Migration** | ✅ `20260804010000_circle_family_access.sql` aplicada pelo dono em 2026-08-04 e verificada via service-role (`family_access_status`, datas e aprovador respondem em `circle_members`; linhas atuais default `none`). |
 | **Migration** | ✅ `20260804000000_affiliate_codes.sql` aplicada pelo dono em 2026-08-04 e verificada via service-role (`affiliate_codes`, `affiliate_referrals`, `affiliate_conversions` respondem 200; `EOSPARTNER` ativo com tag `Teste Afiliado app`, Family/Premium, comissão 70%). |
 | **Migration** | ✅ `20260803003000_pilot_memory_events.sql` aplicada pelo dono em 2026-08-03 e verificada via service-role (`pilot_memory_events` responde 200; count=0). UPP-03 está operacional para salvar memória confirmada com auditoria. |
@@ -114,8 +116,8 @@
 | **In Progress** | — |
 | **Platform Alignment** | ✅ D-084: EOS é plataforma multi-superfície com um único core operacional. Web/PWA segue como superfície primária; iOS/Android serão adapters nativos futuros; Automotive é companion mode restrito; Mesh/LoRa segue bloqueado por G-05. `/mobile/` é template/conceitual, não app inicializado. |
 | **Fases pedidas pelo dono (2026-07-31)** | ✅ 1. Camadas de clima + rastreio de ciclone (D-078). 2. Reinventar a aba Família no design system da v2, com componentes dinâmicos. 3. WV2-T05 (a11y/perf), PLAN-T07 (Pilot propõe plano). |
-| **Next Task** | Teste funcional: em Círculos, um membro deve pedir "Família íntima"; Admin aprova; depois o Pilot deve conseguir ler a ficha master desse co-membro aprovado e negar ficha de co-membro não aprovado. |
-| **Build** | ✅ Passing — `npm run type-check`, `npm run build`, `npm test -- --runInBand` (86/86) e `git diff --check` limpos para D-107 (2026-08-04). |
+| **Next Task** | Operacional: aplicar `20260804011000_circle_family_access_requested_by.sql`. Teste funcional: Paulo convida Daniela na linha dela; Daniela aceita na própria conta; só então o Pilot lê a ficha master dela. |
+| **Build** | ✅ Passing — `npm run type-check`, `npm run build`, `npm test -- --runInBand` (86/86) e `git diff --check` limpos para D-108 (2026-08-04). |
 | **Plano execução** | ✅ PLAN-T08 MVP: tocar no próprio rosto no mapa abre comando familiar; "Executar plano" carrega um plano escolhido, monta passos determinísticos do host (círculo → gatilhos → papéis → pontos → rotas → encerramento) e alerta o círculo com push preset "Execute o plano da família agora". Sem nova tabela ainda: timeline compartilhada fica para `family_plan_executions`. |
 | **Plano múltiplo** | ✅ PLAN-T09: o círculo pode ter vários planos ativos; `/plan` alterna/cria planos por nome, o executor escolhe qual plano rodar, passos fixos do EOS saem da lista numerada e há cancelar/falso alarme. Migration `20260731000000_multiple_family_plans.sql` aplicada pelo dono. |
 | **Rotas do plano** | ✅ PLAN-T10: cada rota desenhada no plano agora tem handoff "Google Maps" com origem, destino e paradas intermediárias na ordem da `LineString`. O EOS mantém o combinado offline; Google Maps calcula ruas/ETA quando abrir. |

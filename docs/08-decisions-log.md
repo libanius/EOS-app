@@ -278,6 +278,40 @@ como rota protegida; usuário não logado ia para login, o login ignorava
 
 ---
 
+## D-108 — Família íntima é convite aceito pelo dono da ficha
+
+**Date**: 2026-08-04
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: Depois de D-107, a UI ainda mostrava "Pedir Família íntima" na
+linha do próprio usuário. Isso era confuso e errado: Paulo, como criador do
+círculo `Libanio's Family`, não precisa pedir a si mesmo para entrar na própria
+família. O caso real é: Paulo quer pedir para Daniela aceitar entrar na Família
+íntima, porque a ficha master pertence a Daniela.
+
+**Decision**:
+
+1. O pedido de Família íntima é iniciado por Admin/head do círculo para outro
+   membro.
+2. O aceite/recusa só pode ser feito pelo próprio dono da ficha, na conta dele.
+3. Admin não pode aprovar ficha master de outro adulto sem aceite desse adulto.
+4. Admin pode remover/revogar alguém da Família íntima.
+5. O próprio usuário, quando vê um pedido pendente na sua linha, pode aceitar,
+   recusar ou sair da Família íntima.
+6. `family_access_requested_by` registra quem iniciou o pedido.
+
+**Consequences**:
+
+- Na conta de Paulo, a linha de Paulo não mostra mais "Pedir Família íntima".
+- Na conta de Paulo, a linha de Daniela mostra "Convidar Família íntima" quando
+  ainda não há pedido/aprovação.
+- Na conta de Daniela, a linha dela mostra "Aceitar Família íntima" ou "Recusar"
+  quando Paulo tiver convidado.
+- O Pilot só lê ficha master de Daniela depois de Daniela aceitar.
+- Migration necessária: `20260804011000_circle_family_access_requested_by.sql`.
+
+---
+
 ## D-107 — Círculo não é Família íntima
 
 **Date**: 2026-08-04

@@ -172,6 +172,15 @@ a significar compartilhamento de recurso médico/estoque, não ficha master.
 foi aprovada como Família íntima, o Pilot deve dizer que ela está no círculo mas
 a ficha master dela não está autorizada para o Pilot da família.
 
+D-108 corrige a direção do fluxo: Paulo/Admin não "aprova" a ficha de Daniela.
+Paulo convida Daniela para a Família íntima na linha dela; Daniela aceita ou
+recusa na própria conta. O botão nunca deve aparecer como "Pedir Família íntima"
+na linha do próprio Paulo, porque isso sugere pedir autorização a si mesmo. Na
+linha do usuário logado, a UI deve comunicar controle da própria ficha; na linha
+do outro membro, Admin pode enviar convite; no login do convidado, o convite vira
+aceitar/recusar. Migration `20260804011000_circle_family_access_requested_by.sql`
+registra quem iniciou o convite.
+
 D-095 / UPP-03 criou o fluxo confirmado de memória. `/api/pilot/chat` pode
 retornar propostas `memory[]`; a UI mostra título, motivo e Markdown exato. Só
 depois do toque em "Salvar memória" a rota
