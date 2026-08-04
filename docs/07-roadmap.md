@@ -55,7 +55,7 @@ product phase sequenced.
 | P1-T05 | Bilingual PT/EN UI selected in Settings; align all UI copy | ✅ COMPLETE | MEDIUM |
 | P1-T06 | End-to-end test: full user flow from signup to action plan in production | ✅ COMPLETE | HIGH |
 | P1-T07 | Sentry error monitoring integration | DEFERRED | — ver D-028 |
-| P1-T08 | Rate limit validation: confirm Upstash Redis is connected in production | DRAFT | MEDIUM |
+| P1-T08 | Rate limit validation: confirm Upstash Redis is connected in production | ⏸️ SUPERSEDED | 2026-08-04 — D-118 escolheu Supabase/Postgres como guardrail distribuído v1; Upstash fica opcional, não requisito de produção |
 
 ---
 

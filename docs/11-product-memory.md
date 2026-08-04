@@ -1,7 +1,7 @@
 # 11 — Product Memory
 
 > Non-obvious facts that don't belong in code comments but must survive across sessions.
-> Last updated: 2026-08-03
+> Last updated: 2026-08-04
 
 ---
 
@@ -180,6 +180,10 @@ push e cron. Migration: `20260804180000_rate_limit_and_error_log.sql`.
 O dono aplicou a migration em 2026-08-04; `node scripts/guardrails-test.mjs`
 passou 5/5. O teste de rajada usa chamadas paralelas com JSON inválido de
 propósito para provar o rate limit antes do parse e antes de gastar OpenAI.
+
+`20260804015000_edu_view_count.sql` também está aplicado em produção: em
+2026-08-04, `edu_content?select=id,view_count` respondeu 200 via service-role.
+Isso libera o destaque v1 do vídeo EDU mais clicado.
 
 ---
 
