@@ -3516,3 +3516,30 @@ vira acúmulo de sugestões e perde confiança.
 passa a ser uma lista operacional controlada pelo usuário.
 
 ---
+## D-122 — Salvar conteúdo EDU também gera notificação para o admin
+
+**Date**: 2026-08-04
+**Status**: DECIDED
+**Roadmap**: EDU-T07
+
+**Context**: O fluxo existente notificava `Novo EDU` apenas quando o conteúdo
+estava `approved`. Em teste real, o dono esperava feedback também ao salvar um
+conteúdo EDU como rascunho ou nova versão, porque o Admin EDU é uma ação de
+publicação/curadoria que precisa deixar rastro no Inbox.
+
+**Decision**:
+1. Todo save bem-sucedido em `/api/edu` cria uma notificação `edu_content_saved`
+   para o admin/ator que salvou.
+2. Se o status salvo for `approved`, continua existindo a notificação
+   `edu_content_approved` para os usuários elegíveis, incluindo o admin para
+   teste do fluxo.
+3. `edu_content_saved` pertence à surface `preparedness`, porque EDU é parte da
+   Preparação no Web/PWA core.
+4. O destino da notificação de save é `/admin/edu?contentId=<id>`; o destino de
+   aprovado continua `/edu?contentId=<id>`.
+
+**Consequence**: Salvar rascunho, versão ou conteúdo aprovado deixa feedback
+visível no Inbox/Preparação. A notificação pública de conteúdo aprovado continua
+separada da notificação administrativa de save.
+
+---

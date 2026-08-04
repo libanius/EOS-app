@@ -10,6 +10,7 @@ export type CommsNotificationKind =
   | 'family_invite'
   | 'family_invite_accepted'
   | 'family_invite_denied'
+  | 'edu_content_saved'
   | 'edu_content_approved'
   | 'simulation_invite'
   | 'weather_alert'

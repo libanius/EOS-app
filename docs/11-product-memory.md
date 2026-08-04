@@ -203,6 +203,12 @@ porque o mesmo item pode existir em outra origem/kit. Editar nome recalcula
 os controles precisam ser textuais e visíveis por linha (`Editar` / `Excluir`),
 não apenas ícones discretos na extrema direita.
 
+D-122 / EDU-T07 separa dois eventos de EDU no Inbox: `edu_content_saved` é
+feedback administrativo para quem salvou qualquer rascunho/versão; destino
+`/admin/edu?contentId=<id>`. `edu_content_approved` continua sendo a notificação
+de conteúdo aprovado para usuários elegíveis; destino `/edu?contentId=<id>`.
+Ambos caem na surface `preparedness`.
+
 ---
 
 ## EDU é catálogo aprovado antes de virar RAG (2026-08-03)

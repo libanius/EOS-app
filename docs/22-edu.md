@@ -1,7 +1,7 @@
 # 22 — EDU
 
-> **Status:** IMPLEMENTED — EDU-T01 / EDU-T02 / EDU-T03 / EDU-T04 / EDU-T05 / EDU-T06
-> **Decision:** D-090 / D-101 / D-103 / D-104 / D-119 / D-120
+> **Status:** IMPLEMENTED — EDU-T01 / EDU-T02 / EDU-T03 / EDU-T04 / EDU-T05 / EDU-T06 / EDU-T07
+> **Decision:** D-090 / D-101 / D-103 / D-104 / D-119 / D-120 / D-122
 > **Date:** 2026-08-04
 > **Owner:** Paulo Libânio Neto
 > **Surface:** Web/PWA core first
@@ -63,6 +63,12 @@ EDU-T06 adds one curation behavior:
    quotes, video timestamps and transcript noise, then translated to the user's
    UI language when needed. OpenAI is the curation/translation provider; local
    cleanup remains fallback.
+
+EDU-T07 adds one notification behavior:
+
+10. **Save feedback** — every successful admin save creates a preparedness
+    notification for the admin actor. Approved content still creates the public
+    EDU notification for eligible users.
 
 ---
 
@@ -217,3 +223,21 @@ EDU proposals now pass through curation before becoming visible/saveable:
   are removed;
 - actions are short checklist phrases, not transcript descriptions;
 - local cleanup remains fallback if OpenAI is unavailable or rate limited.
+
+---
+
+## 10. EDU-T07 Result
+
+**Decision:** D-122
+**Date:** 2026-08-04
+
+EDU now creates two distinct notification events:
+
+- `edu_content_saved`: every successful admin save sends feedback to the actor
+  who saved it, including draft/version saves;
+- `edu_content_approved`: approved content remains the user-facing notification
+  for eligible users.
+
+Both route to the Preparedness surface. Save notifications point to
+`/admin/edu?contentId=<id>`; approved notifications point to
+`/edu?contentId=<id>`.

@@ -32,6 +32,32 @@ async function notifyApprovedEdu(
   })
 }
 
+async function notifySavedEdu(
+  admin: NonNullable<ReturnType<typeof createAdminClient>>,
+  actorId: string,
+  content: { id: string; title: string; version?: number | null; status?: string | null },
+) {
+  await createCommsNotifications({
+    admin,
+    actorId,
+    recipientIds: [actorId],
+    scope: 'edu',
+    surface: 'preparedness',
+    kind: 'edu_content_saved',
+    title: `EDU salvo: ${content.title}`,
+    body: `Status: ${content.status ?? 'draft'} · v${content.version ?? 1}`,
+    href: `/admin/edu?contentId=${encodeURIComponent(content.id)}`,
+    sourceKey: `edu-save:${content.id}:v${content.version ?? 1}:${actorId}`,
+    excludeActor: false,
+    metadata: {
+      content_id: content.id,
+      version: content.version ?? 1,
+      status: content.status ?? 'draft',
+      surface: 'preparedness',
+    },
+  })
+}
+
 export async function GET(req: NextRequest) {
   const supabase = await createClient()
   const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -115,6 +141,7 @@ export async function POST(req: NextRequest) {
       .select('id, title, source_type, source_url, scenario_tags, summary, transcript, status, version, view_count, rag_enabled, rag_ingested_at, updated_at, approved_at')
       .single()
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    await notifySavedEdu(admin, user.id, data as { id: string; title: string; version?: number | null; status?: string | null })
     await notifyApprovedEdu(admin, user.id, data as { id: string; title: string; summary?: string | null; version?: number | null; status?: string | null })
     return NextResponse.json({ content: data })
   }
@@ -139,6 +166,7 @@ export async function POST(req: NextRequest) {
 
   if (error && tableMissing(error)) return NextResponse.json({ error: 'migration_pending' }, { status: 200 })
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  await notifySavedEdu(admin, user.id, data as { id: string; title: string; version?: number | null; status?: string | null })
   await notifyApprovedEdu(admin, user.id, data as { id: string; title: string; summary?: string | null; version?: number | null; status?: string | null })
   return NextResponse.json({ content: data }, { status: 201 })
 }

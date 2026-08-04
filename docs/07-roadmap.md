@@ -274,6 +274,7 @@ product phase sequenced.
 | EDU-T04 | Guardrail de qualidade antes da ingestão RAG | ✅ COMPLETE | 2026-08-04 — D-104; link/título/tags não bastam, ingestão exige texto instrucional em resumo/notas e Admin EDU mostra prontidão |
 | EDU-T05 | EDU aprovado gera ações confirmáveis de Preparação | ✅ COMPLETE | 2026-08-04 — D-119; `/edu` extrai ações de resumo/notas, usuário confirma e salva em `checklists` com `kit_type=EDU_CONTENT`; sem nova migration |
 | EDU-T06 | Curadoria/tradução das ações EDU | ✅ COMPLETE | 2026-08-04 — D-120; `/api/edu/actions` usa OpenAI para limpar/traduzir ações; fallback local remove aspas, markdown e minutagem |
+| EDU-T07 | Notificar save administrativo de EDU | ✅ COMPLETE | 2026-08-04 — D-122; todo save cria `edu_content_saved` para o admin/ator; aprovado segue criando `edu_content_approved` para usuários |
 | ONB-T01 | Onboarding contextual por convite de simulação | ✅ COMPLETE | 2026-08-03 — D-091 / `docs/23-onboarding-by-simulation.md`; `/sim/[token]` preserva contexto, login/signup mantêm redirect e `/onboarding` devolve ao convite |
 | SIM-T11 | Simulação gera preparação acionável | ✅ COMPLETE | 2026-08-03 — D-092 / `docs/24-simulation-preparedness-actions.md`; debrief gera propostas confirmáveis com fonte e salva em `SIMULATION_DEBRIEF` |
 | PILOT-T08 | Pilot como educador situacional | ✅ COMPLETE | 2026-08-03 — D-093 / `docs/25-pilot-situational-educator.md`; propostas do Pilot têm tipo/fonte/destino, confirmação explícita e `PILOT_RECOMMENDATION` |
