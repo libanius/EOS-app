@@ -278,6 +278,37 @@ como rota protegida; usuário não logado ia para login, o login ignorava
 
 ---
 
+## D-101 — EDU exibe vídeo aprovado dentro do EOS
+
+**Date**: 2026-08-04
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: EDU-T01 permite ao dono cadastrar vídeo do YouTube como conteúdo
+aprovado, mas o usuário ainda sai do app pelo link da fonte para assistir. Para
+o Preparedness Engine funcionar como experiência guiada, o conteúdo aprovado
+precisa ser consumível dentro do `/edu` sem confundir isso com ingestão RAG.
+
+**Decision**:
+
+1. EDU-T02 adiciona consumo de vídeo aprovado dentro do `/edu`.
+2. Quando `source_type='youtube'` e `source_url` for reconhecida, o app renderiza
+   um player embutido com domínio `youtube-nocookie.com`.
+3. A fonte continua visível como link externo; o player não substitui
+   proveniência.
+4. Sem YouTube API, transcript automático, embeddings ou escrita em
+   `knowledge_base` nesta tarefa.
+5. URLs não reconhecidas continuam degradando para o link de fonte.
+
+**Consequences**:
+
+- `/edu` passa a permitir assistir conteúdo YouTube aprovado no app.
+- `edu_content` não muda; a URL existente é suficiente.
+- A próxima evolução continua sendo ingestão aprovada para RAG com
+  `edu_content.id/version` como proveniência, ou uma experiência de aula com
+  progresso/checklists se for priorizada explicitamente.
+
+---
+
 ## D-090 — EDU vira catálogo aprovado antes de alimentar RAG
 
 **Date**: 2026-08-03

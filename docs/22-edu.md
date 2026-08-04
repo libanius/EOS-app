@@ -1,8 +1,8 @@
 # 22 — EDU
 
-> **Status:** IMPLEMENTED — EDU-T01
-> **Decision:** D-090
-> **Date:** 2026-08-03
+> **Status:** IMPLEMENTED — EDU-T01 / EDU-T02
+> **Decision:** D-090 / D-101
+> **Date:** 2026-08-04
 > **Owner:** Paulo Libânio Neto
 > **Surface:** Web/PWA core first
 > **Roadmap:** EDU-T01
@@ -31,6 +31,12 @@ EDU-T01 ships four behaviors:
    transcript/notes, scenario tags and version.
 4. **RAG boundary** — content can be marked as approved for future RAG ingestion,
    but EDU-T01 does not create embeddings or mutate `knowledge_base`.
+
+EDU-T02 adds one consumption behavior:
+
+5. **In-app video consumption** — approved YouTube content with a recognizable
+   `source_url` renders an embedded video player inside `/edu`. The source link
+   remains visible. Non-YouTube or unrecognized URLs degrade to the source link.
 
 ---
 
@@ -91,6 +97,8 @@ RLS is enabled with no direct policies. Reads/writes go through `/api/edu`.
 5. Persistent preparedness tasks/resources still require explicit confirmation.
 6. EDU does not replace official emergency alerts, plans, or Comms.
 7. Archived content should not show in user catalog.
+8. Embedded video is presentation only. It does not imply transcript capture,
+   RAG ingestion, task creation, or completion tracking.
 
 ---
 
@@ -105,6 +113,8 @@ EDU-T01 is complete when:
 5. Owner/admin can mark content `draft`, `approved`, or `archived`.
 6. Docs, roadmap, build status and product memory are updated.
 7. RAG ingestion is explicitly out of scope for this task.
+8. YouTube videos can be watched inside `/edu` when the URL can be safely
+   converted to an embed URL.
 
 ---
 
@@ -116,5 +126,6 @@ EDU-T01 is complete when:
 - direct writes to `knowledge_base`;
 - task/checklist creation from EDU;
 - per-circle EDU assignments;
-- video hosting;
+- video hosting outside provider embeds;
+- video progress/completion tracking;
 - moderation/review workflows beyond owner/admin status.

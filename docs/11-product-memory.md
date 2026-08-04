@@ -128,6 +128,12 @@ verificada via service-role (`edu_content` responde 200; count=0). `/edu` e
 `/admin/edu` podem persistir catálogo educativo; se a tabela ficar indisponível,
 o fallback de conteúdo padrão continua sendo apenas degradação operacional.
 
+D-101 / EDU-T02 adicionou consumo de vídeo no app: se um conteúdo aprovado tiver
+`source_type='youtube'` e `source_url` reconhecida, `/edu` renderiza um player
+embutido usando `youtube-nocookie.com` e mantém o link de fonte visível. Isso
+não captura transcript, não marca progresso, não cria tarefas e não escreve no
+RAG.
+
 ---
 
 ## Memória do Pilot exige confirmação e evento de auditoria (2026-08-03)

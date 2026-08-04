@@ -84,3 +84,29 @@ export function normalizeEduInput(input: unknown) {
     rag_enabled: Boolean(value.rag_enabled),
   }
 }
+
+export function youtubeEmbedUrl(sourceUrl: string | null | undefined): string | null {
+  if (!sourceUrl) return null
+  let url: URL
+  try {
+    url = new URL(sourceUrl)
+  } catch {
+    return null
+  }
+
+  const host = url.hostname.replace(/^www\./, '').toLowerCase()
+  let videoId: string | null = null
+
+  if (host === 'youtu.be') {
+    videoId = url.pathname.split('/').filter(Boolean)[0] ?? null
+  } else if (host === 'youtube.com' || host === 'm.youtube.com' || host === 'youtube-nocookie.com') {
+    if (url.pathname === '/watch') videoId = url.searchParams.get('v')
+    else {
+      const parts = url.pathname.split('/').filter(Boolean)
+      if (['embed', 'shorts', 'live'].includes(parts[0] ?? '')) videoId = parts[1] ?? null
+    }
+  }
+
+  if (!videoId || !/^[A-Za-z0-9_-]{11}$/.test(videoId)) return null
+  return `https://www.youtube-nocookie.com/embed/${videoId}`
+}
