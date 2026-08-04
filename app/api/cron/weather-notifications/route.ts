@@ -91,5 +91,24 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.json({ ok: true, checked, matched, attempted: created })
+  /*
+   * Faxina das janelas velhas de limite (D-118).
+   *
+   * `rate_limit_buckets` ganha uma linha por chave e por janela. Sem ninguém
+   * apagando, ela cresce para sempre — e uma tabela que só cresce é um defeito
+   * de crescimento lento, do tipo que ninguém percebe até doer.
+   *
+   * Vai de carona neste cron, que já roda de quinze em quinze minutos e já tem
+   * o segredo: um agendador a menos para configurar e para esquecer. A falha da
+   * faxina NÃO derruba as notificações — ela é reportada e o cron segue.
+   */
+  const { data: podados, error: erroPoda } = await admin.rpc('prune_rate_limit_buckets')
+
+  return NextResponse.json({
+    ok: true,
+    checked,
+    matched,
+    attempted: created,
+    pruned: erroPoda ? `erro: ${erroPoda.message}` : (podados ?? 0),
+  })
 }
