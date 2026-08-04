@@ -9,13 +9,28 @@ import { sentryConfigured } from '@/lib/error-log'
  * quebrado por meses e o cron devolvendo 401 desde sempre. Nos dois casos a
  * informação existia no servidor e não havia onde olhar.
  *
- * Não expõe segredo nenhum — só se cada peça está configurada. O que ela conta a
- * um curioso ("este app não tem Sentry") é muito menos do que o dono perde ao
- * descobrir tarde que a monitoração nunca esteve ligada.
+ * PROTEGIDA, e por dois motivos.
+ *
+ * O detalhe não contém segredo, mas é um mapa: "rateLimit unavailable" diz a
+ * quem ataca que o endpoint caro está sem teto naquele instante, e "push
+ * not_configured" diz onde o produto está cego. Isso é reconhecimento de graça.
+ *
+ * E a sonda do limitador ESCREVE no banco. Aberta, ela seria um endpoint de
+ * escrita sem autenticação — pequeno, mas exatamente o tipo de porta que não se
+ * deixa destrancada.
+ *
+ * Sem o segredo, responde só se o processo está de pé — o suficiente para um
+ * monitor de uptime, e nada além disso.
  */
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
+export async function GET(request: Request) {
+  const secret = process.env.CRON_SECRET
+  const autorizado = Boolean(secret) && request.headers.get('authorization') === `Bearer ${secret}`
+  if (!autorizado) {
+    return NextResponse.json({ status: 'ok' }, { headers: { 'Cache-Control': 'no-store' } })
+  }
+
   const admin = createAdminClient()
 
   // Uma escrita real, não um ping: a pergunta é se o limitador FUNCIONA, e um

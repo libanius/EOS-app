@@ -59,7 +59,16 @@ for (let i = 0; i < 60 && !up; i += 1) {
 if (!up) { console.error('Servidor não subiu'); stopServer(); process.exit(1) }
 
 // ── 4. o que está ligado ────────────────────────────────────────────────────
-const health = await fetch(`${B}/api/health`).then(r => r.json())
+// O detalhe exige o segredo: sem ele a rota conta a quem ataca onde o produto
+// está cego, e a sonda do limitador é uma escrita no banco.
+const semSegredo = await fetch(`${B}/api/health`).then(r => r.json())
+semSegredo?.checks === undefined
+  ? ok('/api/health não entrega o detalhe a quem não tem o segredo', JSON.stringify(semSegredo))
+  : no('/api/health expõe o estado das peças publicamente', JSON.stringify(semSegredo).slice(0, 160))
+
+const health = await fetch(`${B}/api/health`, {
+  headers: { Authorization: `Bearer ${process.env.CRON_SECRET}` },
+}).then(r => r.json())
 health?.checks && typeof health.checks.rateLimit === 'string'
   ? ok('/api/health responde o estado de cada peça', JSON.stringify(health.checks))
   : no('health não respondeu o esperado', JSON.stringify(health).slice(0, 200))
