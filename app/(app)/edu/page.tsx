@@ -28,6 +28,7 @@ const COPY = {
     savingPrep: 'Salvando...',
     savedPrep: 'Salvo em Preparação',
     noActions: 'Sem ações detectadas',
+    curating: 'Curando ações...',
   },
   en: {
     eyebrow: 'EOS · EDU',
@@ -48,6 +49,7 @@ const COPY = {
     savingPrep: 'Saving...',
     savedPrep: 'Saved to Preparedness',
     noActions: 'No actions detected',
+    curating: 'Curating actions...',
   },
 } as const
 
@@ -140,6 +142,7 @@ export default function EduPage() {
                 featured
                 expanded
                 detailsOpen={Boolean(detailsOpen[featured.id])}
+                language={language}
                 onExpand={id => {
                   setExpandedId(id)
                   void fetch('/api/edu/views', {
@@ -159,6 +162,7 @@ export default function EduPage() {
                 focused={item.id === focusedContentId}
                 expanded={expandedId === item.id}
                 detailsOpen={Boolean(detailsOpen[item.id])}
+                language={language}
                 onExpand={id => {
                   setExpandedId(current => current === id ? '' : id)
                   void fetch('/api/edu/views', {
@@ -186,6 +190,7 @@ function EduCard({
   detailsOpen = false,
   onExpand,
   onToggleDetails,
+  language,
 }: {
   item: EduContent
   copy: EduCopy
@@ -193,14 +198,50 @@ function EduCard({
   featured?: boolean
   expanded?: boolean
   detailsOpen?: boolean
+  language: 'pt' | 'en'
   onExpand: (id: string) => void
   onToggleDetails: (id: string) => void
 }) {
   const embedUrl = item.source_type === 'youtube' ? youtubeEmbedUrl(item.source_url) : null
   const thumbUrl = item.source_type === 'youtube' ? youtubeThumbnailUrl(item.source_url) : null
-  const proposals = useMemo(() => buildEduPreparednessProposals(item), [item])
+  const fallbackProposals = useMemo(() => buildEduPreparednessProposals(item), [item])
+  const [curatedProposals, setCuratedProposals] = useState(fallbackProposals)
+  const [curating, setCurating] = useState(false)
   const [savingPrep, setSavingPrep] = useState(false)
   const [prepSaved, setPrepSaved] = useState(false)
+  const proposals = curatedProposals.length ? curatedProposals : fallbackProposals
+
+  useEffect(() => {
+    setCuratedProposals(fallbackProposals)
+  }, [fallbackProposals])
+
+  useEffect(() => {
+    if (!detailsOpen) return
+    let cancelled = false
+    setCurating(true)
+    fetch('/api/edu/actions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        language,
+        item: {
+          title: item.title,
+          summary: item.summary,
+          transcript: item.transcript,
+        },
+      }),
+    })
+      .then(r => r.json().catch(() => ({})))
+      .then(data => {
+        if (cancelled || !Array.isArray(data.actions)) return
+        setCuratedProposals(data.actions)
+      })
+      .catch(() => null)
+      .finally(() => {
+        if (!cancelled) setCurating(false)
+      })
+    return () => { cancelled = true }
+  }, [detailsOpen, fallbackProposals, item.summary, item.title, item.transcript, language])
 
   async function savePreparedness() {
     if (proposals.length === 0) return
@@ -272,7 +313,7 @@ function EduCard({
               disabled={savingPrep || proposals.length === 0}
               style={proposals.length === 0 ? { opacity: 0.55, cursor: 'not-allowed' } : undefined}
             >
-              {savingPrep ? copy.savingPrep : prepSaved ? copy.savedPrep : proposals.length === 0 ? copy.noActions : copy.prepare}
+              {savingPrep ? copy.savingPrep : prepSaved ? copy.savedPrep : curating ? copy.curating : proposals.length === 0 ? copy.noActions : copy.prepare}
             </button>
             {proposals.slice(0, 3).map(proposal => (
               <span key={proposal.name} className="t-foot ink-3" style={{ border: '1px solid rgba(255,255,255,0.12)', borderRadius: 999, padding: '0.3rem 0.5rem' }}>

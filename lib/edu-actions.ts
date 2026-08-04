@@ -8,6 +8,8 @@ export type EduPreparednessProposal = {
   unit: string | null
 }
 
+const MAX_ACTION_LENGTH = 96
+
 const ACTION_VERBS = [
   'adquira',
   'adicione',
@@ -40,9 +42,17 @@ const ACTION_VERBS = [
   'store',
 ]
 
-function cleanActionLine(value: string) {
+export function cleanEduActionText(value: string) {
   return value
+    .replace(/\*\*/g, '')
+    .replace(/[*_`]/g, '')
+    .replace(/[“”"']/g, '')
+    .replace(/\((?:\d{1,2}:)?\d{1,2}:\d{2}\)/g, '')
+    .replace(/\b(?:\d{1,2}:)?\d{1,2}:\d{2}\b/g, '')
     .replace(/^\s*(?:[-*•]|\d+[.)]|[a-z][.)])\s*/i, '')
+    .replace(/^\s*(?:item|step|passo|etapa)\s+\d+\s*[:.)-]\s*/i, '')
+    .replace(/\s+([:;,.])/g, '$1')
+    .replace(/\s*[:—-]\s*$/g, '')
     .replace(/\s+/g, ' ')
     .trim()
 }
@@ -56,9 +66,17 @@ function looksActionable(value: string) {
 }
 
 function proposalName(value: string) {
-  const trimmed = value.replace(/[.;:]+$/g, '').trim()
+  let trimmed = cleanEduActionText(value)
+  trimmed = trimmed.replace(/^[.:;,-]+|[.;:,]+$/g, '').trim()
+  const titleDescription = trimmed.match(/^(.{8,72}?)\s*:\s+(.{12,})$/)
+  if (titleDescription) {
+    const title = titleDescription[1].trim()
+    const description = titleDescription[2].trim()
+    if (!looksActionable(title) && looksActionable(description)) trimmed = description
+    else if (!looksActionable(trimmed)) trimmed = `Revisar ${title}`
+  }
   if (!trimmed) return ''
-  return trimmed.length > 120 ? `${trimmed.slice(0, 117).trim()}...` : trimmed
+  return trimmed.length > MAX_ACTION_LENGTH ? `${trimmed.slice(0, MAX_ACTION_LENGTH - 3).trim()}...` : trimmed
 }
 
 export function buildEduPreparednessProposals(
@@ -67,7 +85,7 @@ export function buildEduPreparednessProposals(
   const source = [item.transcript, item.summary].filter(Boolean).join('\n')
   const candidates = source
     .split(/\n+/)
-    .map(cleanActionLine)
+    .map(cleanEduActionText)
     .filter(line => line.length >= 12)
     .filter(line => /^\s*(?:[-*•]|\d+[.)]|[a-z][.)])/i.test(line) || looksActionable(line))
     .map(proposalName)

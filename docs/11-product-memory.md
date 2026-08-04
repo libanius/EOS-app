@@ -190,6 +190,12 @@ determinísticas de `summary + transcript`, mostra as ações ao usuário e só 
 após clique. Persistência v1: `checklists.kit_type='EDU_CONTENT'`. Não há nova
 migration nem escrita automática; conteúdo link-only não gera ação.
 
+D-120 / EDU-T06 corrige a qualidade dessas ações: antes de mostrar/salvar,
+`/api/edu/actions` usa OpenAI para remover markdown, aspas decorativas,
+minutagem de vídeo e descrições longas, além de traduzir para o idioma da UI
+(`pt`/`en`). Se a IA falhar ou bater rate limit, o fallback local ainda limpa
+asteriscos/timestamps e devolve ações curtas o bastante para checklist.
+
 ---
 
 ## EDU é catálogo aprovado antes de virar RAG (2026-08-03)

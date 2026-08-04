@@ -3462,3 +3462,33 @@ de preparação do usuário, mantendo confirmação explícita e sem abrir nova
 migration antes da decisão de uma tabela dedicada de Preparedness Items.
 
 ---
+
+## D-120 — Curadoria semântica das ações EDU antes de salvar
+
+**Date**: 2026-08-04
+**Status**: DECIDED
+**Roadmap**: EDU-T06
+
+**Context**: O teste real mostrou que extrair ações diretamente do transcript
+salvava lixo de mídia no checklist: markdown (`**`), minutagem de vídeo
+(`3:30`), títulos entre aspas/ênfases e descrições longas em inglês. Isso
+quebra a promessa do Preparedness Engine: o usuário precisa ver uma tarefa limpa
+e acionável, no idioma em que usa o app.
+
+**Decision**:
+1. Ações EDU passam por curadoria antes de aparecer/salvar.
+2. A curadoria remove markdown, aspas decorativas, timestamps, minutagem e
+   ruído de transcript.
+3. Se o idioma preferido do usuário for diferente do conteúdo, as ações devem
+   ser traduzidas para o idioma da UI.
+4. OpenAI é o provider de curadoria/tradução, mantendo a decisão do dono de usar
+   OpenAI como provider de AI do EOS.
+5. A curadoria retorna frases curtas de checklist, sem explicação longa. Se a IA
+   falhar, o fallback determinístico ainda remove markdown/timestamps e impede
+   salvar texto cru demais.
+
+**Consequence**: EDU continua sem escrita automática, mas as propostas ficam
+prontas para execução: verbos claros, sem minutagem, sem asteriscos, sem aspas e
+no idioma correto do usuário.
+
+---

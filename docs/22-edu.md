@@ -1,7 +1,7 @@
 # 22 — EDU
 
-> **Status:** IMPLEMENTED — EDU-T01 / EDU-T02 / EDU-T03 / EDU-T04 / EDU-T05
-> **Decision:** D-090 / D-101 / D-103 / D-104 / D-119
+> **Status:** IMPLEMENTED — EDU-T01 / EDU-T02 / EDU-T03 / EDU-T04 / EDU-T05 / EDU-T06
+> **Decision:** D-090 / D-101 / D-103 / D-104 / D-119 / D-120
 > **Date:** 2026-08-04
 > **Owner:** Paulo Libânio Neto
 > **Surface:** Web/PWA core first
@@ -56,6 +56,13 @@ EDU-T05 adds one preparedness behavior:
 8. **Confirmed preparedness actions** — approved content can propose concrete
    checklist items from owner-provided summary/notes. The user must confirm
    before saving; v1 persists as `checklists.kit_type='EDU_CONTENT'`.
+
+EDU-T06 adds one curation behavior:
+
+9. **Semantic curation** — proposed actions are cleaned of markdown, decorative
+   quotes, video timestamps and transcript noise, then translated to the user's
+   UI language when needed. OpenAI is the curation/translation provider; local
+   cleanup remains fallback.
 
 ---
 
@@ -139,6 +146,8 @@ RLS is enabled with no direct policies. Reads/writes go through `/api/edu`.
     checklist item is created.
 13. EDU proposals use the existing checklist contract until a dedicated
     Preparedness Items table is formally decided.
+14. EDU checklist names must not persist markdown markers, timestamps, quotes or
+    long transcript descriptions.
 
 ---
 
@@ -191,3 +200,20 @@ Approved EDU content now closes the learning-to-action loop:
 - confirmation writes to `checklists` with `kit_type='EDU_CONTENT'`;
 - `/preparedness` labels those rows as source EDU;
 - no new migration is required.
+
+---
+
+## 9. EDU-T06 Result
+
+**Decision:** D-120
+**Date:** 2026-08-04
+
+EDU proposals now pass through curation before becoming visible/saveable:
+
+- `/api/edu/actions` requires authentication and uses OpenAI for semantic
+  cleanup and translation;
+- output follows the user's UI language (`pt` or `en`);
+- markdown, decorative quotes, asterisks, video timestamps and minute markers
+  are removed;
+- actions are short checklist phrases, not transcript descriptions;
+- local cleanup remains fallback if OpenAI is unavailable or rate limited.
