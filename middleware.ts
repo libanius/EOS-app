@@ -17,6 +17,9 @@ const PROTECTED_ROUTES = [
   '/checklist',
   '/checklist-legacy',
   '/comms',
+  // D-112: o link de convite exige conta — o middleware manda para o login com
+  // `redirectTo` e traz a pessoa de volta para cá, já autenticada.
+  '/convite',
   '/edu',
   '/circles',
   '/settings',

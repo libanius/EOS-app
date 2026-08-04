@@ -35,7 +35,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
 
   const { data: request } = await admin
     .from('circle_join_requests')
-    .select('id, circle_id, requester_id, status')
+    .select('id, circle_id, requester_id, status, wants_family_access')
     .eq('id', params.reqId)
     .eq('circle_id', params.id)
     .maybeSingle()
@@ -47,8 +47,30 @@ export async function POST(req: NextRequest, { params }: Ctx) {
   let existingMemberIds: string[] = []
   if (action === 'approve') {
     existingMemberIds = await getCircleMemberIds(admin, params.id)
+
+    /**
+     * O link pedia Família íntima (D-112)?
+     *
+     * Então o membro nasce com o convite PENDENTE — `requested`, nunca
+     * `approved`. Quem decide abrir a própria ficha médica é a pessoa, na conta
+     * dela. Um link de convite pode fazer a pergunta; não pode responder por
+     * ninguém.
+     */
+    const wants = (request as { wants_family_access?: boolean }).wants_family_access === true
     const { error: memErr } = await admin.from('circle_members').upsert(
-      { circle_id: params.id, user_id: request.requester_id, role: 'Viewer', share_inventory: false },
+      {
+        circle_id: params.id,
+        user_id: request.requester_id,
+        role: 'Viewer',
+        share_inventory: false,
+        ...(wants
+          ? {
+              family_access_status: 'requested',
+              family_access_requested_at: new Date().toISOString(),
+              family_access_requested_by: user.id,
+            }
+          : {}),
+      },
       { onConflict: 'circle_id,user_id', ignoreDuplicates: true },
     )
     if (memErr) return NextResponse.json({ error: memErr.message }, { status: 500 })

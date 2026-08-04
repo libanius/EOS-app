@@ -24,6 +24,7 @@
     "test:marker": "node scripts/marker-stability-test.mjs",
     "test:multiplan": "node scripts/multi-plan-test.mjs",
     "test:family": "node scripts/family-page-test.mjs",
+    "test:invite": "node scripts/invite-link-test.mjs",
     "bench:rag": "node scripts/rag-bench.mjs"
   },
   "dependencies": {

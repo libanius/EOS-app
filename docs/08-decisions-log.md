@@ -4,6 +4,49 @@
 
 ---
 
+## D-112 — Convite por link, e o que um link nunca pode fazer
+
+**Date**: 2026-08-04
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: Convidar alguém exigia ditar um código de seis letras e torcer para
+a pessoa digitar certo, achar a tela e colar. É o gesto mais frágil do produto:
+três chances de o convite morrer no caminho. E a Família íntima exigia uma
+SEGUNDA conversa, dias depois da aprovação.
+
+**Decision**:
+
+1. **`/convite/[code]`**, compartilhável por WhatsApp, em Círculos e na Família.
+   Rota **protegida**: quem clica sem conta cai no login com `redirectTo` e volta
+   já autenticado. A alternativa — página pública — revelaria o nome do círculo a
+   qualquer um que recebesse o link encaminhado.
+2. **O convite mora também na Família**, junto da frase "sem conta no EOS · não
+   aparece no mapa". É ali que a ausência aparece; a ação de resolvê-la tem de
+   estar do lado do problema, não noutra tela.
+3. **`?intima=1` carrega a intenção de Família íntima** através da aprovação
+   (`circle_join_requests.wants_family_access`). Ao aprovar, o membro nasce com
+   `family_access_status = 'requested'`.
+
+**A trava que define esta decisão**: um link pode **fazer a pergunta** sobre a
+ficha médica de alguém; nunca **respondê-la**. O status nasce `requested` e só a
+própria pessoa, na conta dela, muda para `approved` — regra que já existia em
+`/api/circles/[id]/family-access` e que este caminho não podia furar. Se algum
+dia isso virar `approved`, a ficha de uma pessoa passa a ser aberta por quem
+encaminhou um link num grupo de WhatsApp.
+
+Por isso a caixa "incluir na Família íntima" **nasce desmarcada**: mesmo sem
+conceder nada, é uma pergunta sobre o dado mais sensível do produto, e uma caixa
+pré-marcada seria o app decidindo por quem convida.
+
+**Consequences**: `npm run test:invite` — 6/6, com uma asserção dedicada só a
+provar que o link **não** concede acesso à ficha. `test:circle` 5/5 e
+`test:family` 5/5 sem regressão.
+
+O `POST /api/circles/join` degrada sozinho: sem a coluna da migration, o convite
+ao CÍRCULO continua funcionando e a tela avisa que a parte de Família íntima
+ficará para depois — o convite principal nunca falha por causa do extra.
+
+---
 ## D-099 — Afiliados usam Stripe Promotion Codes e tracker próprio
 
 **Date**: 2026-08-04

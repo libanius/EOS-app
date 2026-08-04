@@ -29,6 +29,7 @@ import { useLanguage } from '@/lib/i18n'
 import { distanceKm } from '@/lib/world/shelters'
 import { formatDistance, walkingMinutes, directionsUrl } from '@/lib/world/navigation'
 import { PING_PRESETS, type PingPreset } from '@/lib/family-ping'
+import InviteShare from '@/components/InviteShare'
 import { Card, Pill, SectionLabel } from './primitives'
 import { haptic } from './motion'
 import './world-v2.css'
@@ -112,6 +113,8 @@ const COPY = {
     emptyWhy: 'O EOS calcula água, comida e rotas por PESSOA. Sem saber quem mora aqui, todas as contas ficam erradas.',
     add: 'Cadastrar a família',
     inviteCircle: 'Convidar para o círculo',
+    someoneMissing: 'Alguém da sua casa está fora do EOS',
+    someoneMissingWhy: 'Quem não tem conta não aparece no mapa e não recebe mensagem. Mande o link — a pessoa entra sem digitar código nenhum.',
     loadError: 'Não foi possível carregar.',
     retry: 'Tentar de novo',
   },
@@ -150,6 +153,8 @@ const COPY = {
     emptyWhy: 'EOS computes water, food and routes PER PERSON. Without knowing who lives here, every number is wrong.',
     add: 'Record the family',
     inviteCircle: 'Invite to the circle',
+    someoneMissing: 'Someone in your household is outside EOS',
+    someoneMissingWhy: 'Without an account they do not appear on the map and cannot receive a message. Send the link — no code to type.',
     loadError: 'Could not load.',
     retry: 'Try again',
   },
@@ -179,6 +184,8 @@ export default function FamilyPage() {
   const [roles, setRoles] = useState<Array<{ member_user_id: string; responsibility: string }>>([])
   const [autonomy, setAutonomy] = useState<number | null>(null)
   const [myCoords, setMyCoords] = useState<{ lat: number; lng: number } | null>(null)
+  /** O círculo desta casa — é dele que sai o link de convite (D-112). */
+  const [circleInfo, setCircleInfo] = useState<{ id: string; name: string; inviteCode: string } | null>(null)
   const [loading, setLoading] = useState(true)
   const [failed, setFailed] = useState(false)
   const [sent, setSent] = useState<Record<string, string>>({})
@@ -196,6 +203,9 @@ export default function FamilyPage() {
 
       const seen = new Map<string, CircleMember>()
       const firstCircle = circles?.circles?.[0]
+      if (firstCircle?.invite_code) {
+        setCircleInfo({ id: firstCircle.id, name: firstCircle.name, inviteCode: firstCircle.invite_code })
+      }
       for (const circ of circles?.circles ?? []) {
         for (const m of circ.members ?? []) seen.set(m.user_id, m)
       }
@@ -430,6 +440,24 @@ export default function FamilyPage() {
               )
             })}
 
+            {/*
+              O convite mora aqui, e não só em Círculos, porque é NESTA tela que
+              a ausência aparece: a pessoa lê "sem conta no EOS · não aparece no
+              mapa" e a ação de resolver isso precisa estar do lado da frase.
+            */}
+            {circleInfo && people.some(p => !p.userId) && (
+              <Card accented className="family-invite">
+                <strong className="t-sub">{c.someoneMissing}</strong>
+                <p className="t-foot ink-2">{c.someoneMissingWhy}</p>
+                <InviteShare
+                  circleId={circleInfo.id}
+                  circleName={circleInfo.name}
+                  inviteCode={circleInfo.inviteCode}
+                  pt={pt}
+                />
+              </Card>
+            )}
+
             {!roles.length && (
               <Card className="wv2-plan-note gaps">
                 <strong className="t-sub">{c.noRole}</strong>
@@ -458,6 +486,15 @@ export default function FamilyPage() {
             </Card>
 
             <div className="family-foot">
+              {circleInfo && (
+                <InviteShare
+                  circleId={circleInfo.id}
+                  circleName={circleInfo.name}
+                  inviteCode={circleInfo.inviteCode}
+                  pt={pt}
+                  compact
+                />
+              )}
               <Link className="wv2-pill" href="/family-legacy">{c.manage}</Link>
               <Link className="wv2-pill" href="/circles">{c.inviteCircle}</Link>
             </div>

@@ -3103,3 +3103,47 @@
 
 .wv2-family-page .family-needs { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s2); }
 .wv2-family-page .family-foot { display: flex; gap: var(--s2); flex-wrap: wrap; margin-top: var(--s4); }
+
+/* ── Página de convite (D-112) ── */
+.wv2.wv2-invite-page {
+  position: static;
+  inset: auto;
+  overflow: visible;
+  min-height: 100dvh;
+  background: #000;
+  display: grid;
+  place-items: center;
+  padding: var(--s6) var(--edge) calc(var(--nav-inset) + var(--s6));
+}
+.wv2-invite-page .invite-box {
+  display: grid;
+  gap: var(--s4);
+  justify-items: start;
+  max-width: 460px;
+  padding: var(--s6);
+  border-radius: var(--r-card);
+  border: 1px solid var(--sep);
+  background: var(--mat-regular);
+  backdrop-filter: blur(var(--mat-blur-md));
+}
+
+/* ── Compartilhar convite (D-112) ── */
+.invite-share { display: grid; gap: var(--s2); justify-items: start; }
+.invite-share-btn {
+  padding: 8px 14px;
+  border-radius: var(--r-pill);
+  border: 1px solid rgba(var(--accent-rgb, 48, 209, 88), 0.45);
+  background: rgba(var(--accent-rgb, 48, 209, 88), 0.12);
+  color: var(--accent, #30d158);
+  font-size: 0.8125rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+.invite-share-family { display: flex; gap: var(--s2); align-items: flex-start; cursor: pointer; }
+.invite-share-family input { margin-top: 3px; flex: none; width: 18px; height: 18px; }
+.invite-share-family span { display: grid; gap: 2px; font-size: 0.8125rem; color: var(--ink-2, #a1a1aa); }
+/* O aviso de que a pessoa ainda decide fica colado na caixa, não numa nota de
+   rodapé: é a diferença entre pedir e conceder. */
+.invite-share-family em { font-style: normal; font-size: 0.75rem; color: var(--ink-3, #71717a); }
+.invite-share-note { font-size: 0.75rem; color: var(--ink-2, #a1a1aa); overflow-wrap: anywhere; margin: 0; }
+.wv2-family-page .family-invite { display: grid; gap: var(--s2); }

@@ -5,6 +5,7 @@ import { useLanguage } from '@/lib/i18n'
 import { canAccess, type Plan } from '@/lib/feature-gates'
 import { QRCodeSVG } from 'qrcode.react'
 import QRScanner from '@/components/QRScanner'
+import InviteShare from '@/components/InviteShare'
 import { parseScannedValue } from '@/lib/qr-parse'
 
 type JoinRequest = { id: string; requester_id: string; name: string; location: string | null; message: string | null }
@@ -91,7 +92,7 @@ const ROLE_COLOR: Record<CircleRole, string> = {
 }
 
 export default function CirclesPage() {
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
   const [circles, setCircles] = useState<CircleRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -578,6 +579,9 @@ export default function CirclesPage() {
                     <button onClick={() => setQrCircleId(qrCircleId === c.id ? null : c.id)} style={{ fontSize: 11, padding: '2px 8px', background: 'transparent', border: '1px solid #2a2a3a', borderRadius: 4, color: '#8a8a99', cursor: 'pointer' }}>
                       QR
                     </button>
+                    {/* D-112: o código continua aí para quem prefere ditar; o link
+                        existe porque ditar seis letras é onde o convite morre. */}
+                    <InviteShare circleId={c.id} circleName={c.name} inviteCode={c.invite_code} pt={language === 'pt'} compact />
                     {c.is_admin && (
                       <>
                         <button onClick={() => renameCircle(c.id, c.name)} disabled={busy} style={{ fontSize: 11, padding: '2px 8px', background: 'transparent', border: '1px solid #2a2a3a', borderRadius: 4, color: '#8a8a99', cursor: 'pointer' }}>
