@@ -39,6 +39,10 @@ const COPY = {
     lead: 'Configure a situação. O EOS inteiro passa a se comportar como se fosse verdade — índice de risco, Pilot, autonomia e mapa.',
     describe: 'Descreva a situação',
     placeholder: 'Ex.: furacão categoria 3 chegando em 12 horas. Minha filha machucou o joelho e não consegue andar rápido.',
+    applyText: 'Aplicar nos painéis',
+    applyingText: 'Interpretando…',
+    parseHint: 'O EOS preenche os painéis com OpenAI. Revise antes de iniciar.',
+    parseError: 'Não consegui interpretar. Ajuste os painéis manualmente.',
     threat: 'Ameaça',
     severity: 'Severidade',
     arrival: 'Chegada',
@@ -93,6 +97,10 @@ const COPY = {
     lead: 'Set the situation. The whole of EOS starts behaving as if it were true — risk index, Pilot, autonomy and map.',
     describe: 'Describe the situation',
     placeholder: 'e.g. category 3 hurricane arriving in 12 hours. My daughter hurt her knee and cannot walk fast.',
+    applyText: 'Apply to panels',
+    applyingText: 'Interpreting…',
+    parseHint: 'EOS fills the panels with OpenAI. Review before starting.',
+    parseError: 'Could not interpret it. Adjust the panels manually.',
     threat: 'Threat',
     severity: 'Severity',
     arrival: 'Arrival',
@@ -158,6 +166,9 @@ export default function SimulatorPage() {
   const [selected, setSelected] = useState<string[]>([])
   const [joinLink, setJoinLink] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [parsing, setParsing] = useState(false)
+  const [parseNotes, setParseNotes] = useState<string[]>([])
+  const [parseError, setParseError] = useState<string | null>(null)
 
   useEffect(() => {
     fetch('/api/circles')
@@ -173,6 +184,44 @@ export default function SimulatorPage() {
 
   const [draft, setDraft] = useState<SimulationConfig>(DEFAULT_SIMULATION)
   const set = (patch: Partial<SimulationConfig>) => setDraft(current => ({ ...current, ...patch }))
+
+  const applyDescription = async () => {
+    const description = draft.description.trim()
+    if (!description) return
+    setParsing(true)
+    setParseError(null)
+    setParseNotes([])
+    try {
+      const response = await fetch('/api/simulation/parse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description, pt }),
+      })
+      const data = await response.json().catch(() => null) as {
+        ok?: boolean
+        patch?: Partial<SimulationConfig>
+        notes?: string[]
+        error?: string
+      } | null
+      if (!response.ok || !data?.ok || !data.patch) {
+        setParseError(data?.error ?? c.parseError)
+        return
+      }
+      setDraft(current => ({
+        ...current,
+        ...data.patch,
+        description,
+        sources: { ...current.sources, ...(data.patch?.sources ?? {}) },
+        values: { ...current.values, ...(data.patch?.values ?? {}) },
+      }))
+      setParseNotes(Array.isArray(data.notes) ? data.notes : [])
+      haptic.impact()
+    } catch {
+      setParseError(c.parseError)
+    } finally {
+      setParsing(false)
+    }
+  }
 
   const launch = async () => {
     haptic.impact()
@@ -256,6 +305,18 @@ export default function SimulatorPage() {
                 placeholder={c.placeholder}
                 rows={3}
               />
+              <div className="sim-parse">
+                <Pill onClick={applyDescription}>
+                  {parsing ? c.applyingText : c.applyText}
+                </Pill>
+                <span className="t-foot ink-3">{c.parseHint}</span>
+              </div>
+              {parseError && <p className="sim-parse-error t-foot">{parseError}</p>}
+              {parseNotes.length > 0 && (
+                <ul className="sim-parse-notes">
+                  {parseNotes.map(note => <li key={note} className="t-foot ink-2">{note}</li>)}
+                </ul>
+              )}
             </Card>
 
             {/* ── Threat ── */}

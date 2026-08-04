@@ -4,6 +4,36 @@
 
 ---
 
+## D-094 — Texto livre do simulador preenche painéis revisáveis
+
+**Date**: 2026-08-03
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: A spec do simulador dizia que linguagem natural é válida, mas que a
+inferência precisa ser revisável antes de rodar. A tela já tinha textarea, porém
+o texto só ficava como descrição; ele não configurava ameaça, severidade,
+falhas, fontes ou leituras simuladas.
+
+**Decision**:
+
+1. Criar `POST /api/simulation/parse` autenticado.
+2. Usar OpenAI para converter texto livre em patch validado de
+   `SimulationConfig`.
+3. Validar enums, booleanos e faixas numéricas no servidor.
+4. Aplicar o patch aos painéis existentes, mantendo o texto original.
+5. Mostrar notas de inferência para revisão.
+6. Não iniciar simulação automaticamente e não gravar dados.
+
+**Consequences**:
+
+- "Furacão categoria 3 chegando em 12 horas, sem luz e minha filha machucou o
+  joelho" passa a preencher os painéis correspondentes.
+- O usuário continua no cockpit e pode ajustar qualquer campo antes de iniciar.
+- OpenAI é usado como provider de AI desta inferência; o output do modelo não é
+  autoridade direta.
+
+---
+
 ## D-093 — Pilot educador usa propostas confirmáveis de preparação
 
 **Date**: 2026-08-03

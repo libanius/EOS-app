@@ -1217,6 +1217,31 @@
 }
 .wv2-sim-page .sim-textarea::placeholder { color: var(--ink-3); }
 
+.wv2-sim-page .sim-parse {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  flex-wrap: wrap;
+  margin-top: var(--s3);
+}
+.wv2-sim-page .sim-parse > span {
+  flex: 1 1 180px;
+}
+.wv2-sim-page .sim-parse-error {
+  margin: var(--s2) 0 0;
+  color: var(--ac3);
+}
+.wv2-sim-page .sim-parse-notes {
+  margin: var(--s3) 0 0;
+  padding: var(--s3);
+  border-radius: var(--r-tile);
+  border: 1px solid rgba(var(--accent-rgb), 0.24);
+  background: rgba(var(--accent-rgb), 0.07);
+}
+.wv2-sim-page .sim-parse-notes li {
+  margin-left: 1rem;
+}
+
 .wv2-sim-page .sim-chips {
   display: flex;
   flex-wrap: wrap;

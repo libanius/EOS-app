@@ -128,6 +128,20 @@ degrada com conteúdo padrão e `/admin/edu` não persiste.
 
 ---
 
+## Texto livre do simulador preenche painéis, não roda sozinho (2026-08-03)
+
+D-094 / SIM-T09 adicionou `POST /api/simulation/parse`. A rota usa OpenAI para
+converter a descrição livre em um patch validado de `SimulationConfig`.
+
+Regra: inferência de texto livre é **pré-configuração revisável**, não comando
+de execução. A tela aplica o patch nos painéis existentes, mostra notas de
+inferência e o usuário ainda precisa revisar e tocar em iniciar.
+
+Não usar output bruto do modelo como autoridade: o servidor valida threat,
+severidade, horários, booleanos, fontes e faixas numéricas antes de devolver.
+
+---
+
 ## Pilot educador também usa preparação confirmável (2026-08-03)
 
 D-093 / PILOT-T08 aplicou ao Pilot o mesmo contrato de SIM-T11. As tasks vindas

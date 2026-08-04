@@ -171,7 +171,7 @@ product phase sequenced.
 | SIM-T01 | `SimulationProvider` + injeção no `RiskProvider` + cromo persistente + travas de segurança | ✅ COMPLETE | 2026-07-28 — verificado em navegador: risco real 11 → simulado 81, Pilot muda para "Aja agora", faixa some ao encerrar |
 | SIM-T02 | Painéis de configuração (ameaça, clima, recursos, saúde, infraestrutura, posição) | ✅ COMPLETE | 2026-07-28 — ameaça, severidade, chegada, infraestrutura, mobilidade/medicação, reservas |
 | SIM-T08 | Painel de instrumentos: cada fonte ao vivo / simulada / fora do ar + leituras ajustáveis | ✅ COMPLETE | 2026-07-28 — 7 fontes em 3 modos, 8 leituras com stepper. O Pilot recebe as fontes caídas e nomeia a cegueira. Verificado em navegador |
-| SIM-T09 | Traduzir o texto livre do cenário para os painéis, revisável antes de rodar | PENDING | Hoje o texto livre alimenta só o briefing do Pilot |
+| SIM-T09 | Traduzir o texto livre do cenário para os painéis, revisável antes de rodar | ✅ COMPLETE | 2026-08-03 — D-094 / `docs/26-simulation-natural-language-panels.md`; OpenAI infere patch validado e usuário revisa antes de iniciar |
 | SIM-T10 | Escolher círculos e convidar de fora por link | ✅ COMPLETE | 2026-07-28 — D-072. Migration aplicada. Verificado com 3 contas e 2 círculos: seleção múltipla, membro recebe pop-up, convidado externo entra pelo link em ~6s, reabrir não reseta. |
 | SIM-T03 | Sessão: briefing pelo Pilot com RAG, rodar, sair a um toque | ✅ COMPLETE | 2026-07-28 — `/api/pilot/chat` com RAG; o Pilot sabe quando está em simulação |
 | SIM-T04 | Injeção de eventos e avanço de tempo ("+6h", "a energia caiu") | ✅ COMPLETE | 2026-07-28 — a faixa de simulação abre controles: +3h, +6h, Impacto, e cortar luz/rede/vias em tempo real |

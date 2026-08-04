@@ -128,6 +128,7 @@
 | F11-4 | Simulation invitations can drive contextual onboarding | ✅ IMPLEMENTED — ONB-T01 |
 | F11-7 | Simulation debrief gaps can become confirmed preparedness tasks/resources with visible source | ✅ IMPLEMENTED — SIM-T11 |
 | F11-5 | Pilot may propose preparedness tasks/resources but persistent writes require explicit confirmation and visible source | ✅ IMPLEMENTED — PILOT-T08 |
+| F11-8 | Simulator free text can fill reviewable scenario panels before the drill starts | ✅ IMPLEMENTED — SIM-T09 |
 
 ---
 
