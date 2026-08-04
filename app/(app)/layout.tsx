@@ -10,6 +10,7 @@ import SimulationProvider from '@/components/SimulationProvider'
 import SimulationBanner from '@/components/SimulationBanner'
 import SimulationInvite from '@/components/SimulationInvite'
 import SimulationDebrief from '@/components/SimulationDebrief'
+import NotificationInbox from '@/components/NotificationInbox'
 
 // NOTE: V2Shell (components/v2 — the "Prévia Viva" risk state machine) is WIP and
 // NOT on the roadmap yet (see D-045 / P3-T07). It was shipped to production
@@ -38,6 +39,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <AppActions />
       {children}
       <SyncStatus />
+      <NotificationInbox />
       <BottomNav />
       {/* Alcançável de qualquer tela; some no dashboard, que tem a PilotBar. */}
       <PilotDock />

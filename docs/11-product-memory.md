@@ -125,6 +125,15 @@ autenticado recebe apenas notificações destinadas a ele. Escrita continua pela
 APIs, não pelo cliente direto. Migration necessária:
 `20260804013000_comms_realtime.sql`.
 
+D-111 / COMMS-T06 muda o significado de Comms na navegação: quando houver badge,
+o clique abre o **Inbox EOS** global em janela expandida, não a página Comms.
+`circle_notifications` permanece o storage por compatibilidade, mas agora aceita
+`scope` (`circle`, `weather`, `edu`, `simulation`, `system`), `severity`,
+`source_key` e `circle_id=null`. EDU aprovado, convite de simulação, chat e
+weather WATCH+ entram no mesmo feed. Abrir o Inbox não marca como lido; clicar
+em item marca só aquele item e navega pelo `href`. Weather é cron servidor a
+cada 15 minutos, protegido por `CRON_SECRET`; não é SMS/push garantido/dispatch.
+
 ---
 
 ## EDU é catálogo aprovado antes de virar RAG (2026-08-03)

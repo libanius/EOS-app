@@ -45,6 +45,7 @@ export default function EduPage() {
   const [tag, setTag] = useState('')
   const [loading, setLoading] = useState(true)
   const [canAdmin, setCanAdmin] = useState(false)
+  const [focusedContentId, setFocusedContentId] = useState('')
 
   const tags = useMemo(() => Array.from(new Set(content.flatMap(item => item.scenario_tags))).sort(), [content])
 
@@ -62,6 +63,18 @@ export default function EduPage() {
   }, [])
 
   useEffect(() => { void load(tag) }, [load, tag])
+
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get('contentId')
+    if (id) setFocusedContentId(id)
+  }, [])
+
+  useEffect(() => {
+    if (!focusedContentId || !content.length) return
+    window.setTimeout(() => {
+      document.getElementById(`edu-${focusedContentId}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    }, 100)
+  }, [focusedContentId, content])
 
   return (
     <div className="wv2 wv2-list-page" data-risk="safe" data-ready="true">
@@ -91,17 +104,17 @@ export default function EduPage() {
           <Card><p className="t-body ink-2" style={{ margin: 0 }}>{c.loading}</p></Card>
         ) : content.length === 0 ? (
           <Card><p className="t-body ink-2" style={{ margin: 0 }}>{c.empty}</p></Card>
-        ) : content.map(item => <EduCard key={item.id} item={item} copy={c} />)}
+        ) : content.map(item => <EduCard key={item.id} item={item} copy={c} focused={item.id === focusedContentId} />)}
       </div>
     </div>
   )
 }
 
-function EduCard({ item, copy }: { item: EduContent; copy: EduCopy }) {
+function EduCard({ item, copy, focused }: { item: EduContent; copy: EduCopy; focused?: boolean }) {
   const embedUrl = item.source_type === 'youtube' ? youtubeEmbedUrl(item.source_url) : null
 
   return (
-    <Card>
+    <Card id={`edu-${item.id}`} style={focused ? { borderColor: 'rgba(0,229,160,0.72)', background: 'rgba(0,229,160,0.08)' } : undefined}>
       <SectionLabel trailing={`${copy.version} ${item.version}`}>{item.source_type.toUpperCase()}</SectionLabel>
       <h2 className="t-title2" style={{ margin: '0.6rem 0 0.4rem' }}>{item.title}</h2>
       {embedUrl ? (

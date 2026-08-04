@@ -9,16 +9,24 @@ export type CommsNotificationKind =
   | 'family_invite'
   | 'family_invite_accepted'
   | 'family_invite_denied'
+  | 'edu_content_approved'
+  | 'simulation_invite'
+  | 'weather_alert'
+
+export type CommsNotificationScope = 'circle' | 'weather' | 'edu' | 'simulation' | 'system'
 
 type NotifyInput = {
   admin: AdminClient
-  circleId: string
+  circleId?: string | null
   actorId?: string | null
   recipientIds: string[]
+  scope?: CommsNotificationScope
   kind: CommsNotificationKind
   title: string
   body: string
   href?: string
+  severity?: string | null
+  sourceKey?: string | null
   metadata?: Record<string, unknown>
 }
 
@@ -40,26 +48,43 @@ export async function getCircleName(admin: AdminClient, circleId: string) {
 
 export async function createCommsNotifications({
   admin,
-  circleId,
+  circleId = null,
   actorId = null,
   recipientIds,
+  scope = 'circle',
   kind,
   title,
   body,
   href = '/comms?view=notifications',
+  severity = null,
+  sourceKey = null,
   metadata = {},
 }: NotifyInput) {
-  const unique = Array.from(new Set(recipientIds.filter(id => id && id !== actorId)))
+  let unique = Array.from(new Set(recipientIds.filter(id => id && id !== actorId)))
   if (!unique.length) return
+
+  if (sourceKey) {
+    const { data } = await admin
+      .from('circle_notifications')
+      .select('recipient_id')
+      .eq('source_key', sourceKey)
+      .in('recipient_id', unique)
+    const existing = new Set(((data ?? []) as Array<{ recipient_id: string }>).map(row => row.recipient_id))
+    unique = unique.filter(id => !existing.has(id))
+    if (!unique.length) return
+  }
 
   const rows = unique.map(recipient_id => ({
     circle_id: circleId,
     recipient_id,
     actor_id: actorId,
+    scope,
     kind,
     title: title.slice(0, 120),
     body: body.slice(0, 280),
     href,
+    severity,
+    source_key: sourceKey,
     metadata,
   }))
 

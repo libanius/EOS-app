@@ -10,7 +10,8 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Preparedness Engine (PREP/EDU/COMMS/ONB/PILOT) sobre Web/PWA |
-| **Last Completed Task** | **D-110 / COMMS-T05 — Realtime para chat e badge do Comms (2026-08-04)** |
+| **Last Completed Task** | **D-111 / COMMS-T06 — Inbox EOS global com EDU, simulação, chat e alertas (2026-08-04)** |
+| | **D-110 / COMMS-T05 — Realtime para chat e badge do Comms (2026-08-04)** |
 | | **D-109 / COMMS-T04 — Badge e timeline social de notificações (2026-08-04)** |
 | | **D-108 / FAM-T12 — Família íntima exige convite e aceite do dono da ficha (2026-08-04)** |
 | | **D-107 / FAM-T11 — Círculo separado de Família íntima (2026-08-04)** |
@@ -78,6 +79,7 @@
 | | D-066 / PLAN-T00 — spec dos Planos de Emergência da Família (`docs/18-family-plans.md`) (2026-07-27) |
 | | D-064 / FAM-T01→T04 — localização familiar ao vivo, consentimento próprio e remoção dos mocks do mapa (2026-07-27) |
 | **Migration** | ✅ `20260730000000_family_plan_triggers.sql` aplicada pelo dono em 2026-07-30 e verificada. Gatilho gravando ponta a ponta no teste de navegador. |
+| **Migration** | ⏳ `20260804014000_inbox_eos_notifications.sql` pendente de aplicação pelo dono. Evolui `circle_notifications` para Inbox EOS app-level (`scope`, `severity`, `source_key`, `circle_id` nullable). |
 | **Migration** | ⏳ `20260804013000_comms_realtime.sql` pendente de aplicação pelo dono. Libera leitura RLS controlada e publicação realtime para `circle_messages` e `circle_notifications`. |
 | **Migration** | ✅ `20260804012000_circle_notifications.sql` aplicada pelo dono em 2026-08-04. Cria `circle_notifications` para badge vermelho do Comms e timeline social de interações. |
 | **Migration** | ✅ `20260804011000_circle_family_access_requested_by.sql` aplicada pelo dono em 2026-08-04 e verificada via service-role (`family_access_requested_by` responde em `circle_members`; linhas atuais default `null`). |
@@ -120,8 +122,8 @@
 | **In Progress** | — |
 | **Platform Alignment** | ✅ D-084: EOS é plataforma multi-superfície com um único core operacional. Web/PWA segue como superfície primária; iOS/Android serão adapters nativos futuros; Automotive é companion mode restrito; Mesh/LoRa segue bloqueado por G-05. `/mobile/` é template/conceitual, não app inicializado. |
 | **Fases pedidas pelo dono (2026-07-31)** | ✅ 1. Camadas de clima + rastreio de ciclone (D-078). 2. Reinventar a aba Família no design system da v2, com componentes dinâmicos. 3. WV2-T05 (a11y/perf), PLAN-T07 (Pilot propõe plano). |
-| **Next Task** | Operacional: aplicar `20260804013000_comms_realtime.sql`. Depois testar duas contas abertas: mensagem no chat deve aparecer sem reload e badge Comms deve subir sem esperar minutos. |
-| **Build** | ✅ Passing — `npm run type-check`, `npm run build`, `npm test -- --runInBand` (86/86) e `git diff --check` limpos para D-110 (2026-08-04). |
+| **Next Task** | Operacional: aplicar `20260804013000_comms_realtime.sql` e `20260804014000_inbox_eos_notifications.sql`; configurar `CRON_SECRET` no Vercel antes de ativar o cron weather. |
+| **Build** | ✅ Passing — `npm run type-check`, `npm run build`, `npm test -- --runInBand` (86/86) e `git diff --check` limpos para D-111 (2026-08-04). |
 | **Plano execução** | ✅ PLAN-T08 MVP: tocar no próprio rosto no mapa abre comando familiar; "Executar plano" carrega um plano escolhido, monta passos determinísticos do host (círculo → gatilhos → papéis → pontos → rotas → encerramento) e alerta o círculo com push preset "Execute o plano da família agora". Sem nova tabela ainda: timeline compartilhada fica para `family_plan_executions`. |
 | **Plano múltiplo** | ✅ PLAN-T09: o círculo pode ter vários planos ativos; `/plan` alterna/cria planos por nome, o executor escolhe qual plano rodar, passos fixos do EOS saem da lista numerada e há cancelar/falso alarme. Migration `20260731000000_multiple_family_plans.sql` aplicada pelo dono. |
 | **Rotas do plano** | ✅ PLAN-T10: cada rota desenhada no plano agora tem handoff "Google Maps" com origem, destino e paradas intermediárias na ordem da `LineString`. O EOS mantém o combinado offline; Google Maps calcula ruas/ETA quando abrir. |

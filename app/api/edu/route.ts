@@ -3,9 +3,32 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isAdminEmail } from '@/lib/admin'
 import { DEFAULT_EDU_CONTENT, normalizeEduInput, normalizeTags } from '@/lib/edu'
+import { createCommsNotifications } from '@/lib/comms-notifications'
 
 function tableMissing(error: { code?: string } | null) {
   return error?.code === '42P01'
+}
+
+async function notifyApprovedEdu(
+  admin: NonNullable<ReturnType<typeof createAdminClient>>,
+  actorId: string,
+  content: { id: string; title: string; summary?: string | null; version?: number | null; status?: string | null },
+) {
+  if (content.status !== 'approved') return
+  const { data: profiles } = await admin.from('profiles').select('id')
+  const recipients = ((profiles ?? []) as Array<{ id: string }>).map(profile => profile.id)
+  await createCommsNotifications({
+    admin,
+    actorId,
+    recipientIds: recipients,
+    scope: 'edu',
+    kind: 'edu_content_approved',
+    title: `Novo EDU: ${content.title}`,
+    body: content.summary?.trim() || 'Novo material educativo aprovado no EOS.',
+    href: `/edu?contentId=${encodeURIComponent(content.id)}`,
+    sourceKey: `edu:${content.id}:v${content.version ?? 1}`,
+    metadata: { content_id: content.id, version: content.version ?? 1 },
+  })
 }
 
 export async function GET(req: NextRequest) {
@@ -91,6 +114,7 @@ export async function POST(req: NextRequest) {
       .select('id, title, source_type, source_url, scenario_tags, summary, transcript, status, version, rag_enabled, rag_ingested_at, updated_at, approved_at')
       .single()
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    await notifyApprovedEdu(admin, user.id, data as { id: string; title: string; summary?: string | null; version?: number | null; status?: string | null })
     return NextResponse.json({ content: data })
   }
 
@@ -114,5 +138,6 @@ export async function POST(req: NextRequest) {
 
   if (error && tableMissing(error)) return NextResponse.json({ error: 'migration_pending' }, { status: 200 })
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  await notifyApprovedEdu(admin, user.id, data as { id: string; title: string; summary?: string | null; version?: number | null; status?: string | null })
   return NextResponse.json({ content: data }, { status: 201 })
 }

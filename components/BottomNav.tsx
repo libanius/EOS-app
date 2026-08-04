@@ -62,7 +62,7 @@ const NAV_LEFT: NavItem[] = [
 
 const NAV_RIGHT: NavItem[] = [
   {
-    href: '/comms?view=notifications',
+    href: '/comms?view=chat',
     labelKey: 'nav.comms',
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -160,17 +160,24 @@ export default function BottomNav() {
   const tab = ({ href, labelKey, icon }: NavItem) => {
     const active = isActive(hrefPath(href))
     const label = t(labelKey)
+    const isComms = hrefPath(href) === '/comms'
     return (
       <Link
         key={href}
         href={href}
+        onClick={event => {
+          if (isComms && commsUnread > 0) {
+            event.preventDefault()
+            window.dispatchEvent(new Event('eos-open-inbox'))
+          }
+        }}
         className={`nb${active ? ' on' : ''}`}
         aria-label={label}
         aria-current={active ? 'page' : undefined}
       >
         <span className="nb-icon">
           {icon}
-          {hrefPath(href) === '/comms' && commsUnread > 0 && (
+          {isComms && commsUnread > 0 && (
             <span className="nb-badge" aria-label={`${commsUnread} notificações não lidas`}>
               {commsUnread > 99 ? '99+' : commsUnread}
             </span>

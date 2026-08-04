@@ -127,9 +127,12 @@ export async function POST(req: NextRequest) {
     circleId,
     actorId: guard.user.id,
     recipientIds: memberIds,
+    scope: 'circle',
     kind: 'message',
     title: `${actorName} enviou uma mensagem`,
     body: `${actorName} escreveu em ${circleName}: "${text.slice(0, 120)}${text.length > 120 ? '...' : ''}"`,
+    href: `/comms?view=chat&circleId=${encodeURIComponent(circleId)}&messageId=${encodeURIComponent((data as MessageRow).id)}`,
+    sourceKey: `message:${(data as MessageRow).id}`,
     metadata: { message_id: (data as MessageRow).id },
   })
 

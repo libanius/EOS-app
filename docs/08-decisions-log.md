@@ -278,6 +278,41 @@ como rota protegida; usuário não logado ia para login, o login ignorava
 
 ---
 
+## D-111 — Comms vira Inbox EOS global
+
+**Date**: 2026-08-04
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: Depois de D-109/D-110, o badge do Comms já indicava interações,
+mas a experiência ainda tratava notificações como uma aba dentro de Comms. O
+dono pediu uma janela expandida com resumos acionáveis e destinos por tipo:
+mensagem abre chat, alerta meteorológico abre Weather, material EDU abre EDU e
+convite de simulação abre o fluxo de simulação.
+
+**Decision**:
+
+1. O ícone Comms passa a representar o **Inbox EOS**.
+2. Se houver notificações não lidas, clicar Comms abre uma janela global sobre a
+   tela atual; se não houver, navega para o chat.
+3. Abrir o Inbox não marca notificações como lidas.
+4. Clicar em um item marca somente aquele item como lido e navega para `href`.
+5. `circle_notifications` evolui para notificações app-level com `scope`,
+   `severity`, `source_key` e `metadata`; `circle_id` passa a ser opcional.
+6. Novas fontes iniciais:
+   - chat e interações de círculo/Família íntima;
+   - conteúdo EDU aprovado;
+   - convite para simulação;
+   - alerta meteorológico pessoal por cron servidor.
+
+**Consequences**:
+
+- Requer migration `20260804014000_inbox_eos_notifications.sql`.
+- Weather v1 roda por Vercel Cron a cada 15 minutos com `CRON_SECRET`.
+- Inbox EOS continua sendo app-level persistente; não é SMS, dispatch ou push
+  garantido.
+
+---
+
 ## D-110 — Comms precisa ser realtime-first no Web/PWA
 
 **Date**: 2026-08-04

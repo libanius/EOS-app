@@ -27,9 +27,10 @@ type MessageRow = {
 
 type NotificationRow = {
   id: string
-  circle_id: string
-  circle_name: string
+  circle_id: string | null
+  circle_name: string | null
   actor_name: string | null
+  scope?: string
   kind: string
   title: string
   body: string
@@ -173,6 +174,7 @@ export default function CommsPage() {
   const [notificationsLoading, setNotificationsLoading] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
   const [view, setView] = useState<'chat' | 'timeline'>('chat')
+  const [focusedMessageId, setFocusedMessageId] = useState('')
   const [sending, setSending] = useState(false)
   const [draft, setDraft] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -190,7 +192,13 @@ export default function CommsPage() {
   const activeRadio = radioEditing ? radioDraft[language] : radioConfig[language]
 
   useEffect(() => {
-    if (window.location.search.includes('view=notifications')) setView('timeline')
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('view') === 'notifications') setView('timeline')
+    if (params.get('view') === 'chat') setView('chat')
+    const nextCircleId = params.get('circleId')
+    const nextMessageId = params.get('messageId')
+    if (nextCircleId) setCircleId(nextCircleId)
+    if (nextMessageId) setFocusedMessageId(nextMessageId)
   }, [])
 
   useEffect(() => {
@@ -237,6 +245,13 @@ export default function CommsPage() {
   useEffect(() => {
     if (circleId) void loadMessages(circleId)
   }, [circleId, loadMessages])
+
+  useEffect(() => {
+    if (!focusedMessageId || !messages.length) return
+    window.setTimeout(() => {
+      document.getElementById(`message-${focusedMessageId}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    }, 100)
+  }, [focusedMessageId, messages])
 
   useEffect(() => {
     if (!circleId) return
@@ -293,7 +308,7 @@ export default function CommsPage() {
   }, [])
 
   useEffect(() => {
-    void loadNotifications(view === 'timeline')
+    void loadNotifications(false)
   }, [loadNotifications, view])
 
   useEffect(() => {
@@ -468,7 +483,7 @@ export default function CommsPage() {
                       {!item.is_read && <span style={{ width: 9, height: 9, borderRadius: 999, background: '#ff453a', flex: '0 0 auto' }} />}
                     </div>
                     <p className="t-foot ink-2" style={{ margin: 0 }}>{item.body}</p>
-                    <span className="t-caption ink-3">{item.circle_name} · {formatTimelineTime(item.created_at, language)}</span>
+                    <span className="t-caption ink-3">{item.circle_name ? `${item.circle_name} · ` : ''}{formatTimelineTime(item.created_at, language)}</span>
                   </article>
                 ))}
               </div>
@@ -534,13 +549,14 @@ export default function CommsPage() {
                 ) : messages.map(message => (
                   <article
                     key={message.id}
+                    id={`message-${message.id}`}
                     style={{
                       alignSelf: message.is_me ? 'flex-end' : 'flex-start',
                       maxWidth: '82%',
-                      border: '1px solid rgba(255,255,255,0.12)',
+                      border: message.id === focusedMessageId ? '1px solid rgba(0,229,160,0.75)' : '1px solid rgba(255,255,255,0.12)',
                       borderRadius: '0.85rem',
                       padding: '0.7rem 0.85rem',
-                      background: message.is_me ? 'rgba(244, 199, 91, 0.14)' : 'rgba(255,255,255,0.06)',
+                      background: message.id === focusedMessageId ? 'rgba(0,229,160,0.12)' : message.is_me ? 'rgba(244, 199, 91, 0.14)' : 'rgba(255,255,255,0.06)',
                     }}
                   >
                     <div className="t-caps ink-3" style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>

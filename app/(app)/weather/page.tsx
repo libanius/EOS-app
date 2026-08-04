@@ -191,10 +191,10 @@ function RainNowcast({ precip }: { precip: UpcomingPrecipitationResult | null })
 
 // ─── Classified hazard event card (D-043) ──────────────────────────────────────
 
-function HazardEventCard({ ev }: { ev: HazardEvent }) {
+function HazardEventCard({ ev, focused }: { ev: HazardEvent; focused?: boolean }) {
   const meta = HAZARD_CLASS_META[ev.visualClass] ?? HAZARD_CLASS_META.ADVISORY
   return (
-    <div style={{ background: `${meta.color}12`, border: `1px solid ${meta.color}44`, borderRadius: 16, padding: '10px 14px' }}>
+    <div id={focused ? 'weather-focused-alert' : undefined} style={{ background: focused ? `${meta.color}22` : `${meta.color}12`, border: focused ? `1px solid ${meta.color}` : `1px solid ${meta.color}44`, borderRadius: 16, padding: '10px 14px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 3 }}>
         <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.08em', color: meta.color }}>
           {meta.label}
@@ -215,6 +215,11 @@ function HazardEventCard({ ev }: { ev: HazardEvent }) {
       )}
     </div>
   )
+}
+
+function matchesFocusedAlert(focusedAlertId: string, candidate?: string | null) {
+  if (!focusedAlertId || !candidate) return false
+  return focusedAlertId === candidate || focusedAlertId === `weather:${candidate}` || focusedAlertId.endsWith(candidate)
 }
 
 export default function WeatherPage() {
@@ -238,6 +243,12 @@ export default function WeatherPage() {
   const [saveKit, setSaveKit] = useState('BUG_OUT')
   const [saving, setSaving] = useState(false)
   const [savedMsg, setSavedMsg] = useState<string | null>(null)
+  const [focusedAlertId, setFocusedAlertId] = useState('')
+
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get('alertId')
+    if (id) setFocusedAlertId(id)
+  }, [])
 
   // ── Location ──────────────────────────────────────────────────────────────
 
@@ -285,6 +296,13 @@ export default function WeatherPage() {
   useEffect(() => {
     if (coords) fetchData(coords.lat, coords.lng)
   }, [coords, fetchData])
+
+  useEffect(() => {
+    if (!focusedAlertId || (!hazards && !snapshot)) return
+    window.setTimeout(() => {
+      document.getElementById('weather-focused-alert')?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    }, 100)
+  }, [focusedAlertId, hazards, snapshot])
 
   // ── Recommendations engine (instant, client-side) ─────────────────────────
 
@@ -414,7 +432,7 @@ export default function WeatherPage() {
       {hazards && hazards.events.length > 0 ? (
         <div style={{ marginBottom: 12, display: 'grid', gap: 6 }}>
           {hazards.events.slice(0, 6).map(ev => (
-            <HazardEventCard key={ev.id} ev={ev} />
+            <HazardEventCard key={ev.id} ev={ev} focused={matchesFocusedAlert(focusedAlertId, ev.officialUrl) || matchesFocusedAlert(focusedAlertId, ev.id)} />
           ))}
         </div>
       ) : (
@@ -422,7 +440,7 @@ export default function WeatherPage() {
         (snapshot?.alerts ?? []).length > 0 && (
           <div style={{ marginBottom: 12 }}>
             {snapshot!.alerts.map((alert, i) => (
-              <div key={i} style={{ background: RISK_BG[alert.severity === 'CRITICAL' ? 'critical' : alert.severity === 'HIGH' ? 'high' : 'medium'], border: `1px solid ${RISK_COLOR[alert.severity === 'CRITICAL' ? 'critical' : alert.severity === 'HIGH' ? 'high' : 'medium']}44`, borderRadius: 16, padding: '10px 14px', marginBottom: 6 }}>
+              <div key={i} id={matchesFocusedAlert(focusedAlertId, alert.url) || matchesFocusedAlert(focusedAlertId, alert.id) ? 'weather-focused-alert' : undefined} style={{ background: RISK_BG[alert.severity === 'CRITICAL' ? 'critical' : alert.severity === 'HIGH' ? 'high' : 'medium'], border: `1px solid ${RISK_COLOR[alert.severity === 'CRITICAL' ? 'critical' : alert.severity === 'HIGH' ? 'high' : 'medium']}${matchesFocusedAlert(focusedAlertId, alert.url) || matchesFocusedAlert(focusedAlertId, alert.id) ? '' : '44'}`, borderRadius: 16, padding: '10px 14px', marginBottom: 6 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
                   <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.1em', color: RISK_COLOR[alert.severity === 'CRITICAL' ? 'critical' : 'high'] }}>{alert.source} ALERT</span>
                   {alert.expires && <span style={{ fontSize: 10, color: '#71717a' }}>Expires {fmtTime(alert.expires)}</span>}

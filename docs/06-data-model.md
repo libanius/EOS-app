@@ -274,22 +274,26 @@ or guaranteed delivery.
 | Column | Type | Notes |
 |---|---|---|
 | id | uuid | PK |
-| circle_id | uuid | FK → circles.id, cascade delete |
+| circle_id | uuid | nullable FK → circles.id, cascade delete; null for app-level scopes |
 | recipient_id | uuid | FK → auth.users.id; badge/timeline owner |
 | actor_id | uuid | FK → auth.users.id; nullable actor who caused the event |
-| kind | text | `message`, `join_request_approved`, `member_joined`, `family_invite`, `family_invite_accepted`, `family_invite_denied` |
+| scope | text | `circle`, `weather`, `edu`, `simulation`, or `system` |
+| kind | text | compact event type, e.g. `message`, `weather_alert`, `edu_content_approved`, `simulation_invite` |
 | title | text | compact notification title |
 | body | text | timeline text |
 | href | text | app destination, default `/comms?view=notifications` |
+| severity | text | nullable `WATCH`, `HIGH`, `CRITICAL`, etc. |
+| source_key | text | nullable dedupe key; unique per recipient when present |
 | metadata | jsonb | optional structured context |
 | read_at | timestamptz | null means unread |
 | created_at | timestamptz | server timestamp |
 
-`circle_notifications` is D-109 / COMMS-T04. It powers the Comms badge and the
-social-style interaction timeline. D-110 allows direct SELECT only for the row's
-recipient so Supabase Realtime can update the Web/PWA badge. Writes and read
-state still go through app APIs. It is not push, SMS, dispatch, emergency alert,
-or Mesh/LoRa delivery.
+`circle_notifications` started as D-109 / COMMS-T04 for circle interactions.
+D-111 turns it into the app-level Inbox EOS while keeping the same table for
+compatibility. D-110 allows direct SELECT only for the row's recipient so
+Supabase Realtime can update the Web/PWA badge. Writes and read state still go
+through app APIs. It is not push, SMS, dispatch, emergency alert, or Mesh/LoRa
+delivery.
 
 ### circle_radio_profiles
 | Column | Type | Notes |

@@ -253,13 +253,16 @@ END $$;
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS circle_notifications (
   id           uuid        PRIMARY KEY DEFAULT uuid_generate_v4(),
-  circle_id    uuid        NOT NULL REFERENCES circles (id) ON DELETE CASCADE,
+  circle_id    uuid        REFERENCES circles (id) ON DELETE CASCADE,
   recipient_id uuid        NOT NULL REFERENCES auth.users (id) ON DELETE CASCADE,
   actor_id     uuid        REFERENCES auth.users (id) ON DELETE SET NULL,
+  scope        text        NOT NULL DEFAULT 'circle' CHECK (scope IN ('circle', 'weather', 'edu', 'simulation', 'system')),
   kind         text        NOT NULL,
   title        text        NOT NULL,
   body         text        NOT NULL,
   href         text        NOT NULL DEFAULT '/comms?view=notifications',
+  severity     text,
+  source_key   text,
   metadata     jsonb       NOT NULL DEFAULT '{}'::jsonb,
   read_at      timestamptz,
   created_at   timestamptz NOT NULL DEFAULT now()
@@ -267,7 +270,9 @@ CREATE TABLE IF NOT EXISTS circle_notifications (
 
 CREATE INDEX IF NOT EXISTS circle_notifications_recipient_created_idx ON circle_notifications (recipient_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS circle_notifications_unread_idx ON circle_notifications (recipient_id, read_at) WHERE read_at IS NULL;
-CREATE INDEX IF NOT EXISTS circle_notifications_circle_idx ON circle_notifications (circle_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS circle_notifications_circle_idx ON circle_notifications (circle_id, created_at DESC) WHERE circle_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS circle_notifications_scope_created_idx ON circle_notifications (scope, created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS circle_notifications_recipient_source_key_idx ON circle_notifications (recipient_id, source_key) WHERE source_key IS NOT NULL;
 
 ALTER TABLE circle_notifications ENABLE ROW LEVEL SECURITY;
 

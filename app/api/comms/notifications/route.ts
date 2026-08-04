@@ -4,12 +4,16 @@ import { createAdminClient } from '@/lib/supabase/admin'
 
 type NotificationRow = {
   id: string
-  circle_id: string
+  circle_id: string | null
   actor_id: string | null
+  scope: string
   kind: string
   title: string
   body: string
   href: string
+  severity: string | null
+  source_key: string | null
+  metadata: Record<string, unknown>
   read_at: string | null
   created_at: string
 }
@@ -25,7 +29,7 @@ export async function GET() {
   const [{ data: rows, error }, { count, error: countError }] = await Promise.all([
     admin
       .from('circle_notifications')
-      .select('id, circle_id, actor_id, kind, title, body, href, read_at, created_at')
+      .select('id, circle_id, actor_id, scope, kind, title, body, href, severity, source_key, metadata, read_at, created_at')
       .eq('recipient_id', user.id)
       .order('created_at', { ascending: false })
       .limit(80),
@@ -41,7 +45,7 @@ export async function GET() {
   }
 
   const notifications = ((rows ?? []) as NotificationRow[])
-  const circleIds = Array.from(new Set(notifications.map(row => row.circle_id)))
+  const circleIds = Array.from(new Set(notifications.map(row => row.circle_id).filter((id): id is string => Boolean(id))))
   const actorIds = Array.from(new Set(notifications.map(row => row.actor_id).filter((id): id is string => Boolean(id))))
   const circleNames = new Map<string, string>()
   const actorNames = new Map<string, string>()
@@ -59,7 +63,7 @@ export async function GET() {
     unread_count: count ?? 0,
     notifications: notifications.map(row => ({
       ...row,
-      circle_name: circleNames.get(row.circle_id) ?? 'Círculo',
+      circle_name: row.circle_id ? (circleNames.get(row.circle_id) ?? 'Círculo') : null,
       actor_name: row.actor_id ? (actorNames.get(row.actor_id) ?? 'Alguém') : null,
       is_read: Boolean(row.read_at),
     })),
