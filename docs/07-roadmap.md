@@ -252,6 +252,7 @@ product phase sequenced.
 
 | Task ID | Task | Status | Notes |
 |---|---|---|---|
+| CI-T01 | Portão automático no `main` | ✅ COMPLETE | 2026-08-04 — D-120; tipos, lint, 91 testes unitários e build a cada push/PR; testes de navegador ficam fora porque escrevem no banco de produção |
 | SEC-T02 | Erro do navegador no log + aviso ao dono | ✅ COMPLETE | 2026-08-04 — D-119; `ClientErrorReporter` no layout raiz, `/api/client-error` com teto por IP, aviso por push de carona no cron; `client-error-test` 6/6 com 3 controles negativos |
 | SEC-T01 | Limite de uso no Pilot + visibilidade de erro de produção | ✅ COMPLETE | 2026-08-04 — D-118; `consume_rate_limit()` atômico no Postgres e `error_log`; `custom-activity` exige login; migration `20260804180000` aplicada pelo dono e `node scripts/guardrails-test.mjs` passou 5/5 |
 | NAV-T01 | Reordenar BottomNav: Clima primeiro, Cenário último | ✅ COMPLETE | 2026-08-04 — D-116; ordem visual: Clima, Família, Preparação, World, Comms, Círculos, Cenário |

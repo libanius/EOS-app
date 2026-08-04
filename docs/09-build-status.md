@@ -15,6 +15,7 @@
 | | **D-120 / EDU-T06 — Curadoria/tradução das ações EDU (2026-08-04)** |
 | | **D-119 / EDU-T05 — EDU aprovado gera ações confirmáveis de Preparação (2026-08-04)** |
 | | **D-118 / LA-T04 — Rate limit distribuído + health/error log (2026-08-04)** |
+| | **D-120 / CI-T01 — Portão automático no `main`: tipos, lint, testes e build (2026-08-04)** |
 | | **D-119 / SEC-T02 — Erro do navegador vira linha e o dono é avisado (2026-08-04)** |
 | | **D-118 / SEC-T01 — Limite de uso do Pilot no Postgres + `error_log` (2026-08-04) — migration aplicada e guardrails 5/5** |
 | | **D-117 / NOTIF-T01 — Badges separados por ícone/surface (2026-08-04)** |
@@ -155,6 +156,7 @@
 | **Supabase** | ✅ Healthy — project ref `alxurmgpyxjhvnliivbf` |
 | **Notificações de clima** | ✅ Funcionando (2026-08-04). `CRON_SECRET` criado na Vercel e no GitHub; execução manual do workflow **verde** (`ping` 7 s). Cadência de 15 min via GitHub Actions, de graça; cron diário da Vercel (`0 11 * * *`) fica como rede de segurança — o plano Hobby não aceita mais que isso, e um `*/15` no `vercel.json` **bloqueia todo deploy**. |
 | **⚠️ Pendência — agendador** | Dois pontos a vigiar: (1) o GitHub **desativa workflows agendados após 60 dias sem commits** no repositório — se o projeto parar, as notificações param junto e nada avisa; (2) decidir se vale Vercel Pro para trazer o agendador de volta para casa e eliminar a dependência do GitHub. |
+| **Repositório** | ⚠️ **Público** no GitHub. Varrido em 2026-08-04: nenhum `.env` real versionado; cruzando cada valor do `.env.local` com o histórico inteiro, só `NEXT_PUBLIC_SITE_URL` e `VAPID_SUBJECT` aparecem — públicos por definição. Não anula a rotação pendente: a exposição foi em conversa, não no repositório. |
 | **Banco de produção** | ✅ Limpo de novo em 2026-08-04 (2ª vez): 7 contas vazadas por `guardrails-test.mjs`, que terminava com `process.exit()` — gancho `beforeExit` nunca disparava. Corrigido com `finish()`. Restam **0 de teste e 9 reais**. ✅ Limpo em 2026-08-04: 32 contas de teste, 24 perfis órfãos e 8 círculos removidos; as **8 contas reais intactas**. Causa corrigida em `scripts/lib/test-cleanup.mjs` (D-114) — a limpeza passa a rodar em qualquer saída, não só no fim feliz. |
 | **⚠️ Segurança** | Rotacionar segredos expostos em chat: Vercel token (`vcp_…`), Supabase PAT (`sbp_…`), Stripe test/Live keys, MapTiler. |
 

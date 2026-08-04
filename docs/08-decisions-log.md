@@ -360,6 +360,43 @@ como rota protegida; usuário não logado ia para login, o login ignorava
 
 ---
 
+## D-120 — O `main` ganha um portão
+
+**Contexto.** Até aqui, a única verificação antes de um deploy era o que eu
+lembrasse de rodar na minha máquina. O histórico mostra o custo disso: uma tela
+preta em **todo** o app, 64 arquivos de lixo entrando no precache e um `sw.js`
+que nunca registrava — os três chegaram a produção, e os três eram pegáveis por
+`type-check` ou `build`. Faltava alguém rodando **sempre**, não alguém rodando
+melhor.
+
+**Decisão.** `.github/workflows/ci.yml` roda tipos, lint, testes unitários e
+build a cada push e a cada PR no `main`. Nessa ordem, de propósito: o que falha
+rápido falha primeiro, para quem quebrou um tipo não esperar o build inteiro.
+
+**O que o CI NÃO roda, e por quê.** Os testes de navegador ficam de fora.
+Todos criam contas no Supabase de **produção** — é o único projeto que existe.
+Rodá-los a cada push despejaria dado de teste no banco dos usuários reais várias
+vezes por dia, e exigiria a chave service-role como segredo do GitHub. Eles
+continuam sendo rodados à mão, com a limpeza garantida pelo D-114/D-119.
+
+**Ambiente falso de propósito.** O build não precisa de banco de verdade, e
+segredo que não está no CI é segredo que não vaza. Verificado localmente com o
+`.env.local` fora do caminho: compila.
+
+**Varredura do repositório, feita porque ele é PÚBLICO.** Nenhum `.env` real
+jamais foi versionado, e cruzando cada valor do `.env.local` com o histórico
+inteiro, os únicos que aparecem são `NEXT_PUBLIC_SITE_URL` e `VAPID_SUBJECT` —
+uma URL e um `mailto:`, públicos por definição. Chave de serviço, OpenAI, VAPID
+privada e `CRON_SECRET` nunca entraram em commit nenhum.
+
+Isso **não** anula a pendência de rotação: os segredos foram expostos em
+conversa, não no repositório. Mas separa as duas coisas, que estavam
+misturadas.
+
+**Primeira execução: verde.**
+
+---
+
 ## D-119 — Erro na tela do usuário vira linha, e o dono fica sabendo
 
 **Contexto.** O D-118 tornou visível o erro do **servidor**. Faltavam as duas
