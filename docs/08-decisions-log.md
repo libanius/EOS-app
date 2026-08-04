@@ -4,6 +4,41 @@
 
 ---
 
+## D-113 — O agendador sai da Vercel para não pagar Pro, e o segredo que nunca existiu
+
+**Date**: 2026-08-04
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: O `vercel.json` pedia `*/15 * * * *`. O plano Hobby só aceita uma
+execução diária, e o efeito não era degradação — era **bloqueio total de
+deploy**: nenhuma publicação passava, de ninguém.
+
+E ao investigar apareceu algo pior: **`CRON_SECRET` não existia** — nem na
+Vercel, nem localmente. A rota `/api/cron/weather-notifications` exige
+`Bearer CRON_SECRET` e devolvia **401 sempre**. As notificações de clima nunca
+dispararam uma única vez, e nada na tela dizia isso.
+
+**Decision**:
+
+1. **`CRON_SECRET` gerado e configurado** na Vercel. Verificado: sem segredo
+   401, com segredo `{"ok":true,"checked":43}`.
+2. **Cron da Vercel vira diário**, o que o Hobby aceita — e desbloqueia os
+   deploys.
+3. **A cadência real de 15 minutos vem do GitHub Actions**, de graça. A rota já
+   era protegida por segredo, então o agendador externo não abre nada novo.
+4. **O cron diário fica como rede de segurança.** Se o workflow for desativado ou
+   o repositório sair do ar, sobra uma passada por dia em vez de nenhuma.
+5. **O workflow falha ALTO** quando o segredo falta: `exit 1` com mensagem, nunca
+   um "ok" silencioso. Foi exatamente o silêncio que deixou esta rota devolvendo
+   401 por meses.
+
+**Consequences**: falta o dono adicionar `CRON_SECRET` nos secrets do GitHub —
+está anotado no build status. Enquanto isso, a varredura roda uma vez por dia.
+
+Um aviso de tempestade que chega uma vez por dia não é aviso, é boletim; a
+pendência existe para isso não ser esquecido como se estivesse resolvido.
+
+---
 ## D-112 — Convite por link, e o que um link nunca pode fazer
 
 **Date**: 2026-08-04
