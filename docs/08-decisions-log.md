@@ -278,6 +278,37 @@ como rota protegida; usuário não logado ia para login, o login ignorava
 
 ---
 
+## D-110 — Comms precisa ser realtime-first no Web/PWA
+
+**Date**: 2026-08-04
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: No teste real do dono, mensagens e números de notificação
+apareceram apenas depois de alguns minutos. D-109 criou a timeline persistente,
+mas o cliente ainda dependia de polling para perceber novidades, o que não é
+compatível com a expectativa de chat/social apps.
+
+**Decision**:
+
+1. Comms usa realtime como caminho primário no Web/PWA.
+2. `circle_messages` publica inserts para membros do círculo ativo.
+3. `circle_notifications` publica inserts/updates para o destinatário.
+4. Badge vermelho atualiza assim que uma notificação chega.
+5. `/comms` recarrega o chat quando chega uma mensagem no círculo ativo.
+6. Polling continua apenas como fallback de reconciliação.
+7. Realtime não muda a natureza do produto: continua app-level, não push
+   garantido, SMS, dispatch ou alerta de emergência.
+
+**Consequences**:
+
+- Requer policies RLS de leitura controlada para realtime:
+  membros leem mensagens do próprio círculo; usuários leem notificações
+  destinadas a eles.
+- Escrita continua pelas APIs do app.
+- Requer migration `20260804013000_comms_realtime.sql`.
+
+---
+
 ## D-109 — Comms vira timeline social de notificações
 
 **Date**: 2026-08-04

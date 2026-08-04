@@ -206,7 +206,50 @@ CREATE INDEX IF NOT EXISTS circle_members_family_access_idx ON circle_members (c
 
 
 -- ------------------------------------------------------------
--- 10. knowledge_base  (pgvector RAG store)
+-- 10. circle_messages
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS circle_messages (
+  id          uuid        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  circle_id   uuid        NOT NULL REFERENCES circles (id) ON DELETE CASCADE,
+  sender_id   uuid        NOT NULL REFERENCES profiles (id) ON DELETE CASCADE,
+  body        text        NOT NULL CHECK (char_length(body) > 0 AND char_length(body) <= 1000),
+  kind        text        NOT NULL DEFAULT 'text' CHECK (kind IN ('text', 'system', 'alert')),
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  deleted_at  timestamptz
+);
+
+CREATE INDEX IF NOT EXISTS circle_messages_circle_created_idx ON circle_messages (circle_id, created_at DESC) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS circle_messages_sender_idx ON circle_messages (sender_id, created_at DESC);
+
+ALTER TABLE circle_messages ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'circle_messages'
+      AND policyname = 'circle_messages_select_circle_members'
+  ) THEN
+    CREATE POLICY circle_messages_select_circle_members
+      ON public.circle_messages
+      FOR SELECT
+      TO authenticated
+      USING (
+        deleted_at IS NULL
+        AND EXISTS (
+          SELECT 1
+          FROM public.circle_members cm
+          WHERE cm.circle_id = circle_messages.circle_id
+            AND cm.user_id = auth.uid()
+        )
+      );
+  END IF;
+END $$;
+
+
+-- ------------------------------------------------------------
+-- 11. circle_notifications
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS circle_notifications (
   id           uuid        PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -228,9 +271,52 @@ CREATE INDEX IF NOT EXISTS circle_notifications_circle_idx ON circle_notificatio
 
 ALTER TABLE circle_notifications ENABLE ROW LEVEL SECURITY;
 
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'circle_notifications'
+      AND policyname = 'circle_notifications_select_recipient'
+  ) THEN
+    CREATE POLICY circle_notifications_select_recipient
+      ON public.circle_notifications
+      FOR SELECT
+      TO authenticated
+      USING (recipient_id = auth.uid());
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
+    RETURN;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime'
+      AND schemaname = 'public'
+      AND tablename = 'circle_messages'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.circle_messages;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime'
+      AND schemaname = 'public'
+      AND tablename = 'circle_notifications'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.circle_notifications;
+  END IF;
+END $$;
+
 
 -- ------------------------------------------------------------
--- 10. knowledge_base  (pgvector RAG store)
+-- 12. knowledge_base  (pgvector RAG store)
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS knowledge_base (
   id              uuid    PRIMARY KEY DEFAULT uuid_generate_v4(),

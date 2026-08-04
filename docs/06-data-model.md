@@ -264,9 +264,9 @@ visible only when `shared_fields` contains `location` or when viewing yourself.
 | deleted_at | timestamptz | Nullable soft delete marker |
 
 `circle_messages` is the v1 data contract for app-level Comms (D-087 /
-COMMS-T01). RLS is enabled with no direct policies: clients must not read or
-write this table directly. `/api/comms/messages` checks authenticated membership
-in `circle_members` before service-role reads/writes. Chat messages are not
+COMMS-T01). D-110 allows direct SELECT only for realtime delivery to authenticated
+members of the same circle. Writes still go through `/api/comms/messages`, which
+checks authenticated membership before service-role writes. Chat messages are not
 emergency alerts by default and do not imply SMS, dispatch, radio transmission,
 or guaranteed delivery.
 
@@ -286,8 +286,9 @@ or guaranteed delivery.
 | created_at | timestamptz | server timestamp |
 
 `circle_notifications` is D-109 / COMMS-T04. It powers the Comms badge and the
-social-style interaction timeline. It is not push, SMS, dispatch, or emergency
-alert delivery.
+social-style interaction timeline. D-110 allows direct SELECT only for the row's
+recipient so Supabase Realtime can update the Web/PWA badge. Writes and read
+state still go through app APIs. It is not push, SMS, dispatch, emergency alert,
 or Mesh/LoRa delivery.
 
 ### circle_radio_profiles

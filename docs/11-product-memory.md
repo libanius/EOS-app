@@ -117,6 +117,14 @@ continua sendo app-level timeline; não é push garantido, SMS, dispatch, nem
 alerta de emergência. Migration `20260804012000_circle_notifications.sql`
 precisa estar aplicada para persistir badge/timeline.
 
+D-110 / COMMS-T05 corrige a percepção de atraso: Comms deve ser realtime-first
+no Web/PWA. O polling existe apenas como fallback. Para isso, `circle_messages`
+e `circle_notifications` precisam estar na publicação realtime com RLS de SELECT
+controlada: membro autenticado recebe mensagens do próprio círculo; usuário
+autenticado recebe apenas notificações destinadas a ele. Escrita continua pelas
+APIs, não pelo cliente direto. Migration necessária:
+`20260804013000_comms_realtime.sql`.
+
 ---
 
 ## EDU é catálogo aprovado antes de virar RAG (2026-08-03)

@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import { useLanguage, type MessageKey } from '@/lib/i18n'
+import { createClient } from '@/lib/supabase/client'
 
 type NavItem = { href: string; labelKey: MessageKey; icon: React.ReactNode }
 
@@ -119,11 +120,40 @@ export default function BottomNav() {
 
   useEffect(() => {
     void loadCommsUnread()
-    const timer = window.setInterval(() => { void loadCommsUnread() }, 60_000)
+    const timer = window.setInterval(() => { void loadCommsUnread() }, 15_000)
     window.addEventListener('eos-comms-read', loadCommsUnread)
     return () => {
       window.clearInterval(timer)
       window.removeEventListener('eos-comms-read', loadCommsUnread)
+    }
+  }, [loadCommsUnread])
+
+  useEffect(() => {
+    const supabase = createClient()
+    let mounted = true
+    let channel: ReturnType<typeof supabase.channel> | null = null
+
+    void supabase.auth.getUser().then(({ data }) => {
+      const userId = data.user?.id
+      if (!mounted || !userId) return
+      channel = supabase
+        .channel(`comms-notification-badge:${userId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'circle_notifications',
+            filter: `recipient_id=eq.${userId}`,
+          },
+          () => { void loadCommsUnread() },
+        )
+        .subscribe()
+    })
+
+    return () => {
+      mounted = false
+      if (channel) void supabase.removeChannel(channel)
     }
   }, [loadCommsUnread])
 

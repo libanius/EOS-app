@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useLanguage } from '@/lib/i18n'
 import { cloneDefaultRadioConfig, type RadioConfig, type RadioLanguageConfig } from '@/lib/comms-radio'
+import { createClient } from '@/lib/supabase/client'
 import { Card, PillLink, SectionLabel } from '@/components/world-v2/primitives'
 import '@/components/world-v2/world-v2.css'
 
@@ -214,9 +215,9 @@ export default function CommsPage() {
     return () => { cancelled = true }
   }, [c.unavailable])
 
-  const loadMessages = useCallback(async (nextCircleId: string) => {
+  const loadMessages = useCallback(async (nextCircleId: string, options?: { silent?: boolean }) => {
     if (!nextCircleId) return
-    setMessagesLoading(true)
+    if (!options?.silent) setMessagesLoading(true)
     setError(null)
     try {
       const response = await fetch(`/api/comms/messages?circleId=${encodeURIComponent(nextCircleId)}`, { cache: 'no-store' })
@@ -224,16 +225,46 @@ export default function CommsPage() {
       if (!response.ok) throw new Error(data?.error ?? 'messages unavailable')
       setMessages((data.messages ?? []) as MessageRow[])
     } catch {
-      setMessages([])
-      setError(c.unavailable)
+      if (!options?.silent) {
+        setMessages([])
+        setError(c.unavailable)
+      }
     } finally {
-      setMessagesLoading(false)
+      if (!options?.silent) setMessagesLoading(false)
     }
   }, [c.unavailable])
 
   useEffect(() => {
     if (circleId) void loadMessages(circleId)
   }, [circleId, loadMessages])
+
+  useEffect(() => {
+    if (!circleId) return
+    const supabase = createClient()
+    const channel = supabase
+      .channel(`comms-messages:${circleId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'circle_messages',
+          filter: `circle_id=eq.${circleId}`,
+        },
+          () => { void loadMessages(circleId, { silent: true }) },
+      )
+      .subscribe()
+
+    return () => { void supabase.removeChannel(channel) }
+  }, [circleId, loadMessages])
+
+  useEffect(() => {
+    if (!circleId || view !== 'chat') return
+    const timer = window.setInterval(() => {
+      void loadMessages(circleId, { silent: true })
+    }, 15_000)
+    return () => window.clearInterval(timer)
+  }, [circleId, loadMessages, view])
 
   const loadNotifications = useCallback(async (markRead = false) => {
     setNotificationsLoading(true)
@@ -263,6 +294,35 @@ export default function CommsPage() {
 
   useEffect(() => {
     void loadNotifications(view === 'timeline')
+  }, [loadNotifications, view])
+
+  useEffect(() => {
+    const supabase = createClient()
+    let mounted = true
+    let channel: ReturnType<typeof supabase.channel> | null = null
+
+    void supabase.auth.getUser().then(({ data }) => {
+      const userId = data.user?.id
+      if (!mounted || !userId) return
+      channel = supabase
+        .channel(`comms-notifications:${userId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'circle_notifications',
+            filter: `recipient_id=eq.${userId}`,
+          },
+          () => { void loadNotifications(view === 'timeline') },
+        )
+        .subscribe()
+    })
+
+    return () => {
+      mounted = false
+      if (channel) void supabase.removeChannel(channel)
+    }
   }, [loadNotifications, view])
 
   const loadRadio = useCallback(async (nextCircleId: string) => {
