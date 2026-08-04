@@ -217,6 +217,10 @@ Admin default: `ADMIN_EMAILS` permite override por env var, mas o fallback do
 código inclui `eosoffgrid@gmail.com` e `paulolibanionetousa@gmail.com`.
 Settings consulta `/api/admin/status`; quando `isAdmin=true`, mostra links para
 `/admin/affiliates`, `/admin/gift-codes` e `/admin/edu`.
+D-102 endureceu isso no middleware: `/admin` e `/admin/*` exigem usuário logado
+e `isAdminEmail(user.email)`. Usuário autenticado comum é redirecionado para
+`/dashboard` antes de carregar a página admin. As APIs admin continuam mantendo
+403 próprio.
 
 ---
 

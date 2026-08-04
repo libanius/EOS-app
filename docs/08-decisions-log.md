@@ -278,6 +278,36 @@ como rota protegida; usuário não logado ia para login, o login ignorava
 
 ---
 
+## D-102 — Rotas admin exigem privilégio no middleware
+
+**Date**: 2026-08-04
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: As APIs admin já validam `ADMIN_EMAILS`, e `/edu` só mostra o botão
+Admin EDU quando `/api/edu` retorna `canAdmin=true`. Mesmo assim, uma rota
+`/admin/*` carregada por usuário autenticado comum dependeria da tela cliente
+para mostrar 403. Para superfícies administrativas, a autorização deve acontecer
+antes de renderizar a página.
+
+**Decision**:
+
+1. Todo pathname `/admin` ou `/admin/*` exige usuário autenticado e
+   `isAdminEmail(user.email)` no middleware.
+2. Usuário autenticado não-admin é redirecionado para `/dashboard` antes de
+   carregar a UI admin.
+3. As APIs admin continuam mantendo seus próprios 403 server-side; middleware é
+   defesa adicional, não substituição.
+4. O botão Admin EDU em `/edu` continua condicionado a `canAdmin=true` vindo de
+   `/api/edu`.
+
+**Consequences**:
+
+- Usuários comuns não veem o botão Admin EDU e não carregam páginas `/admin/*`.
+- Links admin em Settings e EDU podem existir para admins sem expor superfície
+  administrativa a usuários comuns.
+
+---
+
 ## D-101 — EDU exibe vídeo aprovado dentro do EOS
 
 **Date**: 2026-08-04

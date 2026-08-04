@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { AFFILIATE_COOKIE, normalizeAffiliateCode } from '@/lib/affiliate'
+import { isAdminEmail } from '@/lib/admin'
 
 const PROTECTED_ROUTES = [
   '/admin',
@@ -80,6 +81,13 @@ export async function middleware(request: NextRequest) {
       })
     }
     return redirect
+  }
+
+  if ((pathname === '/admin' || pathname.startsWith('/admin/')) && user && !isAdminEmail(user.email)) {
+    const dashboardUrl = request.nextUrl.clone()
+    dashboardUrl.pathname = '/dashboard'
+    dashboardUrl.search = ''
+    return NextResponse.redirect(dashboardUrl)
   }
 
   if (affiliateRef) {
