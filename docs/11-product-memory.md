@@ -207,6 +207,8 @@ ser aplicada; depois o dono deve abrir `/admin/affiliates` e sincronizar/criar
 
 Admin default: `ADMIN_EMAILS` permite override por env var, mas o fallback do
 código inclui `eosoffgrid@gmail.com` e `paulolibanionetousa@gmail.com`.
+Settings consulta `/api/admin/status`; quando `isAdmin=true`, mostra links para
+`/admin/affiliates`, `/admin/gift-codes` e `/admin/edu`.
 
 ---
 

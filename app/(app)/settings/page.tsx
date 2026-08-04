@@ -39,6 +39,12 @@ const PREMIUM_FEATURES: FeatureRow[] = [
   { key: 'settings.planFeatures.exportar_ficha', requiredPlan: 'premium' },
 ]
 
+const ADMIN_LINKS = [
+  { href: '/admin/affiliates', pt: 'Afiliados', en: 'Affiliates', notePt: 'Criar links, sincronizar Stripe e ver comissão owed', noteEn: 'Create links, sync Stripe and view owed commission' },
+  { href: '/admin/gift-codes', pt: 'Códigos presente', en: 'Gift codes', notePt: 'Criar acessos temporários sem Stripe', noteEn: 'Create temporary non-Stripe access codes' },
+  { href: '/admin/edu', pt: 'EDU', en: 'EDU', notePt: 'Criar e editar conteúdo educativo', noteEn: 'Create and edit educational content' },
+] as const
+
 const PLAN_NAME_KEY: Record<Plan, MessageKey> = {
   free: 'settings.planFree',
   family: 'settings.planFamily',
@@ -61,6 +67,7 @@ export default function SettingsPage() {
   const [pushBusy, setPushBusy] = useState(false)
   const [pushMsg, setPushMsg] = useState('')
   const [email, setEmail] = useState<string | null>(null)
+  const [isAdmin, setIsAdmin] = useState(false)
   const [busy, setBusy] = useState<null | 'logout' | 'delete'>(null)
   const [billingBusy, setBillingBusy] = useState<null | Plan | 'portal'>(null)
   const [billingMsg, setBillingMsg] = useState<'success' | 'cancelled' | null>(null)
@@ -80,6 +87,13 @@ export default function SettingsPage() {
     createClient().auth.getUser()
       .then(({ data }) => setEmail(data.user?.email ?? null))
       .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    fetch('/api/admin/status', { cache: 'no-store' })
+      .then(r => (r.ok ? r.json() : null))
+      .then(data => setIsAdmin(Boolean(data?.isAdmin)))
+      .catch(() => setIsAdmin(false))
   }, [])
 
   useEffect(() => {
@@ -392,6 +406,26 @@ export default function SettingsPage() {
           </div>
         </div>
 
+        {isAdmin && (
+          <div style={{ ...styles.card, marginTop: 20 }}>
+            <h2 style={styles.sectionTitle}>{en ? 'Admin' : 'Admin'}</h2>
+            <p style={styles.help}>
+              {en ? 'Owner-only configuration surfaces.' : 'Configurações restritas ao dono/admin do app.'}
+            </p>
+            <div style={styles.adminLinks}>
+              {ADMIN_LINKS.map(link => (
+                <Link key={link.href} href={link.href} style={{ ...styles.accountBtn, textDecoration: 'none' }}>
+                  <span>
+                    <strong style={{ display: 'block' }}>{en ? link.en : link.pt}</strong>
+                    <small style={styles.adminLinkNote}>{en ? link.noteEn : link.notePt}</small>
+                  </span>
+                  <span aria-hidden>→</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Push notifications */}
         {'serviceWorker' in (typeof navigator !== 'undefined' ? navigator : {}) && (
           <div style={{ ...styles.card, marginTop: 20 }}>
@@ -567,4 +601,6 @@ const styles: Record<string, React.CSSProperties> = {
   accountLabel: { color: '#71717a', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' },
   accountValue: { color: '#f5f5f5', fontSize: 15, fontWeight: 600, wordBreak: 'break-all' },
   accountBtn: { width: '100%', minHeight: 52, padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, color: '#f5f5f5', background: '#111116', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 14, cursor: 'pointer', fontSize: 15, fontWeight: 600, fontFamily: 'inherit' },
+  adminLinks: { display: 'grid', gap: 10 },
+  adminLinkNote: { display: 'block', marginTop: 3, color: '#a1a1aa', fontSize: 12, fontWeight: 400, lineHeight: 1.35 },
 }
