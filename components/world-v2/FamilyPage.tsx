@@ -60,6 +60,8 @@ type CircleMember = {
 /** Uma pessoa, costurada das três fontes. */
 type Person = {
   key: string
+  /** Id do cadastro, quando a pessoa veio do roster. Permite editar ESTA pessoa. */
+  rosterId: string | null
   name: string
   isMe: boolean
   /** Conta no EOS — sem ela não há posição nem mensagem possível. */
@@ -87,6 +89,8 @@ const COPY = {
     autonomy: 'Autonomia da casa',
     pantries: 'despensas somadas',
     inHouse: 'na casa (os demais não confirmaram morar junto)',
+    reachableTitle: 'No círculo, fora da casa',
+    reachableWhy: 'Estas pessoas você alcança, mas o que elas têm não está na sua casa — por isso não entra na conta de autonomia.',
     days: 'dias',
     now: 'agora',
     profileOnly: 'endereço do perfil, não posição atual',
@@ -112,6 +116,7 @@ const COPY = {
     failed: 'Não entregou',
     noDevice: 'Ela ainda não ativou os alertas no aparelho.',
     manage: 'Editar cadastro',
+    editPerson: 'Editar ou excluir',
     empty: 'Ninguém cadastrado ainda.',
     emptyWhy: 'O EOS calcula água, comida e rotas por PESSOA. Sem saber quem mora aqui, todas as contas ficam erradas.',
     add: 'Cadastrar a família',
@@ -129,6 +134,8 @@ const COPY = {
     autonomy: 'Household autonomy',
     pantries: 'pantries pooled',
     inHouse: 'in the house (the others have not confirmed living together)',
+    reachableTitle: 'In the circle, outside the house',
+    reachableWhy: 'You can reach these people, but what they have is not in your house — so it does not count toward autonomy.',
     days: 'days',
     now: 'now',
     profileOnly: 'profile address, not a current position',
@@ -154,6 +161,7 @@ const COPY = {
     failed: 'Not delivered',
     noDevice: 'They have not enabled alerts on their device yet.',
     manage: 'Edit records',
+    editPerson: 'Edit or delete',
     empty: 'Nobody recorded yet.',
     emptyWhy: 'EOS computes water, food and routes PER PERSON. Without knowing who lives here, every number is wrong.',
     add: 'Record the family',
@@ -192,6 +200,18 @@ export default function FamilyPage() {
   const [houseSize, setHouseSize] = useState<number | null>(null)
   /** De quantas contas o inventário somado veio. */
   const [contributors, setContributors] = useState(0)
+  /**
+   * No círculo, fora da casa.
+   *
+   * Aparece com distância e NUNCA somado: a água que está a dois quilômetros
+   * não está na sua casa. Somar as duas produz um número de autonomia que
+   * parece bom e não existe.
+   */
+  const [reachable, setReachable] = useState<Array<{
+    userId: string; name: string; circleName: string
+    lat: number | null; lng: number | null
+    sharedInventory: { waterLiters: number; foodDays: number } | null
+  }>>([])
   const [myCoords, setMyCoords] = useState<{ lat: number; lng: number } | null>(null)
   /** O círculo desta casa — é dele que sai o link de convite (D-112). */
   const [circleInfo, setCircleInfo] = useState<{ id: string; name: string; inviteCode: string } | null>(null)
@@ -236,6 +256,7 @@ export default function FamilyPage() {
       setAutonomy(typeof casa?.autonomyDays === 'number' ? casa.autonomyDays : null)
       setHouseSize(typeof casa?.size === 'number' ? casa.size : null)
       setContributors(casa?.inventory?.contributors ?? 0)
+      setReachable(Array.isArray(casa?.reachable) ? casa.reachable : [])
       setFailed(false)
     } catch {
       setFailed(true)
@@ -272,6 +293,7 @@ export default function FamilyPage() {
       if (account) used.add(account.user_id)
       return {
         key: `r:${r.id}`,
+        rosterId: r.id,
         name: r.name,
         isMe: account?.is_me ?? false,
         userId: account?.user_id ?? null,
@@ -293,6 +315,7 @@ export default function FamilyPage() {
       .filter(m => !used.has(m.user_id))
       .map(m => ({
         key: `c:${m.user_id}`,
+        rosterId: null,
         name: m.is_me ? (pt ? 'Você' : 'You') : m.name,
         isMe: m.is_me,
         userId: m.user_id,
@@ -438,6 +461,21 @@ export default function FamilyPage() {
                     {person.role ?? c.noRole}
                   </p>
 
+                  {/*
+                    A ação de mexer nesta pessoa fica NA pessoa.
+                    Antes existia só um "Editar cadastro" genérico no rodapé da
+                    tela, três níveis acima da pessoa que se queria editar — o
+                    dono relatou não conseguir excluir alguém daqui. Controle
+                    perto do que ele afeta.
+                  */}
+                  {person.rosterId && (
+                    <div className="acts">
+                      <Link className="wv2-pill" href={`/family/cadastro?editar=${person.rosterId}`}>
+                        {c.editPerson}
+                      </Link>
+                    </div>
+                  )}
+
                   {(person.lat !== null || person.userId) && !person.isMe && (
                     <div className="acts">
                       {person.lat !== null && person.lng !== null && (
@@ -510,6 +548,48 @@ export default function FamilyPage() {
                 <p className="t-foot ink-3">{c.noNeeds}</p>
               )}
             </Card>
+
+            {/*
+              O círculo, separado da casa e com a distância na frente.
+              Foi a escolha do dono quando perguntei: somar o círculo inteiro
+              daria um número maior e otimista; aqui o recurso do vizinho é
+              mostrado como ALCANÇÁVEL, com quanto custa alcançá-lo.
+            */}
+            {reachable.length > 0 && (
+              <>
+                <SectionLabel>{c.reachableTitle}</SectionLabel>
+                <Card>
+                  <p className="t-foot ink-3">{c.reachableWhy}</p>
+                  <ul className="family-reachable">
+                    {reachable.map(r => {
+                      const km = myCoords && r.lat !== null && r.lng !== null
+                        ? distanceKm(myCoords, { lat: r.lat, lng: r.lng })
+                        : null
+                      return (
+                        <li key={r.userId} className="t-body">
+                          <b>{r.name}</b>
+                          <span className="ink-3"> · {r.circleName}</span>
+                          {km !== null && <span className="ink-2"> · {formatDistance(km, pt)}</span>}
+                          {r.sharedInventory && (
+                            <span className="ink-2"> · {r.sharedInventory.waterLiters} L</span>
+                          )}
+                          {r.lat !== null && r.lng !== null && (
+                            <a
+                              className="wv2-pill"
+                              href={directionsUrl({ lat: r.lat, lng: r.lng }, r.name)}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              {c.route} {r.name.split(' ')[0]}
+                            </a>
+                          )}
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </Card>
+              </>
+            )}
 
             <div className="family-foot">
               {circleInfo && (

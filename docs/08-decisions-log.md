@@ -360,6 +360,53 @@ como rota protegida; usuário não logado ia para login, o login ignorava
 
 ---
 
+## D-123 Fase 2 — a casa se monta na tela, e os dois consentimentos param de usar a mesma palavra
+
+**O que o dono viu.** Abrindo Círculos, o rótulo "Família íntima" nomeava
+**acesso à ficha médica**. Ele leu como "mora na mesma casa" — que é o que o
+nome diz. A confusão que ele relatou não era dele: a tela usava uma palavra para
+outra coisa.
+
+Agora cada rótulo diz o que é: 🏠 *Mora nesta casa* e ✚ *Ficha compartilhada*.
+São duas linhas no mesmo cartão, com botões distintos, porque são dois
+consentimentos distintos.
+
+**Quem pode fazer o quê.** Pedir, qualquer membro do círculo. **Confirmar, só a
+própria pessoa, na conta dela.** Sair, idem. A regra vive no servidor —
+`app/api/circles/[id]/household/route.ts` — e a tela apenas não oferece o botão
+errado. Uma tela que esconde o botão sem o servidor recusar é decoração.
+
+**O erro 23505 vira frase.** O índice único que garante uma casa por pessoa
+devolve um código cru; a rota o traduz para *"Esta pessoa já confirmou morar em
+outra casa. Ela precisa sair da outra antes."* — que é acionável. E um UPDATE
+que não encontra ninguém devolve **404**, não sucesso: foi exatamente esse
+silêncio do PostgREST que escondeu o bug de papéis do D-077 por meses.
+
+**O círculo aparece com distância, nunca somado.** Escolha do dono entre as duas
+opções que apresentei. A água que está a dois quilômetros não está na sua casa;
+mostrá-la junto produziria uma autonomia que parece boa e não existe. A seção
+"No círculo, fora da casa" traz nome, distância e rota.
+
+**Um defeito de navegação que o dono achou usando.** *"Não tem como eu excluir
+esse EOS dessa tela."* Estava certo: a única saída era um "Editar cadastro"
+genérico no rodapé, três níveis acima da pessoa que se queria mexer. Agora cada
+pessoa carrega a própria ação, e o link leva direto a ela
+(`/family/cadastro?editar=<id>`). Controle perto do que ele afeta.
+
+O build cobrou a fronteira de Suspense do `useSearchParams()` antes que isso
+virasse uma página em branco no telefone.
+
+**Prova.** `household-consent-test`, 6/6, com navegador de verdade e três contas.
+Os dois controles negativos são o motivo do teste existir: **quem pediu recebe
+403 ao tentar confirmar pela outra pessoa**, e quem não está no círculo recebe
+403 sem nada mudar no banco. Os outros quatro casos poderiam ser feitos direto
+no banco; esses dois não — são sobre quem tem permissão de dizer o quê.
+
+A medição que resume a fase: `autonomia 4,00 → 5,00 dias` **no momento da
+confirmação**, e de volta a 4,00 ao sair.
+
+---
+
 ## D-123 — A casa passa a existir (Fase 1: a fonte única)
 
 **Contexto.** O dono disse que o conceito estava confuso e caro: *"por que eu

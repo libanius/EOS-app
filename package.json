@@ -31,6 +31,7 @@
     "test:grouping": "npx tsx scripts/error-grouping-test.mjs",
     "test:roster": "node scripts/roster-page-test.mjs",
     "test:household": "npx tsx scripts/household-test.mjs",
+    "test:consent": "npx tsx scripts/household-consent-test.mjs",
     "bench:rag": "node scripts/rag-bench.mjs"
   },
   "dependencies": {

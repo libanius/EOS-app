@@ -3455,3 +3455,18 @@
   .wv2-roster-page .roster-input,
   .wv2-roster-page .roster-textarea { border-color: var(--sep-strong); background: #0c0c0e; }
 }
+
+/* D-123: o círculo aparece separado da casa, com a distância na frente. */
+.wv2-family-page .family-reachable {
+  list-style: none;
+  margin: var(--s3) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--s3);
+}
+.wv2-family-page .family-reachable li {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  flex-wrap: wrap;
+}

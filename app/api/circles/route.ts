@@ -24,6 +24,8 @@ type CircleMembershipRow = {
   share_inventory?: boolean | null
   shared_fields?: string[] | null
   family_access_status?: FamilyAccessStatus | null
+  household_status?: string | null
+  household_requested_by?: string | null
   family_access_requested_at?: string | null
   family_access_requested_by?: string | null
   family_access_approved_at?: string | null
@@ -79,7 +81,7 @@ export async function GET() {
 
   const { data: memberships, error: mErr } = await supabase
     .from('circle_members')
-    .select('circle_id, role, share_inventory, shared_fields, family_access_status, family_access_requested_at, family_access_requested_by, family_access_approved_at, family_access_approved_by')
+    .select('circle_id, role, share_inventory, shared_fields, family_access_status, family_access_requested_at, family_access_requested_by, family_access_approved_at, family_access_approved_by, household_status, household_requested_by')
     .eq('user_id', user.id)
   let myMemberships = memberships as CircleMembershipRow[] | null
   if (mErr) {
@@ -107,7 +109,7 @@ export async function GET() {
     const [{ data: pooled }, { data: members }] = await Promise.all([
       supabase.rpc('circle_pooled_inventory', { circle_uuid: c.id }),
       supabase.from('circle_members')
-        .select('user_id, role, share_inventory, shared_fields, family_access_status, family_access_requested_at, family_access_requested_by, family_access_approved_at, family_access_approved_by')
+        .select('user_id, role, share_inventory, shared_fields, family_access_status, family_access_requested_at, family_access_requested_by, family_access_approved_at, family_access_approved_by, household_status, household_requested_by')
         .eq('circle_id', c.id),
     ])
     let circleMembers = members as CircleMembershipRow[] | null
@@ -201,6 +203,12 @@ export async function GET() {
           family_access_requested_by: (m.family_access_requested_by as string | undefined) ?? null,
           family_access_approved_at: (m.family_access_approved_at as string | undefined) ?? null,
           family_access_approved_by: (m.family_access_approved_by as string | undefined) ?? null,
+          /**
+           * Mora na mesma casa (D-123). Consentimento SEPARADO do de ficha
+           * médica: este entra na conta de água, aquele abre o prontuário.
+           */
+          household_status: ((m.household_status as string | undefined) ?? 'none'),
+          household_requested_by: (m.household_requested_by as string | undefined) ?? null,
           is_me: isMe,
         }
       }),

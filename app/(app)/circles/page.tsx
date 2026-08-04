@@ -47,6 +47,9 @@ interface CircleMember {
   family_access_requested_by: string | null
   family_access_approved_at: string | null
   family_access_approved_by: string | null
+  /** Mora na mesma casa (D-123). Nada a ver com a ficha médica. */
+  household_status: 'none' | 'requested' | 'confirmed'
+  household_requested_by: string | null
   emergency_contact_name: string | null
   emergency_contact_phone: string | null
 }
@@ -299,6 +302,31 @@ export default function CirclesPage() {
     } catch (e) { setError(e instanceof Error ? e.message : t('common.error')) }
     finally { setBusy(false) }
   }, [load, t])
+
+  /**
+   * Mora comigo (D-123).
+   *
+   * Pedir qualquer um do círculo pode; **confirmar, só a própria pessoa** — é o
+   * que impede alguém de marcar o vizinho e passar a contar a água dele. O
+   * servidor repete a regra; aqui a tela só não oferece o botão errado.
+   */
+  const householdAction = async (circleId: string, userId: string, action: 'pedir' | 'confirmar' | 'sair') => {
+    setBusy(true)
+    try {
+      const res = await fetch(`/api/circles/${circleId}/household`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, userId }),
+      })
+      const data = await res.json().catch(() => ({}))
+      // Erro dito na tela: "já mora em outra casa" é uma informação acionável,
+      // e some se virar só um estado que não mudou.
+      if (!res.ok) setError(data.error ?? 'Não foi possível mudar quem mora na casa.')
+      else await load()
+    } finally {
+      setBusy(false)
+    }
+  }
 
   const changeRole = useCallback(async (circleId: string, userId: string, role: CircleRole) => {
     setBusy(true)
@@ -678,20 +706,35 @@ export default function CirclesPage() {
                   </div>
                   <div style={{ display: 'grid', gap: 6 }}>
                     {c.members.map(m => {
+                      /*
+                       * D-123: os dois consentimentos deixam de usar a mesma
+                       * palavra. "Família íntima" nomeava ACESSO À FICHA
+                       * MÉDICA, e o dono leu como "mora na mesma casa" — que é
+                       * o que o nome diz. Agora cada rótulo diz o que é.
+                       */
                       const familyLabels: Record<FamilyAccessStatus, { label: string; color: string }> = {
-                        none: { label: 'Círculo', color: '#71717a' },
-                        requested: { label: 'Família solicitada', color: '#eab308' },
-                        approved: { label: 'Família íntima', color: '#22c55e' },
-                        denied: { label: 'Família negada', color: '#ef4444' },
+                        none: { label: 'Ficha não compartilhada', color: '#71717a' },
+                        requested: { label: 'Ficha solicitada', color: '#eab308' },
+                        approved: { label: 'Ficha compartilhada', color: '#22c55e' },
+                        denied: { label: 'Ficha recusada', color: '#ef4444' },
                       }
-                      const family = m.is_me ? { label: 'Sua ficha', color: '#22c55e' } : familyLabels[m.family_access_status ?? 'none']
+                      const family = m.is_me ? { label: 'Sua ficha, seu controle', color: '#22c55e' } : familyLabels[m.family_access_status ?? 'none']
+                      const casaLabels: Record<string, { label: string; color: string }> = {
+                        none: { label: 'Não mora nesta casa', color: '#71717a' },
+                        requested: { label: 'Aguardando confirmar que mora aqui', color: '#eab308' },
+                        confirmed: { label: 'Mora nesta casa', color: '#22c55e' },
+                      }
+                      const casa = casaLabels[m.household_status ?? 'none']
                       return (
                       <div key={m.user_id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: '#0f0f17', borderRadius: 8, flexWrap: 'wrap' }}>
                         <span style={{ flex: '1 1 160px', fontSize: 14 }}>
                           {m.name}
                           {m.is_me && <span style={{ fontSize: 11, color: '#8a8a99', marginLeft: 6 }}>(você)</span>}
-                          <span style={{ display: 'block', marginTop: 3, fontSize: 10, fontWeight: 800, letterSpacing: 0.7, textTransform: 'uppercase', color: family.color }}>
-                            {family.label}
+                          <span style={{ display: 'block', marginTop: 3, fontSize: 10, fontWeight: 800, letterSpacing: 0.7, textTransform: 'uppercase', color: casa.color }}>
+                            🏠 {casa.label}
+                          </span>
+                          <span style={{ display: 'block', marginTop: 2, fontSize: 10, fontWeight: 700, letterSpacing: 0.7, textTransform: 'uppercase', color: family.color }}>
+                            ✚ {family.label}
                           </span>
                         </span>
                         {c.is_admin && !m.is_me ? (
@@ -708,7 +751,7 @@ export default function CirclesPage() {
                             </select>
                             {m.family_access_status === 'none' || m.family_access_status === 'denied' ? (
                               <button onClick={() => inviteFamilyAccess(c.id, m.user_id, 'requested')} disabled={busy} style={{ fontSize: 11, padding: '2px 8px', background: 'rgba(34,197,94,0.12)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.35)', borderRadius: 4, cursor: 'pointer' }}>
-                                Convidar Família íntima
+                                Pedir acesso à ficha
                               </button>
                             ) : m.family_access_status === 'requested' ? (
                               <span style={{ fontSize: 11, color: '#eab308', padding: '2px 8px', background: 'rgba(234,179,8,0.08)', border: '1px solid rgba(234,179,8,0.25)', borderRadius: 6 }}>
@@ -716,8 +759,17 @@ export default function CirclesPage() {
                               </span>
                             ) : m.family_access_status === 'approved' ? (
                               <button onClick={() => inviteFamilyAccess(c.id, m.user_id, 'none')} disabled={busy} style={{ fontSize: 11, padding: '2px 8px', background: 'transparent', color: '#eab308', border: '1px solid rgba(234,179,8,0.4)', borderRadius: 4, cursor: 'pointer' }}>
-                                Remover família
+                                Deixar de ver a ficha
                               </button>
+                            ) : null}
+                            {m.household_status === 'none' ? (
+                              <button onClick={() => householdAction(c.id, m.user_id, 'pedir')} disabled={busy} style={{ fontSize: 11, padding: '2px 8px', background: 'rgba(59,130,246,0.12)', color: '#93c5fd', border: '1px solid rgba(59,130,246,0.35)', borderRadius: 4, cursor: 'pointer' }}>
+                                🏠 Mora comigo?
+                              </button>
+                            ) : m.household_status === 'requested' ? (
+                              <span style={{ fontSize: 11, color: '#eab308', padding: '2px 8px', background: 'rgba(234,179,8,0.08)', border: '1px solid rgba(234,179,8,0.25)', borderRadius: 6 }}>
+                                Só ela pode confirmar
+                              </span>
                             ) : null}
                             <button onClick={() => removeMember(c.id, m.user_id)} disabled={busy} style={{ fontSize: 11, padding: '2px 8px', background: 'transparent', color: '#ef4444', border: '1px solid rgba(239,68,68,0.4)', borderRadius: 4, cursor: 'pointer' }}>
                               ×
@@ -729,20 +781,38 @@ export default function CirclesPage() {
                           </span>
                         )}
                         {m.is_me && (
-                          <span style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                          <span style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap' }}>
+                            {m.household_status === 'requested' ? (
+                              <>
+                                <button onClick={() => householdAction(c.id, m.user_id, 'confirmar')} disabled={busy} style={{ fontSize: 11, padding: '2px 8px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 4, fontWeight: 700, cursor: 'pointer' }}>
+                                  🏠 Sim, moro aqui
+                                </button>
+                                <button onClick={() => householdAction(c.id, m.user_id, 'sair')} disabled={busy} style={{ fontSize: 11, padding: '2px 8px', background: 'transparent', color: '#8a8a99', border: '1px solid #2a2a3a', borderRadius: 4, cursor: 'pointer' }}>
+                                  Não moro
+                                </button>
+                              </>
+                            ) : m.household_status === 'confirmed' ? (
+                              <button onClick={() => householdAction(c.id, m.user_id, 'sair')} disabled={busy} style={{ fontSize: 11, padding: '2px 8px', background: 'transparent', color: '#eab308', border: '1px solid rgba(234,179,8,0.4)', borderRadius: 4, cursor: 'pointer' }}>
+                                Sair desta casa
+                              </button>
+                            ) : (
+                              <button onClick={() => householdAction(c.id, m.user_id, 'confirmar')} disabled={busy} style={{ fontSize: 11, padding: '2px 8px', background: 'rgba(59,130,246,0.12)', color: '#93c5fd', border: '1px solid rgba(59,130,246,0.35)', borderRadius: 4, cursor: 'pointer' }}>
+                                🏠 Eu moro nesta casa
+                              </button>
+                            )}
                             {m.family_access_status === 'approved' ? (
                               <>
                                 <span style={{ fontSize: 11, color: '#22c55e', padding: '2px 8px', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 6 }}>
                                   Ficha liberada ao Pilot da família
                                 </span>
                                 <button onClick={() => respondFamilyAccess(c.id, 'leave')} disabled={busy} style={{ fontSize: 11, padding: '2px 8px', background: 'transparent', color: '#eab308', border: '1px solid rgba(234,179,8,0.4)', borderRadius: 4, cursor: 'pointer' }}>
-                                  Sair da Família íntima
+                                  Parar de compartilhar a ficha
                                 </button>
                               </>
                             ) : m.family_access_status === 'requested' ? (
                               <>
                                 <button onClick={() => respondFamilyAccess(c.id, 'accept')} disabled={busy} style={{ fontSize: 11, padding: '2px 8px', background: '#22c55e', color: '#0a0a0f', border: 'none', borderRadius: 4, fontWeight: 700, cursor: 'pointer' }}>
-                                  Aceitar Família íntima
+                                  Compartilhar minha ficha
                                 </button>
                                 <button onClick={() => respondFamilyAccess(c.id, 'deny')} disabled={busy} style={{ fontSize: 11, padding: '2px 8px', background: 'transparent', color: '#ef4444', border: '1px solid rgba(239,68,68,0.4)', borderRadius: 4, cursor: 'pointer' }}>
                                   Recusar

@@ -27,6 +27,7 @@
 
 import { useCallback, useEffect, useMemo, useState, useTransition } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import NumericStepper from '@/components/NumericStepper'
 import QRScanner from '@/components/QRScanner'
 import { parseScannedValue } from '@/lib/qr-parse'
@@ -231,6 +232,7 @@ function faltando(m: Member, c: { missingAge: string; missingHealth: string }): 
 
 export default function RosterPage() {
   const { language } = useLanguage()
+  const params = useSearchParams()
   const c = COPY[language]
 
   const [members, setMembers] = useState<Member[]>([])
@@ -279,6 +281,26 @@ export default function RosterPage() {
   }, [])
 
   useEffect(() => { void load() }, [load])
+
+  /*
+   * `?editar=<id>` abre direto a pessoa.
+   *
+   * A aba Família manda para cá com o id de quem se quer mexer. Sem isto, o
+   * usuário chegaria numa lista e teria que procurar de novo a pessoa em que
+   * acabou de tocar — trabalho que a tela anterior já sabia evitar.
+   */
+  const [abriuPorLink, setAbriuPorLink] = useState(false)
+  useEffect(() => {
+    if (abriuPorLink || loading) return
+    const alvo = params?.get('editar')
+    if (!alvo) return
+    const m = members.find(x => x.id === alvo)
+    if (m) {
+      setAbriuPorLink(true)
+      openEdit(m)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params, members, loading, abriuPorLink])
 
   /**
    * Quanto o teclado está cobrindo.

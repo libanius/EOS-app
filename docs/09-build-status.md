@@ -15,7 +15,7 @@
 | | **D-120 / EDU-T06 — Curadoria/tradução das ações EDU (2026-08-04)** |
 | | **D-119 / EDU-T05 — EDU aprovado gera ações confirmáveis de Preparação (2026-08-04)** |
 | | **D-118 / LA-T04 — Rate limit distribuído + health/error log (2026-08-04)** |
-| | **D-123 / HH-T01 — Modelo da casa, fonte única (2026-08-04) — AGUARDA MIGRATION** |
+| | **D-123 / HH-T01+T02 — Modelo da casa: fonte única + marcação com confirmação (2026-08-04)** |
 | | **D-122 / FAM-T03 — Cadastro da família reconstruído; `scripts/` entra no lint (2026-08-04)** |
 | | **D-121 / SEC-T03 — Agrupamento automático de defeitos, sem Sentry (2026-08-04)** |
 | | **D-120 / CI-T01 — Portão automático no `main`: tipos, lint, testes e build (2026-08-04)** |
