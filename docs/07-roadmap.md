@@ -94,7 +94,7 @@ product phase sequenced.
 | LA-T03 | Optional hazard provider keys (WeatherKit/Xweather/etc.) | DRAFT | Not required for launch; keyless providers already live |
 | LA-T04 | Upstash Redis rate-limit validation | DRAFT | App currently falls back to in-memory limiter |
 | LA-T05 | Gift codes (sem Stripe): criação owner-only + resgate + expiração lazy | ✅ COMPLETE | 2026-07-22 — D-061; `/admin/gift-codes` (ADMIN_EMAILS), `/api/billing/redeem`, `lib/plan.ts`, resgate em Settings |
-| LA-T06 | Códigos de afiliado (Stripe): cupom "100% off · once" + promotion codes | PENDING | falta params do dono + Stripe Live key; checkout já aceita promo code |
+| LA-T06 | Códigos de afiliado (Stripe): cupom "100% off · once" + promotion codes | BLOCKED | falta params do dono + Stripe Live key; checkout já aceita promo code |
 
 ---
 
@@ -131,7 +131,7 @@ product phase sequenced.
 | WV2-T04 | Promoção a `/dashboard`: redirects de entrada, botão central no BottomNav, legacy preservado | ✅ COMPLETE | 2026-07-27 — D-063 |
 | WV2-T05 | Validação de produção da v2: E2E de navegador, a11y/perf medidos, custo de provider, revisão de privacidade/proveniência | ✅ COMPLETE | 2026-08-04 — D-097 / `docs/29-world-v2-production-validation.md`; `npm run test:world-v2` audita `/dashboard` em mobile/desktop com Playwright, mede load/bytes/recursos e valida a11y/proveniência básica. |
 | WV2-T06 | Rótulos dos controles de mapa no toque | ✅ COMPLETE | 2026-07-29 — legenda visível sob cada ícone (Você / Atualizar / Painel). Toque não tem hover, então o rótulo passou a existir. |
-| WV2-T07 | Reconstruir features do HWD v1 sobre a v2 conforme demanda | PENDING | Camadas ao vivo, toggle de base, notificar círculo. Marcadores de família saíram daqui para a seção FAM. |
+| WV2-T07 | Reconciliar features do HWD v1 sobre a v2 conforme demanda | ✅ COMPLETE | 2026-08-04 — D-098. Camadas ao vivo e toggle de base já estão na v2; notificar círculo migrou para ações contextuais em `MemberSheet`/execução de plano; novos itens de mapa devem virar tarefas específicas. |
 
 ---
 

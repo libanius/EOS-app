@@ -177,6 +177,22 @@ atual usa fontes keyless, enquanto adapters pagos permanecem `not_configured`.
 
 ---
 
+## WV2-T07 foi absorvida por tarefas específicas (2026-08-04)
+
+D-098 fechou WV2-T07 sem código novo. As features HWD v1 que ainda importavam já
+estão na World v2 ou migraram para fluxos mais precisos: camadas ao vivo e base
+dark/satellite vivem em `WorldV2.tsx`; notificar círculo não é mais botão
+genérico do HUD, mas ação contextual em `MemberSheet` e no executor de plano;
+marcadores de família pertencem à trilha FAM. Daqui para frente, não usar
+"copiar HWD v1" como tarefa aberta: cada necessidade de mapa deve virar tarefa
+específica no roadmap.
+
+O próximo item PENDING virou bloqueio operacional: LA-T06 precisa dos parâmetros
+do dono/Stripe. Sem isso, não há task PENDING executável; promover LA-T04 ou
+outra frente de DRAFT exige decisão nova.
+
+---
+
 ## Texto livre do simulador preenche painéis, não roda sozinho (2026-08-03)
 
 D-094 / SIM-T09 adicionou `POST /api/simulation/parse`. A rota usa OpenAI para

@@ -4,6 +4,37 @@
 
 ---
 
+## D-098 — WV2-T07 foi absorvida por entregas específicas da v2
+
+**Date**: 2026-08-04
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: WV2-T07 existia para reconstruir, sob demanda, features úteis do
+HWD v1 sobre a World v2. As demandas explícitas eram camadas ao vivo, toggle de
+base e notificar círculo. Durante as fases seguintes, essas capacidades deixaram
+de ser uma única tarefa genérica e foram absorvidas por entregas mais
+específicas.
+
+**Decision**:
+
+1. Camadas ao vivo e toggle de base são parte da World v2 atual:
+   `WorldV2.tsx` controla radar, alertas, vento, ciclone, flood, surge,
+   wind impact, tornado e base dark/satellite.
+2. Notificar círculo deixou de ser ação genérica do HUD e virou ação contextual:
+   `MemberSheet` envia pings/presets e o executor de plano alerta o círculo ao
+   iniciar/cancelar plano.
+3. Marcadores de família foram tratados na trilha FAM, não em WV2-T07.
+4. O HWD v1 permanece referência histórica; a v2 é a superfície canônica.
+
+**Consequences**:
+
+- WV2-T07 fecha sem código novo.
+- Futuras features de mapa entram como tarefas específicas, não como "copiar HWD
+  v1".
+- O próximo item PENDING é LA-T06, mas depende de parâmetros do dono/Stripe.
+
+---
+
 ## D-097 — World v2 tem validação reproduzível de produção
 
 **Date**: 2026-08-04
