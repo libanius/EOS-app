@@ -160,6 +160,10 @@ círculo aberto. O Inbox também voltou a usar navegação hard para o `href` de
 de disparar `mark_read` com `keepalive`, reduzindo dependência do estado interno
 do App Router/PWA.
 
+D-116 / NAV-T01 fixa a ordem operacional do BottomNav: Clima é o primeiro ícone
+da esquerda para a direita; Cenário é o último. World continua central; Comms
+mantém o comportamento de abrir Inbox quando houver badge.
+
 ---
 
 ## EDU é catálogo aprovado antes de virar RAG (2026-08-03)

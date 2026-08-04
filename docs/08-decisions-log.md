@@ -360,6 +360,31 @@ como rota protegida; usuário não logado ia para login, o login ignorava
 
 ---
 
+## D-116 — BottomNav prioriza Clima no primeiro item
+
+**Date**: 2026-08-04
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: O dono pediu para trocar as posições de Clima e Cenário no
+BottomNav. A preferência operacional é que Clima seja o primeiro ícone da
+esquerda para a direita, e Cenário seja o último ícone da esquerda para a
+direita.
+
+**Decision**:
+
+1. `nav.weather` passa a abrir a sequência do BottomNav.
+2. `nav.scenario` passa para o último item do BottomNav.
+3. O item central World/Dashboard permanece no mesmo lugar.
+4. Comms mantém a regra de Inbox quando houver badge.
+
+**Consequences**:
+
+- Não requer migration.
+- A ordem visual fica: Clima, Família, Preparação, World, Comms, Círculos,
+  Cenário.
+
+---
+
 ## D-115 — Notificação de mensagem também atualiza o chat
 
 **Date**: 2026-08-04

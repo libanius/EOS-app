@@ -10,7 +10,8 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Preparedness Engine (PREP/EDU/COMMS/ONB/PILOT) sobre Web/PWA |
-| **Last Completed Task** | **D-115 / COMMS-T10 — Notificação de mensagem também atualiza o chat (2026-08-04)** |
+| **Last Completed Task** | **D-116 / NAV-T01 — BottomNav com Clima primeiro e Cenário último (2026-08-04)** |
+| | **D-115 / COMMS-T10 — Notificação de mensagem também atualiza o chat (2026-08-04)** |
 | | **D-114 / COMMS-T09 — Clique do Inbox transporta imediatamente para mensagem (2026-08-04)** |
 | | **D-113 / COMMS-T08 — Inbox social Today/Last 7 days + chat enquadrado (2026-08-04)** |
 | | **D-112 / COMMS-T07 — Polimento Inbox/EDU pós-teste real (2026-08-04)** |
@@ -128,7 +129,7 @@
 | **Platform Alignment** | ✅ D-084: EOS é plataforma multi-superfície com um único core operacional. Web/PWA segue como superfície primária; iOS/Android serão adapters nativos futuros; Automotive é companion mode restrito; Mesh/LoRa segue bloqueado por G-05. `/mobile/` é template/conceitual, não app inicializado. |
 | **Fases pedidas pelo dono (2026-07-31)** | ✅ 1. Camadas de clima + rastreio de ciclone (D-078). 2. Reinventar a aba Família no design system da v2, com componentes dinâmicos. 3. WV2-T05 (a11y/perf), PLAN-T07 (Pilot propõe plano). |
 | **Next Task** | Operacional: aplicar `20260804015000_edu_view_count.sql`; configurar `CRON_SECRET` no Vercel antes de ativar o cron weather. |
-| **Build** | ✅ D-115 validado em 2026-08-04 com teste real Playwright de duas contas temporárias (6/6), `npm run type-check`, `npm run build`, `npm test -- --runInBand` (86/86) e `git diff --check`. |
+| **Build** | ✅ D-116 validado em 2026-08-04 com `npm run type-check`, `npm test -- --runInBand` (86/86), `npm run build` e `git diff --check`. |
 | **Plano execução** | ✅ PLAN-T08 MVP: tocar no próprio rosto no mapa abre comando familiar; "Executar plano" carrega um plano escolhido, monta passos determinísticos do host (círculo → gatilhos → papéis → pontos → rotas → encerramento) e alerta o círculo com push preset "Execute o plano da família agora". Sem nova tabela ainda: timeline compartilhada fica para `family_plan_executions`. |
 | **Plano múltiplo** | ✅ PLAN-T09: o círculo pode ter vários planos ativos; `/plan` alterna/cria planos por nome, o executor escolhe qual plano rodar, passos fixos do EOS saem da lista numerada e há cancelar/falso alarme. Migration `20260731000000_multiple_family_plans.sql` aplicada pelo dono. |
 | **Rotas do plano** | ✅ PLAN-T10: cada rota desenhada no plano agora tem handoff "Google Maps" com origem, destino e paradas intermediárias na ordem da `LineString`. O EOS mantém o combinado offline; Google Maps calcula ruas/ETA quando abrir. |

@@ -27,11 +27,13 @@ const HOME: NavItem = {
 
 const NAV_LEFT: NavItem[] = [
   {
-    href: '/scenario',
-    labelKey: 'nav.scenario',
+    href: '/weather',
+    labelKey: 'nav.weather',
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+        <circle cx="12" cy="8" r="4" />
+        <path d="M5.2 14.8A5 5 0 0 1 9 10h8a3 3 0 0 1 0 6H9a5 5 0 0 1-3.8-1.2z" />
+        <path d="M3 13h1M20 13h1M12 3V2M12 16v5M5.6 5.6l-.7-.7M19.1 19.1l-.7-.7M19.1 5.6l.7-.7M5.6 19.1l.7-.7" />
       </svg>
     ),
   },
@@ -88,13 +90,11 @@ const NAV_RIGHT: NavItem[] = [
     ),
   },
   {
-    href: '/weather',
-    labelKey: 'nav.weather',
+    href: '/scenario',
+    labelKey: 'nav.scenario',
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="8" r="4" />
-        <path d="M5.2 14.8A5 5 0 0 1 9 10h8a3 3 0 0 1 0 6H9a5 5 0 0 1-3.8-1.2z" />
-        <path d="M3 13h1M20 13h1M12 3V2M12 16v5M5.6 5.6l-.7-.7M19.1 19.1l-.7-.7M19.1 5.6l.7-.7M5.6 19.1l.7-.7" />
+        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
       </svg>
     ),
   },
