@@ -32,11 +32,15 @@ dispararam uma única vez, e nada na tela dizia isso.
    um "ok" silencioso. Foi exatamente o silêncio que deixou esta rota devolvendo
    401 por meses.
 
-**Consequences**: falta o dono adicionar `CRON_SECRET` nos secrets do GitHub —
-está anotado no build status. Enquanto isso, a varredura roda uma vez por dia.
+**Consequences**: verificado ponta a ponta em 2026-08-04 — segredo configurado
+nos dois lados e execução manual do workflow **verde** (`ping` 7 s).
 
-Um aviso de tempestade que chega uma vez por dia não é aviso, é boletim; a
-pendência existe para isso não ser esquecido como se estivesse resolvido.
+Fica um risco de operação que não existia antes desta decisão: o GitHub
+**desativa workflows agendados após 60 dias sem commits** no repositório. Se o
+projeto ficar parado, as notificações de clima param junto e **nada avisa** — a
+mesma classe de falha silenciosa que motivou este trabalho, agora por um caminho
+de infraestrutura. É o preço de não pagar Pro, e está anotado no build status
+para ser reavaliado, não esquecido.
 
 ---
 ## D-112 — Convite por link, e o que um link nunca pode fazer
