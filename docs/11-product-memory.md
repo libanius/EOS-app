@@ -202,8 +202,10 @@ coisa: gift code dá acesso sem Stripe; afiliado passa por Checkout, usa Stripe
 promotion code e só vira comissão quando o webhook recebe invoice com
 `amount_paid > 0`. O admin não faz payout automático; apenas calcula o valor
 owed para repasse manual. Migration `20260804000000_affiliate_codes.sql` precisa
-ser aplicada; depois o dono deve abrir `/admin/affiliates` e sincronizar/criar
-`EOSPARTNER` para gravar os IDs reais de Stripe coupon/promotion code.
+foi aplicada pelo dono em 2026-08-04 e verificada via service-role: as três
+tabelas respondem 200 e o seed `EOSPARTNER` está ativo. O próximo passo é o
+dono abrir `/admin/affiliates` e sincronizar/criar `EOSPARTNER` para gravar os
+IDs reais de Stripe coupon/promotion code.
 
 Admin default: `ADMIN_EMAILS` permite override por env var, mas o fallback do
 código inclui `eosoffgrid@gmail.com` e `paulolibanionetousa@gmail.com`.

@@ -68,7 +68,7 @@
 | | D-066 / PLAN-T00 — spec dos Planos de Emergência da Família (`docs/18-family-plans.md`) (2026-07-27) |
 | | D-064 / FAM-T01→T04 — localização familiar ao vivo, consentimento próprio e remoção dos mocks do mapa (2026-07-27) |
 | **Migration** | ✅ `20260730000000_family_plan_triggers.sql` aplicada pelo dono em 2026-07-30 e verificada. Gatilho gravando ponta a ponta no teste de navegador. |
-| **Migration** | ⏳ `20260804000000_affiliate_codes.sql` criada para LA-T06. Precisa ser aplicada no Supabase antes de `/admin/affiliates` persistir tracker/referrals/conversões em produção. |
+| **Migration** | ✅ `20260804000000_affiliate_codes.sql` aplicada pelo dono em 2026-08-04 e verificada via service-role (`affiliate_codes`, `affiliate_referrals`, `affiliate_conversions` respondem 200; `EOSPARTNER` ativo com tag `Teste Afiliado app`, Family/Premium, comissão 70%). |
 | **Migration** | ✅ `20260803003000_pilot_memory_events.sql` aplicada pelo dono em 2026-08-03 e verificada via service-role (`pilot_memory_events` responde 200; count=0). UPP-03 está operacional para salvar memória confirmada com auditoria. |
 | **Migration** | ✅ `20260803002000_edu_content.sql` aplicada pelo dono em 2026-08-03 e verificada via service-role (`edu_content` responde 200; count=0). EDU-T01 está operacional para catálogo persistente. |
 | **Migration** | ✅ `20260803001000_circle_radio_profiles.sql` aplicada pelo dono em 2026-08-03 e verificada via service-role (`circle_radio_profiles` responde 200; count=0). |
@@ -106,7 +106,7 @@
 | **In Progress** | — |
 | **Platform Alignment** | ✅ D-084: EOS é plataforma multi-superfície com um único core operacional. Web/PWA segue como superfície primária; iOS/Android serão adapters nativos futuros; Automotive é companion mode restrito; Mesh/LoRa segue bloqueado por G-05. `/mobile/` é template/conceitual, não app inicializado. |
 | **Fases pedidas pelo dono (2026-07-31)** | ✅ 1. Camadas de clima + rastreio de ciclone (D-078). 2. Reinventar a aba Família no design system da v2, com componentes dinâmicos. 3. WV2-T05 (a11y/perf), PLAN-T07 (Pilot propõe plano). |
-| **Next Task** | Operacional: aplicar migration `20260804000000_affiliate_codes.sql`, entrar em Settings com um e-mail admin, abrir `/admin/affiliates` pelo bloco Admin e sincronizar/criar `EOSPARTNER` no Stripe Live. Próximas frentes de produto devem ser promovidas de DRAFT por decisão explícita. |
+| **Next Task** | Operacional: entrar em Settings com um e-mail admin, abrir `/admin/affiliates` pelo bloco Admin e sincronizar/criar `EOSPARTNER` no Stripe Live. Próximas frentes de produto devem ser promovidas de DRAFT por decisão explícita. |
 | **Build** | ✅ Passing — `npm run type-check`, `npm run build`, `npm test -- --runInBand` (76/76) e `git diff --check` limpos para D-100 (2026-08-04). |
 | **Plano execução** | ✅ PLAN-T08 MVP: tocar no próprio rosto no mapa abre comando familiar; "Executar plano" carrega um plano escolhido, monta passos determinísticos do host (círculo → gatilhos → papéis → pontos → rotas → encerramento) e alerta o círculo com push preset "Execute o plano da família agora". Sem nova tabela ainda: timeline compartilhada fica para `family_plan_executions`. |
 | **Plano múltiplo** | ✅ PLAN-T09: o círculo pode ter vários planos ativos; `/plan` alterna/cria planos por nome, o executor escolhe qual plano rodar, passos fixos do EOS saem da lista numerada e há cancelar/falso alarme. Migration `20260731000000_multiple_family_plans.sql` aplicada pelo dono. |
