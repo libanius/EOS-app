@@ -16,6 +16,7 @@
  */
 
 import { createAdminClient } from '@/lib/supabase/admin'
+import { fingerprint } from '@/lib/error-fingerprint'
 
 /** Campos que não podem sair do processo, mesmo por acidente. */
 const PROIBIDOS = /(token|secret|key|password|authorization|cookie|ficha|medical|medication|coord|lat|lng)/i
@@ -55,12 +56,16 @@ export async function logError(
   try {
     const admin = createAdminClient()
     if (!admin) return
+    // A impressão digital entra DEPOIS do `sanitize`: ela é calculada aqui, não
+    // vem de quem chamou, e portanto não pode ser filtrada junto com o que o
+    // chamador mandou.
+    const fp = fingerprint(scope, message, stack)
     await admin.from('error_log').insert({
       scope: scope.slice(0, 120),
       message: message.slice(0, 2000),
       stack: stack?.slice(0, 6000) ?? null,
       user_id: extra?.userId ?? null,
-      context: sanitize(extra?.context),
+      context: { ...(sanitize(extra?.context) ?? {}), fp },
     })
   } catch {
     /* Ver o comentário acima: registrar nunca pode ser a causa de uma falha. */

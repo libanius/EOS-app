@@ -15,6 +15,7 @@
 | | **D-120 / EDU-T06 — Curadoria/tradução das ações EDU (2026-08-04)** |
 | | **D-119 / EDU-T05 — EDU aprovado gera ações confirmáveis de Preparação (2026-08-04)** |
 | | **D-118 / LA-T04 — Rate limit distribuído + health/error log (2026-08-04)** |
+| | **D-121 / SEC-T03 — Agrupamento automático de defeitos, sem Sentry (2026-08-04)** |
 | | **D-120 / CI-T01 — Portão automático no `main`: tipos, lint, testes e build (2026-08-04)** |
 | | **D-119 / SEC-T02 — Erro do navegador vira linha e o dono é avisado (2026-08-04)** |
 | | **D-118 / SEC-T01 — Limite de uso do Pilot no Postgres + `error_log` (2026-08-04) — migration aplicada e guardrails 5/5** |

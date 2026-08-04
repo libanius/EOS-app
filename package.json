@@ -27,6 +27,7 @@
     "test:invite": "node scripts/invite-link-test.mjs",
     "test:guardrails": "node scripts/guardrails-test.mjs",
     "test:client-error": "npx tsx scripts/client-error-test.mjs",
+    "test:grouping": "npx tsx scripts/error-grouping-test.mjs",
     "bench:rag": "node scripts/rag-bench.mjs"
   },
   "dependencies": {

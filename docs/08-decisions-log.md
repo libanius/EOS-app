@@ -360,6 +360,67 @@ como rota protegida; usuário não logado ia para login, o login ignorava
 
 ---
 
+## D-121 — Agrupamento automático de defeitos, sem Sentry
+
+**Contexto.** O D-119 fechou a visibilidade: erro de servidor e de navegador
+viram linha, e o dono é avisado. Sobrou a única capacidade que o Sentry tinha e
+o `error_log` não — **agrupar**. Quinhentas ocorrências do mesmo defeito são um
+defeito; listá-las uma a uma esconde exatamente o que interessa, que existem
+outros três embaixo delas.
+
+**Decisão.** Uma impressão digital calculada na gravação: escopo + mensagem
+normalizada + primeiro quadro da pilha que é código nosso. `Usuário 481 não
+encontrado` e `Usuário 902 não encontrado` são o mesmo defeito; `Failed to
+fetch` vindo de dois componentes diferentes não são.
+
+**Ela mora dentro do `context`, não em coluna nova.** Uma coluna pediria outra
+migration e mais uma ação do dono; o `jsonb` já está lá e o volume é pequeno.
+Promover `fp` a coluna indexada, se a tabela crescer, é uma migration de três
+linhas — e aí ela se paga.
+
+**Duas decisões de forma que o teste unitário justificou.** O número da linha do
+arquivo é descartado: se entrasse na conta, o mesmo defeito viraria um grupo
+novo toda vez que alguém editasse o arquivo acima dele. E a ordem das
+substituições importa — número solto por último, senão o `<n>` come os dígitos
+de dentro de um UUID e defeitos distintos colidem.
+
+**O aviso mudou de critério, e é aqui que o agrupamento se paga.** Antes era por
+ocorrência: um defeito em laço mandaria um aviso a cada quinze minutos até a
+pessoa desligar a notificação — e desligar o aviso é como se perde a
+visibilidade que ele existia para dar. Agora o critério é o *new issue* do
+Sentry: **avisa quando aparece uma impressão digital nunca vista**. Com uma
+trava de volume, porque um defeito CONHECIDO que passe a disparar dez mil vezes
+por hora também precisa acordar alguém.
+
+**E quando não avisa, diz que não avisou.** A resposta do cron sempre traz a
+contagem, mesmo em silêncio. "Nada aconteceu" e "aconteceu e eu decidi não te
+acordar" são coisas diferentes, e confundi-las é o defeito que este projeto mais
+repetiu.
+
+**`GET /api/errors`** responde a pergunta que se faz de verdade: quais problemas
+existem, qual é o pior, algum é novo. Protegida pelo `CRON_SECRET` igual ao
+`/api/health` — uma lista de onde o app quebra é um mapa para quem quiser
+atacá-lo. Não devolve pilha nem `user_id` por padrão.
+
+**Dois defeitos meus encontrados pelos próprios testes.** O unitário pegou que
+`timeout after 30000ms` não agrupava: não há fronteira de palavra entre o dígito
+e a unidade, então a regra genérica passava batido. E o teste de integração
+falhou porque **o limite de 10 por minuto do D-119 barrou metade dos envios** —
+o limite estava certo, o teste é que contava a menos em silêncio. Corrigido para
+respeitar a janela e interromper se um envio for barrado.
+
+**Prova.** `lib/__tests__/error-fingerprint.test.ts` (11 casos, metade juntando
+e metade separando — agrupar de mais é pior que agrupar de menos, porque some
+com o segundo defeito) e `scripts/error-grouping-test.mjs` 6/6 contra o banco de
+produção, incluindo a confirmação de que `context->>fp` funciona no PostgREST,
+que até então era suposição minha.
+
+**O que o Sentry ainda faria melhor.** *Source map* — a pilha do navegador
+continua minificada — e histórico por versão. Nenhum dos dois é a diferença
+entre ter e não ter diagnóstico.
+
+---
+
 ## D-120 — O `main` ganha um portão
 
 **Contexto.** Até aqui, a única verificação antes de um deploy era o que eu
