@@ -6,6 +6,9 @@ import { canAccess, type Plan } from '@/lib/feature-gates'
 import { QRCodeSVG } from 'qrcode.react'
 import QRScanner from '@/components/QRScanner'
 import InviteShare from '@/components/InviteShare'
+import { MemberSheet, CircleSettingsSheet } from '@/components/world-v2/CircleSheets'
+import { haptic } from '@/components/world-v2/motion'
+import '@/components/world-v2/world-v2.css'
 import { parseScannedValue } from '@/lib/qr-parse'
 
 type JoinRequest = { id: string; requester_id: string; name: string; location: string | null; message: string | null }
@@ -87,12 +90,6 @@ interface CircleRow {
   members: CircleMember[]
 }
 
-const BAND_COLOR: Record<CircleRow['score']['band'], string> = {
-  FRAGILE: '#ef4444', BASIC: '#f59e0b', SOLID: '#3b82f6', RESILIENT: '#22c55e',
-}
-const ROLE_COLOR: Record<CircleRole, string> = {
-  Admin: '#f59e0b', Editor: '#3b82f6', Viewer: '#71717a',
-}
 
 export default function CirclesPage() {
   const { t, language } = useLanguage()
@@ -114,6 +111,9 @@ export default function CirclesPage() {
   const [searchQ, setSearchQ] = useState('')
   const [searchResults, setSearchResults] = useState<SearchResult[]>([])
   const [scanOpen, setScanOpen] = useState(false)
+  /** D-124: a decisão sobre uma pessoa mora numa folha, não na linha dela. */
+  const [sheetMember, setSheetMember] = useState<{ circleId: string; userId: string } | null>(null)
+  const [sheetSettings, setSheetSettings] = useState<string | null>(null)
 
   const loadMyRequests = useCallback(async () => {
     try {
@@ -467,485 +467,439 @@ export default function CirclesPage() {
   // everyone — being invited must never require a paid plan. Only CREATING a
   // circle is gated to the Família tier.
   const canCreateCircle = canAccess('circulos', plan)
+  const pt = language === 'pt'
+
+  /*
+   * ── APRESENTAÇÃO RECONSTRUÍDA (D-124) ────────────────────────────────────
+   *
+   * A lógica acima não mudou uma linha. O que mudou é o que se vê.
+   *
+   * Antes: 139 blocos de estilo escritos à mão, 22 cores literais, zero uso do
+   * design system do app, e DOZE controles no cartão de cada membro. O audit
+   * deu 7/20, e a tela era a única do EOS fora da linguagem visual do resto.
+   *
+   * Agora: `wv2`, o mesmo sistema de Família, Preparação e Mundo. E a regra de
+   * divisão é uma só — **a lista mostra estado, a folha guarda decisão**. Toca
+   * na pessoa, abre tudo o que se decide sobre ela.
+   *
+   * A lista de membros passa a separar SUA CASA de NO CÍRCULO, que é o modelo
+   * do D-123. Isso não é enfeite: quem mora junto soma despensa, quem está no
+   * círculo não. Mostrar os dois na mesma lista foi o que fez o dono ler
+   * "família íntima" como "mora comigo".
+   */
+  const membroAberto = sheetMember
+    ? circles.find(c => c.id === sheetMember.circleId)?.members.find(m => m.user_id === sheetMember.userId) ?? null
+    : null
+  const circuloAberto = circles.find(c => c.id === (sheetMember?.circleId ?? sheetSettings)) ?? null
 
   return (
-    <main style={{ maxWidth: 920, margin: '0 auto', padding: 'clamp(20px, 5vw, 32px) clamp(16px, 5vw, 24px) calc(96px + env(safe-area-inset-bottom, 0px))', color: '#e6e6eb', fontFamily: 'system-ui, -apple-system, "SF Pro Text", "Segoe UI", sans-serif' }}>
-      <header style={{ marginBottom: 28 }}>
-        <div style={{ fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', color: '#8a8a99' }}>
-          {t('circles.eyebrow')}
-        </div>
-        <h1 style={{ margin: '6px 0 0', fontSize: 28, fontWeight: 600 }}>{t('circles.title')}</h1>
-      </header>
+    <main className="wv2 wv2-circles-page">
+      <div className="cir-scroll">
+        <header className="cir-head">
+          <p className="t-caps ink-3">{t('circles.eyebrow')}</p>
+          <h1 className="cir-title">{pt ? 'Quem você alcança quando a rede cai' : 'Who you can reach when the network fails'}</h1>
+        </header>
 
-      {error && (
-        <div style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.4)', padding: '10px 14px', borderRadius: 8, marginBottom: 16, color: '#fca5a5' }}>
-          {error}
-        </div>
-      )}
+        {error && <p className="cir-banner danger" role="alert">{error}</p>}
+        {notice && (
+          <p className="cir-banner info" role="status">
+            {notice}
+            <button type="button" className="cir-close small" onClick={() => setNotice(null)} aria-label="Fechar">✕</button>
+          </p>
+        )}
 
-      {notice && (
-        <div style={{ background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.4)', padding: '10px 14px', borderRadius: 8, marginBottom: 16, color: '#93c5fd', display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-          <span>{notice}</span>
-          <button onClick={() => setNotice(null)} style={{ background: 'transparent', border: 'none', color: '#93c5fd', cursor: 'pointer' }}>✕</button>
-        </div>
-      )}
-
-      {/* My pending join requests */}
-      {myRequests.filter(r => r.status === 'pending').length > 0 && (
-        <div style={{ background: 'rgba(234,179,8,0.10)', border: '1px solid rgba(234,179,8,0.35)', padding: '12px 14px', borderRadius: 10, marginBottom: 16 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: '#eab308', marginBottom: 6, letterSpacing: 0.5 }}>PEDIDOS AGUARDANDO APROVAÇÃO</div>
-          {myRequests.filter(r => r.status === 'pending').map(r => (
-            <div key={r.id} style={{ fontSize: 14, color: '#e6e6eb' }}>⏳ {r.circle_name}</div>
-          ))}
-        </div>
-      )}
-
-      {/* Create / join */}
-      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14, marginBottom: 28 }}>
-        <div style={{ border: '1px solid #222231', borderRadius: 10, padding: 16 }}>
-          <div style={{ fontSize: 12, color: '#8a8a99', marginBottom: 8 }}>{t('circles.create')}</div>
-          {canCreateCircle ? (
-            <>
-              <input
-                placeholder={t('circles.namePlaceholder')}
-                value={newName}
-                onChange={e => setNewName(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && create()}
-                style={{ width: '100%', padding: '8px 10px', background: '#0f0f17', color: '#e6e6eb', border: '1px solid #2a2a3a', borderRadius: 6, marginBottom: 8, boxSizing: 'border-box' }}
-              />
-              <button onClick={create} disabled={busy || !newName.trim()} style={{ padding: '8px 14px', background: busy ? '#2a2a3a' : '#22c55e', color: '#0a0a0f', border: 'none', borderRadius: 6, fontWeight: 600, cursor: busy ? 'default' : 'pointer' }}>
-                {t('circles.createAction')}
-              </button>
-            </>
-          ) : (
-            <div>
-              <p style={{ fontSize: 13, color: '#8a8a99', lineHeight: 1.5, margin: '0 0 10px' }}>
-                🔒 Criar um círculo faz parte do plano <strong style={{ color: '#e6e6eb' }}>Família</strong>. Entrar num círculo por convite é grátis — use o campo ao lado.
-              </p>
-              <button onClick={() => alert('Upgrade de plano em breve!')} style={{ padding: '8px 14px', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: 6, color: '#22c55e', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-                Fazer upgrade →
-              </button>
-            </div>
-          )}
-        </div>
-        <div style={{ border: '1px solid #222231', borderRadius: 10, padding: 16 }}>
-          <div style={{ fontSize: 12, color: '#8a8a99', marginBottom: 8 }}>{t('circles.join')}</div>
-          <input
-            placeholder="ABCDEF"
-            value={joinCode}
-            onChange={e => setJoinCode(e.target.value.toUpperCase().slice(0, 6))}
-            onKeyDown={e => e.key === 'Enter' && join()}
-            maxLength={6}
-            style={{ width: '100%', padding: '8px 10px', background: '#0f0f17', color: '#e6e6eb', border: '1px solid #2a2a3a', borderRadius: 6, marginBottom: 8, fontFamily: 'ui-monospace, Menlo, monospace', letterSpacing: 4, textTransform: 'uppercase', boxSizing: 'border-box' }}
-          />
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            <button onClick={join} disabled={busy || joinCode.length !== 6} style={{ padding: '8px 14px', background: busy || joinCode.length !== 6 ? '#2a2a3a' : '#3b82f6', color: busy || joinCode.length !== 6 ? '#8a8a99' : '#0a0a0f', border: 'none', borderRadius: 6, fontWeight: 600, cursor: busy || joinCode.length !== 6 ? 'default' : 'pointer' }}>
-              {t('circles.joinAction')}
-            </button>
-            <button onClick={() => setScanOpen(true)} title="Escanear convite" style={{ padding: '8px 12px', background: 'transparent', color: '#93c5fd', border: '1px solid rgba(59,130,246,0.4)', borderRadius: 6, fontWeight: 600, cursor: 'pointer' }}>
-              📷 Escanear
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* Search circles by name (request to join without a code) */}
-      <section style={{ border: '1px solid #222231', borderRadius: 10, padding: 16, marginBottom: 28 }}>
-        <div style={{ fontSize: 12, color: '#8a8a99', marginBottom: 8 }}>Encontrar um círculo por nome</div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <input
-            placeholder="Nome do círculo"
-            value={searchQ}
-            onChange={e => setSearchQ(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && searchCircles()}
-            style={{ flex: 1, padding: '8px 10px', background: '#0f0f17', color: '#e6e6eb', border: '1px solid #2a2a3a', borderRadius: 6, boxSizing: 'border-box' }}
-          />
-          <button onClick={searchCircles} disabled={searchQ.trim().length < 2} style={{ padding: '8px 14px', background: searchQ.trim().length < 2 ? '#2a2a3a' : '#3b82f6', color: searchQ.trim().length < 2 ? '#8a8a99' : '#0a0a0f', border: 'none', borderRadius: 6, fontWeight: 600, cursor: searchQ.trim().length < 2 ? 'default' : 'pointer' }}>Buscar</button>
-        </div>
-        {searchResults.length > 0 && (
-          <div style={{ marginTop: 10, display: 'grid', gap: 6 }}>
-            {searchResults.map(r => (
-              <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '8px 10px', background: '#0f0f17', border: '1px solid #222231', borderRadius: 8 }}>
-                <span style={{ fontSize: 14 }}>{r.name} <span style={{ color: '#8a8a99', fontSize: 12 }}>· {r.member_count} membro(s)</span></span>
-                {r.is_member ? (
-                  <span style={{ fontSize: 12, color: '#22c55e' }}>Você é membro</span>
-                ) : r.request_status === 'pending' ? (
-                  <span style={{ fontSize: 12, color: '#eab308' }}>Pedido enviado</span>
-                ) : (
-                  <button onClick={() => requestJoin(r.id, r.name)} disabled={busy} style={{ fontSize: 12, padding: '4px 10px', background: '#3b82f6', color: '#0a0a0f', border: 'none', borderRadius: 6, fontWeight: 600, cursor: 'pointer' }}>Pedir para entrar</button>
-                )}
-              </div>
+        {myRequests.filter(r => r.status === 'pending').length > 0 && (
+          <div className="wv2-card">
+            <span className="t-caps ink-3">{pt ? 'Pedidos aguardando aprovação' : 'Requests awaiting approval'}</span>
+            {myRequests.filter(r => r.status === 'pending').map(r => (
+              <p key={r.id} className="t-body">⏳ {r.circle_name}</p>
             ))}
           </div>
         )}
-      </section>
 
-      {/* Circles list */}
-      {loading ? (
-        <div style={{ color: '#8a8a99' }}>{t('common.loading')}</div>
-      ) : circles.length === 0 ? (
-        <div style={{ color: '#8a8a99', textAlign: 'center', padding: 40, border: '1px dashed #222231', borderRadius: 10 }}>
-          {t('circles.empty')}
-        </div>
-      ) : (
-        <div style={{ display: 'grid', gap: 18 }}>
-          {circles.map(c => (
-            <article key={c.id} style={{ border: '1px solid #222231', borderRadius: 12, padding: 'clamp(16px, 4vw, 22px)' }}>
-              {/* Header */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 14 }}>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', color: ROLE_COLOR[c.role], padding: '2px 8px', background: ROLE_COLOR[c.role] + '18', borderRadius: 999, border: '1px solid ' + ROLE_COLOR[c.role] + '44' }}>
-                      {c.role}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: 20, fontWeight: 600 }}>{c.name}</div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
-                    <span style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 13, color: '#8a8a99', letterSpacing: 2 }}>
-                      {t('circles.invite')} · {c.invite_code}
-                    </span>
-                    <button onClick={() => setQrCircleId(qrCircleId === c.id ? null : c.id)} style={{ fontSize: 11, padding: '2px 8px', background: 'transparent', border: '1px solid #2a2a3a', borderRadius: 4, color: '#8a8a99', cursor: 'pointer' }}>
-                      QR
+        {/* ── Entrar num círculo ─────────────────────────────────────────── */}
+        <div className="wv2-card cir-join">
+          <span className="t-caps ink-3">{pt ? 'Entrar num círculo' : 'Join a circle'}</span>
+          <label className="cir-field">
+            <span className="t-foot ink-2">{pt ? 'Código de convite' : 'Invite code'}</span>
+            <div className="row">
+              <input
+                className="cir-input code"
+                placeholder="ABCDEF"
+                value={joinCode}
+                onChange={e => setJoinCode(e.target.value.toUpperCase().slice(0, 6))}
+                onKeyDown={e => e.key === 'Enter' && join()}
+                maxLength={6}
+                inputMode="text"
+                autoCapitalize="characters"
+              />
+              <button type="button" className="cir-btn primary" onClick={join} disabled={busy || joinCode.length !== 6}>
+                {t('circles.joinAction')}
+              </button>
+            </div>
+          </label>
+          <button type="button" className="cir-btn" onClick={() => setScanOpen(true)}>
+            {pt ? 'Escanear convite' : 'Scan invite'}
+          </button>
+
+          <label className="cir-field">
+            <span className="t-foot ink-2">{pt ? 'Ou procurar pelo nome' : 'Or search by name'}</span>
+            <div className="row">
+              <input
+                className="cir-input"
+                placeholder={pt ? 'Nome do círculo' : 'Circle name'}
+                value={searchQ}
+                onChange={e => setSearchQ(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && searchCircles()}
+              />
+              <button type="button" className="cir-btn" onClick={searchCircles} disabled={searchQ.trim().length < 2}>
+                {pt ? 'Buscar' : 'Search'}
+              </button>
+            </div>
+          </label>
+
+          {searchResults.length > 0 && (
+            <ul className="cir-results">
+              {searchResults.map(r => (
+                <li key={r.id}>
+                  <span className="t-body">{r.name}</span>
+                  <span className="t-foot ink-3">{r.member_count} {pt ? 'pessoas' : 'people'}</span>
+                  {r.is_member ? (
+                    <span className="cir-state ok">{pt ? 'Você é membro' : 'You are a member'}</span>
+                  ) : r.request_status === 'pending' ? (
+                    <span className="cir-state warn">{pt ? 'Pedido enviado' : 'Request sent'}</span>
+                  ) : (
+                    <button type="button" className="cir-btn" onClick={() => requestJoin(r.id, r.name)} disabled={busy}>
+                      {pt ? 'Pedir para entrar' : 'Ask to join'}
                     </button>
-                    {/* D-112: o código continua aí para quem prefere ditar; o link
-                        existe porque ditar seis letras é onde o convite morre. */}
-                    <InviteShare circleId={c.id} circleName={c.name} inviteCode={c.invite_code} pt={language === 'pt'} />
-                    {c.is_admin && (
-                      <>
-                        <button onClick={() => renameCircle(c.id, c.name)} disabled={busy} style={{ fontSize: 11, padding: '2px 8px', background: 'transparent', border: '1px solid #2a2a3a', borderRadius: 4, color: '#8a8a99', cursor: 'pointer' }}>
-                          Renomear
-                        </button>
-                        <button onClick={() => deleteCircle(c.id, c.name)} disabled={busy} style={{ fontSize: 11, padding: '2px 8px', background: 'transparent', border: '1px solid rgba(239,68,68,0.4)', borderRadius: 4, color: '#ef4444', cursor: 'pointer' }}>
-                          Excluir
-                        </button>
-                      </>
-                    )}
-                  </div>
-                  {qrCircleId === c.id && (
-                    <div style={{ marginTop: 12, padding: 16, background: '#fff', borderRadius: 10, display: 'inline-block' }}>
-                      <QRCodeSVG value={c.invite_code} size={140} level="M" />
-                      <div style={{ marginTop: 6, textAlign: 'center', fontSize: 12, color: '#111', fontFamily: 'ui-monospace, Menlo, monospace', letterSpacing: 3 }}>{c.invite_code}</div>
-                    </div>
                   )}
-                </div>
-                <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                  <div style={{ fontSize: 11, letterSpacing: 2, color: BAND_COLOR[c.score.band], fontWeight: 700 }}>{c.score.band}</div>
-                  <div style={{ fontSize: 34, fontWeight: 700, color: BAND_COLOR[c.score.band], lineHeight: 1, marginTop: 2, fontFamily: 'ui-monospace, Menlo, monospace' }}>{c.score.total}</div>
-                  <div style={{ fontSize: 11, color: '#4a4a5a', marginTop: 2 }}>/ 100</div>
-                </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* ── Criar ──────────────────────────────────────────────────────── */}
+        <div className="wv2-card">
+          <span className="t-caps ink-3">{t('circles.create')}</span>
+          {canCreateCircle ? (
+            <label className="cir-field">
+              <span className="t-foot ink-2">{pt ? 'Nome do círculo' : 'Circle name'}</span>
+              <div className="row">
+                <input
+                  className="cir-input"
+                  placeholder={t('circles.namePlaceholder')}
+                  value={newName}
+                  onChange={e => setNewName(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && create()}
+                />
+                <button type="button" className="cir-btn primary" onClick={create} disabled={busy || !newName.trim()}>
+                  {t('circles.createAction')}
+                </button>
               </div>
+            </label>
+          ) : (
+            <>
+              <p className="t-body ink-2">
+                {pt
+                  ? 'Criar um círculo faz parte do plano Família. Entrar num círculo por convite é grátis.'
+                  : 'Creating a circle is part of the Family plan. Joining by invite is free.'}
+              </p>
+              <a className="cir-btn" href="/settings">{pt ? 'Ver planos' : 'See plans'}</a>
+            </>
+          )}
+        </div>
 
-              {/* Score breakdown */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, marginTop: 14 }}>
-                {Object.entries(c.score.breakdown).map(([key, val]) => (
-                  <div key={key} style={{ padding: 8, border: '1px solid #1a1a24', borderRadius: 6, textAlign: 'center' }}>
-                    <div style={{ fontSize: 10, color: '#8a8a99', textTransform: 'uppercase', letterSpacing: 1 }}>{key}</div>
-                    <div style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontWeight: 600, marginTop: 2 }}>{val}</div>
-                  </div>
-                ))}
-              </div>
+        {/* ── Os círculos ────────────────────────────────────────────────── */}
+        {loading ? (
+          <div className="wv2-card"><p className="t-body ink-2">{t('common.loading')}</p></div>
+        ) : circles.length === 0 ? (
+          <div className="wv2-card accented">
+            <strong className="t-title2">{pt ? 'Nenhum círculo ainda' : 'No circle yet'}</strong>
+            <p className="t-body ink-2">
+              {pt
+                ? 'Um círculo é quem você alcança quando o telefone não funciona. Sem ele, o EOS só sabe de você.'
+                : 'A circle is who you reach when the phone is down. Without one, EOS only knows about you.'}
+            </p>
+          </div>
+        ) : (
+          circles.map(c => {
+            const casa = c.members.filter(m => m.household_status === 'confirmed' || m.is_me)
+            const fora = c.members.filter(m => !(m.household_status === 'confirmed' || m.is_me))
+            const pendentes = requests[c.id]?.length ?? 0
 
-              {/* Member monitoring */}
-              {monitoring[c.id]?.members && monitoring[c.id].members.length > 0 && (
-                <div style={{ marginTop: 14, padding: 12, background: '#0f0f17', borderRadius: 8 }}>
-                  <div style={{ fontSize: 11, color: '#8a8a99', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
-                    Monitoramento da rede
-                  </div>
-                  <div style={{ display: 'grid', gap: 6 }}>
-                    {monitoring[c.id].members.map(m => (
-                      <div key={m.user_id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: SEV_COLOR[m.severity], flexShrink: 0, boxShadow: m.severity !== 'CLEAR' ? `0 0 6px ${SEV_COLOR[m.severity]}` : 'none' }} />
-                        <span style={{ flex: 1, fontSize: 13 }}>{m.name}{m.is_me && <span style={{ color: '#52525b', marginLeft: 4 }}>(você)</span>}</span>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: SEV_COLOR[m.severity] }}>{SEV_LABEL[m.severity]}</span>
-                        {m.alert_count > 0 && <span style={{ fontSize: 11, color: '#52525b' }}>{m.alert_count} alerta{m.alert_count > 1 ? 's' : ''}</span>}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+            const linha = (m: typeof c.members[number]) => {
+              const marcas: string[] = []
+              if (m.household_status === 'requested') marcas.push(pt ? 'aguardando confirmar' : 'awaiting confirmation')
+              if (m.family_access_status === 'approved') marcas.push(pt ? 'ficha compartilhada' : 'record shared')
+              if (m.family_access_status === 'requested') marcas.push(pt ? 'ficha solicitada' : 'record requested')
+              return (
+                <li key={m.user_id}>
+                  <button
+                    type="button"
+                    className="cir-member"
+                    onClick={() => { haptic.impact(); setSheetMember({ circleId: c.id, userId: m.user_id }) }}
+                    aria-label={`${m.name} — ${pt ? 'abrir opções' : 'open options'}`}
+                  >
+                    <span className="face" aria-hidden="true">{m.name.slice(0, 2).toUpperCase()}</span>
+                    <span className="id">
+                      <strong className="t-sub">
+                        {m.name}
+                        {m.is_me && <span className="ink-3"> · {pt ? 'você' : 'you'}</span>}
+                      </strong>
+                      <span className="t-foot ink-3">
+                        {m.role}{marcas.length ? ` · ${marcas.join(' · ')}` : ''}
+                      </span>
+                    </span>
+                    <span className="chev" aria-hidden="true">›</span>
+                  </button>
+                </li>
+              )
+            }
 
-              {/* Pooled inventory */}
-              {c.pooled && (
-                <div style={{ marginTop: 14, padding: 12, background: '#0f0f17', borderRadius: 8, fontSize: 13, color: '#a5a5b5', fontFamily: 'ui-monospace, Menlo, monospace', display: 'flex', flexWrap: 'wrap', gap: 16 }}>
-                  <span>👥 {c.pooled.member_count} {t('circles.members')}</span>
-                  <span>💧 {Number(c.pooled.water_liters).toFixed(1)} L</span>
-                  <span>🍲 {Number(c.pooled.food_days).toFixed(1)} {t('circles.days')}</span>
-                  <span>⛑ {c.pooled.medical_kit_count} {t('circles.kits')}</span>
-                  <span>📻 {c.pooled.communication_device_count} {t('circles.comms')}</span>
-                </div>
-              )}
-
-              {/* Pending join requests (Admin only) */}
-              {c.is_admin && (requests[c.id]?.length ?? 0) > 0 && (
-                <div style={{ marginTop: 14, background: 'rgba(234,179,8,0.08)', border: '1px solid rgba(234,179,8,0.3)', borderRadius: 10, padding: 12 }}>
-                  <div style={{ fontSize: 11, color: '#eab308', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, fontWeight: 700 }}>
-                    Pedidos de entrada ({requests[c.id].length})
+            return (
+              <article key={c.id} className="wv2-card cir-circle">
+                <header className="cir-circle-head">
+                  <div className="id">
+                    <strong className="t-title2">{c.name}</strong>
+                    <span className="t-foot ink-3">
+                      {c.role} · {c.members.length} {pt ? 'pessoas' : 'people'}
+                    </span>
                   </div>
-                  <div style={{ display: 'grid', gap: 8 }}>
+                  <div className="score" aria-label={`${pt ? 'Prontidão' : 'Readiness'} ${c.score.total} / 100`}>
+                    <b>{c.score.total}</b>
+                    <span className="t-foot ink-3">/100</span>
+                  </div>
+                </header>
+
+                {pendentes > 0 && c.is_admin && (
+                  <div className="cir-requests">
+                    <span className="t-caps warn">{pt ? `Pedidos de entrada (${pendentes})` : `Join requests (${pendentes})`}</span>
                     {requests[c.id].map(r => (
-                      <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                        <div style={{ minWidth: 0 }}>
-                          <div style={{ fontSize: 14, color: '#e6e6eb', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</div>
-                          {r.location && <div style={{ fontSize: 12, color: '#8a8a99' }}>{r.location}</div>}
-                        </div>
-                        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                          <button onClick={() => decide(c.id, r.id, 'approve')} disabled={busy} style={{ fontSize: 12, padding: '4px 10px', background: '#22c55e', color: '#0a0a0f', border: 'none', borderRadius: 6, fontWeight: 600, cursor: 'pointer' }}>Aprovar</button>
-                          <button onClick={() => decide(c.id, r.id, 'reject')} disabled={busy} style={{ fontSize: 12, padding: '4px 10px', background: 'transparent', color: '#ef4444', border: '1px solid rgba(239,68,68,0.4)', borderRadius: 6, cursor: 'pointer' }}>Recusar</button>
-                        </div>
+                      <div key={r.id} className="req">
+                        <span className="t-body">{r.name}</span>
+                        <span className="acts">
+                          <button type="button" className="cir-btn primary" onClick={() => decide(c.id, r.id, 'approve')} disabled={busy}>
+                            {pt ? 'Aprovar' : 'Approve'}
+                          </button>
+                          <button type="button" className="cir-btn" onClick={() => decide(c.id, r.id, 'reject')} disabled={busy}>
+                            {pt ? 'Recusar' : 'Decline'}
+                          </button>
+                        </span>
                       </div>
                     ))}
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Members list */}
-              {c.members.length > 0 && (
-                <div style={{ marginTop: 14 }}>
-                  <div style={{ fontSize: 11, color: '#8a8a99', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
-                    {t('circles.members')}
-                  </div>
-                  <div style={{ display: 'grid', gap: 6 }}>
-                    {c.members.map(m => {
-                      /*
-                       * D-123: os dois consentimentos deixam de usar a mesma
-                       * palavra. "Família íntima" nomeava ACESSO À FICHA
-                       * MÉDICA, e o dono leu como "mora na mesma casa" — que é
-                       * o que o nome diz. Agora cada rótulo diz o que é.
-                       */
-                      const familyLabels: Record<FamilyAccessStatus, { label: string; color: string }> = {
-                        none: { label: 'Ficha não compartilhada', color: '#71717a' },
-                        requested: { label: 'Ficha solicitada', color: '#eab308' },
-                        approved: { label: 'Ficha compartilhada', color: '#22c55e' },
-                        denied: { label: 'Ficha recusada', color: '#ef4444' },
-                      }
-                      const family = m.is_me ? { label: 'Sua ficha, seu controle', color: '#22c55e' } : familyLabels[m.family_access_status ?? 'none']
-                      const casaLabels: Record<string, { label: string; color: string }> = {
-                        none: { label: 'Não mora nesta casa', color: '#71717a' },
-                        requested: { label: 'Aguardando confirmar que mora aqui', color: '#eab308' },
-                        confirmed: { label: 'Mora nesta casa', color: '#22c55e' },
-                      }
-                      const casa = casaLabels[m.household_status ?? 'none']
-                      return (
-                      <div key={m.user_id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: '#0f0f17', borderRadius: 8, flexWrap: 'wrap' }}>
-                        <span style={{ flex: '1 1 160px', fontSize: 14 }}>
-                          {m.name}
-                          {m.is_me && <span style={{ fontSize: 11, color: '#8a8a99', marginLeft: 6 }}>(você)</span>}
-                          <span style={{ display: 'block', marginTop: 3, fontSize: 10, fontWeight: 800, letterSpacing: 0.7, textTransform: 'uppercase', color: casa.color }}>
-                            🏠 {casa.label}
-                          </span>
-                          <span style={{ display: 'block', marginTop: 2, fontSize: 10, fontWeight: 700, letterSpacing: 0.7, textTransform: 'uppercase', color: family.color }}>
-                            ✚ {family.label}
-                          </span>
-                        </span>
-                        {c.is_admin && !m.is_me ? (
-                          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                            <select
-                              value={m.role}
-                              onChange={e => changeRole(c.id, m.user_id, e.target.value as CircleRole)}
-                              disabled={busy}
-                              style={{ fontSize: 11, padding: '2px 6px', background: '#1a1a24', color: ROLE_COLOR[m.role], border: '1px solid #2a2a3a', borderRadius: 4, cursor: 'pointer' }}
-                            >
-                              <option value="Admin">Admin</option>
-                              <option value="Editor">Editor</option>
-                              <option value="Viewer">Viewer</option>
-                            </select>
-                            {m.family_access_status === 'none' || m.family_access_status === 'denied' ? (
-                              <button onClick={() => inviteFamilyAccess(c.id, m.user_id, 'requested')} disabled={busy} style={{ fontSize: 11, padding: '2px 8px', background: 'rgba(34,197,94,0.12)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.35)', borderRadius: 4, cursor: 'pointer' }}>
-                                Pedir acesso à ficha
-                              </button>
-                            ) : m.family_access_status === 'requested' ? (
-                              <span style={{ fontSize: 11, color: '#eab308', padding: '2px 8px', background: 'rgba(234,179,8,0.08)', border: '1px solid rgba(234,179,8,0.25)', borderRadius: 6 }}>
-                                Aguardando aceite
-                              </span>
-                            ) : m.family_access_status === 'approved' ? (
-                              <button onClick={() => inviteFamilyAccess(c.id, m.user_id, 'none')} disabled={busy} style={{ fontSize: 11, padding: '2px 8px', background: 'transparent', color: '#eab308', border: '1px solid rgba(234,179,8,0.4)', borderRadius: 4, cursor: 'pointer' }}>
-                                Deixar de ver a ficha
-                              </button>
-                            ) : null}
-                            {m.household_status === 'none' ? (
-                              <button onClick={() => householdAction(c.id, m.user_id, 'pedir')} disabled={busy} style={{ fontSize: 11, padding: '2px 8px', background: 'rgba(59,130,246,0.12)', color: '#93c5fd', border: '1px solid rgba(59,130,246,0.35)', borderRadius: 4, cursor: 'pointer' }}>
-                                🏠 Mora comigo?
-                              </button>
-                            ) : m.household_status === 'requested' ? (
-                              <span style={{ fontSize: 11, color: '#eab308', padding: '2px 8px', background: 'rgba(234,179,8,0.08)', border: '1px solid rgba(234,179,8,0.25)', borderRadius: 6 }}>
-                                Só ela pode confirmar
-                              </span>
-                            ) : null}
-                            <button onClick={() => removeMember(c.id, m.user_id)} disabled={busy} style={{ fontSize: 11, padding: '2px 8px', background: 'transparent', color: '#ef4444', border: '1px solid rgba(239,68,68,0.4)', borderRadius: 4, cursor: 'pointer' }}>
-                              ×
-                            </button>
-                          </div>
-                        ) : (
-                          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', color: ROLE_COLOR[m.role], padding: '2px 8px', background: ROLE_COLOR[m.role] + '18', borderRadius: 999 }}>
-                            {m.role}
-                          </span>
-                        )}
-                        {m.is_me && (
-                          <span style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap' }}>
-                            {m.household_status === 'requested' ? (
-                              <>
-                                <button onClick={() => householdAction(c.id, m.user_id, 'confirmar')} disabled={busy} style={{ fontSize: 11, padding: '2px 8px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 4, fontWeight: 700, cursor: 'pointer' }}>
-                                  🏠 Sim, moro aqui
-                                </button>
-                                <button onClick={() => householdAction(c.id, m.user_id, 'sair')} disabled={busy} style={{ fontSize: 11, padding: '2px 8px', background: 'transparent', color: '#8a8a99', border: '1px solid #2a2a3a', borderRadius: 4, cursor: 'pointer' }}>
-                                  Não moro
-                                </button>
-                              </>
-                            ) : m.household_status === 'confirmed' ? (
-                              <button onClick={() => householdAction(c.id, m.user_id, 'sair')} disabled={busy} style={{ fontSize: 11, padding: '2px 8px', background: 'transparent', color: '#eab308', border: '1px solid rgba(234,179,8,0.4)', borderRadius: 4, cursor: 'pointer' }}>
-                                Sair desta casa
-                              </button>
-                            ) : (
-                              <button onClick={() => householdAction(c.id, m.user_id, 'confirmar')} disabled={busy} style={{ fontSize: 11, padding: '2px 8px', background: 'rgba(59,130,246,0.12)', color: '#93c5fd', border: '1px solid rgba(59,130,246,0.35)', borderRadius: 4, cursor: 'pointer' }}>
-                                🏠 Eu moro nesta casa
-                              </button>
-                            )}
-                            {m.family_access_status === 'approved' ? (
-                              <>
-                                <span style={{ fontSize: 11, color: '#22c55e', padding: '2px 8px', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 6 }}>
-                                  Ficha liberada ao Pilot da família
-                                </span>
-                                <button onClick={() => respondFamilyAccess(c.id, 'leave')} disabled={busy} style={{ fontSize: 11, padding: '2px 8px', background: 'transparent', color: '#eab308', border: '1px solid rgba(234,179,8,0.4)', borderRadius: 4, cursor: 'pointer' }}>
-                                  Parar de compartilhar a ficha
-                                </button>
-                              </>
-                            ) : m.family_access_status === 'requested' ? (
-                              <>
-                                <button onClick={() => respondFamilyAccess(c.id, 'accept')} disabled={busy} style={{ fontSize: 11, padding: '2px 8px', background: '#22c55e', color: '#0a0a0f', border: 'none', borderRadius: 4, fontWeight: 700, cursor: 'pointer' }}>
-                                  Compartilhar minha ficha
-                                </button>
-                                <button onClick={() => respondFamilyAccess(c.id, 'deny')} disabled={busy} style={{ fontSize: 11, padding: '2px 8px', background: 'transparent', color: '#ef4444', border: '1px solid rgba(239,68,68,0.4)', borderRadius: 4, cursor: 'pointer' }}>
-                                  Recusar
-                                </button>
-                              </>
-                            ) : (
-                              <span style={{ fontSize: 11, color: '#8a8a99', padding: '2px 8px', background: '#111119', border: '1px solid #252535', borderRadius: 6 }}>
-                                Você controla sua ficha
-                              </span>
-                            )}
-                          </span>
-                        )}
-                        {m.emergency_contact_name && (
-                          <a href={m.emergency_contact_phone ? `tel:${m.emergency_contact_phone}` : undefined} style={{ fontSize: 11, color: '#22c55e', textDecoration: 'none', flexShrink: 0, padding: '2px 8px', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 6 }}>
-                            📞 {m.emergency_contact_name}
-                          </a>
-                        )}
-                      </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
+                {casa.length > 0 && (
+                  <>
+                    <span className="t-caps ink-3">{pt ? `Sua casa (${casa.length})` : `Your house (${casa.length})`}</span>
+                    <ul className="cir-members">{casa.map(linha)}</ul>
+                  </>
+                )}
 
-              {/* Action Plans */}
-              <div style={{ marginTop: 14 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                  <div style={{ fontSize: 11, color: '#8a8a99', textTransform: 'uppercase', letterSpacing: 1 }}>
-                    Planos de Ação ({plans[c.id]?.length ?? 0})
-                  </div>
-                  {(c.is_admin || c.role === 'Editor') && (
-                    <button onClick={() => setNewPlan({ circleId: c.id, title: '', body: '' })} style={{ fontSize: 11, padding: '2px 10px', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.25)', borderRadius: 6, color: '#22c55e', cursor: 'pointer' }}>
-                      + Novo plano
-                    </button>
-                  )}
-                </div>
+                {fora.length > 0 && (
+                  <>
+                    <span className="t-caps ink-3">{pt ? `No círculo (${fora.length})` : `In the circle (${fora.length})`}</span>
+                    <ul className="cir-members">{fora.map(linha)}</ul>
+                  </>
+                )}
 
-                {newPlan?.circleId === c.id && (
-                  <div style={{ padding: 12, background: '#0f0f17', borderRadius: 8, marginBottom: 10 }}>
-                    <input value={newPlan.title} onChange={e => setNewPlan(p => p ? { ...p, title: e.target.value } : null)} placeholder="Título do plano" maxLength={100} style={{ width: '100%', padding: '6px 10px', background: '#1a1a24', color: '#e6e6eb', border: '1px solid #2a2a3a', borderRadius: 6, marginBottom: 8, fontSize: 13, boxSizing: 'border-box' }} />
-                    <textarea value={newPlan.body} onChange={e => setNewPlan(p => p ? { ...p, body: e.target.value } : null)} placeholder="Descreva os passos do plano de emergência…" rows={4} maxLength={5000} style={{ width: '100%', padding: '6px 10px', background: '#1a1a24', color: '#e6e6eb', border: '1px solid #2a2a3a', borderRadius: 6, marginBottom: 8, fontSize: 13, resize: 'vertical', boxSizing: 'border-box' }} />
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <button onClick={() => savePlan(c.id, newPlan.title, newPlan.body)} disabled={busy || !newPlan.title.trim() || !newPlan.body.trim()} style={{ padding: '6px 14px', background: '#22c55e', color: '#0a0a0f', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Salvar</button>
-                      <button onClick={() => setNewPlan(null)} style={{ padding: '6px 14px', background: 'transparent', color: '#8a8a99', border: '1px solid #2a2a3a', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}>Cancelar</button>
+                {/*
+                  O que o círculo tem, e a frase que impede a leitura errada.
+                  Antes isto aparecia como um total somado, do lado da autonomia
+                  da casa — o número que o dono rejeitou explicitamente. Água a
+                  dois quilômetros não está na sua casa.
+                */}
+                {c.pooled && (
+                  <div className="cir-pooled">
+                    <span className="t-caps ink-3">{pt ? 'Recursos no círculo' : 'Resources in the circle'}</span>
+                    <p className="t-foot ink-3">
+                      {pt
+                        ? 'Alcançável, não disponível: isto não entra na autonomia da sua casa.'
+                        : 'Reachable, not available: this does not count toward your household autonomy.'}
+                    </p>
+                    <div className="nums">
+                      <span>{Number(c.pooled.water_liters).toFixed(0)} L</span>
+                      <span>{Number(c.pooled.food_days).toFixed(0)} {t('circles.days')}</span>
+                      <span>{c.pooled.medical_kit_count} {t('circles.kits')}</span>
+                      <span>{c.pooled.communication_device_count} {t('circles.comms')}</span>
                     </div>
                   </div>
                 )}
 
-                {(plans[c.id] ?? []).map(plan => (
-                  <div key={plan.id} style={{ padding: 12, background: '#0f0f17', borderRadius: 8, marginBottom: 8 }}>
-                    {editPlan?.id === plan.id ? (
-                      <>
-                        <input value={editPlan.title} onChange={e => setEditPlan(p => p ? { ...p, title: e.target.value } : null)} maxLength={100} style={{ width: '100%', padding: '6px 10px', background: '#1a1a24', color: '#e6e6eb', border: '1px solid #2a2a3a', borderRadius: 6, marginBottom: 8, fontSize: 13, boxSizing: 'border-box' }} />
-                        <textarea value={editPlan.body} onChange={e => setEditPlan(p => p ? { ...p, body: e.target.value } : null)} rows={4} maxLength={5000} style={{ width: '100%', padding: '6px 10px', background: '#1a1a24', color: '#e6e6eb', border: '1px solid #2a2a3a', borderRadius: 6, marginBottom: 8, fontSize: 13, resize: 'vertical', boxSizing: 'border-box' }} />
-                        <div style={{ display: 'flex', gap: 8 }}>
-                          <button onClick={() => savePlan(c.id, editPlan.title, editPlan.body, plan.id)} disabled={busy} style={{ padding: '6px 14px', background: '#22c55e', color: '#0a0a0f', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Salvar</button>
-                          <button onClick={() => setEditPlan(null)} style={{ padding: '6px 14px', background: 'transparent', color: '#8a8a99', border: '1px solid #2a2a3a', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}>Cancelar</button>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
-                          <div>
-                            <span style={{ fontSize: 14, fontWeight: 600 }}>{plan.title}</span>
-                            <span style={{ fontSize: 11, color: '#52525b', marginLeft: 8 }}>{plan.author} · {new Date(plan.updated_at).toLocaleDateString('pt-BR')}</span>
-                          </div>
-                          {(c.is_admin || plan.is_mine) && (
-                            <div style={{ display: 'flex', gap: 6 }}>
-                              <button onClick={() => setEditPlan({ ...plan, circleId: c.id })} style={{ fontSize: 11, padding: '2px 8px', background: 'transparent', color: '#8a8a99', border: '1px solid #2a2a3a', borderRadius: 4, cursor: 'pointer' }}>Editar</button>
-                              {c.is_admin && <button onClick={() => deletePlan(c.id, plan.id)} style={{ fontSize: 11, padding: '2px 8px', background: 'transparent', color: '#ef4444', border: '1px solid rgba(239,68,68,0.4)', borderRadius: 4, cursor: 'pointer' }}>×</button>}
-                            </div>
-                          )}
-                        </div>
-                        <p style={{ margin: 0, fontSize: 13, color: '#a5a5b5', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{plan.body}</p>
-                      </>
-                    )}
+                {monitoring[c.id]?.members?.length > 0 && (
+                  <div className="cir-monitor">
+                    <span className="t-caps ink-3">{pt ? 'Clima onde cada um está' : 'Weather where each one is'}</span>
+                    {monitoring[c.id].members.map(m => (
+                      <div key={m.user_id} className="row">
+                        <span className="dot" style={{ background: SEV_COLOR[m.severity] }} aria-hidden="true" />
+                        <span className="t-body">{m.name}</span>
+                        <span className="t-foot" style={{ color: SEV_COLOR[m.severity] }}>{SEV_LABEL[m.severity]}</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                )}
 
-              {/* Controls */}
-              <div style={{ marginTop: 14 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: c.share_inventory ? 10 : 0 }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#a5a5b5', cursor: 'pointer' }}>
-                    <input type="checkbox" checked={c.share_inventory} onChange={e => toggleShare(c.id, e.target.checked)} />
-                    {t('circles.shareInventory')}
-                  </label>
-                  {!c.is_admin && (
-                    <button onClick={() => leave(c.id)} disabled={busy} style={{ padding: '6px 14px', background: 'transparent', color: '#ef4444', border: '1px solid #ef4444', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}>
-                      {t('circles.leave')}
+                {/*
+                  Planos de ação do círculo.
+                  Estavam aqui antes e continuam: é o combinado escrito, e some
+                  do produto se sumir da tela. O que mudou é o tamanho dos
+                  botões — os antigos tinham 18px de altura.
+                */}
+                <div className="cir-plans">
+                  <span className="t-caps ink-3">{pt ? 'Planos de ação' : 'Action plans'}</span>
+                  {(plans[c.id] ?? []).length === 0 && !newPlan && (
+                    <p className="t-foot ink-3">
+                      {pt
+                        ? 'Nada combinado por escrito ainda. Um plano é o que se executa sem discutir.'
+                        : 'Nothing agreed in writing yet. A plan is what gets executed without debate.'}
+                    </p>
+                  )}
+                  {(plans[c.id] ?? []).map(ap => (
+                    <div key={ap.id} className="plan">
+                      {editPlan?.id === ap.id ? (
+                        <>
+                          <input
+                            className="cir-input"
+                            value={editPlan.title}
+                            onChange={e => setEditPlan({ ...editPlan, title: e.target.value })}
+                            aria-label={pt ? 'Título do plano' : 'Plan title'}
+                          />
+                          <textarea
+                            className="cir-textarea"
+                            rows={4}
+                            value={editPlan.body}
+                            onChange={e => setEditPlan({ ...editPlan, body: e.target.value })}
+                            aria-label={pt ? 'Conteúdo do plano' : 'Plan body'}
+                          />
+                          <span className="acts">
+                            <button type="button" className="cir-btn primary" disabled={busy} onClick={() => savePlan(c.id, editPlan.title, editPlan.body, ap.id)}>
+                              {pt ? 'Salvar' : 'Save'}
+                            </button>
+                            <button type="button" className="cir-btn" onClick={() => setEditPlan(null)}>
+                              {pt ? 'Cancelar' : 'Cancel'}
+                            </button>
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <strong className="t-sub">{ap.title}</strong>
+                          <p className="t-body ink-2">{ap.body}</p>
+                          <span className="t-foot ink-3">{ap.author}</span>
+                          {(c.role === 'Admin' || c.role === 'Editor') && (
+                            <span className="acts">
+                              <button type="button" className="cir-btn" onClick={() => setEditPlan({ ...ap, circleId: c.id })}>
+                                {pt ? 'Editar' : 'Edit'}
+                              </button>
+                              {c.is_admin && (
+                                <button type="button" className="cir-btn danger" disabled={busy} onClick={() => deletePlan(c.id, ap.id)}>
+                                  {pt ? 'Excluir' : 'Delete'}
+                                </button>
+                              )}
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  ))}
+                  {newPlan?.circleId === c.id ? (
+                    <div className="plan">
+                      <input
+                        className="cir-input"
+                        placeholder={pt ? 'Título — ex.: Se faltar luz por mais de 6 h' : 'Title — e.g. If power is out over 6 h'}
+                        value={newPlan.title}
+                        onChange={e => setNewPlan({ ...newPlan, title: e.target.value })}
+                        aria-label={pt ? 'Título do plano' : 'Plan title'}
+                      />
+                      <textarea
+                        className="cir-textarea"
+                        rows={4}
+                        placeholder={pt ? 'Quem faz o quê, nesta ordem.' : 'Who does what, in this order.'}
+                        value={newPlan.body}
+                        onChange={e => setNewPlan({ ...newPlan, body: e.target.value })}
+                        aria-label={pt ? 'Conteúdo do plano' : 'Plan body'}
+                      />
+                      <span className="acts">
+                        <button type="button" className="cir-btn primary" disabled={busy || !newPlan.title.trim() || !newPlan.body.trim()} onClick={() => savePlan(c.id, newPlan.title, newPlan.body)}>
+                          {pt ? 'Salvar' : 'Save'}
+                        </button>
+                        <button type="button" className="cir-btn" onClick={() => setNewPlan(null)}>
+                          {pt ? 'Cancelar' : 'Cancel'}
+                        </button>
+                      </span>
+                    </div>
+                  ) : (c.role === 'Admin' || c.role === 'Editor') && (
+                    <button type="button" className="cir-btn" onClick={() => setNewPlan({ circleId: c.id, title: '', body: '' })}>
+                      {pt ? '+ Novo plano' : '+ New plan'}
                     </button>
                   )}
                 </div>
-                {/* D-064: location has its own consent, independent of inventory
-                    sharing — it is a more sensitive fact than litres of water. */}
-                <div style={{ paddingTop: 10, borderTop: '1px solid #1a1a24' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#a5a5b5', cursor: 'pointer' }}>
-                    <input
-                      type="checkbox"
-                      checked={c.shared_fields.includes('location')}
-                      onChange={e => toggleField(c.id, 'location', e.target.checked)}
-                      style={{ width: 14, height: 14, accentColor: '#22c55e' }}
-                    />
-                    📍 {t('circles.shareLocation')}
-                  </label>
-                  <p style={{ margin: '6px 0 0 22px', fontSize: 11, lineHeight: 1.4, color: '#6b6b8a' }}>
-                    {t('circles.shareLocationHelp')}
-                  </p>
+
+                <div className="cir-actions">
+                  <InviteShare circleId={c.id} circleName={c.name} inviteCode={c.invite_code} pt={pt} />
+                  <button type="button" className="cir-btn" onClick={() => setQrCircleId(qrCircleId === c.id ? null : c.id)}>
+                    {qrCircleId === c.id ? (pt ? 'Esconder QR' : 'Hide QR') : (pt ? 'Mostrar QR' : 'Show QR')}
+                  </button>
+                  <button type="button" className="cir-btn" onClick={() => setSheetSettings(c.id)}>
+                    {pt ? 'Ajustes' : 'Settings'}
+                  </button>
                 </div>
-                {c.share_inventory && (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, paddingTop: 8, borderTop: '1px solid #1a1a24' }}>
-                    {(['water', 'food', 'medical', 'comms', 'emergency_contact'] as const).map(field => {
-                      const checked = c.shared_fields.length === 0 || c.shared_fields.includes(field)
-                      const labels: Record<string, string> = { water: '💧 Água', food: '🍲 Comida', medical: '⛑ Saúde', comms: '📻 Comms', emergency_contact: '📞 Contato' }
-                      return (
-                        <label key={field} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: checked ? '#a5a5b5' : '#4a4a5a', cursor: 'pointer', padding: '4px 8px', background: checked ? 'rgba(34,197,94,0.06)' : '#0f0f17', borderRadius: 6, border: `1px solid ${checked ? 'rgba(34,197,94,0.2)' : '#1a1a24'}` }}>
-                          <input type="checkbox" checked={checked} onChange={e => toggleField(c.id, field, e.target.checked)} style={{ width: 12, height: 12, accentColor: '#22c55e' }} />
-                          {labels[field]}
-                        </label>
-                      )
-                    })}
+
+                {qrCircleId === c.id && (
+                  <div className="cir-qr">
+                    <QRCodeSVG value={c.invite_code} size={148} level="M" />
+                    <span className="code">{c.invite_code}</span>
                   </div>
                 )}
-              </div>
-            </article>
-          ))}
-        </div>
+              </article>
+            )
+          })
+        )}
+      </div>
+
+      {membroAberto && circuloAberto && sheetMember && (
+        <MemberSheet
+          member={membroAberto as never}
+          circleName={circuloAberto.name}
+          isAdmin={circuloAberto.is_admin}
+          busy={busy}
+          pt={pt}
+          onClose={() => setSheetMember(null)}
+          onRole={r => changeRole(circuloAberto.id, membroAberto.user_id, r as CircleRole)}
+          onHousehold={a => householdAction(circuloAberto.id, membroAberto.user_id, a)}
+          onFamilyAccess={s => inviteFamilyAccess(circuloAberto.id, membroAberto.user_id, s)}
+          onRespondFamilyAccess={a => respondFamilyAccess(circuloAberto.id, a)}
+          onRemove={() => { removeMember(circuloAberto.id, membroAberto.user_id); setSheetMember(null) }}
+        />
       )}
+
+      {sheetSettings && circles.find(c => c.id === sheetSettings) && (() => {
+        const c = circles.find(x => x.id === sheetSettings)!
+        return (
+          <CircleSettingsSheet
+            circleName={c.name}
+            isAdmin={c.is_admin}
+            shareInventory={c.share_inventory}
+            sharedFields={c.shared_fields ?? []}
+            busy={busy}
+            pt={pt}
+            onClose={() => setSheetSettings(null)}
+            onToggleShare={next => toggleShare(c.id, next)}
+            onToggleField={(f, v) => toggleField(c.id, f, v)}
+            onRename={() => renameCircle(c.id, c.name)}
+            onDelete={() => { deleteCircle(c.id, c.name); setSheetSettings(null) }}
+            onLeave={() => { leave(c.id); setSheetSettings(null) }}
+          />
+        )
+      })()}
 
       {scanOpen && (
         <QRScanner
-          title="Escanear convite ou ficha"
-          hint="Aponte para o QR de convite de um círculo ou para a ficha de emergência de alguém."
+          title={pt ? 'Escanear convite ou ficha' : 'Scan invite or record'}
+          hint={pt
+            ? 'Aponte para o QR de convite de um círculo ou para a ficha de emergência de alguém.'
+            : 'Point at a circle invite QR or someone’s emergency record.'}
           onScan={onScan}
           onClose={() => setScanOpen(false)}
         />

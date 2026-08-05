@@ -20,17 +20,36 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
     .select('role').eq('circle_id', params.id).eq('user_id', user.id).maybeSingle()
   if (!membership) return NextResponse.json({ error: 'Not a member' }, { status: 403 })
 
+  /*
+   * Duas consultas, e não um `join` embutido (D-124).
+   *
+   * Este é o MESMO defeito que derrubava `/plans` com 500 em toda abertura da
+   * tela: o PostgREST recusa `profiles(...)` porque não há chave estrangeira
+   * declarada entre `circle_members` e `profiles`. Aqui ele estava LATENTE —
+   * o portão do plano Família devolve 403 antes, então só um cliente pagante
+   * chegaria a ver o erro. É o pior tipo de bug: o que só aparece para quem
+   * paga.
+   */
   const { data: members } = await supabase.from('circle_members')
-    .select('user_id, profiles(name, location_lat, location_lng)')
+    .select('user_id')
     .eq('circle_id', params.id)
 
+  const ids = Array.from(new Set((members ?? []).map(m => m.user_id).filter(Boolean)))
+  const { data: perfis } = ids.length
+    ? await supabase.from('profiles').select('id, name, location_lat, location_lng').in('id', ids)
+    : { data: [] }
+  const perfilPorId = new Map(
+    ((perfis ?? []) as Array<{ id: string; name: string | null; location_lat: number | null; location_lng: number | null }>)
+      .map(p => [p.id, p]),
+  )
+
   const geolocated = (members ?? []).filter(m => {
-    const p = m.profiles as { location_lat?: number; location_lng?: number } | null
+    const p = perfilPorId.get(m.user_id)
     return p?.location_lat != null && p?.location_lng != null
   })
 
   const results = await Promise.all(geolocated.map(async m => {
-    const p = m.profiles as unknown as { name?: string; location_lat: number; location_lng: number }
+    const p = perfilPorId.get(m.user_id) as { name?: string | null; location_lat: number; location_lng: number }
     const { result } = await getMonitorData(p.location_lat, p.location_lng)
     const severity = maxSeverity(...result.alerts.map(a => a.severity))
     return {

@@ -32,6 +32,7 @@
     "test:roster": "node scripts/roster-page-test.mjs",
     "test:household": "npx tsx scripts/household-test.mjs",
     "test:consent": "npx tsx scripts/household-consent-test.mjs",
+    "test:circles": "node scripts/circles-page-test.mjs",
     "bench:rag": "node scripts/rag-bench.mjs"
   },
   "dependencies": {

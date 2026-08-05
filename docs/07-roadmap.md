@@ -147,6 +147,7 @@ product phase sequenced.
 | FAM-T00 | Decisão + spec: localização ao vivo, consentimento próprio, freshness, retenção | ✅ COMPLETE | 2026-07-27 — D-064; docs 06 e 12 atualizados |
 | FAM-T01 | Migration `20260727000000_live_location.sql`: `last_location_*` em profiles | ✅ COMPLETE | 2026-07-27 — aplicada em produção pelo dono e verificada por REST service-role. |
 | FAM-T02 | Corrigir vazamento: gatear `location_lat/lng` em `/api/circles` por `shared_fields` | ✅ COMPLETE | 2026-07-27 — sem consentimento não sai coordenada; retorna `location_source`/`location_at` para a UI rotular |
+| CIR-T01 | Círculos: audit 7/20 → reconstrução no design system | ✅ COMPLETE | 2026-08-04 — D-124; 3 funções que nunca funcionaram corrigidas (500 em /plans, defeito latente em /monitoring, RPC inexistente do inventário); 12 controles por membro viram 1 toque; 8/8 |
 | HH-T01 | Modelo da casa: fonte única de "quem é a casa e quanto ela tem" | ✅ COMPLETE | 2026-08-04 — D-123 Fase 1; `lib/household.ts` + migration `20260804200000`; cálculos religados só depois de aplicada |
 | HH-T02 | Marcar "mora comigo" em Círculos com confirmação | ✅ COMPLETE | 2026-08-04 — D-123 Fase 2; rótulos separados (🏠 casa / ✚ ficha), só a própria pessoa confirma, círculo com distância; `household-consent-test` 6/6 |
 | HH-T03 | Dependentes com cuidador, relação e descrição | ✅ COMPLETE | 2026-08-04 — D-123 Fase 3; `relationship` + `care_notes` (instrução de resgate, não ficha médica) e "quem depende de mim" na Ficha; 11/11 |

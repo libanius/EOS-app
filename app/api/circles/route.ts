@@ -106,8 +106,7 @@ export async function GET() {
   const admin = createAdminClient()
   const results: unknown[] = []
   for (const c of circles ?? []) {
-    const [{ data: pooled }, { data: members }] = await Promise.all([
-      supabase.rpc('circle_pooled_inventory', { circle_uuid: c.id }),
+    const [{ data: members }] = await Promise.all([
       supabase.from('circle_members')
         .select('user_id, role, share_inventory, shared_fields, family_access_status, family_access_requested_at, family_access_requested_by, family_access_approved_at, family_access_approved_by, household_status, household_requested_by')
         .eq('circle_id', c.id),
@@ -157,7 +156,51 @@ export async function GET() {
         for (const p of legacy ?? []) profileById.set(p.id, p as MemberProfile)
       }
     }
-    const row = Array.isArray(pooled) ? pooled[0] : pooled
+    /*
+     * Os recursos do círculo, somados aqui (D-124).
+     *
+     * Antes isto vinha de `supabase.rpc('circle_pooled_inventory')` — uma
+     * função que **não existe no banco**. O PostgREST devolvia PGRST202, o
+     * resultado virava `null`, o bloco de recursos nunca renderizou para
+     * ninguém, e o score do círculo era calculado com zeros em tudo menos o
+     * tamanho. Era por isso que todo círculo mostrava uma nota baixinha.
+     *
+     * Usa o cliente admin porque somar exige ler o inventário de outra pessoa,
+     * e a RLS impede — corretamente. O consentimento que autoriza é o
+     * `share_inventory` que cada um marcou; quem não marcou não entra na conta.
+     */
+    const quemCompartilha = (circleMembers ?? [])
+      .filter(m => m.share_inventory && typeof m.user_id === 'string')
+      .map(m => m.user_id as string)
+
+    let row: {
+      member_count: number
+      water_liters: number
+      food_days: number
+      medical_kit_count: number
+      communication_device_count: number
+    } | null = null
+
+    if (admin && quemCompartilha.length) {
+      const { data: despensas } = await admin
+        .from('resource_inventory')
+        .select('profile_id, water_liters, food_days, has_medical_kit, has_communication_device')
+        .in('profile_id', quemCompartilha)
+      const linhas = (despensas ?? []) as Array<Record<string, unknown>>
+      row = {
+        member_count: quemCompartilha.length,
+        water_liters: linhas.reduce((t, i) => t + (Number(i.water_liters) || 0), 0),
+        // Dias de comida somam como PESSOA-DIA e voltam a dias dividindo pelo
+        // número de despensas — a mesma unidade que `lib/household.ts` usa.
+        // Somar o campo cru daria o dobro da comida que existe.
+        food_days: linhas.length
+          ? linhas.reduce((t, i) => t + (Number(i.food_days) || 0), 0) / linhas.length
+          : 0,
+        medical_kit_count: linhas.filter(i => i.has_medical_kit).length,
+        communication_device_count: linhas.filter(i => i.has_communication_device).length,
+      }
+    }
+
     const score = computeCircleScore({
       water_liters: Number(row?.water_liters ?? 0),
       food_days: Number(row?.food_days ?? 0),

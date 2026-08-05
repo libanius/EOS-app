@@ -3138,9 +3138,19 @@
   font-size: 0.8125rem;
   font-weight: 650;
   cursor: pointer;
+  min-height: 44px;
 }
-.invite-share-family { display: flex; gap: var(--s2); align-items: flex-start; cursor: pointer; }
-.invite-share-family input { margin-top: 3px; flex: none; width: 18px; height: 18px; }
+/* D-124: a área de toque tem 44px mesmo com a caixa desenhada em 22px — o
+   alvo é maior que o desenho, e antes tinha 18px, abaixo de qualquer dedo. */
+.invite-share-family {
+  display: flex;
+  gap: var(--s3);
+  align-items: flex-start;
+  cursor: pointer;
+  min-height: 44px;
+  padding: var(--s2) 0;
+}
+.invite-share-family input { margin-top: 2px; flex: none; width: 22px; height: 22px; }
 .invite-share-family span { display: grid; gap: 2px; font-size: 0.8125rem; color: var(--ink-2, #a1a1aa); }
 /* O aviso de que a pessoa ainda decide fica colado na caixa, não numa nota de
    rodapé: é a diferença entre pedir e conceder. */
@@ -3469,4 +3479,331 @@
   align-items: center;
   gap: var(--s2);
   flex-wrap: wrap;
+}
+
+/* ═══ Círculos (D-124) ══════════════════════════════════════════════════════
+   A tela tinha 139 blocos de estilo escritos à mão, 22 cores literais e zero
+   uso deste sistema — era a última do app fora dele, e o audit deu 7/20. Aqui
+   não há um único valor novo: tudo sai dos tokens que Família, Preparação e
+   Mundo já usam. Nenhum alvo de toque abaixo de 44px, nenhum texto abaixo de
+   0,8125rem, e o corpo em 1rem para o iOS não dar zoom ao focar um campo. */
+
+.wv2.wv2-circles-page {
+  position: static;
+  inset: auto;
+  overflow: visible;
+  min-height: 100dvh;
+  background: #000;
+}
+.wv2-circles-page .cir-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+  max-width: 720px;
+  margin: 0 auto;
+  padding: calc(var(--s6) + env(safe-area-inset-top)) var(--edge) calc(var(--nav-inset) + var(--s8));
+}
+.wv2-circles-page .cir-head { padding: 0 var(--s2); display: grid; gap: var(--s2); }
+.wv2-circles-page .cir-title {
+  margin: 0;
+  font-size: clamp(1.625rem, 6vw, 2.125rem);
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  font-weight: 700;
+}
+
+.wv2-circles-page .cir-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+  margin: 0;
+  padding: var(--s3);
+  border-radius: var(--r-tile);
+  font-size: 0.9375rem;
+}
+.wv2-circles-page .cir-banner.danger { background: rgba(255, 69, 58, 0.12); border: 1px solid rgba(255, 69, 58, 0.32); color: #ff9f93; }
+.wv2-circles-page .cir-banner.info { background: var(--fill-2); border: 1px solid var(--sep); color: var(--ink-2); }
+
+/* ── Botões: um tamanho, o do dedo ────────────────────────────────────────── */
+.wv2-circles-page .cir-btn,
+.wv2-circles-page .cir-sheet .cir-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  min-height: 44px;
+  padding: 0 var(--s4);
+  border-radius: var(--r-pill);
+  border: 1px solid var(--sep-strong);
+  background: var(--fill-2);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 100ms ease-out, background 140ms ease-out;
+}
+.wv2-circles-page .cir-btn:active { transform: scale(0.97); }
+.wv2-circles-page .cir-btn:disabled { opacity: 0.4; cursor: default; }
+.wv2-circles-page .cir-btn.primary { background: var(--accent); border-color: transparent; color: var(--accent-ink); }
+.wv2-circles-page .cir-btn.on { background: var(--accent); border-color: transparent; color: var(--accent-ink); }
+.wv2-circles-page .cir-btn.warn { color: #ff9f0a; border-color: rgba(255, 159, 10, 0.4); background: rgba(255, 159, 10, 0.1); }
+.wv2-circles-page .cir-btn.danger { color: #ff453a; border-color: rgba(255, 69, 58, 0.4); background: rgba(255, 69, 58, 0.1); }
+
+/* Foco visível: quem navega por teclado precisa ver onde está. A tela antiga
+   não declarava nenhum, então o anel do navegador sumia sob os fundos escuros. */
+.wv2-circles-page :is(button, a, input, textarea):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.wv2-circles-page .cir-state {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--s3);
+  font-size: 0.875rem;
+  color: var(--ink-2);
+}
+.wv2-circles-page .cir-state.ok { color: var(--accent); }
+.wv2-circles-page .cir-state.warn { color: #ff9f0a; }
+
+/* ── Campos ───────────────────────────────────────────────────────────────── */
+.wv2-circles-page .cir-field { display: grid; gap: var(--s2); }
+.wv2-circles-page .cir-field .row { display: flex; gap: var(--s2); align-items: center; flex-wrap: wrap; }
+.wv2-circles-page .cir-input,
+.wv2-circles-page .cir-textarea {
+  flex: 1;
+  min-width: 0;
+  min-height: 48px;
+  padding: var(--s3);
+  border-radius: var(--r-tile);
+  border: 1px solid var(--sep);
+  background: var(--fill-2);
+  color: var(--ink);
+  font: inherit;
+  font-size: 1rem;   /* abaixo de 16px o iOS dá zoom ao focar */
+  transition: border-color 140ms ease-out;
+}
+.wv2-circles-page .cir-textarea { min-height: 100px; resize: vertical; line-height: 1.5; }
+.wv2-circles-page .cir-input:focus,
+.wv2-circles-page .cir-textarea:focus { outline: none; border-color: var(--accent); }
+.wv2-circles-page .cir-input.code {
+  font-family: ui-monospace, Menlo, monospace;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+}
+.wv2-circles-page .cir-join { display: grid; gap: var(--s4); }
+.wv2-circles-page .cir-results { list-style: none; margin: var(--s2) 0 0; padding: 0; display: grid; gap: var(--s2); }
+.wv2-circles-page .cir-results li {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  flex-wrap: wrap;
+  padding: var(--s2) var(--s3);
+  border-radius: var(--r-tile);
+  background: var(--fill-2);
+}
+
+/* ── O cartão do círculo ──────────────────────────────────────────────────── */
+.wv2-circles-page .cir-circle { display: grid; gap: var(--s3); }
+.wv2-circles-page .cir-circle-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+.wv2-circles-page .cir-circle-head .id { display: grid; gap: 2px; min-width: 0; }
+.wv2-circles-page .cir-circle-head .score { display: flex; align-items: baseline; gap: 2px; flex: none; }
+.wv2-circles-page .cir-circle-head .score b {
+  font-size: 1.75rem;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--accent);
+}
+
+/* A lista mostra ESTADO; a folha guarda decisão. Uma linha, um toque. */
+.wv2-circles-page .cir-members { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s2); }
+.wv2-circles-page .cir-member {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  width: 100%;
+  min-height: 56px;
+  padding: var(--s2) var(--s3);
+  border: 0;
+  border-radius: var(--r-tile);
+  background: var(--fill-2);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 100ms ease-out, background 140ms ease-out;
+}
+.wv2-circles-page .cir-member:active { transform: scale(0.99); background: var(--fill-1); }
+.wv2-circles-page .cir-member .face {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--fill-1);
+  border: 1px solid var(--sep-strong);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--ink-2);
+}
+.wv2-circles-page .cir-member .id { display: grid; gap: 2px; min-width: 0; flex: 1; }
+.wv2-circles-page .cir-member .chev { flex: none; color: var(--ink-3); font-size: 1.375rem; line-height: 1; }
+
+.wv2-circles-page .cir-requests { display: grid; gap: var(--s2); padding: var(--s3); border-radius: var(--r-tile); background: rgba(255, 159, 10, 0.08); }
+.wv2-circles-page .cir-requests .req { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); flex-wrap: wrap; }
+.wv2-circles-page .cir-requests .acts { display: flex; gap: var(--s2); }
+
+.wv2-circles-page .cir-pooled,
+.wv2-circles-page .cir-monitor,
+.wv2-circles-page .cir-plans { display: grid; gap: var(--s2); padding: var(--s3); border-radius: var(--r-tile); background: var(--fill-2); }
+.wv2-circles-page .cir-pooled .nums { display: flex; gap: var(--s4); flex-wrap: wrap; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+.wv2-circles-page .cir-monitor .row { display: flex; align-items: center; gap: var(--s2); }
+.wv2-circles-page .cir-monitor .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.wv2-circles-page .cir-monitor .row .t-body { flex: 1; }
+.wv2-circles-page .cir-plans .plan { display: grid; gap: var(--s2); padding-top: var(--s2); border-top: 1px solid var(--sep); }
+.wv2-circles-page .cir-plans .plan:first-of-type { border-top: 0; padding-top: 0; }
+.wv2-circles-page .cir-plans .acts { display: flex; gap: var(--s2); flex-wrap: wrap; }
+
+.wv2-circles-page .cir-actions { display: flex; gap: var(--s2); flex-wrap: wrap; align-items: center; }
+.wv2-circles-page .cir-qr {
+  display: grid;
+  justify-items: center;
+  gap: var(--s2);
+  padding: var(--s4);
+  border-radius: var(--r-card);
+  background: #fff;
+}
+.wv2-circles-page .cir-qr .code {
+  font-family: ui-monospace, Menlo, monospace;
+  letter-spacing: 0.3em;
+  color: #111;
+  font-weight: 700;
+}
+
+/* ── As folhas ────────────────────────────────────────────────────────────── */
+.wv2-circles-page .cir-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 900;   /* acima da barra de navegação (100) e do AppActions (200) */
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.72);
+  animation: cirScrim 220ms ease-out both;
+}
+.wv2-circles-page .cir-sheet {
+  width: min(100%, 720px);
+  max-height: 92dvh;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--r-sheet) var(--r-sheet) 0 0;
+  background: rgba(20, 20, 23, 0.94);
+  border: 1px solid var(--sep);
+  border-bottom: 0;
+  backdrop-filter: blur(var(--mat-blur-lg)) saturate(var(--mat-sat));
+  -webkit-backdrop-filter: blur(var(--mat-blur-lg)) saturate(var(--mat-sat));
+  box-shadow: 0 -24px 60px -30px rgba(0, 0, 0, 1);
+  animation: cirSheetIn 380ms cubic-bezier(0.2, 0.9, 0.25, 1) both;
+}
+@keyframes cirScrim { from { opacity: 0 } to { opacity: 1 } }
+@keyframes cirSheetIn {
+  from { transform: translate3d(0, 100%, 0) scale(0.97); opacity: 0.6 }
+  to   { transform: translate3d(0, 0, 0) scale(1); opacity: 1 }
+}
+.wv2-circles-page .cir-sheet .grab { width: 36px; height: 5px; margin: var(--s2) auto 0; border-radius: var(--r-pill); background: var(--sep-strong); flex: none; }
+.wv2-circles-page .cir-sheet .sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding: var(--s3) var(--s4) var(--s2);
+  flex: none;
+}
+.wv2-circles-page .cir-close {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 0;
+  background: var(--fill-2);
+  color: var(--ink-2);
+  font-size: 0.9375rem;
+  cursor: pointer;
+  transition: transform 100ms ease-out;
+}
+.wv2-circles-page .cir-close:active { transform: scale(0.92); }
+.wv2-circles-page .cir-close.small { width: 32px; height: 32px; background: none; }
+.wv2-circles-page .cir-sheet .sheet-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  display: grid;
+  gap: var(--s4);
+  padding: var(--s2) var(--s4) calc(var(--s5) + env(safe-area-inset-bottom));
+}
+.wv2-circles-page .cir-sheet-sub { margin: 0; }
+.wv2-circles-page .cir-decision { display: grid; gap: var(--s2); }
+.wv2-circles-page .cir-decision .acts { display: flex; gap: var(--s2); flex-wrap: wrap; align-items: center; }
+.wv2-circles-page .cir-danger { display: grid; gap: var(--s2); justify-items: start; padding-top: var(--s3); border-top: 1px solid var(--sep); }
+.wv2-circles-page .cir-danger .acts { display: flex; gap: var(--s2); flex-wrap: wrap; }
+.wv2-circles-page .cir-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+/* Interruptor com o motivo encostado nele. */
+.wv2-circles-page .cir-switch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  min-height: 56px;
+  padding: var(--s3) 0;
+  border-bottom: 1px solid var(--sep);
+  cursor: pointer;
+}
+.wv2-circles-page .cir-switch:last-of-type { border-bottom: 0; }
+.wv2-circles-page .cir-switch .txt { display: grid; gap: 2px; min-width: 0; }
+.wv2-circles-page .cir-switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+.wv2-circles-page .cir-switch .track {
+  flex: none;
+  width: 51px;
+  height: 31px;
+  border-radius: var(--r-pill);
+  background: var(--fill-1);
+  padding: 2px;
+  transition: background 220ms ease-out;
+}
+.wv2-circles-page .cir-switch .track > i {
+  display: block;
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  transition: transform 320ms cubic-bezier(0.2, 0.9, 0.25, 1);
+}
+.wv2-circles-page .cir-switch input:checked ~ .track { background: var(--accent); }
+.wv2-circles-page .cir-switch input:checked ~ .track > i { transform: translateX(20px); }
+.wv2-circles-page .cir-switch input:focus-visible ~ .track { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .wv2-circles-page .cir-sheet { animation: cirScrim 180ms ease-out both; transform: none; }
+  .wv2-circles-page .cir-switch .track > i,
+  .wv2-circles-page .cir-btn,
+  .wv2-circles-page .cir-member { transition-duration: 1ms; }
+  .wv2-circles-page .cir-btn:active,
+  .wv2-circles-page .cir-member:active { transform: none; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .wv2-circles-page .cir-sheet { background: #18181b; backdrop-filter: none; -webkit-backdrop-filter: none; }
 }

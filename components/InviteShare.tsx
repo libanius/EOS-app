@@ -90,11 +90,16 @@ export default function InviteShare({
             onChange={e => { setWithFamily(e.target.checked); setNote(null) }}
           />
           <span>
-            {pt ? 'Incluir na Família íntima' : 'Include in Intimate Family'}
+            {/*
+              D-124: o rótulo dizia "Família íntima" para o que é ACESSO À
+              FICHA MÉDICA. O dono leu como "mora na mesma casa", e tinha
+              razão — era o nome que estava errado, não a leitura dele.
+            */}
+            {pt ? 'Pedir acesso à ficha médica dela' : 'Ask for access to their medical record'}
             <em>
               {pt
-                ? 'A pessoa ainda precisa aceitar na conta dela — o link só faz o pedido.'
-                : 'They still have to accept in their own account — the link only asks.'}
+                ? 'Ela ainda precisa aceitar na conta dela — o link só faz o pedido. Isto não tem relação com morar junto.'
+                : 'They still have to accept in their own account — the link only asks. This is unrelated to living together.'}
             </em>
           </span>
         </label>

@@ -360,6 +360,85 @@ como rota protegida; usuário não logado ia para login, o login ignorava
 
 ---
 
+## D-124 — Círculos sai de 7/20, e três funções que nunca funcionaram passam a funcionar
+
+**Contexto.** O dono pediu um audit da tela de Círculos com a skill `impeccable`.
+Nota: **7/20 — "Ruim, revisão grande"**. Era a única tela do EOS fora do design
+system: 955 linhas, 139 blocos de estilo à mão, 22 cores literais, 31 botões sem
+rótulo acessível, 16 alvos de toque abaixo de 44px (vários com 18), zero estilo
+de foco, e 37 usos de texto de 11px.
+
+**O achado que o audit não pediu.** Três coisas na tela **nunca funcionaram**, e
+as três falhavam em silêncio:
+
+1. `GET /api/circles/{id}/plans` devolvia **500 em toda abertura**. O PostgREST
+   recusa `select('… profiles(name)')` com PGRST200 porque não há chave
+   estrangeira declarada entre `circle_action_plans` e `profiles`. O bloco de
+   planos nunca carregou.
+2. `/monitoring` tinha o **mesmo defeito, latente**: o portão do plano Família
+   devolve 403 antes, então só um cliente **pagante** chegaria ao erro. É o pior
+   tipo de bug — o que só aparece para quem paga.
+3. `supabase.rpc('circle_pooled_inventory')` chama uma função **que não existe
+   no banco**. O resultado virava `null`, o bloco de recursos do círculo nunca
+   renderizou para ninguém, e o **score do círculo era calculado com zeros** em
+   tudo menos o tamanho. Era por isso que todo círculo mostrava nota baixa.
+
+Os três foram corrigidos sem migration: duas consultas no lugar do `join`
+embutido, e a soma feita no servidor a partir de quem marcou `share_inventory`.
+
+**A destilação.** O cartão de cada membro carregava **doze controles** — papel,
+inventário, campos, ficha, casa, remover, telefone. Sete decisões empilhadas na
+mesma linha, em botões de 18px. A regra nova é uma só: **a lista mostra estado,
+a folha guarda decisão**. Um toque na pessoa abre tudo o que se decide sobre
+ela, com o motivo de cada opção ao lado dela.
+
+**A lista separa SUA CASA de NO CÍRCULO** — o modelo do D-123. Não é enfeite:
+quem mora junto soma despensa, quem está no círculo não. Mostrar os dois numa
+lista só foi o que fez o dono ler "família íntima" como "mora comigo".
+
+**Os recursos do círculo deixam de mentir.** Aparecem com a frase que impede a
+leitura errada: *"Alcançável, não disponível: isto não entra na autonomia da sua
+casa."* Antes o número aparecia como um total somado, do lado da autonomia — a
+leitura otimista que o dono rejeitou explicitamente ao escolher o modelo.
+
+**`InviteShare` também dizia a palavra errada.** O rótulo era "Incluir na Família
+íntima" para o que é **acesso à ficha médica**. Corrigido para "Pedir acesso à
+ficha médica dela", e a área de toque foi de 18px para 44.
+
+**A armadilha do ASI pela QUARTA vez — e a primeira em que não passou.** O
+`lint:scripts` do D-122 recusou o arquivo antes de rodar, com `Parsing error`.
+Foi exatamente para isso que a trava existe: eu continuo cometendo o erro, e ele
+deixou de chegar ao resultado.
+
+**Dois erros meus que o teste desmentiu, e que valem mais que os acertos.**
+Reportei um "P0: a página não rola, 609px inalcançáveis" — eu media
+`window.scrollY`, e neste app quem rola é o `body`; medindo certo,
+`body.scrollTop = 609` e o conteúdo aparece. E acusei a tela de mostrar "0
+pessoas" quando o defeito era da minha semeadura (PGRST102, chaves diferentes no
+lote). Nos dois casos a tela estava certa e a minha medição, errada.
+
+**Depois.**
+
+| | antes | depois |
+|---|---|---|
+| Estilos inline | 139 | 2 (cor dinâmica de severidade) |
+| Cores literais | 22 | 5 (mapa de severidade compartilhado) |
+| Uso do design system | 0 | 54 |
+| `aria-label` / `role` | 0 | 11 |
+| Alvos abaixo de 44px | 16 | 0 |
+| Requisições falhando | 2 (uma 500) | 0 |
+
+**Prova.** `circles-page-test`, 8/8, com três controles negativos: nenhum
+resquício visual da tela antiga, nenhum alvo pequeno, e **as nove funções
+antigas conferidas uma a uma** — numa reescrita de apresentação, o risco real é
+deixar uma função cair no caminho.
+
+**O que fica pendente.** Os orbes fixos do `AppActions` (topo direito) passam por
+cima da primeira linha de membro quando a lista rola. É chrome global, afeta
+todas as telas, e merece correção própria — não a resolvo escondendo aqui.
+
+---
+
 ## D-123 Fase 3 — o dependente pertence a um cuidador
 
 **A resposta do dono, nas palavras dele:** *"na ficha master, por exemplo, de
