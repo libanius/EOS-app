@@ -134,9 +134,19 @@ export function useWorldData(): WorldData {
   const foodDays = inventory?.food_days ?? 0
   const powerDays = inventory ? (inventory.battery_percent / 100) * BATTERY_FULL_DAYS : 0
   const fuelDays = inventory ? inventory.fuel_liters / LITRES_PER_FUEL_DAY : 0
-  const autonomyDays = inventory
-    ? Math.max(0, Math.min(waterDays, foodDays, powerDays, fuelDays))
-    : 0
+  /*
+   * Autonomia é SOBREVIVÊNCIA: água e comida (D-129).
+   *
+   * Esta linha dizia `min(água, comida, energia, combustível)`, e o
+   * `lib/household.ts` dizia `min(água, comida)`. O dono abriu duas telas e viu
+   * 0,3 dias numa e 2 dias na outra, para a mesma casa.
+   *
+   * O número desta tela era o errado, e de um jeito específico: a bateria dele
+   * em 10% virava "a família aguenta 0,3 dias". Não aguenta 0,3 dias — ela fica
+   * sem luz. Energia e combustível continuam logo abaixo, como barras próprias,
+   * que é onde a informação é verdadeira.
+   */
+  const autonomyDays = inventory ? Math.max(0, Math.min(waterDays, foodDays)) : 0
 
   return {
     inventory,

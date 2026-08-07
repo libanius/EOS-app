@@ -124,15 +124,42 @@ const VAZIO: HouseholdInventory = {
   contributors: 0,
 }
 
-/** Litros por pessoa por dia. Referência usada em todo o app. */
+/*
+ * As referências de consumo, num lugar só (D-129).
+ *
+ * O dono abriu três telas e viu três respostas para a mesma pergunta: o
+ * dashboard dizia 0,3 dias de autonomia, Preparação dizia 2, e Círculos dizia
+ * que a casa tinha 3 pessoas enquanto o motor contava 1.
+ *
+ * A causa da divergência de autonomia era esta: `useWorldData` calculava
+ * `min(água, comida, energia, combustível)` e este arquivo calculava
+ * `min(água, comida)`. As duas fórmulas eram defensáveis; o problema é que
+ * existiam as duas.
+ */
 export const WATER_PER_PERSON_DAY = 3
+export const BATTERY_FULL_DAYS = 3
+export const LITRES_PER_FUEL_DAY = 10
 
 /**
- * Dias que a casa aguenta.
+ * Dias que a casa aguenta — SOBREVIVÊNCIA, não conforto.
  *
- * O menor entre água e comida: autonomia é definida pelo recurso que acaba
- * primeiro, não pela média deles. Uma casa com trinta dias de comida e um dia de
- * água tem um dia.
+ * O menor entre água e comida. Autonomia é definida pelo recurso que acaba
+ * primeiro, não pela média: trinta dias de comida com um dia de água é um dia.
+ *
+ * ENERGIA E COMBUSTÍVEL FICAM DE FORA, e a decisão custou uma ida e volta.
+ * Primeiro eu unifiquei incluindo os quatro, porque o dashboard fazia assim e
+ * porque somar restrições parecia o lado conservador. O teste mostrou o
+ * absurdo: com `BATTERY_FULL_DAYS = 3`, NENHUMA casa poderia ter mais de três
+ * dias de autonomia, e uma bateria em 10% passaria a afirmar que a família
+ * sobrevive 0,3 dias.
+ *
+ * Não sobrevive — ela fica sem luz. Bateria e combustível são CAPACIDADE:
+ * mudam o que dá para fazer, não quanto tempo se fica vivo. Continuam
+ * aparecendo como barras próprias, que é onde a informação é verdadeira.
+ *
+ * Ser conservador é bom; inventar uma restrição de sobrevivência que não
+ * existe é outra coisa. Um número alarmante e falso gasta a confiança que o
+ * número alarmante e verdadeiro vai precisar.
  */
 export function autonomyDays(inv: HouseholdInventory, size: number): number {
   if (size <= 0) return 0

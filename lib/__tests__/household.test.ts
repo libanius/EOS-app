@@ -8,11 +8,20 @@
 
 import { autonomyDays, WATER_PER_PERSON_DAY, type HouseholdInventory } from '@/lib/household'
 
+/*
+ * Energia e combustível cheios por padrão (D-129).
+ *
+ * A autonomia passou a incluir os quatro recursos, e sem isso todo caso que
+ * queria testar água ou comida media, na verdade, o combustível zerado. As
+ * fixtures antigas não tinham os dois campos porque a fórmula não os usava — e
+ * foi assim que estes três casos reprovaram na hora da unificação, que é
+ * exatamente o que se espera deles.
+ */
 const inv = (over: Partial<HouseholdInventory> = {}): HouseholdInventory => ({
   waterLiters: 0,
   foodPersonDays: 0,
-  fuelLiters: 0,
-  batteryPercent: 0,
+  fuelLiters: 999,
+  batteryPercent: 100,
   hasMedicalKit: false,
   hasCommunicationDevice: false,
   contributors: 1,
@@ -64,6 +73,17 @@ describe('autonomyDays', () => {
     expect(WATER_PER_PERSON_DAY).toBe(3)
     // Um dia exato para uma pessoa.
     expect(autonomyDays(inv({ waterLiters: WATER_PER_PERSON_DAY, foodPersonDays: 99 }), 1)).toBe(1)
+  })
+
+  it('bateria vazia NÃO reduz a sobrevivência', () => {
+    /*
+     * Eu tinha unificado incluindo energia, e o teste mostrou o absurdo: com
+     * `BATTERY_FULL_DAYS = 3`, nenhuma casa poderia passar de três dias, e uma
+     * bateria em 10% afirmaria que a família sobrevive 0,3 dias. Não sobrevive:
+     * fica sem luz. Autonomia é água e comida; energia é capacidade.
+     */
+    const casa = inv({ waterLiters: 300, foodPersonDays: 30, batteryPercent: 0, fuelLiters: 0 })
+    expect(autonomyDays(casa, 1)).toBe(30)
   })
 
   it('somar inventário de duas contas dobra a água, não a autonomia por pessoa', () => {

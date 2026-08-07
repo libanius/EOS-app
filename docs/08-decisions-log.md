@@ -360,6 +360,64 @@ como rota protegida; usuário não logado ia para login, o login ignorava
 
 ---
 
+## D-129 — Três telas, três respostas para a mesma pergunta
+
+O dono mandou três capturas e disse: *"não estou entendendo por que as
+informações não estão batendo."* Estavam assim:
+
+| | Dashboard | Preparação | Círculos |
+|---|---|---|---|
+| Prontidão | **88%** | **68/100** | **68/100** |
+| Autonomia | **0,3 dias** | **2 dias** | — |
+| Pessoas | — | **1 membro** | **SUA CASA (3)** |
+
+Três contradições, e **duas eram minhas, da mesma semana**.
+
+### "Sua casa (3)" contra "1 membro" — regressão do D-124
+
+O motor define a casa como o círculo onde **eu** confirmei morar. O dono nunca
+confirmou (`household_status: 'none'`); Daniela e paola sim. Então a casa dele é
+ele sozinho, e as despensas das outras duas não somam — que é exatamente o
+desenho do D-123, e está certo.
+
+Mas o filtro que escrevi em Círculos dizia *"quem confirmou, mais eu"*, e
+mostrava 3. **Duas definições de "sua casa" na mesma versão do app**, com a tela
+exibindo a mais generosa. Agora ela usa a definição do motor e diz o que falta:
+*"Você ainda não confirmou que mora aqui — por isso a sua casa conta só você, e
+as despensas dos outros não somam."*
+
+### "0,3 dias" contra "2 dias" — e a ida e volta que valeu
+
+`useWorldData` calculava `min(água, comida, energia, combustível)`;
+`lib/household.ts` calculava `min(água, comida)`. Com a bateria do dono em 10%,
+a primeira dava 0,3 dias e a segunda 2.
+
+Unifiquei primeiro **incluindo os quatro**, achando que somar restrições era o
+lado conservador. O teste unitário mostrou o absurdo: com `BATTERY_FULL_DAYS =
+3`, nenhuma casa poderia ter mais de três dias de autonomia — e uma bateria em
+10% passaria a afirmar que a família **sobrevive 0,3 dias**.
+
+Não sobrevive: ela fica sem luz. **Água e comida são sobrevivência; bateria e
+combustível são capacidade** — mudam o que dá para fazer, não quanto tempo se
+fica vivo. Os dois continuam como barras próprias, que é onde a informação é
+verdadeira.
+
+A lição vale além deste número: ser conservador é bom, inventar uma restrição
+de sobrevivência que não existe é outra coisa. **Um número alarmante e falso
+gasta a confiança que o número alarmante e verdadeiro vai precisar.**
+
+### "88% Prontidão" contra "68/100" — duas grandezas, um nome
+
+O 88% é o percentual do checklist; o 68/100 é um score composto que pesa água,
+comida, bateria, kit e comunicação. Duas métricas podem coexistir; **duas
+métricas com o mesmo nome, não**. O rótulo do dashboard passa a dizer o que o
+número é: `Checklist`.
+
+**Medido depois, no estado exato do dono:** dashboard 2,0 dias (era 0,3),
+Círculos "Sua casa (1)" (era 3) com o aviso do porquê, e o rótulo corrigido.
+
+---
+
 ## D-128 — O dashboard para de tranquilizar sem base
 
 O dono pediu uma análise sênior da tela de produto. Rodada com `impeccable

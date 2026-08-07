@@ -45,6 +45,7 @@ const COPY = {
   pt: {
     riskIndex: 'Índice de risco',
     readinessLabel: 'Prontidão',
+    checklistLabel: 'Checklist',
     readiness: 'Prontidão',
     autonomy: 'Autonomia da família',
     autonomyHint: 'limitada pelo recurso mais escasso',
@@ -121,6 +122,7 @@ const COPY = {
   en: {
     riskIndex: 'Risk index',
     readinessLabel: 'Readiness',
+    checklistLabel: 'Checklist',
     readiness: 'Readiness',
     autonomy: 'Family autonomy',
     autonomyHint: 'bounded by the scarcest reserve',
@@ -799,10 +801,20 @@ function WorldSections({
           </div>
           <span className="sep" aria-hidden="true" />
           <div className="fig">
+            {/*
+              Este número é o percentual do CHECKLIST, e o rótulo dizia
+              "Prontidão" (D-129). Em Preparação, "Prontidão" é outro número —
+              um score composto de 0 a 100 que pesa água, comida, bateria, kit
+              e comunicação. O dono viu 88% numa tela e 68/100 na outra, para a
+              mesma casa, e não tinha como saber que eram grandezas diferentes.
+
+              Duas métricas podem coexistir; duas métricas com o mesmo nome,
+              não. O nome passa a dizer o que o número é.
+            */}
             <span className={`t-display${veredito.source === 'household' ? ' accent' : ''}`} data-severity={veredito.severity}>
               {data.checklistPct}<i>%</i>
             </span>
-            <span className="t-sub ink-2">{c.readinessLabel}</span>
+            <span className="t-sub ink-2">{c.checklistLabel}</span>
           </div>
         </div>
 

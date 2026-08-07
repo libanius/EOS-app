@@ -624,8 +624,23 @@ export default function CirclesPage() {
           </div>
         ) : (
           circles.map(c => {
-            const casa = c.members.filter(m => m.household_status === 'confirmed' || m.is_me)
-            const fora = c.members.filter(m => !(m.household_status === 'confirmed' || m.is_me))
+            /*
+             * "Sua casa" é a MESMA definição do motor (D-129).
+             *
+             * Este filtro dizia "quem confirmou, mais eu" — e mostrava
+             * "SUA CASA (3)" para o dono, que nunca tinha confirmado morar
+             * ali. O `lib/household.ts` contava 1, porque a casa é o círculo
+             * onde EU confirmei; sem a minha confirmação não existe casa.
+             *
+             * Duas definições de "sua casa" na mesma versão do app, e a tela
+             * mostrava a mais generosa. Agora ela mostra a mesma do motor, e
+             * diz o que falta quando eu ainda não confirmei.
+             */
+            const euConfirmei = c.members.some(m => m.is_me && m.household_status === 'confirmed')
+            const casa = euConfirmei
+              ? c.members.filter(m => m.household_status === 'confirmed')
+              : c.members.filter(m => m.is_me)
+            const fora = c.members.filter(m => !casa.includes(m))
             const pendentes = requests[c.id]?.length ?? 0
 
             const linha = (m: typeof c.members[number]) => {
@@ -694,6 +709,13 @@ export default function CirclesPage() {
                 {casa.length > 0 && (
                   <>
                     <span className="t-caps ink-3">{pt ? `Sua casa (${casa.length})` : `Your house (${casa.length})`}</span>
+                    {!euConfirmei && (
+                      <p className="t-foot warn">
+                        {pt
+                          ? 'Você ainda não confirmou que mora aqui — por isso a sua casa conta só você, e as despensas dos outros não somam.'
+                          : 'You have not confirmed you live here — so your household counts only you, and the others\u2019 pantries do not pool.'}
+                      </p>
+                    )}
                     <ul className="cir-members">{casa.map(linha)}</ul>
                   </>
                 )}
