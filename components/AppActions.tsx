@@ -67,7 +67,17 @@ export default function AppActions() {
     <div
       className="app-actions"
       data-hidden={oculto ? '' : undefined}
-      style={{ position: 'fixed', top: 'max(16px, calc(env(safe-area-inset-top, 0px) + 8px))', right: 16, zIndex: 200, display: 'flex', gap: 8 }}
+      /*
+        `display` saiu daqui de propósito (D-128).
+        Um estilo inline vence qualquer declaração da folha que não tenha
+        `!important` — e era por isso que
+        `body:has(.wv2-pilot-chat) .app-actions { display: none }` NUNCA valia.
+        O ✕ do Pilot ficava coberto: quem tocava nele ia parar em /ficha, com a
+        conversa perdida. Eu já tinha tropeçado nisto e posto `!important` no
+        `top`, sem perceber que o `display` tinha o mesmo problema. A saída não
+        é mais um `!important`: é a folha voltar a ser dona do layout.
+      */
+      style={{ position: 'fixed', top: 'max(16px, calc(env(safe-area-inset-top, 0px) + 8px))', right: 16, zIndex: 200, gap: 8 }}
     >
       {/*
         O plano da família vivia só dentro do painel do dashboard — para chegar

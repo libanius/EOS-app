@@ -983,3 +983,8 @@ body:has(.wv2-pilot-chat) .app-actions { display: none; }
   .app-actions { transition-duration: 1ms; }
   .app-actions[data-hidden] { transform: none; }
 }
+
+/* D-128: o layout do chrome mora na folha, não no `style` inline.
+   Ver o comentário em AppActions.tsx — um inline sem `!important` do outro
+   lado tornava a regra de esconder o chrome letra morta. */
+.app-actions { display: flex; }

@@ -139,15 +139,24 @@ export function Bar({
   value,
   fraction,
   low = false,
+  unknown = false,
 }: {
   label: string
   value: string
   fraction: number
   low?: boolean
+  /**
+   * Não medido — diferente de medido em zero (D-128).
+   *
+   * Antes os dois desenhavam a mesma barra vazia. Numa tela de preparação a
+   * diferença é grande: "você tem um problema" e "eu não sei" pedem ações
+   * opostas de quem lê.
+   */
+  unknown?: boolean
 }) {
   const pct = Math.round(Math.max(0, Math.min(1, fraction)) * 100)
   return (
-    <div className={`wv2-bar${low ? ' low' : ''}`}>
+    <div className={`wv2-bar${low ? ' low' : ''}${unknown ? ' unknown' : ''}`}>
       <span className="t-sub ink-2">{label}</span>
       <span className="t-sub">{value}</span>
       <span className="track">

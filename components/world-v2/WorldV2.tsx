@@ -13,6 +13,8 @@
  */
 
 import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
+import { restingVerdict } from './resting-verdict'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useLanguage } from '@/lib/i18n'
 import { useRisk } from '@/components/v2/RiskProvider'
@@ -96,6 +98,7 @@ const COPY = {
     refresh: 'Atualizar dados',
     panel: 'Mostrar ou ocultar o painel',
     open: 'Abrir',
+    fix: 'Resolver',
     expand: 'Expandir',
     collapse: 'Recolher',
     sheetLabel: 'Situação da família',
@@ -171,6 +174,7 @@ const COPY = {
     refresh: 'Refresh data',
     panel: 'Show or hide the panel',
     open: 'Open',
+    fix: 'Fix',
     expand: 'Expand',
     collapse: 'Collapse',
     sheetLabel: 'Family situation',
@@ -229,6 +233,19 @@ export default function WorldV2() {
     })
   }
   const [layersOpen, setLayersOpen] = useState(false)
+
+  /*
+   * `Escape` fecha o painel de Camadas (D-128).
+   *
+   * O Pilot já fazia isso; o painel de camadas não. Duas superfícies
+   * sobrepostas na mesma tela, uma que solta e outra que prende.
+   */
+  useEffect(() => {
+    if (!layersOpen) return
+    const sair = (e: KeyboardEvent) => { if (e.key === 'Escape') setLayersOpen(false) }
+    window.addEventListener('keydown', sair)
+    return () => window.removeEventListener('keydown', sair)
+  }, [layersOpen])
 
   const { cyclones, wind, alerts: locatedAlerts } = useWeatherLayers(coords, layers)
 
@@ -349,6 +366,23 @@ export default function WorldV2() {
   const alertCount = (snapshot?.alerts.length ?? 0) + (snapshot?.earthquakes.length ?? 0)
   const headlines = useMemo(() => (snapshot?.alerts ?? []).slice(0, 2), [snapshot])
   const stateLabel = STATE_LABEL[language][state]
+
+  /*
+   * O que a faixa de repouso diz (D-128).
+   *
+   * Função pura, testada em `lib/__tests__/resting-verdict.test.ts`: a tela
+   * renderiza o resultado, não decide. O que ela garante é que a linha nunca
+   * fica otimista — se a casa está pior que o tempo, é da casa que ela fala.
+   */
+  const veredito = restingVerdict({
+    riskState: state,
+    score: score ?? null,
+    stateLabel,
+    autonomyDays: data?.autonomyDays ?? null,
+    checklistPct: data?.checklistPct ?? 0,
+    alertCount,
+    pt: language === 'pt',
+  })
 
   const conditionLine = current
     ? `${metric ? toC(current.temp_f) : Math.round(current.temp_f)}° · ${
@@ -505,6 +539,27 @@ export default function WorldV2() {
           )}
         </div>
 
+        {/*
+          Fechar o painel de Camadas (D-128).
+
+          Ele não tinha saída: sem botão de fechar, sem `Escape`, sem toque
+          fora — e cobrindo 54% do próprio botão que o abriu. Um mau toque numa
+          pilha de três controles prendia a pessoa na tela inicial do app.
+
+          O escurecido é transparente de propósito: ele existe para capturar o
+          toque, não para escurecer. Um painel de utilidade não merece o peso
+          visual de uma tarefa modal.
+        */}
+        <AnimatePresence>
+          {layersOpen && (
+            <div
+              className="wv2-layers-catch"
+              role="presentation"
+              onClick={() => setLayersOpen(false)}
+            />
+          )}
+        </AnimatePresence>
+
         <AnimatePresence>
           {layersOpen && (
             <motion.div
@@ -516,6 +571,17 @@ export default function WorldV2() {
               exit={{ opacity: 0 }}
               transition={reduceMotion ? { duration: 0.12 } : SPRING.pop}
             >
+              <div className="wv2-layers-head">
+                <p className="t-caps ink-3">{c.layersLabel}</p>
+                <button
+                  type="button"
+                  className="wv2-layers-close"
+                  onClick={() => setLayersOpen(false)}
+                  aria-label={language === 'pt' ? 'Fechar camadas' : 'Close layers'}
+                >
+                  ✕
+                </button>
+              </div>
               <p className="t-caps ink-3">{c.base}</p>
               <div className="row">
                 <button type="button" className={`wv2-chip${mapBase === 'dark' ? ' on' : ''}`} onClick={() => setBase('dark')}>{c.darkBase}</button>
@@ -599,15 +665,29 @@ export default function WorldV2() {
             grabberLabel={c.grabber}
             summary={
               <>
-                <span className="lead">
-                  <strong className="t-title1">{score ?? '—'}</strong>
-                  <span className="t-sub ink-2">
-                    {stateLabel} · {alertCount} {c.alerts.toLowerCase()}
-                  </span>
+                {/*
+                  A faixa mostra o PIOR entre clima e casa (D-128).
+
+                  Antes ela gastava sua única linha — a que a maioria das
+                  sessões vai ler — dizendo "14 · Estável" em verde para uma
+                  casa com zero dias de água. O comentário logo abaixo, no
+                  cartão de risco, já tinha o instinto certo ("um risco de 9 lê
+                  diferente a 20% de prontidão do que a 90%"); faltava a faixa
+                  obedecer ao que o código já pensava.
+                */}
+                <span className="lead" data-severity={veredito.severity}>
+                  <strong className="t-title1">{veredito.lead}</strong>
+                  <span className="t-sub ink-2">{veredito.line}</span>
                 </span>
-                <span className="t-caps ink-3">
-                  {detent === 'peek' ? c.open : detent === 'medium' ? c.expand : c.collapse}
-                </span>
+                {/* Todo número ganha alça: antes "0 dias de água" era um
+                    veredito sem saída — lia-se o problema sem poder agir. */}
+                <Link
+                  href={veredito.href}
+                  className="wv2-peek-handle t-caps"
+                  onClick={e => e.stopPropagation()}
+                >
+                  {veredito.source === 'household' ? c.fix : c.open}
+                </Link>
               </>
             }
           >

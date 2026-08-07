@@ -360,6 +360,91 @@ como rota protegida; usuário não logado ia para login, o login ignorava
 
 ---
 
+## D-128 — O dashboard para de tranquilizar sem base
+
+O dono pediu uma análise sênior da tela de produto. Rodada com `impeccable
+critique`, em duas avaliações isoladas — revisão de design e evidência medida,
+nenhuma vendo a outra até a síntese. **Nota: 23/40, "Aceitável".**
+
+O veredito que importa: **autoral por baixo, intercambiável por cima**. O
+sistema de tokens é real e a escrita é a marca (*"O cone é a incerteza da
+posição do centro, não a área de dano"*). Mas a tela em repouso era um app de
+mapa escuro qualquer — nenhum membro da família, nenhuma autonomia, nenhum
+plano sem um gesto.
+
+### Os dois P0
+
+**O painel de Camadas não tinha saída.** Sem botão de fechar, `Escape` ignorado
+(zero ocorrências em `WorldV2.tsx`), toque fora ignorado, e cobrindo 54% do
+próprio botão que o abriu. Um mau toque numa pilha de três controles prendia a
+pessoa na tela inicial. Ganhou as três saídas.
+
+**O chrome cobria o ✕ do Pilot.** A regra certa existia
+(`body:has(.wv2-pilot-chat) .app-actions { display: none }`) e **nunca valia**,
+porque `AppActions.tsx` declarava `display: 'flex'` inline — e inline vence a
+folha sem `!important`. Eu já tinha tropeçado nessa armadilha no D-127 e posto
+`!important` no `top`, sem perceber que o `display` tinha o mesmo problema. A
+correção não foi mais um `!important`: foi devolver o layout à folha.
+
+### O sinal estava invertido
+
+`.wv2-bar.low` pintava a reserva crítica em `--ink-3`, a tinta mais apagada do
+sistema: **quanto mais urgente, mais sumia**. E um zero medido desenhava igual a
+"não sei". Agora a reserva baixa grita em âmbar, e "sem dados" tem desenho
+próprio — numa tela de preparação, a diferença entre "você tem um problema" e
+"espera aí" é a diferença entre agir e não agir.
+
+### A faixa de repouso passa a dizer a verdade
+
+Escolha do dono entre três opções: **o pior dos dois**.
+
+A causa era estrutural, não descuido: `deriveRisk(s: WeatherSnapshot)` é uma
+função só de clima, pela assinatura. Ela não tem como saber que a família não
+tem água. O app tinha dois motores, dois veredictos e uma tela — e o que
+tranquilizava era o que gritava, em verde, na única linha que a maioria das
+sessões lê.
+
+`components/world-v2/resting-verdict.ts` é função pura de propósito: dá para
+provar por teste que a conta nunca fica otimista. Empate vai para a casa — o
+clima já tem uma aba inteira, e a casa é a única coisa que só esta tela conta.
+Autonomia não medida não vale "seguro".
+
+Medido depois, na casa vazia da captura do dono: **"0.0 dias de autonomia ·
+reabasteça hoje"** em vermelho, com alça para Preparação. Antes: "14 · Estável"
+em verde.
+
+**E todo número ganhou alça.** Antes "0 dias de água" era um veredito sem saída:
+lia-se o problema sem poder agir sobre ele.
+
+### Um achado de licença, não de acessibilidade
+
+A atribuição do CARTO e do OpenStreetMap media **1,07:1** e estava **totalmente
+coberta** pela barra de navegação — links reais, invisíveis e não tocáveis. Os
+dois provedores exigem crédito visível.
+
+Errei duas vezes antes de acertar, e as duas valem registro. Primeiro pus a
+margem no bloco em vez do container, que é o que o maplibre posiciona: não
+moveu nada. Depois pendurei em `--sheet-peek`, que é a altura do pegador (85px)
+e não o quanto a folha cobre da tela. A medida certa é a distância do fundo da
+janela até o topo da folha, republicada durante o arrasto — `--sheet-cover`,
+medida em 157px. Resultado: atribuição em `y=651`, acima da folha em `y=687`,
+tocável, sobre fundo próprio.
+
+O contraste do 1,07:1 também tinha causa precisa: a regra do maplibre tem a
+mesma especificidade que a nossa e vence por ordem de importação. É o único
+`!important` do arquivo, e está comentado dizendo por quê.
+
+**Prova.** 131 unitários (12 novos só para a faixa, metade provando que ela não
+infla) e verificação no navegador de cada item: três saídas do painel, ✕ de
+44px recebendo o toque, chrome com `display: none`, faixa em vermelho com o
+texto certo, e a atribuição tocável.
+
+**Fase 3, escolhida pelo dono e não feita ainda:** destilar — um foco em
+repouso, o resto sob um toque. Hoje são 16 controles visíveis e cinco objetos
+competindo pela atenção.
+
+---
+
 ## D-127 — Uma fonte para o canto superior direito
 
 **Regressão minha, do mesmo dia.** O D-126 empurrou o chrome global 74px para

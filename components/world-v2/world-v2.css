@@ -96,12 +96,46 @@
 .wv2-map .world-map-wrap,
 .wv2-map .world-plate,
 .wv2-map .world-map { position: absolute; inset: 0; }
-.wv2-map .maplibregl-ctrl-attrib {
-  background: rgba(0, 0, 0, 0.42);
-  color: var(--ink-3);
-  font-size: 9px;
+/*
+ * Atribuição do mapa: exigência de LICENÇA, não enfeite (D-128).
+ *
+ * Estado medido antes: contraste de **1,07:1** e totalmente coberta pela barra
+ * de navegação — links reais, invisíveis e não tocáveis. O CARTO e o
+ * OpenStreetMap exigem crédito visível; sem isso o app está fora dos termos dos
+ * provedores, o que importa antes de qualquer loja de aplicativos.
+ *
+ * A causa do 1,07:1 era de especificidade: a regra do maplibre
+ * (`.maplibregl-ctrl-attrib.maplibregl-compact { background-color: #fff }`)
+ * tem a mesma especificidade que a nossa e vence por ordem de importação — o
+ * CSS dele é importado DEPOIS. Por isso aqui vai `!important`: não é preguiça,
+ * é a única forma de ganhar de uma folha de terceiros que chega depois.
+ */
+.wv2-map .maplibregl-ctrl-attrib,
+.wv2-map .maplibregl-ctrl-attrib.maplibregl-compact {
+  background: rgba(0, 0, 0, 0.55) !important;
+  color: var(--ink-2);
+  font-size: 10px;
+  border-radius: var(--r-pill);
+  position: relative;
+  z-index: 4;
 }
-.wv2-map .maplibregl-ctrl-attrib a { color: var(--ink-3); }
+/* A margem vai no CONTAINER, não no bloco: é ele que o maplibre posiciona.
+   Primeira tentativa foi no `.maplibregl-ctrl-attrib` e não moveu nada — a
+   folha continuou por cima, medido em y=733. E `--sheet-peek` também não
+   servia: 85px é a altura do pegador, não o quanto a folha cobre da tela.
+   `--sheet-cover` é a distância medida do fundo da janela até o topo da folha,
+   republicada durante o arrasto — então isto acompanha de verdade. */
+.wv2-map .maplibregl-ctrl-bottom-right,
+.wv2-map .maplibregl-ctrl-bottom-left {
+  margin-bottom: calc(var(--sheet-cover, 150px) + var(--s2));
+  z-index: 4;
+}
+.wv2-map .maplibregl-ctrl-attrib a,
+.wv2-map .maplibregl-ctrl-attrib.maplibregl-compact a {
+  /* --ink-2 mede 7,09:1 sobre este fundo; --ink-3 media 3,2:1 e reprovava. */
+  color: var(--ink-2);
+  text-decoration: underline;
+}
 
 /* Scrim only where floating chrome actually overlaps the map — a gradient
    edge effect, not a hard divider. */
@@ -338,7 +372,35 @@
   background: var(--accent);
   transform-origin: left center;
 }
-.wv2-bar.low > .track > i { background: var(--ink-3); }
+/*
+ * Reserva baixa GRITA, não recua (D-128).
+ *
+ * Antes: `background: var(--ink-3)` — a tinta mais apagada do sistema. Quanto
+ * mais urgente o estado, mais ele sumia, e uma reserva zerada ficava idêntica
+ * a "ainda não carregou". Numa tela de preparação, essa é a diferença entre
+ * "você tem um problema" e "espera aí".
+ *
+ * A cor não carrega o recado sozinha — o valor ao lado escreve o estado, como
+ * o comentário do primitivo já exigia.
+ */
+.wv2-bar.low > .track > i {
+  background: #ff9f0a;
+  /* Um traço mínimo mesmo em 0%: a barra vazia precisa ser distinguível de uma
+     barra que não foi medida. */
+  min-width: 3px;
+}
+.wv2-bar.low > .track { background: rgba(255, 159, 10, 0.16); }
+
+/* Sem dados é outro estado, e parece outro estado: tracejado, sem preenchimento
+   nenhum. Antes um zero medido e um "não sei" desenhavam a mesma coisa. */
+.wv2-bar.unknown > .track {
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--fill-2) 0 6px,
+    transparent 6px 12px
+  );
+}
+.wv2-bar.unknown > .track > i { display: none; }
 
 /* ── Status capsule: the always-visible answer to "where am I, how bad is it" ── */
 .wv2-capsule {
@@ -1414,9 +1476,11 @@
 }
 .wv2-pilot-chat .chat-id { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .wv2-pilot-chat .chat-id em { font-style: normal; color: var(--accent); }
+/* 44px: o mínimo da HIG. Fechar o Pilot é a saída da superfície mais
+   importante do app, e estava com 36px E coberta pelo chrome (D-128). */
 .wv2-pilot-chat .chat-close {
   flex: none;
-  width: 36px; height: 36px;
+  width: 44px; height: 44px;
   display: grid; place-items: center;
   border: 0; border-radius: var(--r-pill);
   background: var(--fill-2);
@@ -3858,4 +3922,74 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .wv2 .chat-jump { animation-duration: 1ms; }
+}
+
+/* ── Camadas: três saídas em vez de nenhuma (D-128) ──────────────────────────
+   O painel não tinha como fechar — sem botão, sem Escape, sem toque fora — e
+   cobria 54% do próprio controle que o abriu. Um mau toque prendia a pessoa na
+   tela inicial. */
+.wv2-layers-catch {
+  position: absolute;
+  inset: 0;
+  z-index: 59;   /* logo abaixo do painel (60): captura o toque, não o cobre */
+  /* Transparente de propósito: existe para capturar o toque, não para
+     escurecer. Um painel de utilidade não merece o peso de uma tarefa modal. */
+  background: transparent;
+}
+.wv2-layers-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+  margin-bottom: var(--s1);
+}
+.wv2-layers-head .t-caps { margin: 0; }
+.wv2-layers-close {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  margin: -10px -10px -10px 0;   /* alvo de 44px sem inchar o painel */
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink-2);
+  font-size: 0.9375rem;
+  cursor: pointer;
+  transition: transform 100ms ease-out, background 140ms ease-out;
+}
+.wv2-layers-close:active { transform: scale(0.92); background: var(--fill-2); }
+
+/* O painel abre ABAIXO do controle, não por cima dele. Cobrir o próprio
+   gatilho é o que tornava o beco sem saída difícil até de perceber. */
+.wv2-layers { top: calc(50px + 3 * 62px + 8px); }
+
+@media (prefers-reduced-motion: reduce) {
+  .wv2-layers-close { transition-duration: 1ms; }
+  .wv2-layers-close:active { transform: none; }
+}
+
+/* ── A faixa de repouso, e a alça (D-128) ────────────────────────────────────
+   O acento segue o PIOR entre clima e casa. Antes a faixa era sempre verde,
+   porque só olhava o tempo — e ficava verde numa casa sem água. */
+.wv2 .lead[data-severity='warning'] .t-title1 { color: #ff9f0a; }
+.wv2 .lead[data-severity='critical'] .t-title1 { color: #ff453a; }
+.wv2 .lead[data-severity='watch'] .t-title1 { color: #ffd60a; }
+
+/* A alça: de "0 dias de autonomia" dá para chegar em resolver.
+   `stopPropagation` no clique impede que ela também abra a folha — dois
+   destinos no mesmo toque seria pior que nenhum. */
+.wv2 .wv2-peek-handle {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--s3);
+  margin-right: calc(var(--s3) * -1);
+  border-radius: var(--r-pill);
+  color: var(--ink-2);
+  text-decoration: none;
+  transition: color 140ms ease-out, background 140ms ease-out;
+}
+.wv2 .wv2-peek-handle:active { background: var(--fill-2); color: var(--ink); }
+@media (prefers-reduced-motion: reduce) {
+  .wv2 .wv2-peek-handle { transition-duration: 1ms; }
 }
