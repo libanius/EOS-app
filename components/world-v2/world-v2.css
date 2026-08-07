@@ -3993,3 +3993,40 @@
 @media (prefers-reduced-motion: reduce) {
   .wv2 .wv2-peek-handle { transition-duration: 1ms; }
 }
+
+/* ── O cartão de risco segue o pior dos dois (D-128) ─────────────────────────
+   Vale para o painel do desktop e para a folha do celular: o cartão é o mesmo
+   componente. A primeira versão consertou só a faixa do celular, e no desktop
+   a contradição continuou inteira — 12 · Estável em verde sobre 0,3 dias. */
+.wv2 .wv2-pair .t-display[data-severity='warning'] { color: #ff9f0a; }
+.wv2 .wv2-pair .t-display[data-severity='critical'] { color: #ff453a; }
+.wv2 .wv2-pair .t-display[data-severity='watch'] { color: #ffd60a; }
+
+/* A linha que diz qual é o problema, e leva até ele. */
+.wv2 .wv2-worse {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  flex-wrap: wrap;
+  margin: var(--s3) 0 0;
+  padding: var(--s2) var(--s3);
+  border-radius: var(--r-tile);
+  background: rgba(255, 159, 10, 0.1);
+  color: #ff9f0a;
+}
+.wv2 .wv2-worse[data-severity='critical'] {
+  background: rgba(255, 69, 58, 0.1);
+  color: #ff453a;
+}
+.wv2 .wv2-worse-handle {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--s2);
+  color: inherit;
+  font-weight: 650;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.wv2 .wv2-worse-handle:active { opacity: 0.6; }

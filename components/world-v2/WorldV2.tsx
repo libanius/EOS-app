@@ -464,6 +464,7 @@ export default function WorldV2() {
       onUseGps={requestGps}
       shelters={shelterSnapshot}
       conditionLine={conditionLine}
+      veredito={veredito}
     />
   )
 
@@ -501,11 +502,16 @@ export default function WorldV2() {
       <div className="wv2-layer wv2-chrome">
         {/* Textual equivalent of the map for assistive technology. */}
         <p className="wv2-sr" role="status">
+          {/*
+            A leitura de tela anunciava só a metade tranquilizadora: índice,
+            estado, alertas — e nunca a autonomia nem a prontidão. Quem usa
+            leitor recebia um retrato mais confortável que o de quem enxerga.
+          */}
           {`${c.riskIndex} ${score ?? '—'}, ${stateLabel}. ${
             hasCoords ? c.yourArea : c.locating
           }. ${alertCount} ${c.alerts.toLowerCase()}. ${
             headlines[0]?.headline ?? c.noAlerts
-          }.`}
+          }. ${veredito.lead}${veredito.line}.`}
         </p>
 
 
@@ -747,6 +753,8 @@ type SectionProps = {
   onUseGps: () => void
   shelters: ShelterSnapshot | null
   conditionLine: string
+  /** O pior entre clima e casa (D-128). Vale para os dois layouts. */
+  veredito: ReturnType<typeof restingVerdict>
 }
 
 function WorldSections({
@@ -766,26 +774,46 @@ function WorldSections({
   onUseGps,
   shelters,
   conditionLine,
+  veredito,
 }: SectionProps) {
   return (
     <>
       {/* ── Risk: the one number this screen exists to communicate ── */}
       <Card accented>
         <SectionLabel trailing={data.online ? c.online : c.offline}>{c.riskIndex}</SectionLabel>
-        {/* Two paired figures: how bad it is, and how ready you are. They only
-            mean something next to each other — a risk of 9 reads differently at
-            20% readiness than at 90%. */}
-        <div className="wv2-pair">
+        {/*
+          Duas figuras pareadas: quão ruim está, e quão pronto você está. O
+          comentário original já dizia o certo — "um risco de 9 lê diferente a
+          20% de prontidão do que a 90%" — mas o acento ficava SEMPRE no número
+          do clima. Numa casa com 0,3 dias de autonomia, o olho pousava no verde.
+
+          Agora o acento segue o PIOR dos dois (D-128). Este cartão é
+          compartilhado pelo painel do desktop e pela folha do celular; a
+          primeira versão consertou só a faixa do celular, e no desktop a
+          contradição continuou inteira.
+        */}
+        <div className="wv2-pair" data-worse={veredito.source}>
           <div className="fig">
-            <span className="t-display accent">{score ?? '—'}</span>
+            <span className={`t-display${veredito.source === 'weather' ? ' accent' : ''}`}>{score ?? '—'}</span>
             <span className="t-sub ink-2">{stateLabel}</span>
           </div>
           <span className="sep" aria-hidden="true" />
           <div className="fig">
-            <span className="t-display">{data.checklistPct}<i>%</i></span>
+            <span className={`t-display${veredito.source === 'household' ? ' accent' : ''}`} data-severity={veredito.severity}>
+              {data.checklistPct}<i>%</i>
+            </span>
             <span className="t-sub ink-2">{c.readinessLabel}</span>
           </div>
         </div>
+
+        {/* Quando a casa é o problema, o cartão diz qual é — e leva até lá.
+            Antes o número ficava sozinho, um veredito sem saída. */}
+        {veredito.source === 'household' && (
+          <p className="wv2-worse t-sub" data-severity={veredito.severity}>
+            {veredito.lead}{veredito.line}
+            <Link href={veredito.href} className="wv2-worse-handle">{c.fix} →</Link>
+          </p>
+        )}
         <p className="t-sub ink-2" style={{ marginTop: '0.75rem' }}>
           {hasCoords ? c.yourArea : c.locating} · {conditionLine}
         </p>

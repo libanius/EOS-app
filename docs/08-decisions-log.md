@@ -439,6 +439,26 @@ infla) e verificação no navegador de cada item: três saídas do painel, ✕ d
 44px recebendo o toque, chrome com `display: none`, faixa em vermelho com o
 texto certo, e a atribuição tocável.
 
+### Consertei metade e chamei de pronto
+
+O dono abriu o app e disse "não vejo mudanças" — no **desktop**. Estava certo.
+`WorldV2` bifurca em `isDesktop`, e eu tinha religado só a faixa do celular. No
+painel do desktop a contradição continuava inteira: `12 · Estável` em verde
+sobre 0,3 dias de autonomia.
+
+A avaliação determinística tinha me avisado disso na cara — *"`.wv2-panel` does
+not exist at 390px, WorldV2.tsx:584 branches on isDesktop"* — e eu li como "o
+painel é só de desktop" em vez de "existem dois caminhos e você mediu um".
+
+O cartão de risco é **compartilhado** pelos dois layouts, então a correção certa
+era lá, não na faixa: o acento passa a seguir o pior dos dois, e quando a casa
+é o problema o cartão diz qual é e leva até ele. Verificado nos dois tamanhos na
+mesma execução, que é o que eu deveria ter feito da primeira vez.
+
+Junto foi a leitura de tela, que anunciava só a metade tranquilizadora — índice,
+estado, alertas, e nunca a autonomia. Quem usa leitor recebia um retrato mais
+confortável que o de quem enxerga.
+
 **Fase 3, escolhida pelo dono e não feita ainda:** destilar — um foco em
 repouso, o resto sob um toque. Hoje são 16 controles visíveis e cinco objetos
 competindo pela atenção.
