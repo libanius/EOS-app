@@ -44,6 +44,15 @@ import { directionsUrl, formatDistance } from '@/lib/world/navigation'
 type Message = {
   id: string
   role: 'pilot' | 'user'
+  /**
+   * `brief` é a resposta do motor local: uma manchete curta, com fatores e
+   * ressalva. `chat` é conversa livre — prosa, que precisa ser lida como prosa.
+   *
+   * Antes tudo caía no mesmo molde e o texto do chat era renderizado em
+   * `t-title2`: parágrafos inteiros em corpo de manchete. Era a poluição que o
+   * dono apontou, e a razão de não sobrar espaço para a etiqueta.
+   */
+  kind?: 'brief' | 'chat'
   text: string
   detail?: string
   verdict?: PilotVerdict
@@ -133,6 +142,11 @@ const VERDICT_LABEL: Record<PilotVerdict, { pt: string; en: string }> = {
   act: { pt: 'Aja agora', en: 'Act now' },
 }
 
+/** O veredito do servidor entra no MESMO vocabulário de etiqueta do motor local. */
+const GUARD_TAG: Record<string, PilotVerdict> = {
+  GO: 'ready', LIMITED: 'watch', WAIT: 'hold', AVOID: 'act', PRIORITY_OVERRIDE: 'act',
+}
+
 let seq = 0
 const nextId = () => `m${++seq}`
 
@@ -176,13 +190,41 @@ export default function Pilot({
   const [addedTasks, setAddedTasks] = useState<Set<string>>(new Set())
   const [savedMemory, setSavedMemory] = useState<Set<string>>(new Set())
   const streamRef = useRef<HTMLDivElement>(null)
+  /** Há resposta nova abaixo e a pessoa está lendo mais acima. */
+  const [temNovidade, setTemNovidade] = useState(false)
 
   const opening = useMemo(() => askPilot('now', ctx), [ctx])
 
-  const scrollToEnd = useCallback(() => {
+  /**
+   * Rolagem que respeita quem está lendo (D-125).
+   *
+   * A versão anterior puxava a conversa para o fim SEMPRE. O dono relatou o
+   * efeito: começa a ler a resposta, o cartão de tarefas chega no final, a tela
+   * salta para baixo e ele perde a linha — tendo que subir de novo, para o
+   * texto fugir outra vez.
+   *
+   * A regra é a de qualquer conversa boa: **só acompanha o fim quem já estava
+   * no fim.** Quem subiu para reler fica onde está, e um aviso discreto diz que
+   * há coisa nova embaixo.
+   */
+  const grudadoNoFim = useRef(true)
+
+  const perto = useCallback(() => {
+    const el = streamRef.current
+    if (!el) return true
+    // 64px de folga: o dedo raramente para exatamente no fim.
+    return el.scrollHeight - el.scrollTop - el.clientHeight < 64
+  }, [])
+
+  const scrollToEnd = useCallback((forcar = false) => {
+    if (!forcar && !grudadoNoFim.current) {
+      setTemNovidade(true)
+      return
+    }
     requestAnimationFrame(() => {
       const el = streamRef.current
       if (el) el.scrollTop = el.scrollHeight
+      setTemNovidade(false)
     })
   }, [])
 
@@ -240,6 +282,16 @@ export default function Pilot({
     scrollToEnd()
   }
 
+  /**
+   * Atualiza uma bolha que já está na tela.
+   *
+   * É o que permite a resposta crescer enquanto chega, em vez de aparecer
+   * inteira de uma vez. Sem isto, cada pedaço viraria uma bolha nova.
+   */
+  const replace = (id: string, fn: (m: Message) => Message) => {
+    setMessages(current => current.map(m => (m.id === id ? fn(m) : m)))
+  }
+
   /** Local engine — instant and offline. Used by the suggestion chips. */
   const askLocal = (intent: PilotIntentId, label: string) => {
     haptic.selection()
@@ -273,7 +325,7 @@ export default function Pilot({
       .map(m => ({ role: m.role === 'user' ? ('user' as const) : ('assistant' as const), content: m.text }))
 
     try {
-      const response = await fetch('/api/pilot/chat', {
+      const response = await fetch('/api/pilot/chat?stream=1', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -386,23 +438,82 @@ export default function Pilot({
           },
         }),
       })
-      const data = (await response.json()) as {
-        reply?: string | null
-        tasks?: PilotTask[]
-        memory?: PilotMemoryProposal[]
-        destinations?: PilotDestination[]
-        error?: string
+      /*
+       * A resposta CHEGA ESCREVENDO (D-125).
+       *
+       * Antes o cliente esperava o JSON inteiro e despejava tudo de uma vez —
+       * o dono descreveu como "explode na tela". Agora o servidor manda a
+       * etiqueta determinística primeiro, depois o texto em pedaços, e só no
+       * fim as tarefas e destinos.
+       *
+       * A ordem importa: a etiqueta não depende do modelo, então não faz
+       * sentido esperar o texto para saber que há uma regra crítica ativa.
+       */
+      const idResposta = nextId()
+      let acumulado = ''
+      let criada = false
+
+      const leitor = response.body?.getReader()
+      if (!leitor) throw new Error('sem corpo')
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      const aplicar = (evento: string, dados: Record<string, unknown>) => {
+        if (evento === 'guard') {
+          const g = dados as unknown as { verdict: string; binding: boolean; headline: string; rules: string[] }
+          push({
+            id: idResposta,
+            role: 'pilot',
+            kind: 'chat',
+            text: '',
+            verdict: GUARD_TAG[g.verdict] ?? undefined,
+            // A frase determinística só aparece quando é vinculante. Nos casos
+            // tranquilos ela seria ruído em cima de uma conversa normal.
+            caveat: g.binding ? g.headline : undefined,
+            factors: g.binding && g.rules.length ? g.rules.map(r => ({ label: '', value: r })) : undefined,
+          })
+          criada = true
+          scrollToEnd()
+          return
+        }
+        if (evento === 'delta') {
+          acumulado += String((dados as { text?: string }).text ?? '')
+          if (!criada) { push({ id: idResposta, role: 'pilot', kind: 'chat', text: acumulado }); criada = true }
+          else replace(idResposta, m => ({ ...m, text: acumulado }))
+          scrollToEnd()
+          return
+        }
+        if (evento === 'done') {
+          const d = dados as unknown as {
+            reply?: string; tasks?: PilotTask[]; memory?: PilotMemoryProposal[]; destinations?: PilotDestination[]
+          }
+          replace(idResposta, m => ({
+            ...m,
+            text: d.reply || acumulado || c.unavailable,
+            tasks: d.tasks?.length ? d.tasks : undefined,
+            memory: d.memory?.length ? d.memory : undefined,
+            destinations: d.destinations?.length ? d.destinations : undefined,
+          }))
+          scrollToEnd()
+        }
       }
-      push({
-        id: nextId(),
-        role: 'pilot',
-        text: data.reply || c.unavailable,
-        tasks: data.tasks?.length ? data.tasks : undefined,
-        memory: data.memory?.length ? data.memory : undefined,
-        destinations: data.destinations?.length ? data.destinations : undefined,
-      })
+
+      for (;;) {
+        const { done, value } = await leitor.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const blocos = buffer.split('\n\n')
+        buffer = blocos.pop() ?? ''
+        for (const bloco of blocos) {
+          const evento = bloco.match(/^event: (.+)$/m)?.[1]
+          const dados = bloco.match(/^data: (.+)$/m)?.[1]
+          if (!evento || !dados) continue
+          try { aplicar(evento, JSON.parse(dados)) } catch { /* bloco parcial: o próximo fecha */ }
+        }
+      }
+      if (!criada) push({ id: idResposta, role: 'pilot', kind: 'chat', text: c.unavailable })
     } catch {
-      push({ id: nextId(), role: 'pilot', text: c.unavailable })
+      push({ id: nextId(), role: 'pilot', kind: 'chat', text: c.unavailable })
     } finally {
       setBusy(false)
       scrollToEnd()
@@ -488,7 +599,16 @@ export default function Pilot({
               </button>
             </header>
 
-            <div className="chat-stream" ref={streamRef}>
+            <div
+              className="chat-stream"
+              ref={streamRef}
+              onScroll={() => {
+                // Quem chegou ao fim volta a ser levado pelo fim; quem subiu
+                // para reler deixa de ser arrastado.
+                grudadoNoFim.current = perto()
+                if (grudadoNoFim.current) setTemNovidade(false)
+              }}
+            >
               {messages.map(message =>
                 message.role === 'user' ? (
                   <p key={message.id} className="chat-user t-body">{message.text}</p>
@@ -497,14 +617,18 @@ export default function Pilot({
                     {message.verdict && (
                       <span className="chat-verdict t-caps">{VERDICT_LABEL[message.verdict][pt ? 'pt' : 'en']}</span>
                     )}
-                    <p className="chat-headline t-title2">{message.text}</p>
+                    {message.text && (
+                      <p className={message.kind === 'chat' ? 'chat-prose t-body' : 'chat-headline t-title2'}>
+                        {message.text}
+                      </p>
+                    )}
                     {message.detail && <p className="t-body ink-2">{message.detail}</p>}
 
                     {message.factors && message.factors.length > 0 && (
                       <div className="chat-factors">
                         {message.factors.map(f => (
                           <span key={`${f.label}${f.value}`}>
-                            <em className="t-caps ink-3">{f.label}</em>
+                            {f.label && <em className="t-caps ink-3">{f.label}</em>}
                             <b className="t-foot">{f.value}</b>
                           </span>
                         ))}
@@ -646,6 +770,21 @@ export default function Pilot({
                 </button>
               ))}
             </div>
+
+            {/*
+              Aviso de conteúdo novo, para quem está lendo mais acima.
+              Substitui o salto automático: em vez de arrastar a pessoa, avisa
+              e deixa ela decidir quando descer.
+            */}
+            {temNovidade && (
+              <button
+                type="button"
+                className="chat-jump"
+                onClick={() => { grudadoNoFim.current = true; scrollToEnd(true) }}
+              >
+                {pt ? 'Resposta nova ↓' : 'New answer ↓'}
+              </button>
+            )}
 
             <form
               className="chat-compose"

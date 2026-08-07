@@ -360,6 +360,76 @@ como rota protegida; usuário não logado ia para login, o login ignorava
 
 ---
 
+## D-125 — A regra crítica sobrepõe a IA, e a resposta passa a chegar escrevendo
+
+**PILOT-T03 estava BLOCKED com a nota "Critical rules must override AI".** O
+cabeçalho de `app/api/pilot/chat/route.ts` afirmava, desde sempre, que o Pilot
+*"can never soften a critical rule"*. O código não fazia nada disso: pegava o
+texto do modelo e devolvia. Era uma promessa escrita em comentário.
+
+Num app de emergência isso não é dívida de qualidade. O modelo pode escrever
+uma frase tranquilizadora enquanto a casa tem meio dia de água, e nada na
+resposta contradiz — a pessoa lê a frase, não a planilha.
+
+**`lib/pilot-guard.ts` não corrige o modelo: sobrepõe.** O veredito sai do
+`RulesEngine`, que é determinístico, e é calculado sem olhar uma linha do que a
+IA escreveu. `evaluateGuard` nem recebe a resposta — é isso que torna a trava
+uma trava. Uma verificação que dependesse do modelo obedecer não seria trava
+nenhuma.
+
+**Casa desconhecida vira WAIT, nunca GO.** Se a leitura falhar, dizer "pode ir"
+é inventar. Metade dos casos unitários existe para provar que o veredito não
+fica otimista sem base — num app de emergência o erro caro é o otimista.
+
+### O desenho que o dono corrigiu
+
+Minha primeira versão enfiava a frase determinística **dentro** do texto da
+resposta, em markdown. Ele cortou: *"a ideia é ter uma tag no Pilot sobre
+determinístico que não estrague o chat livre"*. Estava certo — misturar as duas
+vozes na mesma frase suja a conversa e faz ler duas coisas como se fossem uma.
+
+O veredito virou **etiqueta**, no mesmo vocabulário que o chat já usava para o
+motor local (`ready`/`watch`/`hold`/`act`). Duas mecânicas de veredito na mesma
+tela seria como o produto passa a discordar de si mesmo.
+
+### Três defeitos de interface que ele relatou usando
+
+**"A UI do chat está poluída."** O texto do chat livre era renderizado em
+`t-title2` — parágrafos inteiros em corpo de manchete. Agora `kind: 'chat'`
+rende prosa como prosa, e sobra espaço para a etiqueta.
+
+**"A resposta explode na tela enquanto eu aguardo."** Agora há **streaming de
+verdade** (`?stream=1`, SSE). Considerei uma revelação falsa — esperar tudo e
+depois digitar — e descartei: a espera continuaria igual e a leitura ficaria
+mais lenta. O que muda a sensação é o tempo até a primeira palavra. Medido:
+**6966ms → 4879ms**, com a resposta completa em 14s. A pessoa passa a ler
+durante nove segundos em que antes olhava para um spinner.
+
+A etiqueta é enviada **antes** do texto, porque não depende do modelo: não faz
+sentido esperar a prosa para saber que há regra crítica ativa.
+
+O contrato JSON continua valendo sem o parâmetro — `guardrails-test` e
+`pilot-abilities-test` dependem dele.
+
+**"O card aparece e não me deixa rolar para cima."** A rolagem seguia o fim
+sempre; quem estava lendo era arrastado quando o cartão de tarefas chegava.
+Agora **só acompanha o fim quem já estava no fim**, e quem subiu recebe um aviso
+discreto — "Resposta nova ↓" — em vez de um empurrão.
+
+### Uma sigla que vazou, e o teste que fecha a porta
+
+O teste de integração mostrou `FOOD_LOW: 1.0 dias` e `SEM_COMMS` na tela: eu
+tinha traduzido três chaves e o motor emite onze. Corrigido, e agora um caso
+unitário **lê `lib/rules-engine.ts`** e cobra frase humana para cada mensagem
+que ele emite — quem acrescentar uma regra é avisado antes do usuário ver a
+sigla.
+
+**Prova.** 9 casos unitários e um teste de integração contra o servidor
+compilado, que mede a ordem dos eventos, o tempo até a primeira palavra e
+confirma `PRIORITY_OVERRIDE` numa casa com água crítica.
+
+---
+
 ## D-124 — Círculos sai de 7/20, e três funções que nunca funcionaram passam a funcionar
 
 **Contexto.** O dono pediu um audit da tela de Círculos com a skill `impeccable`.

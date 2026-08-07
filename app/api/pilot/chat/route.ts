@@ -5,6 +5,7 @@ import { generationParams, getOpenAIClient, getOpenAIModel } from '@/lib/openai'
 import { enforceAiBudget, rateLimitHeaders } from '@/lib/rate-limit'
 import { logError } from '@/lib/error-log'
 import { getHousehold } from '@/lib/household'
+import { evaluateGuard } from '@/lib/pilot-guard'
 import { getRelevantChunks } from '@/lib/knowledge'
 import { buildPilotCircleRecord, buildPilotFamilyRecord, type CircleVisibleMemberRecord } from '@/lib/pilot-family-record'
 
@@ -545,6 +546,37 @@ function extractJson(raw: string, pt: boolean): { reply: string; tasks: PilotTas
   }
 }
 
+/**
+ * Lê o valor PARCIAL do campo `reply` enquanto o JSON ainda está chegando.
+ *
+ * O modelo responde um objeto JSON inteiro; o streaming entrega pedaços de
+ * texto cru, que não são JSON válido até o fim. Este extrator acompanha só a
+ * string de `reply`, respeitando escapes, e devolve o que já dá para mostrar.
+ *
+ * Existe porque a alternativa era esperar o objeto fechar — e foi exatamente
+ * isso que fazia a resposta "explodir na tela" de uma vez só.
+ */
+function replyParcial(bruto: string): string {
+  const i = bruto.indexOf('"reply"')
+  if (i < 0) return ''
+  const aspas = bruto.indexOf('"', bruto.indexOf(':', i) + 1)
+  if (aspas < 0) return ''
+  let saida = ''
+  for (let k = aspas + 1; k < bruto.length; k += 1) {
+    const ch = bruto[k]
+    if (ch === '\\') {
+      const prox = bruto[k + 1]
+      if (prox === undefined) break
+      saida += prox === 'n' ? '\n' : prox === 't' ? '\t' : prox
+      k += 1
+      continue
+    }
+    if (ch === '"') break
+    saida += ch
+  }
+  return saida
+}
+
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
   const {
@@ -611,8 +643,18 @@ export async function POST(request: NextRequest) {
 
   let familyRecord = ''
   let circleRecord = ''
+  /*
+   * A casa vive FORA do try porque o veredito determinístico depende dela e
+   * precisa existir mesmo quando a montagem da ficha falha. `known: false` é o
+   * estado honesto nesse caso, e o guard o traduz em WAIT — nunca em GO.
+   */
+  let casa: Awaited<ReturnType<typeof getHousehold>> = {
+    people: [], size: 0,
+    inventory: { waterLiters: 0, foodPersonDays: 0, fuelLiters: 0, batteryPercent: 0, hasMedicalKit: false, hasCommunicationDevice: false, contributors: 0 },
+    reachable: [], needsHidden: 0, known: false,
+  }
   try {
-    const [{ data: profile }, casa, visibleCircleRecord] = await Promise.all([
+    const [{ data: profile }, casaLida, visibleCircleRecord] = await Promise.all([
       supabase
         .from('profiles')
         .select('name, location, blood_type, allergies, emergency_contact_name, emergency_contact_phone, medical_notes, medications')
@@ -626,7 +668,7 @@ export async function POST(request: NextRequest) {
     ])
     familyRecord = buildPilotFamilyRecord({
       profile: profile ?? null,
-      members: casa.people.map(p => ({
+      members: casaLida.people.map(p => ({
         name: p.name,
         age: p.age,
         medical_conditions: p.medicalConditions,
@@ -637,6 +679,7 @@ export async function POST(request: NextRequest) {
       })),
       pt,
     })
+    casa = casaLida
     if (casa.needsHidden > 0) {
       // O Pilot precisa saber a diferença entre "ninguém precisa" e "não posso
       // ver". Sem isto ele responderia com confiança sobre uma casa que não
@@ -758,8 +801,8 @@ export async function POST(request: NextRequest) {
       ? 'REGRAS INEGOCIÁVEIS: 1) Nunca invente abrigo, rota ou ordem de evacuação — evacuação só existe se houver ordem oficial. 2) Use os números reais da família acima; nada de conselho genérico. 3) Se faltar dado, diga que falta. 4) Nunca suavize um risco crítico. 5) NUNCA calcule distância, rumo ou coordenada por conta própria — use apenas os números já fornecidos acima. Ao mencionar direção ou distância, **copie o valor exato** que foi dado (ex.: "34.0 km a NO"); nunca parafraseie para outra direção nem arredonde o rumo. 6) Só cite posição de quem aparece na lista de posições consentidas.'
       : 'NON-NEGOTIABLE RULES: 1) Never invent a shelter, route or evacuation order — evacuation exists only under an official order. 2) Use the real household numbers above; no generic advice. 3) If data is missing, say so. 4) Never soften a critical risk. 5) NEVER compute a distance, bearing or coordinate yourself — use only the numbers given above. When mentioning a direction or distance, **copy the exact value** you were given (e.g. "34.0 km NW"); never paraphrase it into a different direction or round the bearing. 6) Only cite the position of people who appear in the consented positions list.',
     pt
-      ? 'Responda no mesmo idioma em que o usuário escreveu. RESPONDA SOMENTE com JSON: {"reply":"sua resposta","tasks":[{"name":"ação curta e executável","why":"por que","kind":"resource|task|plan_review|comms_setup","tier":"ESSENTIAL|MODERATE|EXCELLENT","quantity":1,"unit":null}],"memory":[{"title":"memória curta","reason":"por que isso ajuda no futuro","proposal_md":"- Preferência/regra/necessidade em Markdown"}],"destinations":[{"label":"nome do lugar","lat":0,"lng":0}]}. Inclua em tasks TODA ação concreta que você recomendar. Use memory somente para preferências/necessidades duráveis. Inclua em destinations TODO lugar para onde valha a pena ir — copiando as coordenadas exatas da lista acima, nunca inventando. Se não houver, use [].'
-      : 'Reply in the language the user wrote in. ANSWER ONLY with JSON: {"reply":"your answer","tasks":[{"name":"short executable action","why":"why","kind":"resource|task|plan_review|comms_setup","tier":"ESSENTIAL|MODERATE|EXCELLENT","quantity":1,"unit":null}],"memory":[{"title":"short memory","reason":"why this helps later","proposal_md":"- Preference/rule/need in Markdown"}],"destinations":[{"label":"place name","lat":0,"lng":0}]}. Put EVERY concrete action into tasks. Use memory only for durable preferences/needs. Put in destinations EVERY place worth travelling to — copying exact coordinates from the list above, never inventing them. Use [] when there are none.',
+      ? 'Responda no mesmo idioma em que o usuário escreveu. RESPONDA SOMENTE com JSON, e o campo "reply" TEM QUE VIR PRIMEIRO no objeto — a interface mostra a resposta enquanto ela chega, e um campo antes dele atrasa a primeira palavra na tela: {"reply":"sua resposta","tasks":[{"name":"ação curta e executável","why":"por que","kind":"resource|task|plan_review|comms_setup","tier":"ESSENTIAL|MODERATE|EXCELLENT","quantity":1,"unit":null}],"memory":[{"title":"memória curta","reason":"por que isso ajuda no futuro","proposal_md":"- Preferência/regra/necessidade em Markdown"}],"destinations":[{"label":"nome do lugar","lat":0,"lng":0}]}. Inclua em tasks TODA ação concreta que você recomendar. Use memory somente para preferências/necessidades duráveis. Inclua em destinations TODO lugar para onde valha a pena ir — copiando as coordenadas exatas da lista acima, nunca inventando. Se não houver, use [].'
+      : 'Reply in the language the user wrote in. ANSWER ONLY with JSON, and the "reply" field MUST COME FIRST in the object — the interface renders the answer as it streams, and any field before it delays the first word on screen: {"reply":"your answer","tasks":[{"name":"short executable action","why":"why","kind":"resource|task|plan_review|comms_setup","tier":"ESSENTIAL|MODERATE|EXCELLENT","quantity":1,"unit":null}],"memory":[{"title":"short memory","reason":"why this helps later","proposal_md":"- Preference/rule/need in Markdown"}],"destinations":[{"label":"place name","lat":0,"lng":0}]}. Put EVERY concrete action into tasks. Use memory only for durable preferences/needs. Put in destinations EVERY place worth travelling to — copying exact coordinates from the list above, never inventing them. Use [] when there are none.',
   ]
     .filter(Boolean)
     .join('\n\n')
@@ -783,6 +826,65 @@ export async function POST(request: NextRequest) {
     let completion
     try {
       // Provider-enforced JSON beats hoping the model closes its own braces.
+    /*
+     * Streaming (D-125), pedido por `?stream=1`.
+     *
+     * O dono descreveu o problema: "a resposta explode na tela enquanto eu
+     * aguardo". Uma revelação falsa — esperar tudo e depois digitar — não
+     * resolveria: a espera continuaria igual e a leitura ficaria mais lenta. O
+     * que muda a sensação é o tempo até a PRIMEIRA palavra, e isso só o
+     * streaming de verdade entrega.
+     *
+     * O contrato JSON continua valendo sem o parâmetro, porque outros consumidores
+     * (os testes de limite e de habilidades) dependem dele.
+     */
+    if (request.nextUrl.searchParams.get('stream') === '1') {
+      const guard = evaluateGuard(casa, { pt, alerts: context.alerts?.length ?? 0 })
+      const fluxo = await openai.chat.completions.create({ ...payload, response_format: { type: 'json_object' }, stream: true })
+
+      const encoder = new TextEncoder()
+      const corpo = new ReadableStream({
+        async start(controller) {
+          const envia = (evento: string, dados: unknown) =>
+            controller.enqueue(encoder.encode(`event: ${evento}\ndata: ${JSON.stringify(dados)}\n\n`))
+
+          // A etiqueta determinística vai PRIMEIRO: ela não depende do modelo e
+          // não faz sentido esperar o texto para saber que há regra crítica.
+          envia('guard', guard)
+
+          let bruto = ''
+          let mostrado = ''
+          try {
+            for await (const parte of fluxo) {
+              bruto += parte.choices[0]?.delta?.content ?? ''
+              const atual = replyParcial(bruto)
+              if (atual.length > mostrado.length) {
+                envia('delta', { text: atual.slice(mostrado.length) })
+                mostrado = atual
+              }
+            }
+            const final = extractJson(bruto, pt)
+            // O texto completo vai junto: se a extração parcial perdeu algo no
+            // caminho, o cliente corrige no fim em vez de ficar com metade.
+            envia('done', { ...final, guard })
+          } catch (e) {
+            await logError('api/pilot/chat:stream', e, { userId: user.id })
+            envia('done', { reply: mostrado, tasks: [], destinations: [], memory: [], guard })
+          } finally {
+            controller.close()
+          }
+        },
+      })
+
+      return new Response(corpo, {
+        headers: {
+          'Content-Type': 'text/event-stream; charset=utf-8',
+          'Cache-Control': 'no-cache, no-transform',
+          Connection: 'keep-alive',
+        },
+      })
+    }
+
       completion = await openai.chat.completions.create({
         ...payload,
         response_format: { type: 'json_object' },
@@ -793,7 +895,27 @@ export async function POST(request: NextRequest) {
 
     const raw = completion.choices[0]?.message?.content ?? ''
     const { reply, tasks, destinations, memory } = extractJson(raw, pt)
-    return NextResponse.json({ reply, tasks, destinations, memory })
+
+    /*
+     * A regra crítica sobrepõe a IA (D-125 / PILOT-T03).
+     *
+     * O cabeçalho deste arquivo prometia isso desde sempre e o código não fazia:
+     * pegava o texto do modelo e devolvia. O veredito agora é calculado pelo
+     * `RulesEngine` — determinístico, independente do que o modelo escreveu — e
+     * viaja AO LADO da resposta, como etiqueta. Não dentro do texto: misturar
+     * os dois suja o chat livre e faz a pessoa ler duas vozes na mesma frase.
+     *
+     * `casa` já foi lida acima para montar a ficha; reaproveitar evita uma
+     * segunda ida ao banco no caminho mais caro do produto.
+     */
+    const guard = evaluateGuard(casa, { pt, alerts: context.alerts?.length ?? 0 })
+    return NextResponse.json({
+      reply,
+      tasks,
+      destinations,
+      memory,
+      guard,
+    })
   } catch (error) {
     // Antes este catch era mudo: a rota devolvia "unavailable" e o defeito
     // morria ali. Agora fica registrado — a resposta ao usuário não muda.
