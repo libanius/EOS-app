@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import { useLanguage } from '@/lib/i18n'
+import HomeAddress from '@/components/HomeAddress'
+import { EMPTY_ADDRESS, type Address } from '@/lib/address'
 import { useRealtimeSync } from '@/hooks/useRealtimeSync'
 import { saveSnapshot, loadSnapshot } from '@/lib/sync'
 
@@ -70,6 +72,27 @@ export default function FichaPage() {
    * quando ela cuida é o tipo de mentira momentânea que faz alguém fechar a
    * tela achando que cadastrou errado.
    */
+  /** O endereço estruturado que veio do perfil (D-130). */
+  const [endereco, setEndereco] = useState<Partial<Address>>(EMPTY_ADDRESS)
+  /** Há convites guardados esperando um círculo? Então vale oferecer. */
+  const [ofertaCirculo, setOfertaCirculo] = useState(false)
+  const [ultimoSalvo, setUltimoSalvo] = useState<{ pendingInvites: number; dependents: number } | null>(null)
+
+  useEffect(() => {
+    fetch('/api/profile')
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => {
+        const p = d?.profile ?? d
+        if (!p) return
+        setEndereco({
+          country: p.address_country ?? '', line1: p.address_line1 ?? '',
+          unit: p.address_unit ?? '', city: p.address_city ?? '',
+          region: p.address_region ?? '', postal: p.address_postal ?? '',
+        })
+      })
+      .catch(() => {})
+  }, [])
+
   const [dependentes, setDependentes] = useState<Array<{
     id: string; name: string; relationship: string | null; care_notes: string | null
   }> | null>(null)
@@ -386,17 +409,67 @@ export default function FichaPage() {
                 autoComplete="name"
               />
             </div>
+            {/*
+              A oferta do círculo (D-130).
+
+              Ela aparece DEPOIS do salvamento, e como uma linha — não um popup
+              que bloqueia. O dono descreveu um pop-up ao salvar; a diferença é
+              que aqui a pessoa já terminou o que veio fazer, e a oferta não
+              sequestra a conclusão.
+
+              E o preço vem na mesma frase do convite. No desenho original ela
+              clicava em "sim", ia para Círculos e só lá descobria que precisa do
+              plano Família — pedir o trabalho e cobrar pelo resultado dele. Um
+              "sim" informado converte melhor e não irrita ninguém.
+
+              Os nomes não se perdem se ela disser "agora não": ficam guardados
+              como convites pendentes e saem com um toque quando o círculo
+              existir.
+            */}
+            {ofertaCirculo && ultimoSalvo && (
+              <div style={S.circleOffer}>
+                <strong style={{ fontSize: 15 }}>
+                  {pt
+                    ? `${ultimoSalvo.pendingInvites} ${ultimoSalvo.pendingInvites === 1 ? 'pessoa espera' : 'pessoas esperam'} um convite`
+                    : `${ultimoSalvo.pendingInvites} ${ultimoSalvo.pendingInvites === 1 ? 'person is waiting' : 'people are waiting'} for an invite`}
+                </strong>
+                <p style={{ margin: '6px 0 12px', fontSize: 13, lineHeight: 1.5, color: '#a1a1aa' }}>
+                  {pt
+                    ? 'Para elas aparecerem no mapa e receberem alerta, vocês precisam de um círculo. Guardei os nomes — se preferir deixar para depois, eles continuam aqui.'
+                    : 'For them to appear on the map and receive alerts, you need a circle. I saved the names — if you would rather do it later, they stay here.'}
+                </p>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <a href="/circles" style={S.circleOfferPrimary}>
+                    {pt ? 'Criar o círculo da casa · plano Família' : 'Create the household circle · Family plan'}
+                  </a>
+                  <button type="button" style={S.circleOfferGhost} onClick={() => setOfertaCirculo(false)}>
+                    {pt ? 'Agora não' : 'Not now'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/*
+              Endereço estruturado (D-130).
+
+              Era um campo de texto livre. Virou endereço com país, rua, unidade
+              e CEP — e o campo de unidade é o que separa a casa de quem mora num
+              condomínio onde vários prédios dividem o mesmo número de rua.
+
+              É daqui que sai o ponto de casa: a origem das rotas e a referência
+              de distância dos abrigos. E é aqui que o app pergunta quem mais
+              mora ali, porque é o único momento em que a pessoa já está pensando
+              na própria casa.
+            */}
             <div style={S.fieldGroup}>
               <label style={S.fieldLabel}>{t('master.location')}</label>
-              <input
-                type="text"
-                style={S.input}
-                placeholder={t('master.locationPlaceholder')}
-                value={ficha.location ?? ''}
-                onChange={(e) => update({ location: e.target.value || null })}
-                onBlur={() => handleBlur()}
-                disabled={isPending}
-                autoComplete="address-level2"
+              <HomeAddress
+                pt={pt}
+                initial={endereco}
+                onSaved={r => {
+                  setOfertaCirculo(r.pendingInvites > 0)
+                  setUltimoSalvo(r)
+                }}
               />
             </div>
           </div>
@@ -768,6 +841,37 @@ const MU  = '#727272'
 const DNG = '#E8410D'
 
 const S: Record<string, React.CSSProperties> = {
+  /* D-130: a oferta do círculo. Uma faixa, não um popup — ela chega depois de
+     a pessoa ter concluído o que veio fazer. */
+  circleOffer: {
+    marginBottom: 16,
+    padding: 16,
+    borderRadius: 14,
+    border: '1px solid rgba(34,197,94,0.3)',
+    background: 'rgba(34,197,94,0.06)',
+  },
+  circleOfferPrimary: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    minHeight: 48,
+    padding: '0 18px',
+    borderRadius: 999,
+    background: '#22c55e',
+    color: '#06120b',
+    fontWeight: 700,
+    fontSize: 14,
+    textDecoration: 'none',
+  },
+  circleOfferGhost: {
+    minHeight: 48,
+    padding: '0 18px',
+    borderRadius: 999,
+    border: '1px solid #2a2a3a',
+    background: 'transparent',
+    color: '#a1a1aa',
+    fontSize: 14,
+    cursor: 'pointer',
+  },
   page:        { minHeight: '100dvh', background: BG, paddingBottom: 80 },
   width:       { maxWidth: 480, margin: '0 auto', padding: '0 16px' },
   loading:     { minHeight: '100dvh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, background: BG },

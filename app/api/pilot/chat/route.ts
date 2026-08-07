@@ -651,7 +651,7 @@ export async function POST(request: NextRequest) {
   let casa: Awaited<ReturnType<typeof getHousehold>> = {
     people: [], size: 0,
     inventory: { waterLiters: 0, foodPersonDays: 0, fuelLiters: 0, batteryPercent: 0, hasMedicalKit: false, hasCommunicationDevice: false, contributors: 0 },
-    reachable: [], needsHidden: 0, known: false,
+    reachable: [], needsHidden: 0, pendingNames: [], known: false,
   }
   try {
     const [{ data: profile }, casaLida, visibleCircleRecord] = await Promise.all([
@@ -680,6 +680,19 @@ export async function POST(request: NextRequest) {
       pt,
     })
     casa = casaLida
+    /*
+     * Quem mora na casa e ainda não está no EOS (D-130).
+     *
+     * Pedido do dono: "o Pilot pode citar nas orientações que o usuário tem
+     * filhos mas não está no EOS". É informação que muda a resposta — uma casa
+     * de quatro onde só um tem conta se planeja diferente de uma casa de um, e
+     * quem não está no app não recebe alerta nem aparece no mapa.
+     */
+    if (casa.pendingNames.length > 0) {
+      familyRecord += pt
+        ? `\n(Mora nesta casa e ainda NÃO está no EOS: ${casa.pendingNames.join(', ')}. Essas pessoas não recebem alerta e não aparecem no mapa. Vale citar isso quando for relevante para o que foi perguntado — sem repetir em toda resposta.)`
+        : `\n(Lives in this household and is NOT in EOS yet: ${casa.pendingNames.join(', ')}. They receive no alerts and do not appear on the map. Worth mentioning when relevant to the question — not in every answer.)`
+    }
     if (casa.needsHidden > 0) {
       // O Pilot precisa saber a diferença entre "ninguém precisa" e "não posso
       // ver". Sem isto ele responderia com confiança sobre uma casa que não

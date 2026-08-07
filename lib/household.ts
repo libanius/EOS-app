@@ -105,6 +105,15 @@ export type Household = {
   /** Quantas pessoas da casa têm necessidades que não podemos ler. */
   needsHidden: number
   /**
+   * Gente que a pessoa declarou morar na casa e que ainda não está no EOS
+   * (D-130).
+   *
+   * São nomes guardados no momento em que ela preencheu o endereço, esperando
+   * um círculo para virarem convite. O Pilot precisa saber: uma casa de quatro
+   * onde só um tem conta responde diferente de uma casa de um.
+   */
+  pendingNames: string[]
+  /**
    * Falso quando a leitura falhou.
    *
    * Regra herdada de `simulation-debrief`: **nunca presumir uma casa de um**.
@@ -186,7 +195,7 @@ type MemberRow = {
  */
 export async function getHousehold(userId: string): Promise<Household> {
   const admin = createAdminClient()
-  if (!admin) return { people: [], size: 0, inventory: VAZIO, reachable: [], needsHidden: 0, known: false }
+  if (!admin) return { people: [], size: 0, inventory: VAZIO, reachable: [], needsHidden: 0, pendingNames: [], known: false }
 
   try {
     // 1. Em quais círculos eu estou, e qual é a minha situação de casa.
@@ -401,11 +410,32 @@ export async function getHousehold(userId: string): Promise<Household> {
     }
 
     const needsHidden = pessoas.filter(p => !p.medicalVisible).length
-    return { people: pessoas, size: pessoas.length, inventory, reachable, needsHidden, known: true }
+
+    /*
+     * Quem a pessoa disse que mora aqui e ainda não entrou (D-130).
+     *
+     * Falha silenciosa de propósito: a migration pode não estar aplicada, e a
+     * casa continua sendo uma casa sem esta lista. Ela enriquece a resposta do
+     * Pilot; não é pré-requisito dela.
+     */
+    let pendingNames: string[] = []
+    try {
+      const { data: pendentes } = await admin
+        .from('household_invites')
+        .select('name')
+        .eq('owner_id', userId)
+        .eq('status', 'pending')
+        .limit(20)
+      pendingNames = ((pendentes ?? []) as Array<{ name: string }>).map(p => p.name)
+    } catch {
+      /* sem a migration, a casa segue existindo */
+    }
+
+    return { people: pessoas, size: pessoas.length, inventory, reachable, needsHidden, pendingNames, known: true }
   } catch {
     // Ver `known` no tipo: falhar em silêncio com "1 pessoa" produziria uma
     // autonomia inventada que ninguém teria como identificar como erro.
-    return { people: [], size: 0, inventory: VAZIO, reachable: [], needsHidden: 0, known: false }
+    return { people: [], size: 0, inventory: VAZIO, reachable: [], needsHidden: 0, pendingNames: [], known: false }
   }
 }
 
@@ -415,6 +445,6 @@ export async function getHousehold(userId: string): Promise<Household> {
  */
 export async function getHouseholdFor(client: SupabaseClient): Promise<Household> {
   const { data } = await client.auth.getUser()
-  if (!data.user) return { people: [], size: 0, inventory: VAZIO, reachable: [], needsHidden: 0, known: false }
+  if (!data.user) return { people: [], size: 0, inventory: VAZIO, reachable: [], needsHidden: 0, pendingNames: [], known: false }
   return getHousehold(data.user.id)
 }
