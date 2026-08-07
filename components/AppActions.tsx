@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useEffect, useRef, useState } from 'react'
 import { useLanguage } from '@/lib/i18n'
 
 const buttonStyle: React.CSSProperties = {
@@ -21,8 +22,53 @@ const buttonStyle: React.CSSProperties = {
 export default function AppActions() {
   const { t } = useLanguage()
 
+  /**
+   * Some ao descer, volta ao subir (D-126).
+   *
+   * Estes três orbes são `position: fixed` e ficam por cima de tudo. Numa lista
+   * rolada eles cobrem a primeira linha — e não é só estética: eles
+   * INTERCEPTAM O TOQUE. Uma pessoa da lista de Círculos parada embaixo do orbe
+   * simplesmente não abre.
+   *
+   * O padrão é o do iOS, e o próprio código já usava a ideia numa forma bruta
+   * (`body:has(.wv2-pilot-chat) .app-actions { display: none }`): quando a
+   * pessoa desce, ela está lendo — o chrome sai da frente. Quando sobe, está
+   * procurando — o chrome volta.
+   *
+   * O container que rola neste app é o `body`, não o `documentElement`; por isso
+   * o ouvinte é de captura, e não `window.scroll`.
+   */
+  const [oculto, setOculto] = useState(false)
+  const ultimo = useRef(0)
+
+  useEffect(() => {
+    const alvo = () => document.body.scrollTop || document.documentElement.scrollTop || window.scrollY || 0
+    let travado = false
+    const aoRolar = () => {
+      if (travado) return
+      travado = true
+      requestAnimationFrame(() => {
+        const y = alvo()
+        const delta = y - ultimo.current
+        // 8px de histerese: sem isso o chrome pisca com o tremor do dedo.
+        if (Math.abs(delta) > 8) {
+          // Perto do topo o chrome sempre aparece: é onde ele é procurado.
+          setOculto(delta > 0 && y > 72)
+          ultimo.current = y
+        }
+        travado = false
+      })
+    }
+    document.addEventListener('scroll', aoRolar, { capture: true, passive: true })
+    return () => document.removeEventListener('scroll', aoRolar, { capture: true })
+  }, [])
+
   return (
-    <div className="app-actions" style={{ position: 'fixed', top: 'max(16px, calc(env(safe-area-inset-top, 0px) + 8px))', right: 16, zIndex: 200, display: 'flex', gap: 8 }}>
+    <div
+      className="app-actions"
+      data-hidden={oculto ? '' : undefined}
+      style={{ position: 'fixed', top: 'max(16px, calc(env(safe-area-inset-top, 0px) + 8px))', right: 16, zIndex: 200, display: 'flex', gap: 8 }}
+    >
       {/*
         O plano da família vivia só dentro do painel do dashboard — para chegar
         nele era preciso arrastar a folha para cima e rolar. Um plano que se

@@ -360,6 +360,48 @@ como rota protegida; usuário não logado ia para login, o login ignorava
 
 ---
 
+## D-126 — O chrome sai da frente, e "tudo certo" ganha pré-requisito
+
+Dois defeitos que o dono achou usando, e o segundo é de segurança.
+
+**O orbe do Pilot estava inalcançável no Mundo.** Ele relatou "o orbi no World
+do Pilot está escondido". Medido: a `PilotBar` ocupa `x=14..276, y=16..62`, e os
+três orbes do `AppActions` ocupam `x=238..374, y=16..56`. Sobrepõem — e
+`document.elementFromPoint` no centro do orbe do Pilot devolvia o ícone do
+chrome. Não estava só escondido: **o toque ia para outro elemento**. O chrome
+agora desce quando a barra está no topo, com a mesma técnica que a regra do
+banner de simulação já usava. Verificado: `y=74..114`, sem sobreposição, e o
+toque volta a chegar na `PilotBar`.
+
+**E o chrome sai da frente de quem lê.** Os mesmos três orbes são `fixed` e
+cobriam a primeira linha de qualquer lista rolada, interceptando o toque dela.
+Agora somem ao descer e voltam ao subir — quem desce está lendo, quem sobe está
+procurando. `pointer-events: none` acompanha a opacidade: escondido e ainda
+clicável seria pior que visível.
+
+### "Tudo certo" com zero dias de autonomia
+
+A captura que ele mandou tinha três frases se contradizendo na mesma tela:
+
+    TUDO CERTO
+    Nada exige ação agora
+    A família aguenta 0 dias com o que tem em casa
+    Ainda não li a ficha da família — bebês, medicação e mobilidade
+    não entraram nesta conta
+
+O `return` final de `answerNow` era uma **queda livre**: se o risco não fosse
+crítico nem alto, o Pilot dizia "nada exige ação" — **sem nunca olhar a
+autonomia, e sem olhar se a ficha tinha sido lida**.
+
+É a mesma falha otimista que o D-125 travou no servidor, e ela vale igual aqui:
+o erro caro é o otimista. Quem lê "tudo certo" não vai conferir a despensa.
+
+Agora "tudo certo" tem pré-requisito. Sem a ficha da família, o veredito é
+`hold` e diz o que falta. Com menos de um dia de autonomia, é `act` e diz o
+número. O caminho "tudo certo" só é alcançado quando as duas condições passam.
+
+---
+
 ## D-125 — A regra crítica sobrepõe a IA, e a resposta passa a chegar escrevendo
 
 **PILOT-T03 estava BLOCKED com a nota "Critical rules must override AI".** O

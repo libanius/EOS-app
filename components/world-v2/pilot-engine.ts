@@ -269,6 +269,49 @@ function answerNow(ctx: PilotContext): PilotAnswer {
     }
   }
 
+  /*
+   * "Tudo certo" tem PRÉ-REQUISITO (D-126).
+   *
+   * Este era o `return` de queda livre: se o risco não fosse crítico nem alto,
+   * o Pilot dizia "Nada exige ação agora" — **sem nunca olhar a autonomia**. O
+   * dono mandou a captura: TUDO CERTO, autonomia 0 dias, e logo abaixo a
+   * própria ressalva admitindo que a ficha da família não tinha sido lida.
+   *
+   * Três frases que se contradizem na mesma tela. É a mesma falha otimista que
+   * o D-125 travou no servidor, e ela vale igual aqui: **o erro caro é o
+   * otimista**. Quem lê "tudo certo" não vai olhar a despensa.
+   */
+  if (!ctx.household.known) {
+    return {
+      intent: 'now',
+      verdict: 'hold',
+      headline: pt ? 'Não sei o suficiente para dizer que está tudo certo' : 'I do not know enough to say all is clear',
+      body: pt
+        ? 'Falta a ficha da família. Sem saber quem mora aí, a conta de água, comida e rota fica errada — para mais ou para menos.'
+        : 'The family record is missing. Without knowing who lives there, water, food and route maths are wrong — too high or too low.',
+      factors: [{ label: 'Checklist', value: `${ctx.checklistPct}%` }],
+      actions: [{ label: pt ? 'Cadastrar a família' : 'Record the family', href: '/family/cadastro', primary: true }],
+      caveat: rosterCaveat(ctx, pt),
+    }
+  }
+
+  if (ctx.autonomyDays < 1) {
+    return {
+      intent: 'now',
+      verdict: 'act',
+      headline: pt ? 'A casa não tem um dia de autonomia' : 'The household has less than a day of autonomy',
+      body: pt
+        ? `Com o que está registrado, a família aguenta ${days(ctx.autonomyDays)} dias. Isso é o item mais urgente da lista.`
+        : `On what is recorded, the household lasts ${days(ctx.autonomyDays)} days. That is the most urgent item on the list.`,
+      factors: [
+        { label: pt ? 'Autonomia' : 'Autonomy', value: `${days(ctx.autonomyDays)} ${pt ? 'dias' : 'days'}` },
+        { label: 'Checklist', value: `${ctx.checklistPct}%` },
+      ],
+      actions: [{ label: pt ? 'Preparação' : 'Preparedness', href: '/preparedness', primary: true }],
+      caveat: rosterCaveat(ctx, pt),
+    }
+  }
+
   return {
     intent: 'now',
     verdict: 'ready',
