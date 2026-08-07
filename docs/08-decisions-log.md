@@ -360,6 +360,37 @@ como rota protegida; usuário não logado ia para login, o login ignorava
 
 ---
 
+## D-127 — Uma fonte para o canto superior direito
+
+**Regressão minha, do mesmo dia.** O D-126 empurrou o chrome global 74px para
+baixo para liberar o orbe da PilotBar. No Mundo, isso o jogou exatamente em
+cima dos controles do mapa, que ficavam em `topo + 50px`. O dono mandou a
+captura: três grupos flutuantes disputando o mesmo canto, com os rótulos
+cortados no meio da palavra.
+
+**Empurrar de novo seria repetir o erro.** Três clusters escolhiam o próprio
+`top` com números mágicos independentes, e funcionavam por coincidência —
+bastou mexer em um para o arranjo quebrar. A correção não é um valor novo: é
+**uma fonte só**. O chrome publica `--chrome-top`, e quem vem abaixo se
+posiciona a partir dele. Mover o de cima passa a mover o de baixo por
+construção.
+
+**Um erro de cascata no caminho.** Minha primeira versão pré-calculava
+`--chrome-bottom` no `:root`. Não funciona: a substituição de variável acontece
+no elemento, e o override de `--chrome-top` vive no `body` — o `:root` é outro
+elemento e não o enxerga. Quem consome calcula.
+
+**Os rótulos cortados eram outro defeito, e mais antigo.** A coluna tinha 44px
+fixos e "Atualizar" a 9px não cabe; o `overflow: hidden` do bloco cortava a
+palavra. A coluna passa a ter a largura do conteúdo (`min-width: 44px`,
+`white-space: nowrap`) — mediu 61px com "Atualizar". O alvo de toque continua
+com 44px de altura: o que cresceu foi a largura, não a área mínima.
+
+**Medido depois:** chrome `y=74..114`, controles `y=124..259`, orbe `y=16..62`.
+Nenhuma colisão, nenhum rótulo cortado, nada saindo da tela.
+
+---
+
 ## D-126 — O chrome sai da frente, e "tudo certo" ganha pré-requisito
 
 Dois defeitos que o dono achou usando, e o segundo é de segurança.

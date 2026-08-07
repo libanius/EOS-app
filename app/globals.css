@@ -663,14 +663,29 @@ body:has(.sim-banner) .wv2-mapcontrols { top: 12px; }
    clear the simulation banner. */
 body:has(.sim-banner) .app-actions { top: 56px !important; }
 
-/* D-126: o chrome desce quando a PilotBar ocupa o topo.
-   Medido: a barra vai de x=14 a 276 em y=16, e o chrome começa em x=238 — os
-   dois se sobrepõem, e `elementFromPoint` no centro do orbe do Pilot devolvia
-   o ícone do chrome. O orbe não estava só escondido: estava INALCANÇÁVEL.
-   Mesma técnica da regra do banner de simulação, logo acima. */
-body:has(.wv2-pilotbar) .app-actions {
-  top: calc(16px + 46px + 12px + env(safe-area-inset-top, 0px)) !important;
+/* ─── A COLUNA DO CANTO SUPERIOR DIREITO (D-127) ──────────────────────────
+   Três grupos flutuantes disputavam o mesmo canto: o chrome global (plano,
+   ajustes, ficha), os controles do mapa (bússola, atualizar, camadas) e o orbe
+   da PilotBar. Cada um escolhia o próprio `top` com um número mágico, e bastou
+   eu mexer em UM (D-126) para o chrome cair em cima dos controles do mapa.
+
+   Empurrar de novo seria repetir o erro. Agora existe UMA fonte: o chrome
+   publica onde termina, e quem vem abaixo se posiciona a partir disso. Mover o
+   de cima passa a mover o de baixo junto, por construção. */
+:root {
+  --chrome-top: max(16px, calc(env(safe-area-inset-top, 0px) + 8px));
+  --chrome-h: 40px;
+  --chrome-gap: 10px;
 }
+/* Onde a PilotBar ocupa o topo, o chrome começa abaixo dela. */
+body:has(.wv2-pilotbar) {
+  --chrome-top: calc(16px + 46px + 12px + env(safe-area-inset-top, 0px));
+}
+/* Quem vem abaixo calcula a partir de `--chrome-top`, e NÃO de uma variável
+   pré-calculada aqui: `--chrome-bottom` no `:root` não enxergaria o override
+   que o `body:has(...)` acabou de fazer — substituição de variável acontece no
+   elemento, e o `:root` é outro elemento. */
+.app-actions { top: var(--chrome-top) !important; }
 
 /* The Pilot conversation is a focused surface: the global AppActions buttons
    would otherwise sit on top of its close button. */

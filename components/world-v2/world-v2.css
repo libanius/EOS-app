@@ -395,7 +395,10 @@
    for the map", not as more loose circles competing with the global chrome. */
 .wv2-mapcontrols {
   position: absolute;
-  top: calc(max(16px, env(safe-area-inset-top, 0px) + 8px) + 50px);
+  /* Pendurado no fim do chrome (D-127), não num número mágico próprio.
+     Antes era `topo + 50px` e o chrome era `topo` — funcionava por
+     coincidência, e parou de funcionar assim que o chrome mudou de lugar. */
+  top: calc(var(--chrome-top, 16px) + var(--chrome-h, 40px) + var(--chrome-gap, 10px));
   right: 16px;
   display: flex;
   flex-direction: column;
@@ -407,9 +410,15 @@
   -webkit-backdrop-filter: blur(var(--mat-blur-sm)) saturate(var(--mat-sat));
   box-shadow: 0 10px 26px -14px rgba(0, 0, 0, 0.95);
 }
+/* A coluna tem a largura da PALAVRA, não um 44 arbitrário.
+   "Atualizar" a 9px não cabia em 44px e o `overflow: hidden` do bloco cortava
+   a palavra no meio — o dono viu "Atualiza" e "Camada". Alvo de toque continua
+   com 44px de altura; a largura passa a acompanhar o conteúdo. */
 .wv2-mapcontrols .wv2-iconbtn {
-  width: 44px;
+  width: 100%;
+  min-width: 44px;
   height: 44px;
+  padding-inline: var(--s2);
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -2144,7 +2153,8 @@
 /* Touch has no hover, so the map controls carry their name (WV2-T06). */
 .wv2-mapcontrols .wv2-iconbtn.with-caption {
   height: auto;
-  padding: 7px 0 6px;
+  min-height: 44px;
+  padding: 7px var(--s2) 6px;
   gap: 2px;
   flex-direction: column;
   display: flex;
@@ -2152,6 +2162,7 @@
   justify-content: center;
 }
 .wv2-mapcontrols .wv2-iconbtn .cap {
+  white-space: nowrap;   /* a palavra não quebra: ou cabe, ou a coluna cresce */
   font-size: 0.5625rem;
   font-weight: 700;
   letter-spacing: 0.04em;
