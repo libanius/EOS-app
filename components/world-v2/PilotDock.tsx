@@ -31,6 +31,7 @@ import Pilot from './Pilot'
 import type { PilotContext } from './pilot-engine'
 import { haptic } from './motion'
 import './world-v2.css'
+import PilotOrb from './PilotOrb'
 
 /** Telas que já oferecem o Pilot por conta própria. */
 const HAS_OWN_PILOT = ['/dashboard', '/dashboard-world']
@@ -228,33 +229,28 @@ export default function PilotDock() {
   return (
     <>
       {/*
-        O MESMO orbe da PilotBar — as estrelinhas. Duas formas diferentes para a
-        mesma coisa fariam a pessoa aprender o produto duas vezes.
+        O MESMO orbe da PilotBar — agora de verdade (D-136).
+        
+        Este comentário já dizia "o mesmo orbe" e não era: aqui havia 56px de
+        círculo com borda própria, ícone de 24px, brilho de 8px e a cor mudando
+        com o risco; lá, 46px de pílula de vidro esfumaçado, ícone de 22px,
+        sempre verde. Um comentário que afirma o que o código não faz é pior que
+        nenhum, porque quem lê para de conferir.
+
+        Agora os dois montam `PilotOrb`. O que sobra aqui é só o LUGAR: fixo,
+        arrastável, acima da navegação.
       */}
-      <button
+      <PilotOrb
         ref={orbRef}
-        type="button"
         className={`wv2-dock-orb${dragging ? ' dragging' : ''}`}
-        data-state={risk.state}
+        riskState={risk.state}
         style={placement}
-        aria-label={pt ? 'Abrir o Pilot, seu especialista EOS. Arraste para mover.' : 'Open the Pilot, your EOS specialist. Drag to move.'}
+        label={pt ? 'Abrir o Pilot, seu especialista EOS. Arraste para mover.' : 'Open the Pilot, your EOS specialist. Drag to move.'}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
-      >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path
-            d="M12 3c.5 3.6 1.9 5 5.5 5.5-3.6.5-5 1.9-5.5 5.5-.5-3.6-1.9-5-5.5-5.5C10.1 8 11.5 6.6 12 3Z"
-            fill="currentColor"
-          />
-          <path
-            d="M17.8 14.5c.28 2 1.05 2.77 3.05 3.05-2 .28-2.77 1.05-3.05 3.05-.28-2-1.05-2.77-3.05-3.05 2-.28 2.77-1.05 3.05-3.05Z"
-            fill="currentColor"
-            opacity="0.72"
-          />
-        </svg>
-      </button>
+      />
 
       {/*
         `wv2-portal` é OBRIGATÓRIO aqui.

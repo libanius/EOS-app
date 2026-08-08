@@ -2069,22 +2069,10 @@
   letter-spacing: -0.006em;
 }
 .wv2-pilotbar input::placeholder { color: var(--ink-3); }
-.wv2-pilotbar .bar-orb {
-  flex: none;
-  width: 46px;
-  height: 46px;
-  display: grid;
-  place-items: center;
-  border-radius: var(--r-pill);
-  color: var(--accent);
-  cursor: pointer;
-  touch-action: manipulation;
-  transition: transform 110ms ease-out;
-}
-.wv2-pilotbar .bar-orb:active { transform: scale(0.92); }
-.wv2[data-risk='critical'] .wv2-pilotbar .bar-orb {
-  animation: wv2-pilot-alert 1800ms ease-in-out infinite;
-}
+/* A barra só diz que o orbe não estica. A FORMA dele mora em `.pilot-orb`. */
+.wv2-pilotbar .bar-orb { flex: none; }
+
+
 
 /* The compose field was rendering UNDER the bottom nav (fixed, z-index 100),
    which is why it was invisible on a real phone. `max()` keeps the sheet above
@@ -2092,8 +2080,7 @@
 .wv2-pilot-chat { bottom: max(var(--nav-inset), var(--wv2-keyboard, 0px)); }
 
 @media (prefers-reduced-motion: reduce) {
-  .wv2-pilotbar .bar-orb:active { transform: none; }
-  .wv2[data-risk='critical'] .wv2-pilotbar .bar-orb { animation: none; }
+
 }
 
 /* Instrument panel: each source live, simulated, or failed. */
@@ -3075,37 +3062,28 @@
 /* ── Orbe do Pilot fora do dashboard (D-079) ──
    Mesma linguagem do orbe da PilotBar, em posição flutuante: acima da nav, no
    lado oposto ao polegar que rola a lista. */
+/* ── O dock só diz ONDE (D-136) ────────────────────────────────────────────
+   Isto era um segundo orbe: 56px de círculo com borda e fundo próprios, ícone
+   maior, brilho de 8px, e a cor mudando com o risco — verde, amarelo, laranja,
+   vermelho. A pessoa aprendia a reconhecer o Pilot no dashboard e precisava
+   aprender de novo em toda outra tela.
+
+   A cor por risco saiu junto. O risco tem lugares próprios para ser dito — a
+   faixa, o índice, os alertas; um botão que muda de cor é um botão que se
+   deixa de reconhecer justamente no dia em que mais se precisa achá-lo. O
+   pulso do crítico ficou, e agora vale nas duas telas igual. */
 .wv2-dock-orb {
   position: fixed;
   right: 16px;
   bottom: calc(var(--nav-inset, 72px) + 14px);
   z-index: 190;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(18, 18, 22, 0.72);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  touch-action: none;
 }
-.wv2-dock-orb { color: var(--dock-accent, #30d158); touch-action: none; }
-.wv2-dock-orb svg { filter: drop-shadow(0 0 8px var(--dock-accent, #30d158)); }
 /* Enquanto arrasta, o orbe cresce um pouco e perde a sombra de repouso: a
    pessoa precisa ver que ele saiu do lugar, não só que o dedo se moveu. */
-.wv2-dock-orb.dragging { transform: scale(1.12); box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6); cursor: grabbing; }
-.wv2-dock-orb[data-state='safe']     { --dock-accent: #30d158; }
-.wv2-dock-orb[data-state='watch']    { --dock-accent: #ffd60a; }
-.wv2-dock-orb[data-state='warning']  { --dock-accent: #ff9f0a; }
-.wv2-dock-orb[data-state='critical'] { --dock-accent: #ff453a; }
-/* Só o estado crítico pulsa: se tudo pulsa, nada chama atenção. */
-.wv2-dock-orb[data-state='critical'] svg { animation: eos-alert-pulse 1.6s ease-in-out infinite; border-radius: 50%; }
+.wv2-dock-orb.dragging { transform: scale(1.12); cursor: grabbing; }
 
-@media (prefers-reduced-motion: reduce) { .wv2-dock-orb svg { animation: none; } .wv2-dock-orb.dragging { transform: none; } }
-@media (prefers-reduced-transparency: reduce) { .wv2-dock-orb { background: #121216; backdrop-filter: none; } }
+@media (prefers-reduced-motion: reduce) { .wv2-dock-orb.dragging { transform: none; } }
 
 /* ── Portal de tokens (D-079) ──
    Escopo de variáveis SEM a casca de tela cheia. `.wv2` é o shell do dashboard
@@ -4107,4 +4085,53 @@
   align-self: center;
   white-space: nowrap;
   padding-inline: 2px;
+}
+
+/* ── O orbe do Pilot: UM só, em toda tela (D-136) ───────────────────────────
+   Existiam dois. No dashboard, 46px de pílula de vidro esfumaçado, ícone de
+   22px, sempre verde. Nas outras telas, 56px de círculo com borda própria,
+   ícone de 24px, brilho, e a cor mudando com o risco.
+
+   Duas aparências para o mesmo botão custam mais que feiura: num app que se
+   abre sob estresse, reconhecer é metade do trabalho.
+
+   Quem usa este componente decide só o LUGAR. `.wv2-fume` (a folha do
+   dashboard) continua dando o material — aqui fica o formato e o gesto. */
+.pilot-orb {
+  /*
+   * OS TOKENS VIVEM AQUI, não herdados.
+   *
+   * `--accent` e `--r-pill` são declarados em `.wv2`, a casca do dashboard. O
+   * orbe do dock é `position: fixed` e renderiza FORA dela — então herdava
+   * nada: saía com canto reto e branco em vez de pílula verde, enquanto o do
+   * dashboard saía certo. Foi o que a medição mostrou (raio 0px, cor
+   * rgb(240,240,248)) depois de eu já ter "unificado" os dois.
+   *
+   * Um componente que aparece em toda tela não pode depender de estar dentro
+   * de um ancestral específico. Os valores continuam sendo os mesmos tokens
+   * quando eles existem; o fallback é o valor deles.
+   */
+  --accent: var(--wv2-accent, #30d158);
+  --accent-rgb: var(--wv2-accent-rgb, 48, 209, 88);
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  color: var(--accent);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform 110ms ease-out;
+}
+.pilot-orb:active { transform: scale(0.92); }
+
+/* Só o crítico pulsa: se tudo pulsa, nada chama atenção. E vale nas duas
+   telas — antes o dashboard e o dock pulsavam com animações diferentes. */
+.pilot-orb[data-risk='critical'] {
+  animation: wv2-pilot-alert 1800ms ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pilot-orb:active { transform: none; }
+  .pilot-orb[data-risk='critical'] { animation: none; }
 }

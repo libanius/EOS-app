@@ -4772,3 +4772,62 @@ de verdade e segue o nome até a lista.
    quem falhou fui eu, que rodei o lint com `| tail -1` e escondi a saída dele.
 
 ---
+
+## D-136 — Um orbe do Pilot, em toda tela
+
+**Date**: 2026-08-08
+**Status**: DECIDED
+**Roadmap**: consistência de superfície
+
+**Context**: O dono notou que o Pilot é um objeto no dashboard e outro nas
+demais telas. Medido, eram dois botões diferentes:
+
+| | dashboard (`.bar-orb`) | demais telas (`.wv2-dock-orb`) |
+| --- | --- | --- |
+| tamanho | 46px | 56px |
+| forma | pílula de vidro esfumaçado (`.wv2-fume`) | círculo com borda e fundo próprios |
+| ícone | 22px | 24px |
+| cor | verde do acento, sempre | **mudava com o risco**: verde/amarelo/laranja/vermelho |
+| brilho | nenhum | `drop-shadow` de 8px |
+
+O comentário do próprio `PilotDock` afirmava *"O MESMO orbe da PilotBar"*. Não
+era — e um comentário que afirma o que o código não faz é pior que nenhum,
+porque quem lê para de conferir.
+
+Custa mais que feiura: num app que a família abre sob estresse, reconhecer é
+metade do trabalho. Aprender o Pilot numa tela e ter que aprender de novo na
+seguinte é uma cobrança feita no pior momento possível.
+
+**Decision**:
+
+1. **Um componente, `PilotOrb`.** A `PilotBar` e o `PilotDock` montam o mesmo
+   botão. Não é estilo copiado nos dois lugares — é um objeto só.
+2. **A aparência é a do dashboard**, por decisão do dono.
+3. **O orbe NÃO muda mais de cor com o risco.** O risco tem lugares próprios
+   para ser dito — a faixa, o índice, os alertas. Um botão que muda de cor é um
+   botão que se deixa de reconhecer justamente no dia em que mais se precisa
+   achá-lo. O pulso no crítico ficou, e agora é o mesmo nas duas telas: antes
+   cada uma pulsava com uma animação diferente.
+4. **Quem usa decide só o LUGAR.** `.bar-orb` virou `flex: none`; `.wv2-dock-orb`
+   virou posição fixa mais o gesto de arrastar. Toda a forma mora em
+   `.pilot-orb`.
+5. **Os tokens moram no componente.** `--accent` e `--r-pill` são declarados em
+   `.wv2`, a casca do dashboard, e o orbe do dock renderiza fora dela.
+
+**Dois erros que a medição pegou, os dois meus e depois de eu já achar que
+tinha unificado**:
+
+1. Na primeira versão o orbe fora do dashboard saiu com **canto reto e branco**
+   (raio 0px, `rgb(240,240,248)`), porque herdava os tokens de um ancestral que
+   ali não existe. Um componente que aparece em toda tela não pode depender de
+   estar dentro de um ancestral específico.
+2. Ao extrair o componente, deixei `onPointerCancel` de fora. Sem ele, um gesto
+   cancelado pelo sistema — uma chamada entrando — deixaria o orbe preso no
+   estado "arrastando", crescido, até a próxima navegação.
+
+**Consequence**: `scripts/pilot-orb-test.mjs` (6 checagens) mede tamanho, raio,
+cor, borda, fundo, sombra e ícone em **seis telas** e exige que sejam idênticos;
+exige um só por tela; prova que a cor não varia; e confirma que unificar a
+aparência não custou o arraste do dock (D-079).
+
+---

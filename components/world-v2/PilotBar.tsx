@@ -15,6 +15,7 @@
 
 import { useState } from 'react'
 import { haptic } from './motion'
+import PilotOrb from './PilotOrb'
 
 export default function PilotBar({
   pt,
@@ -60,11 +61,11 @@ export default function PilotBar({
         />
       </form>
 
-      <button
-        type="button"
-        className="bar-orb wv2-fume"
-        data-state={riskState}
-        aria-label={pt ? 'Abrir o Pilot, seu especialista EOS' : 'Open the Pilot, your EOS specialist'}
+      {/* O mesmo orbe de todas as telas (D-136) — aqui ele só ganha um lugar. */}
+      <PilotOrb
+        className="bar-orb"
+        riskState={riskState}
+        label={pt ? 'Abrir o Pilot, seu especialista EOS' : 'Open the Pilot, your EOS specialist'}
         onClick={() => {
           if (draft.trim()) {
             submit()
@@ -73,19 +74,7 @@ export default function PilotBar({
           haptic.impact()
           onOpen()
         }}
-      >
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path
-            d="M12 3c.5 3.6 1.9 5 5.5 5.5-3.6.5-5 1.9-5.5 5.5-.5-3.6-1.9-5-5.5-5.5C10.1 8 11.5 6.6 12 3Z"
-            fill="currentColor"
-          />
-          <path
-            d="M17.8 14.5c.28 2 1.05 2.77 3.05 3.05-2 .28-2.77 1.05-3.05 3.05-.28-2-1.05-2.77-3.05-3.05 2-.28 2.77-1.05 3.05-3.05Z"
-            fill="currentColor"
-            opacity="0.72"
-          />
-        </svg>
-      </button>
+      />
     </div>
   )
 }
