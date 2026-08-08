@@ -97,6 +97,9 @@ const COPY = {
     emptyWhy: 'Enquanto o EOS não souber quem mora aqui, todo cálculo de autonomia está errado — para mais ou para menos.',
     listLabel: 'Pessoas da casa',
     circleLabel: 'Contas no seu círculo',
+    invitedLabel: 'Convidadas, ainda não entraram',
+    invitedWhy: 'Você digitou estes nomes ao preencher o endereço. Enquanto não entrarem, elas contam na casa mas não recebem alerta nem aparecem no mapa.',
+    invitedJoined: 'Já entrou? Junte na lista de cima.',
     circleWhy: 'Estas pessoas têm conta no EOS. Vincular une o cadastro à conta: a pessoa passa a aparecer no mapa como a mesma pessoa, não como duas.',
     link: 'Vincular',
     linked: 'Vinculado à conta',
@@ -175,6 +178,9 @@ const COPY = {
     emptyWhy: 'Until EOS knows who lives here, every autonomy figure is wrong — too high or too low.',
     listLabel: 'People in the household',
     circleLabel: 'Accounts in your circle',
+    invitedLabel: 'Invited, not in yet',
+    invitedWhy: 'You typed these names when filling in your address. Until they join, they count in the household but receive no alerts and do not appear on the map.',
+    invitedJoined: 'Already joined? Merge them in the list above.',
     circleWhy: 'These people have an EOS account. Linking joins the record to the account, so they appear on the map as one person instead of two.',
     link: 'Link',
     linked: 'Linked to account',
@@ -273,15 +279,31 @@ export default function RosterPage() {
   const [confirmRemove, setConfirmRemove] = useState(false)
   const [scanOpen, setScanOpen] = useState(false)
   const [scanError, setScanError] = useState<string | null>(null)
+  /** Quem foi digitada no endereço e ainda não entrou (D-135 fase 2). */
+  const [invites, setInvites] = useState<Array<{ id: string; name: string }>>([])
   const [isPending, startTransition] = useTransition()
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [fam, circles] = await Promise.all([
+      /*
+       * Esta tela se chama "Quem mora aqui" e não mostrava os convites (D-135
+       * fase 2).
+       *
+       * O nome que a pessoa digita no endereço da ficha vira uma linha em
+       * `household_invites`. Ele conta na casa, aparece para o Pilot — e
+       * sumia justamente da tela que promete listar quem mora aqui. A pessoa
+       * digitava a filha num lugar e não a encontrava no outro.
+       *
+       * As três formas de morar na casa passam a caber na mesma tela: quem tem
+       * conta, quem está sob cuidados, e quem foi convidada e ainda não entrou.
+       */
+      const [fam, circles, convites] = await Promise.all([
         fetch('/api/family-members').then(r => (r.ok ? r.json() : null)),
         fetch('/api/circles').then(r => (r.ok ? r.json() : null)).catch(() => null),
+        fetch('/api/household/address').then(r => (r.ok ? r.json() : null)).catch(() => null),
       ])
+      setInvites(Array.isArray(convites?.pending) ? convites.pending : [])
       if (!fam) throw new Error('family-members indisponível')
       setMembers(Array.isArray(fam.members) ? fam.members : [])
 
@@ -636,6 +658,21 @@ export default function RosterPage() {
                 </Card>
               )
             })}
+
+            {invites.length > 0 && (
+              <>
+                <SectionLabel>{c.invitedLabel}</SectionLabel>
+                <Card>
+                  <p className="t-foot ink-2">{c.invitedWhy}</p>
+                  <ul className="roster-candidates">
+                    {invites.map(i => (
+                      <li key={i.id} className="t-body"><b>{i.name}</b></li>
+                    ))}
+                  </ul>
+                  <p className="t-foot ink-3">{c.invitedJoined}</p>
+                </Card>
+              </>
+            )}
 
             {naoVinculados.length > 0 && (
               <>

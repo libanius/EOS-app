@@ -19,6 +19,7 @@
  */
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { COUNTRIES, countryOf, formatAddress, isGeocodable, EMPTY_ADDRESS, type Address } from '@/lib/address'
 
 type Morador = { name: string; hasPhone: boolean }
@@ -39,6 +40,8 @@ export default function HomeAddress({
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [ok, setOk] = useState<string | null>(null)
+  /** Quantas pessoas este salvamento mandou para a lista da casa. */
+  const [foram, setForam] = useState(0)
 
   const pais = countryOf(a.country)
   const r = pais ? (pt ? pais.labels : pais.labelsEn) : null
@@ -78,6 +81,10 @@ export default function HomeAddress({
           ? (pt ? 'Endereço salvo e localizado no mapa.' : 'Address saved and located on the map.')
           : (pt ? 'Endereço salvo. Não consegui achar o ponto no mapa — dá para marcar à mão no Plano.' : 'Address saved. I could not find the map point — you can pin it in the Plan.'),
       )
+      // Quem foi digitado aqui vai para a lista única (D-135 fase 2). Sem esta
+      // frase, o nome sumia: a pessoa digitava a filha aqui e não a encontrava
+      // na tela que promete listar quem mora na casa.
+      setForam((j.pendingInvites ?? 0) + (j.dependents ?? 0))
       onSaved?.({ pendingInvites: j.pendingInvites ?? 0, dependents: j.dependents ?? 0, located: Boolean(j.located) })
       setMoradores([])
     } catch {
@@ -214,6 +221,22 @@ export default function HomeAddress({
 
           {erro && <p className="ha-error" role="alert">{erro}</p>}
           {ok && <p className="ha-ok" role="status">{ok}</p>}
+          {/*
+            Uma porta só (D-135 fase 2).
+
+            Este campo é o MOMENTO certo de perguntar quem mora aqui — a pessoa
+            já está pensando "minha casa". Mas ele não pode virar uma segunda
+            lista: quem foi digitado aqui é gerido num lugar só, e a frase leva
+            até lá em vez de deixar a pessoa procurando.
+          */}
+          {foram > 0 && (
+            <p className="ha-ok" role="status">
+              {pt
+                ? `${foram} ${foram === 1 ? 'pessoa foi' : 'pessoas foram'} para a lista da casa. `
+                : `${foram} ${foram === 1 ? 'person was' : 'people were'} added to the household list. `}
+              <Link href="/family/cadastro">{pt ? 'Ver quem mora aqui' : 'See who lives here'}</Link>
+            </p>
+          )}
 
           <button type="button" className="ha-btn primary" onClick={salvar} disabled={salvando || !isGeocodable(a)}>
             {salvando ? (pt ? 'Salvando…' : 'Saving…') : (pt ? 'Salvar endereço' : 'Save address')}

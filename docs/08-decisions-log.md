@@ -4729,3 +4729,46 @@ teste que fixa a separação: a avó desamparada **não** entra no que trava o s
 e as lacunas estruturais continuam travando. `plan-editor-test` voltou a 14/14.
 
 ---
+
+## D-135 (fase 2) — Uma porta só para "quem mora aqui"
+
+**Date**: 2026-08-08
+**Status**: DECIDED
+**Roadmap**: redundância de fontes de pessoa — fase 2 de 3
+
+**Context**: O app tinha três lugares para dizer quem mora na casa e eles não se
+conheciam. O caso mais absurdo: a tela `/family/cadastro` se chama literalmente
+**"Quem mora aqui"** — e não mostrava os convites. O nome que a pessoa digita ao
+preencher o endereço vira uma linha em `household_invites`, conta na casa,
+aparece para o Pilot, e sumia exatamente da tela que promete listar quem mora
+ali. Ela cadastrava a filha num lugar, não a encontrava no outro, cadastrava de
+novo — e a casa passava a contar duas.
+
+**Decision**:
+
+1. **As três formas de morar na casa cabem na mesma tela.** "Quem mora aqui"
+   passa a listar quem tem conta, quem está sob cuidados, e **quem foi
+   convidada e ainda não entrou**.
+2. **Cada uma diz o que é.** A distinção é o que muda o comportamento da
+   família: quem tem conta recebe alerta e aparece no mapa; quem não tem depende
+   de alguém avisar. Uma lista que não diz isso parece completa e não é.
+3. **O endereço continua perguntando, mas entrega.** O campo fica onde está — é
+   o momento em que a pessoa já está pensando "minha casa", e essa era a parte
+   forte da ideia original (D-130). O que muda é o fim: depois de salvar, ele diz
+   quantas pessoas foram para a lista e leva até lá, em vez de deixá-la procurar.
+
+**Consequence**: `scripts/one-door-test.mjs` (6 checagens) preenche o formulário
+de verdade e segue o nome até a lista.
+
+**Dois enganos meus nesta fase**:
+
+1. A primeira versão do item 4 só contava links para `/family/cadastro` na
+   ficha — e passava sem testar nada, porque um desses links já existia antes do
+   conserto. Agora o teste preenche o formulário e verifica a frase que aparece
+   depois de salvar.
+2. Escrevi `/(pessoa foi|…)/.test(texto) && …` numa linha começando com barra,
+   depois de uma linha terminando em `)`. É a **sexta** vez que a armadilha do
+   ASI aparece neste repositório. O `lint:scripts` a pegou como era para pegar —
+   quem falhou fui eu, que rodei o lint com `| tail -1` e escondi a saída dele.
+
+---
