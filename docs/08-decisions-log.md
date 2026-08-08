@@ -4831,3 +4831,72 @@ exige um só por tela; prova que a cor não varia; e confirma que unificar a
 aparência não custou o arraste do dock (D-079).
 
 ---
+
+## D-137 — Um Pilot, uma verdade, e uma conversa
+
+**Date**: 2026-08-08
+**Status**: DECIDED
+**Roadmap**: consistência do Pilot
+
+**Context**: O dono abriu o Pilot em duas telas no mesmo minuto e leu duas
+casas diferentes:
+
+| | Comms | Dashboard |
+| --- | --- | --- |
+| veredito | "Não sei o suficiente para dizer que está tudo certo" | "Nada urgente — feche uma lacuna" |
+| checklist | **0%** | **88%** |
+| casa | "falta a ficha da família" | limitante combustível 0.7d |
+
+O motor é o mesmo (`pilot-engine.ts`). O que divergia era **o que ele recebia**.
+Existiam três montagens do mesmo contexto:
+
+- `/api/household` — canônica: casa confirmada, despensa somada, autonomia
+  `min(água, comida)`
+- `useWorldData` — lia a canônica (corrigido no D-134)
+- **`PilotDock`** — pessoas por `family_members.length`; despensa só da PRÓPRIA
+  conta; `known = members.length > 0`; e **`autonomyDays = food_days` cru**,
+  sem dividir por ninguém e sem olhar a água
+
+E havia **duas instâncias** do `<Pilot>` — uma no `WorldV2`, outra no
+`PilotDock` — cada uma com as próprias mensagens. Trocar de página trocava de
+Pilot, e a conversa sumia.
+
+**Decision**:
+
+1. **`usePilotFacts` é a única montagem.** Lê `/api/household` e o checklist, e
+   aplica as mesmas fórmulas de `lib/household.ts` sobre a despensa somada.
+   Sem a casa, devolve `known: false` — que o guard traduz em WAIT, nunca em GO
+   — em vez de cair num palpite de "uma pessoa".
+2. **Um `<Pilot>` só, montado no layout.** O dashboard não monta mais o seu; a
+   PilotBar apenas pede a este para abrir. A conversa vive no `PilotProvider` e
+   atravessa a navegação.
+3. **A tela acrescenta o que só ela sabe.** Unificar não podia deixar o Pilot
+   *pior* onde ele é mais usado: o dashboard registra abrigos, posições da
+   família, ciclone e vento por cima da base. É a armadilha do D-079 — o mapa
+   desenhava o cone e o Pilot dizia não enxergar o evento — e ela não podia
+   voltar por causa de uma unificação.
+4. **A abertura se corrige quando os fatos chegam.** Era `current.length ?
+   current : [abertura]`: escrita no instante em que o Pilot abre e **congelada**.
+   Como a casa é lida do servidor logo depois, a mensagem nascia com
+   `known: false` e ficava dizendo "falta a ficha da família" para sempre. Era
+   metade da queixa. Agora, enquanto a conversa for só a abertura automática,
+   ela acompanha os fatos; na primeira coisa que a pessoa disser, vira histórico
+   e não se mexe mais — reescrever o que já foi lido seria pior.
+
+**Consequence**: `scripts/pilot-one-truth-test.mjs` (7 checagens) monta uma casa
+de três com a despensa toda na conta da OUTRA pessoa e um checklist de 3 em 4, e
+exige **75% em painel, comms e círculos** — um número que só bate se as telas
+lerem a mesma fonte. Também prova que a conversa sobrevive à navegação sem
+recarregar, que existe uma instância só, e que o dashboard não perdeu o
+enriquecimento do mapa.
+
+**Dois erros meus no caminho**:
+
+1. A primeira versão do enriquecimento ainda sobrescrevia `powerDays`,
+   `fuelDays` e `autonomyDays` com os do dashboard — o lint apontou as
+   dependências e foi por elas que percebi: se ficassem, a autonomia voltaria a
+   divergir entre telas, dentro do próprio conserto que a unifica.
+2. A primeira versão do teste comparava `0 === 0` e `null === null`, porque a
+   conta de teste não tinha checklist. Passava sem testar nada.
+
+---

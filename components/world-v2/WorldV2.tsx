@@ -12,7 +12,7 @@
  * factors cannot drift apart.
  */
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useCallback, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { restingVerdict } from './resting-verdict'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
@@ -22,7 +22,6 @@ import { useSimulation } from '@/components/SimulationProvider'
 import { SOURCE_LABELS, isSourceDown } from '@/lib/simulation'
 import WorldMap from '@/components/world-dashboard/WorldMap'
 import DetentSheet, { type Detent } from './DetentSheet'
-import Pilot from './Pilot'
 import PilotBar from './PilotBar'
 import MemberSheet from './MemberSheet'
 import type { PilotContext } from './pilot-engine'
@@ -40,6 +39,7 @@ import { compassPoint } from '@/lib/world/shelters'
 import { directionsUrl, formatDistance, walkingMinutes } from '@/lib/world/navigation'
 import { useWorldData } from './useWorldData'
 import './world-v2.css'
+import { usePilot } from './PilotProvider'
 
 const COPY = {
   pt: {
@@ -220,8 +220,15 @@ export default function WorldV2() {
   const simulation = useSimulation()
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [course, setCourse] = useState<{ lat: number; lng: number; label: string; nonce: number } | null>(null)
-  const [pilotOpen, setPilotOpen] = useState(false)
-  const [pilotAsk, setPilotAsk] = useState<{ text: string; nonce: number } | null>(null)
+  /*
+   * A conversa é a do app inteiro (D-137).
+   *
+   * Esta tela montava o PRÓPRIO `<Pilot>`, com as próprias mensagens, enquanto
+   * o dock montava outro. Sair do dashboard e voltar perdia tudo o que tinha
+   * sido perguntado. Agora o Pilot é um só, montado no layout; aqui ficam a
+   * barra de busca e o mapa que ela precisa desenhar.
+   */
+  const pilot = usePilot()
   const [recenterNonce, setRecenterNonce] = useState(0)
 
   /** Camadas ligadas pelo usuário — leitura, não dado (D-078). */
@@ -404,22 +411,49 @@ export default function WorldV2() {
 
   // Everything the copilot reasons over, in one object. Rebuilt on every data
   // tick so an open Pilot console keeps answering the current situation.
-  const pilotContext: PilotContext = useMemo(
-    () => ({
+  /* "Ver no mapa" só existe onde há mapa. Esta é a tela que tem. */
+  useEffect(
+    () =>
+      pilot.registerCourse(destination => {
+        setCourse({ ...destination, nonce: Date.now() })
+        // Tem que REVELAR o mapa: recolhe a folha, senão o trajeto é desenhado
+        // atrás dela.
+        setDetent('peek')
+      }),
+    [pilot],
+  )
+
+  /*
+   * O que SÓ o dashboard sabe (D-137).
+   *
+   * Casa, despensa, checklist e autonomia NÃO entram aqui: são iguais em toda
+   * tela e vêm de `usePilotFacts`, no Pilot montado pelo layout. Foi a
+   * divergência dessas quatro coisas que fez o mesmo Pilot dizer "checklist 0%,
+   * não sei quem mora aí" numa tela e "88%, limitante 0.7d" na outra.
+   *
+   * O que esta tela tem de próprio é o MAPA: abrigos carregados, posições da
+   * família, o ciclone desenhado, o vento medido. Sem passar isso adiante,
+   * unificar deixaria o Pilot pior justamente onde ele é mais usado — a mesma
+   * armadilha do D-079, quando o mapa desenhava o cone e o Pilot dizia não
+   * enxergar o evento.
+   */
+  const enriquecer = useCallback(
+    (base: PilotContext): PilotContext => ({
+      ...base,
       pt: metric,
       riskState: state,
       score,
       snapshot,
       online: data.online,
       hasCoords,
-      household: data.household,
-      inventory: data.inventory,
-      checklistPct: data.checklistPct,
-      waterDays: data.waterDays,
-      foodDays: data.foodDays,
-      powerDays: data.powerDays,
-      fuelDays: data.fuelDays,
-      autonomyDays: data.autonomyDays,
+      /*
+       * `powerDays`, `fuelDays` e `autonomyDays` NÃO entram aqui.
+       *
+       * Sobraram da versão antiga e o lint os apontou. Se ficassem, o Pilot
+       * leria a autonomia desta tela no dashboard e a de `usePilotFacts` nas
+       * outras — que é exatamente a divergência que este conserto elimina.
+       * Reservas são iguais em toda parte; vêm da base.
+       */
       nearestShelter: shelterSnapshot?.shelters[0]
         ? { name: shelterSnapshot.shelters[0].name, distanceKm: shelterSnapshot.shelters[0].distanceKm }
         : null,
@@ -451,10 +485,12 @@ export default function WorldV2() {
       })),
       wind: wind?.atUser
         ? { speedKmh: wind.atUser.speedKmh, gustKmh: wind.atUser.gustKmh, fromDeg: wind.atUser.fromDeg }
-        : null,
+        : base.wind,
     }),
-    [metric, state, score, snapshot, hasCoords, coords, data, shelterSnapshot, simulation.active, simulation.config, family, cyclones, wind],
+    [metric, state, score, snapshot, hasCoords, coords, data.online, shelterSnapshot, simulation.active, simulation.config, family, cyclones, wind],
   )
+
+  useEffect(() => pilot.registerContext(enriquecer), [pilot, enriquecer])
 
   const sections = (
     <WorldSections
@@ -502,11 +538,8 @@ export default function WorldV2() {
       <PilotBar
         pt={metric}
         riskState={state}
-        onOpen={() => setPilotOpen(true)}
-        onAsk={question => {
-          setPilotOpen(true)
-          setPilotAsk({ text: question, nonce: Date.now() })
-        }}
+        onOpen={() => pilot.setOpen(true)}
+        onAsk={question => pilot.ask(question)}
       />
 
       <div className="wv2-layer wv2-chrome">
@@ -756,22 +789,12 @@ export default function WorldV2() {
         }}
       />
 
-      {/* Always reachable, above every other surface — that is the whole point. */}
-      <div className="wv2-chrome">
-        <Pilot
-          ctx={pilotContext}
-          online={data.online}
-          open={pilotOpen}
-          onOpenChange={setPilotOpen}
-          incoming={pilotAsk}
-          onShowCourse={destination => {
-            setCourse({ ...destination, nonce: Date.now() })
-            // "Show on map" has to actually reveal the map: collapse the sheet
-            // so the course is not drawn behind it.
-            setDetent('peek')
-          }}
-        />
-      </div>
+      {/*
+        O Pilot NÃO é montado aqui (D-137) — ele vive no layout, numa instância
+        só, para a conversa sobreviver à navegação. O que esta tela tem de
+        próprio é o mapa: ela registra o que fazer quando o Pilot entrega um
+        destino, e desregistra ao sair.
+      */}
     </main>
   )
 }

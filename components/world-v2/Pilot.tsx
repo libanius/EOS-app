@@ -250,10 +250,40 @@ export default function Pilot({
     })
   }, [])
 
-  // Opening brief: local, instant, offline-safe. Never a spinner.
+  /**
+   * A abertura: local, instantânea, offline. Nunca um spinner.
+   *
+   * E ELA SE CORRIGE quando os fatos chegam (D-137).
+   *
+   * Antes era `current.length ? current : [abertura]` — escrita uma vez, no
+   * instante em que o Pilot abre, e congelada. Como a casa é lida do servidor
+   * logo depois, a mensagem nascia com `known: false` e ficava dizendo "Não sei
+   * o suficiente / falta a ficha da família" para sempre — mesmo depois de o
+   * app já saber que moram três pessoas ali.
+   *
+   * Era metade da queixa do dono: numa tela ele lia "checklist 0%, não sei quem
+   * mora aí" e na outra "88%, limitante 0.7d". Não era só a fonte divergindo;
+   * era esta mensagem tendo sido escrita cedo demais e nunca revista.
+   *
+   * A regra: enquanto a conversa for SÓ a abertura automática, ela acompanha os
+   * fatos. Na primeira coisa que a pessoa disser, ela vira histórico e não se
+   * mexe mais — reescrever o que a pessoa já leu seria pior que o congelamento.
+   */
+  const aberturaAutomatica = useRef<string | null>(null)
   useEffect(() => {
     if (!open) return
-    setMessages(current => (current.length ? current : [fromAnswer(opening)]))
+    const nova = fromAnswer(opening)
+    setMessages(current => {
+      if (!current.length) {
+        aberturaAutomatica.current = nova.id
+        return [nova]
+      }
+      const soAAbertura = current.length === 1 && current[0].id === aberturaAutomatica.current
+      if (!soAAbertura) return current
+      // Mantém o id para o React não remontar o cartão e piscar na tela.
+      aberturaAutomatica.current = current[0].id
+      return [{ ...nova, id: current[0].id }]
+    })
     scrollToEnd()
   }, [open, opening, scrollToEnd])
 

@@ -32,11 +32,12 @@ import type { PilotContext } from './pilot-engine'
 import { haptic } from './motion'
 import './world-v2.css'
 import PilotOrb from './PilotOrb'
+import { usePilot } from './PilotProvider'
+import { usePilotFacts } from './usePilotFacts'
 
 /** Telas que já oferecem o Pilot por conta própria. */
 const HAS_OWN_PILOT = ['/dashboard', '/dashboard-world']
 
-type Member = { is_infant?: boolean; age?: number; medical_conditions?: unknown[]; mobility_impaired?: boolean }
 
 export default function PilotDock() {
   const pathname = usePathname()
@@ -45,7 +46,16 @@ export default function PilotDock() {
   const risk = useRisk()
   const simulation = useSimulation()
 
-  const [open, setOpen] = useState(false)
+  /*
+   * A conversa vive no provedor, não aqui (D-137).
+   *
+   * Enquanto `open` e as mensagens moravam neste componente e OUTRA instância
+   * vivia no dashboard, trocar de página trocava de Pilot — e a conversa
+   * sumia. Um copiloto que esquece ao virar a cabeça não é um copiloto.
+   */
+  const pilot = usePilot()
+  const { open } = pilot
+  const setOpen = pilot.setOpen
 
   /**
    * Onde o orbe fica, decidido pelo usuário (D-079).
@@ -72,10 +82,17 @@ export default function PilotDock() {
     } catch { /* private mode ou valor velho */ }
   }, [])
   const [loaded, setLoaded] = useState(false)
+  /*
+   * Casa, despensa e checklist saem de UM lugar (D-137).
+   *
+   * Este componente montava a própria versão: pessoas = `family_members.length`,
+   * despensa só da própria conta, e `autonomyDays = food_days` cru — sem
+   * dividir por ninguém e sem olhar a água. Era por isso que o mesmo Pilot
+   * dizia "checklist 0%, não sei quem mora aí" numa tela e "88%, limitante
+   * combustível 0.7d" na outra, no mesmo minuto.
+   */
+  const fatos = usePilotFacts(open)
   const [extra, setExtra] = useState<{
-    household: PilotContext['household']
-    inventory: PilotContext['inventory']
-    checklistPct: number
     cyclones: PilotContext['cyclones']
     wind: PilotContext['wind']
   } | null>(null)
@@ -86,10 +103,8 @@ export default function PilotDock() {
     setLoaded(true)
     const coords = risk.coords
 
-    const [inv, fam, chk, cyc, wnd] = await Promise.all([
-      fetch('/api/inventory').then(r => (r.ok ? r.json() : null)).catch(() => null),
-      fetch('/api/family-members').then(r => (r.ok ? r.json() : null)).catch(() => null),
-      fetch('/api/checklist').then(r => (r.ok ? r.json() : null)).catch(() => null),
+    // Só o que é do CLIMA. Casa, despensa e checklist vêm de `usePilotFacts`.
+    const [cyc, wnd] = await Promise.all([
       coords
         ? fetch(`/api/world/cyclones?lat=${coords.lat}&lng=${coords.lng}`).then(r => (r.ok ? r.json() : null)).catch(() => null)
         : null,
@@ -98,23 +113,10 @@ export default function PilotDock() {
         : null,
     ])
 
-    const members: Member[] = Array.isArray(fam?.members) ? fam.members : []
-    const items: Array<{ acquired: boolean }> = chk?.items ?? []
     const snapshot = cyc as CycloneSnapshot | null
     const windSnap = wnd as WindSnapshot | null
 
     setExtra({
-      household: {
-        // Nunca assumir uma pessoa: uma casa contada a menos subestima toda
-        // conta de água e comida que o Pilot fizer (mesma regra do debrief).
-        people: Math.max(1, members.length),
-        hasInfants: members.some(m => m.is_infant === true || (typeof m.age === 'number' && m.age < 2)),
-        hasMedicalConditions: members.some(m => Array.isArray(m.medical_conditions) && m.medical_conditions.length > 0),
-        mobilityImpaired: members.filter(m => m.mobility_impaired === true).length,
-        known: members.length > 0,
-      },
-      inventory: inv?.inventory ?? null,
-      checklistPct: items.length ? Math.round((items.filter(i => i.acquired).length / items.length) * 100) : 0,
       cyclones: (snapshot?.storms ?? []).map(s => ({
         name: s.name,
         classification: s.classification,
@@ -134,7 +136,16 @@ export default function PilotDock() {
     if (open) void load()
   }, [open, load])
 
-  if (HAS_OWN_PILOT.some(route => pathname?.startsWith(route))) return null
+  /*
+   * No dashboard some o ORBE, não o Pilot (D-137).
+   *
+   * Antes este `return null` tirava o componente inteiro — e com ele a única
+   * instância da conversa. Por isso o dashboard precisava montar a sua, e por
+   * isso a conversa morria ao navegar. Agora só o botão sai de cena: lá a
+   * entrada é a PilotBar, e dois orbes na mesma tela seriam dois caminhos para
+   * a mesma coisa.
+   */
+  const orbeEscondido = HAS_OWN_PILOT.some(route => pathname?.startsWith(route))
 
   const SIZE = 56
   const MARGIN = 12
@@ -192,9 +203,7 @@ export default function PilotDock() {
     ? { left: `${(spot.x * 100).toFixed(2)}%`, top: `${(spot.y * 100).toFixed(2)}%`, right: 'auto', bottom: 'auto' }
     : undefined
 
-  const days = (value: number | null | undefined) => (typeof value === 'number' ? value : 0)
-
-  const ctx: PilotContext = {
+  const ctxBase: PilotContext = {
     pt,
     riskState: risk.state,
     score: risk.score,
@@ -204,16 +213,15 @@ export default function PilotDock() {
     // que é o que o Pilot precisa declarar em vez de fingir que sabe.
     online: !risk.error,
     hasCoords: risk.hasCoords,
-    household: extra?.household ?? { people: 1, hasInfants: false, hasMedicalConditions: false, mobilityImpaired: 0, known: false },
-    inventory: extra?.inventory ?? null,
-    checklistPct: extra?.checklistPct ?? 0,
-    // Sem inventário lido, autonomia é ZERO e não um palpite: o Pilot precisa
-    // dizer "não sei" em vez de inventar dias que a família não tem.
-    waterDays: days(extra?.inventory ? extra.inventory.water_liters / (3 * (extra.household.people || 1)) : 0),
-    foodDays: days(extra?.inventory?.food_days),
-    powerDays: days(extra?.inventory ? (extra.inventory.battery_percent / 100) * 3 : 0),
-    fuelDays: days(extra?.inventory ? extra.inventory.fuel_liters / 10 : 0),
-    autonomyDays: days(extra?.inventory?.food_days),
+    // Tudo isto vem de `usePilotFacts` — a mesma leitura que o dashboard usa.
+    household: fatos.household,
+    inventory: fatos.inventory,
+    checklistPct: fatos.checklistPct,
+    waterDays: fatos.waterDays,
+    foodDays: fatos.foodDays,
+    powerDays: fatos.powerDays,
+    fuelDays: fatos.fuelDays,
+    autonomyDays: fatos.autonomyDays,
     nearestShelter: null,
     sheltersKnown: false,
     simulated: simulation.active,
@@ -225,6 +233,16 @@ export default function PilotDock() {
     cyclones: extra?.cyclones ?? [],
     wind: extra?.wind ?? null,
   }
+
+  /*
+   * A tela acrescenta o que só ela sabe (D-137).
+   *
+   * A base é igual em toda parte: casa, despensa, checklist, autonomia, risco.
+   * O dashboard registra por cima os abrigos carregados, as posições da família
+   * e o ciclone que ele já desenhou — senão unificar o Pilot o deixaria pior
+   * justamente na tela onde ele é mais usado.
+   */
+  const ctx = pilot.enrich(ctxBase)
 
   return (
     <>
@@ -240,6 +258,7 @@ export default function PilotDock() {
         Agora os dois montam `PilotOrb`. O que sobra aqui é só o LUGAR: fixo,
         arrastável, acima da navegação.
       */}
+      {!orbeEscondido && (
       <PilotOrb
         ref={orbRef}
         className={`wv2-dock-orb${dragging ? ' dragging' : ''}`}
@@ -251,6 +270,7 @@ export default function PilotDock() {
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
       />
+      )}
 
       {/*
         `wv2-portal` é OBRIGATÓRIO aqui.
@@ -267,11 +287,14 @@ export default function PilotDock() {
           online={!risk.error}
           open={open}
           onOpenChange={setOpen}
-          incoming={null}
-          // Fora do dashboard não existe mapa do EOS para desenhar o trajeto, e
-          // fingir que existe seria pior. O Pilot ainda entrega o destino e o
-          // deep-link para o app de mapas.
-          onShowCourse={() => {}}
+          incoming={pilot.incoming}
+          /*
+           * Quem tem mapa registra o que fazer (D-137). No dashboard isso
+           * desenha o trajeto; nas outras telas não há mapa do EOS e o
+           * registro simplesmente não existe — o Pilot ainda entrega o destino
+           * e o deep-link para o app de mapas.
+           */
+          onShowCourse={pilot.showCourse}
         />
       </div>
     </>
