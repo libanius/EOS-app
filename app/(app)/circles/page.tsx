@@ -114,6 +114,18 @@ export default function CirclesPage() {
   /** D-124: a decisão sobre uma pessoa mora numa folha, não na linha dela. */
   const [sheetMember, setSheetMember] = useState<{ circleId: string; userId: string } | null>(null)
   const [sheetSettings, setSheetSettings] = useState<string | null>(null)
+  /**
+   * Quem a pessoa declarou morar na casa dela lá na ficha, e ainda não recebeu
+   * o link (D-130). Guardar o nome sem mostrar seria guardar para ninguém.
+   */
+  const [esperando, setEsperando] = useState<Array<{ id: string; name: string }>>([])
+
+  const carregarEsperando = useCallback(async () => {
+    const r = await fetch('/api/household/address').then(x => (x.ok ? x.json() : null)).catch(() => null)
+    setEsperando(Array.isArray(r?.pending) ? r.pending : [])
+  }, [])
+
+  useEffect(() => { void carregarEsperando() }, [carregarEsperando])
 
   const loadMyRequests = useCallback(async () => {
     try {
@@ -857,6 +869,52 @@ export default function CirclesPage() {
                     </button>
                   )}
                 </div>
+
+                {/*
+                  Quem está esperando o link (D-130).
+
+                  A pessoa digitou estes nomes na ficha, ao preencher o
+                  endereço, e disse "agora não" para o círculo. Agora o círculo
+                  existe. Se a lista não aparecesse aqui, o trabalho dela teria
+                  sido guardado para ninguém ver.
+
+                  Marcar como "convidado" é ato dela, não do app: o convite é um
+                  link que só ela sabe por onde mandar.
+                */}
+                {esperando.length > 0 && (
+                  <div className="cir-waiting">
+                    <span className="t-caps ink-3">
+                      {pt ? `Esperando o convite (${esperando.length})` : `Waiting for an invite (${esperando.length})`}
+                    </span>
+                    <p className="t-foot ink-3">
+                      {pt
+                        ? 'Você listou estas pessoas ao preencher seu endereço. Mande o link para elas e marque aqui.'
+                        : 'You listed these people when filling in your address. Send them the link and mark it here.'}
+                    </p>
+                    {esperando.map(e => (
+                      <div key={e.id} className="row">
+                        <span className="t-body">{e.name}</span>
+                        <button
+                          type="button"
+                          className="cir-btn"
+                          disabled={busy}
+                          onClick={async () => {
+                            setBusy(true)
+                            await fetch('/api/household/address', {
+                              method: 'PATCH',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ id: e.id, status: 'sent' }),
+                            }).catch(() => {})
+                            await carregarEsperando()
+                            setBusy(false)
+                          }}
+                        >
+                          {pt ? 'Já convidei' : 'Invited'}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 <div className="cir-actions">
                   <InviteShare circleId={c.id} circleName={c.name} inviteCode={c.invite_code} pt={pt} />

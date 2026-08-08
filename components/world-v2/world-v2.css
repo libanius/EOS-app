@@ -4030,3 +4030,19 @@
   white-space: nowrap;
 }
 .wv2 .wv2-worse-handle:active { opacity: 0.6; }
+
+/* D-130: quem a pessoa listou na ficha e ainda espera o link. */
+.wv2-circles-page .cir-waiting {
+  display: grid;
+  gap: var(--s2);
+  padding: var(--s3);
+  border-radius: var(--r-tile);
+  background: rgba(255, 159, 10, 0.08);
+}
+.wv2-circles-page .cir-waiting .row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+  flex-wrap: wrap;
+}

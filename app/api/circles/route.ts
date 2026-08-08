@@ -284,5 +284,53 @@ export async function POST(req: NextRequest) {
   await supabase.from('circle_members').insert({
     circle_id: circle.id, user_id: user.id, role: 'Admin', share_inventory: true,
   })
-  return NextResponse.json({ circle }, { status: 201 })
+
+  /*
+   * Quem criou o círculo mora nele (D-130).
+   *
+   * Sem esta linha, a pessoa cria a casa e ela conta uma pessoa — a dela mesma
+   * fora. Foi exatamente o que confundiu o dono no D-129: Círculos dizia "sua
+   * casa (3)" e o motor contava 1, porque ele nunca tinha confirmado. Quem
+   * cria a casa declarou que mora nela pelo próprio ato.
+   */
+  await supabase
+    .from('circle_members')
+    .update({ household_status: 'confirmed', household_confirmed_at: new Date().toISOString() })
+    .eq('circle_id', circle.id)
+    .eq('user_id', user.id)
+
+  /*
+   * Os convites guardados encontram um círculo (D-130).
+   *
+   * A pessoa listou quem mora na casa lá na ficha, disse "agora não" para o
+   * plano, e os nomes ficaram esperando. Agora o círculo existe, e eles se
+   * amarram a ele — sem ela digitar tudo de novo.
+   *
+   * O STATUS CONTINUA `pending`, e isso é deliberado. A primeira versão marcava
+   * `sent` aqui, e era mentira: nada foi enviado. O convite deste app é um link
+   * que a pessoa compartilha, e só ela sabe por onde. Marcar como enviado o que
+   * ninguém enviou faria a tela dizer que a Daniela foi convidada enquanto a
+   * Daniela não recebeu nada.
+   *
+   * Falha aqui não derruba a criação do círculo — o círculo é o pedido, os
+   * convites são a cortesia.
+   */
+  let convitesProntos = 0
+  try {
+    const admin = createAdminClient()
+    if (admin) {
+      const { data } = await admin
+        .from('household_invites')
+        .update({ circle_id: circle.id })
+        .eq('owner_id', user.id)
+        .eq('status', 'pending')
+        .is('circle_id', null)
+        .select('id')
+      convitesProntos = data?.length ?? 0
+    }
+  } catch {
+    /* ver o comentário acima */
+  }
+
+  return NextResponse.json({ circle, pendingInvitesReady: convitesProntos }, { status: 201 })
 }

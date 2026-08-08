@@ -360,6 +360,79 @@ como rota protegida; usuário não logado ia para login, o login ignorava
 
 ---
 
+## D-130 — O endereço vira a porta de entrada da casa
+
+Ideia do dono: ao preencher o endereço completo na ficha, o app pergunta quem
+mais mora ali e oferece criar o círculo. O acerto central é o **lugar** —
+endereço é onde a pessoa já está pensando "minha casa", muito melhor que uma
+tela de cadastro abstrata.
+
+Ele pediu para melhorar a ideia antes de codar. Quatro coisas mudaram.
+
+**Endereço estruturado por país, não formato americano fixo.** O app fala pt-BR
+e en. E o campo de unidade não é detalhe: é o que separa a casa do dono da do
+vizinho no condomínio onde vários prédios dividem o mesmo número de rua — caso
+que ele mesmo relatou meses atrás, ao pedir a escolha de ponto no mapa.
+
+**O endereço nunca junta casas sozinho.** Se casas fossem unidas por endereço
+igual, os vizinhos entrariam na casa dele e as despensas deles somariam na
+autonomia da família. O endereço dispara a pergunta; a confirmação continua
+pessoa a pessoa (D-123).
+
+**Nome digitado não vira pessoa.** Bifurca: *tem celular* → convite; *não tem* →
+dependente com cuidador. Um nome solto seria um terceiro tipo de pessoa, e foi
+exatamente ele que o D-123 removeu quando o dono perguntou *"por que eu tenho
+que adicionar membros sendo que eles já fazem parte do círculo?"*. A Daniela
+dele **já tem conta** — cadastrá-la de novo criaria a duplicata.
+
+**O preço vem junto da oferta.** No desenho original ela clicava em "sim", ia
+para Círculos e só lá descobria o paywall: pedir o trabalho e cobrar pelo
+resultado dele. E a oferta virou uma faixa **depois** do salvamento, não um
+popup — a pessoa terminou o que veio fazer, e a oferta não sequestra a
+conclusão.
+
+### Os nomes não se perdem
+
+`household_invites` existe por um motivo só: se ela disser "agora não", o que
+digitou fica guardado. Quando o círculo existir — hoje, semana que vem, ou
+quando alguém a convidar — os convites já estão prontos.
+
+**E o status continua `pending` quando o círculo nasce.** A primeira versão
+marcava `sent` ali, e era mentira: nada tinha sido enviado. O convite deste app
+é um link que a pessoa compartilha por onde quiser, e o servidor não tem como
+saber que saiu. Marcar como enviado o que ninguém enviou faria a tela afirmar
+que a Daniela foi convidada enquanto a Daniela não recebeu nada. Quem marca é
+ela, em Círculos, com o botão "Já convidei".
+
+### Duas decisões técnicas
+
+**A unidade não vai para o geocodificador.** Nenhum deles sabe onde fica o
+apartamento 4124, e mandá-la piora o resultado — alguns devolvem o centro da
+cidade quando não casam a string inteira. A unidade importa para quem vai bater
+na porta, não para o mapa.
+
+**Falhar na geocodificação não derruba o salvamento.** O endereço escrito já
+vale por si: é o que a pessoa lê e o que alguém usa para chegar. A tela diz que
+não achou o ponto e oferece marcar à mão no Plano.
+
+**Quem cria o círculo passa a morar nele.** Sem isso, a pessoa criaria a casa e
+ela contaria uma pessoa a menos — a dela. Foi o que confundiu o dono no D-129.
+
+### O Pilot cita quem falta
+
+Pedido dele: *"o Pilot pode citar nas orientações que o usuário tem filhos mas
+não está no EOS"*. `getHousehold` passa a devolver `pendingNames`, e o Pilot
+recebe a instrução de citar quando for relevante — e de não repetir em toda
+resposta. É informação que muda a resposta: quem não está no app não recebe
+alerta nem aparece no mapa.
+
+**Prova.** `address-flow-test`, 9/9 com o endereço real do dono, incluindo a
+geocodificação (26.312, −80.204 — Parkland, Flórida) e dois controles
+negativos: salvar duas vezes não duplica a lista, e criar o círculo **não**
+marca ninguém como convidado.
+
+---
+
 ## D-129 — Três telas, três respostas para a mesma pergunta
 
 O dono mandou três capturas e disse: *"não estou entendendo por que as

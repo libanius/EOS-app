@@ -207,3 +207,49 @@ export async function GET() {
   if (error) return NextResponse.json({ pending: [], migrationPending: true })
   return NextResponse.json({ pending: data ?? [] })
 }
+
+/**
+ * PATCH — a pessoa marca que já mandou o link (D-130).
+ *
+ * É ato dela, não do app. O convite deste produto é um link compartilhado por
+ * onde ela quiser — WhatsApp, mensagem, à mão. O servidor não tem como saber
+ * que saiu, e marcar sozinho como enviado faria a tela afirmar que alguém foi
+ * convidado quando ninguém recebeu nada.
+ */
+export async function PATCH(request: Request) {
+  const supabase = await createClient()
+  const { data: auth } = await supabase.auth.getUser()
+  if (!auth.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const admin = createAdminClient()
+  if (!admin) return NextResponse.json({ error: 'Service role not configured' }, { status: 503 })
+
+  let body: { id?: string; status?: 'sent' | 'dismissed' }
+  try {
+    body = await request.json()
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+  }
+
+  if (!body.id || (body.status !== 'sent' && body.status !== 'dismissed')) {
+    return NextResponse.json({ error: 'id e status são obrigatórios' }, { status: 400 })
+  }
+
+  const { data, error } = await admin
+    .from('household_invites')
+    .update({ status: body.status, sent_at: body.status === 'sent' ? new Date().toISOString() : null })
+    // O `owner_id` no filtro é a autorização: ninguém mexe na lista de outra pessoa.
+    .eq('id', body.id)
+    .eq('owner_id', auth.user.id)
+    .select('id')
+
+  if (error) {
+    await logError('api/household/address:patch', error, { userId: auth.user.id })
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+  // Zero linhas significa que o id não é dela — um UPDATE bloqueado por filtro
+  // devolve sucesso vazio, e já foi assim que um bug passou meses escondido.
+  if (!data?.length) return NextResponse.json({ error: 'Não encontrado' }, { status: 404 })
+
+  return NextResponse.json({ ok: true })
+}
