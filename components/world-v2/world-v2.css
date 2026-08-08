@@ -4093,3 +4093,11 @@
   padding-top: var(--s3);
   border-top: 1px solid var(--sep);
 }
+
+/* As duas saídas da duplicata (D-135): juntar, ou dizer que são duas pessoas. */
+.family-dupe-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin-top: var(--s3);
+}

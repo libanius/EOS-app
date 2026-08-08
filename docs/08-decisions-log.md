@@ -4619,3 +4619,65 @@ revelou a causa real na execução seguinte: `circle_role_enum` é `Admin/Editor
 Viewer`, com maiúscula.
 
 ---
+
+## D-135 (fase 1) — A mesma pessoa em duas linhas
+
+**Date**: 2026-08-08
+**Status**: DECIDED
+**Roadmap**: redundância de fontes de pessoa — fase 1 de 3
+
+**Context**: O app tem três portas para dizer quem mora na casa e elas não se
+conhecem: o endereço da ficha grava um convite, o cadastro grava um dependente,
+o círculo grava uma conta. Quando a mesma pessoa entra por duas, a casa fica
+com duas linhas para uma cabeça.
+
+Está acontecendo em produção, medido:
+
+- a conta **"Isadora da Rosa Libanio"** tem um dependente **"Isadora"**. A casa
+  conta 3 onde há 2, e a autonomia dela é dividida por três — ela lê que está
+  menos preparada do que está.
+- a conta do dono tem dois convites marcados `sent` para **Daniela** e
+  **Paola**, que já estão confirmadas morando com ele. O app afirmava, para ele
+  e para o Pilot, que as duas "não estão no EOS".
+
+**Decision**:
+
+1. **A assimetria de risco decide tudo.** Juntar duas pessoas por engano tira
+   uma boca da conta e faz a autonomia **subir** — a família lê que aguenta
+   mais do que aguenta e se prepara menos. Deixar duplicado faz a autonomia
+   **cair** — ela se prepara demais. Um erro machuca, o outro não. Logo: **o
+   app nunca funde sozinho.**
+2. **`lib/same-person.ts` tem dois níveis.** `provavel` (um nome cabe dentro do
+   outro, ou o primeiro nome bate) basta para **perguntar** na tela. `forte`
+   (duas partes do nome batendo) basta para **fechar um convite**, que é
+   reversível e não muda quantas pessoas a casa tem. Dois irmãos — mesmo
+   sobrenome, primeiros nomes diferentes — não alcançam nem `provavel`.
+3. **A casa aponta, a tela pergunta, o usuário decide.** `getHousehold` devolve
+   `duplicates`; a Família mostra os dois nomes lado a lado com duas saídas —
+   "é a mesma pessoa" (funde, via a rota de vínculo que já existia e ninguém
+   achava) e "são duas pessoas" (não escreve nada; pai e filho de mesmo nome é
+   real).
+4. **O convite de quem já entrou se fecha sozinho**, com o status novo
+   `joined`. `dismissed` não servia: significa "desisti de convidar", que é o
+   oposto — e juntar os dois perderia a diferença entre a família que desistiu
+   e a que conseguiu.
+
+**Consequence**: `scripts/duplicate-person-test.mjs` (8 checagens) monta o caso
+real da Isadora e prova o movimento inteiro, inclusive que juntar faz a
+autonomia ir de 10,00 para 13,33 dias — o número que explica por que o app não
+faz isso sozinho.
+
+**Dois enganos que os controles negativos pegaram, os dois meus**:
+
+1. A primeira versão filtrava o convite da lista da tela **mesmo quando a
+   gravação falhava**. O CHECK da tabela ainda não conhecia `joined`, o UPDATE
+   voltava 23514, e a tela ficava certa com o banco errado — reintroduzindo,
+   dentro do próprio conserto, o defeito que ele existe para eliminar. Agora
+   falha alto no `error_log` e o convite continua aberto.
+2. A sonda que detecta a migration fazia PATCH num id inexistente. Zero linhas
+   casadas nunca exercitam um CHECK: o PostgREST devolve 200 e a sonda concluía
+   que estava tudo aplicado. Agora ela cria uma linha de verdade.
+
+**Pendência do dono**: aplicar `20260808200000_invite_joined.sql`.
+
+---

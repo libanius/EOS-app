@@ -121,6 +121,11 @@ const COPY = {
     emptyWhy: 'O EOS calcula água, comida e rotas por PESSOA. Sem saber quem mora aqui, todas as contas ficam erradas.',
     add: 'Cadastrar a família',
     inviteCircle: 'Convidar para o círculo',
+    sameTwice: 'Esta pessoa aparece duas vezes',
+    sameTwiceWhy: 'Ela foi cadastrada como dependente e também tem conta própria. Enquanto forem duas linhas, a casa conta uma pessoa a mais — e a autonomia sai menor do que é.',
+    sameTwiceYes: 'É a mesma pessoa',
+    sameTwiceNo: 'São duas pessoas',
+    sameTwiceDone: 'Juntadas',
     someoneMissing: 'Alguém da sua casa está fora do EOS',
     someoneMissingWhy: 'Quem não tem conta não aparece no mapa e não recebe mensagem. Mande o link — a pessoa entra sem digitar código nenhum.',
     loadError: 'Não foi possível carregar.',
@@ -166,6 +171,11 @@ const COPY = {
     emptyWhy: 'EOS computes water, food and routes PER PERSON. Without knowing who lives here, every number is wrong.',
     add: 'Record the family',
     inviteCircle: 'Invite to the circle',
+    sameTwice: 'This person appears twice',
+    sameTwiceWhy: 'They were added as a dependant and also have their own account. While there are two rows, the household counts one person too many — and autonomy reads lower than it is.',
+    sameTwiceYes: 'Same person',
+    sameTwiceNo: 'Two different people',
+    sameTwiceDone: 'Merged',
     someoneMissing: 'Someone in your household is outside EOS',
     someoneMissingWhy: 'Without an account they do not appear on the map and cannot receive a message. Send the link — no code to type.',
     loadError: 'Could not load.',
@@ -218,6 +228,17 @@ export default function FamilyPage() {
   const [loading, setLoading] = useState(true)
   const [failed, setFailed] = useState(false)
   const [sent, setSent] = useState<Record<string, string>>({})
+  /**
+   * A mesma pessoa em duas linhas (D-135).
+   *
+   * O servidor aponta; quem junta é o usuário, olhando os dois nomes. Juntar
+   * por engano tira uma boca da conta e faz a autonomia SUBIR — a família leria
+   * que aguenta mais do que aguenta. É o único erro dos dois que machuca.
+   */
+  const [duplicates, setDuplicates] = useState<Array<{
+    memberId: string; name: string; sameAs: string; sameAsName: string
+  }>>([])
+  const [resolvidos, setResolvidos] = useState<Record<string, 'juntada' | 'separada'>>({})
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -257,6 +278,7 @@ export default function FamilyPage() {
       setHouseSize(typeof casa?.size === 'number' ? casa.size : null)
       setContributors(casa?.inventory?.contributors ?? 0)
       setReachable(Array.isArray(casa?.reachable) ? casa.reachable : [])
+      setDuplicates(Array.isArray(casa?.duplicates) ? casa.duplicates : [])
       setFailed(false)
     } catch {
       setFailed(true)
@@ -264,6 +286,38 @@ export default function FamilyPage() {
       setLoading(false)
     }
   }, [])
+
+  /**
+   * Junta as duas linhas, ou marca que são duas pessoas mesmo.
+   *
+   * Juntar usa a rota de vínculo que já existia e ninguém achava: gravar
+   * `linked_user_id` faz `getHousehold` parar de contar a linha duplicada,
+   * porque a conta já está lá.
+   *
+   * "São duas pessoas" não escreve nada no banco de propósito. Um dependente
+   * "Isadora" ao lado de uma conta "Isadora" pode ser mãe e filha, e o certo é
+   * deixar as duas linhas de pé — o app só não pergunta de novo nesta sessão.
+   * Marcar isso para sempre pediria uma coluna nova para um caso raro.
+   */
+  const resolverDuplicata = async (memberId: string, sameAs: string, mesma: boolean) => {
+    setResolvidos(atual => ({ ...atual, [memberId]: mesma ? 'juntada' : 'separada' }))
+    if (!mesma) return
+    const r = await fetch(`/api/family-members/${memberId}/link`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ linked_user_id: sameAs }),
+    }).catch(() => null)
+    // Falhou: desfaz o otimismo em vez de mentir que juntou.
+    if (!r?.ok) {
+      setResolvidos(atual => {
+        const proximo = { ...atual }
+        delete proximo[memberId]
+        return proximo
+      })
+      return
+    }
+    await load()
+  }
 
   useEffect(() => { void load() }, [load])
 
@@ -521,6 +575,44 @@ export default function FamilyPage() {
                 />
               </Card>
             )}
+
+            {/*
+              A mesma pessoa em duas linhas (D-135).
+
+              Fica ACIMA do resto porque enquanto não se resolve, todo número
+              desta tela está errado: a casa conta uma cabeça a mais e a
+              autonomia sai menor do que é. Não é um aviso de arrumação — é a
+              explicação de por que o número não bate.
+            */}
+            {duplicates.filter(d => resolvidos[d.memberId] !== 'separada').map(d => (
+              <Card key={d.memberId} className="wv2-plan-note gaps">
+                <strong className="t-sub">{c.sameTwice}</strong>
+                <p className="t-foot ink-2">
+                  <b>{d.name}</b> · <b>{d.sameAsName}</b>
+                </p>
+                <p className="t-foot ink-2">{c.sameTwiceWhy}</p>
+                {resolvidos[d.memberId] === 'juntada' ? (
+                  <span className="t-caps ink-3">{c.sameTwiceDone}</span>
+                ) : (
+                  <div className="family-dupe-actions">
+                    <button
+                      type="button"
+                      className="wv2-pill primary"
+                      onClick={() => void resolverDuplicata(d.memberId, d.sameAs, true)}
+                    >
+                      {c.sameTwiceYes}
+                    </button>
+                    <button
+                      type="button"
+                      className="wv2-pill"
+                      onClick={() => void resolverDuplicata(d.memberId, d.sameAs, false)}
+                    >
+                      {c.sameTwiceNo}
+                    </button>
+                  </div>
+                )}
+              </Card>
+            ))}
 
             {!roles.length && (
               <Card className="wv2-plan-note gaps">

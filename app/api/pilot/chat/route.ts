@@ -651,7 +651,7 @@ export async function POST(request: NextRequest) {
   let casa: Awaited<ReturnType<typeof getHousehold>> = {
     people: [], size: 0,
     inventory: { waterLiters: 0, foodPersonDays: 0, fuelLiters: 0, batteryPercent: 0, hasMedicalKit: false, hasCommunicationDevice: false, contributors: 0 },
-    reachable: [], needsHidden: 0, pendingNames: [], known: false,
+    reachable: [], needsHidden: 0, pendingNames: [], duplicates: [], known: false,
   }
   try {
     const [{ data: profile }, casaLida, visibleCircleRecord] = await Promise.all([

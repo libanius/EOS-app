@@ -26,7 +26,7 @@ const casa = (over: Partial<Household> = {}): Household => ({
     waterLiters: 120, foodPersonDays: 20, fuelLiters: 0, batteryPercent: 80,
     hasMedicalKit: true, hasCommunicationDevice: true, contributors: 2,
   },
-  reachable: [], needsHidden: 0, pendingNames: [], known: true,
+  reachable: [], needsHidden: 0, pendingNames: [], duplicates: [], known: true,
   ...over,
 })
 

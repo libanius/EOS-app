@@ -24,6 +24,24 @@
 
 ---
 
+## 1-C. Migration PENDENTE — `joined` nos convites (D-135)
+
+**Aplique `supabase/migrations/20260808200000_invite_joined.sql`.** Uma linha:
+acrescenta `joined` aos status possíveis de `household_invites`.
+
+Por que importa agora: sua conta tem dois convites marcados como *enviados*
+para a **Daniela** e a **Paola** — que já moram com você no círculo há semanas.
+Sem o `joined`, o app continua dizendo, para você e para o Pilot, que as duas
+"não estão no EOS". Estão.
+
+Até aplicar, nada quebra e nada mente: o código detecta, tenta gravar, falha, e
+**mantém o convite aberto na tela** em vez de fingir que fechou. A falha fica no
+`error_log` como `household:fechar-convite`.
+
+Depois de aplicar, rode `node scripts/duplicate-person-test.mjs`.
+
+---
+
 ## 1-B. Play Store — o que só você pode fazer (D-133)
 
 O lado do código está pronto: manifest válido para TWA, ícone maskable de

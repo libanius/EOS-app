@@ -28,6 +28,8 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { podePerguntar, podeFecharConvite } from '@/lib/same-person'
+import { logError } from '@/lib/error-log'
 
 export type HouseholdPerson = {
   /** Conta EOS. `null` para dependente. */
@@ -114,6 +116,26 @@ export type Household = {
    */
   pendingNames: string[]
   /**
+   * A mesma pessoa aparecendo duas vezes (D-135).
+   *
+   * O app tem três portas para dizer quem mora aqui — o endereço, o cadastro de
+   * dependente e o círculo — e elas não se conhecem. Quando alguém entra por
+   * duas, a casa fica com duas linhas para uma cabeça, e a autonomia é dividida
+   * por gente demais.
+   *
+   * A casa NÃO junta sozinha. Juntar por engano tira uma boca da conta e faz a
+   * autonomia subir — a família leria que aguenta mais do que aguenta. Aqui só
+   * se aponta; fundir é um toque do usuário, na tela, olhando os dois nomes.
+   */
+  duplicates: Array<{
+    /** A linha de `family_members` que talvez seja a mesma pessoa. */
+    memberId: string
+    name: string
+    /** A conta com que ela se parece. */
+    sameAs: string
+    sameAsName: string
+  }>
+  /**
    * Falso quando a leitura falhou.
    *
    * Regra herdada de `simulation-debrief`: **nunca presumir uma casa de um**.
@@ -195,7 +217,7 @@ type MemberRow = {
  */
 export async function getHousehold(userId: string): Promise<Household> {
   const admin = createAdminClient()
-  if (!admin) return { people: [], size: 0, inventory: VAZIO, reachable: [], needsHidden: 0, pendingNames: [], known: false }
+  if (!admin) return { people: [], size: 0, inventory: VAZIO, reachable: [], needsHidden: 0, pendingNames: [], duplicates: [], known: false }
 
   try {
     // 1. Em quais círculos eu estou, e qual é a minha situação de casa.
@@ -422,20 +444,100 @@ export async function getHousehold(userId: string): Promise<Household> {
     try {
       const { data: pendentes } = await admin
         .from('household_invites')
-        .select('name')
+        .select('id, name, status')
         .eq('owner_id', userId)
-        .eq('status', 'pending')
+        .in('status', ['pending', 'sent'])
         .limit(20)
-      pendingNames = ((pendentes ?? []) as Array<{ name: string }>).map(p => p.name)
+
+      const abertos = (pendentes ?? []) as Array<{ id: string; name: string; status: string }>
+
+      /*
+       * O convite de quem JÁ ENTROU se fecha sozinho (D-135).
+       *
+       * Em produção agora, a conta do dono tem dois convites — "Daniela Oliveira
+       * Letteriello" e "Paola Letteriello Libanio" — marcados como enviados,
+       * enquanto as duas já estão confirmadas morando com ele. O app afirmava,
+       * para ele e para o Pilot, que elas "não estão no EOS". Estavam.
+       *
+       * Fechar é seguro de um jeito que fundir não é: não muda quantas pessoas
+       * a casa tem, não mexe em ficha nenhuma, e é reversível — só para de
+       * repetir uma coisa falsa. Por isso exige `forte` (duas partes do nome
+       * batendo) e só olha para quem está confirmado NESTA casa.
+       */
+      const nomesDaCasa = pessoas
+        .filter(p => p.userId !== null)
+        .map(p => (p.isMe ? (perfis.get(userId) ?? '') : p.name))
+        .filter(Boolean)
+
+      const jaEntraram = abertos.filter(c => nomesDaCasa.some(n => podeFecharConvite(c.name, n)))
+
+      /*
+       * Se a gravação falhar, o convite CONTINUA aberto na resposta.
+       *
+       * A primeira versão escondia isto e foi o teste que pegou: o CHECK da
+       * tabela ainda não conhecia `joined` (migration não aplicada), o UPDATE
+       * voltava 23514, e o código seguia filtrando o nome da lista assim mesmo.
+       * A tela ficava certa, o banco ficava errado, e a próxima leitura tentava
+       * de novo — para sempre.
+       *
+       * Duas verdades diferentes sobre a mesma coisa é o defeito que este
+       * conserto inteiro existe para eliminar. Não vou reintroduzi-lo aqui.
+       */
+      let fechados: typeof jaEntraram = []
+      if (jaEntraram.length) {
+        const { error: erroFechar } = await admin
+          .from('household_invites')
+          .update({ status: 'joined' })
+          .in('id', jaEntraram.map(c => c.id))
+        if (erroFechar) {
+          await logError('household:fechar-convite', erroFechar, {
+            userId,
+            context: { quantos: jaEntraram.length, code: erroFechar.code },
+          })
+        } else {
+          fechados = jaEntraram
+        }
+      }
+
+      pendingNames = abertos.filter(c => !fechados.includes(c)).map(c => c.name)
     } catch {
       /* sem a migration, a casa segue existindo */
     }
 
-    return { people: pessoas, size: pessoas.length, inventory, reachable, needsHidden, pendingNames, known: true }
+    /*
+     * A mesma pessoa em duas linhas (D-135).
+     *
+     * Um dependente cujo nome se parece com o de uma conta da casa é, quase
+     * sempre, a mesma pessoa cadastrada duas vezes — pelo endereço e pelo
+     * cadastro. Acontece agora em produção: a conta "Isadora da Rosa Libanio"
+     * tem um dependente "Isadora", e a autonomia dela é dividida por três onde
+     * deviam ser duas.
+     *
+     * Só aponta. Fundir é um toque do usuário — ver a justificativa no tipo.
+     */
+    const duplicates: Household['duplicates'] = []
+    for (const d of (depsRes.data ?? []) as Array<Record<string, unknown>>) {
+      if (d.linked_user_id) continue
+      const nomeDep = String(d.name ?? '')
+      for (const id of idsCasa) {
+        const nomeConta = perfis.get(id) ?? ''
+        if (nomeConta && podePerguntar(nomeDep, nomeConta)) {
+          duplicates.push({
+            memberId: String(d.id),
+            name: nomeDep,
+            sameAs: id,
+            sameAsName: id === userId ? nomeConta : nomeConta,
+          })
+          break
+        }
+      }
+    }
+
+    return { people: pessoas, size: pessoas.length, inventory, reachable, needsHidden, pendingNames, duplicates, known: true }
   } catch {
     // Ver `known` no tipo: falhar em silêncio com "1 pessoa" produziria uma
     // autonomia inventada que ninguém teria como identificar como erro.
-    return { people: [], size: 0, inventory: VAZIO, reachable: [], needsHidden: 0, pendingNames: [], known: false }
+    return { people: [], size: 0, inventory: VAZIO, reachable: [], needsHidden: 0, pendingNames: [], duplicates: [], known: false }
   }
 }
 
@@ -445,6 +547,6 @@ export async function getHousehold(userId: string): Promise<Household> {
  */
 export async function getHouseholdFor(client: SupabaseClient): Promise<Household> {
   const { data } = await client.auth.getUser()
-  if (!data.user) return { people: [], size: 0, inventory: VAZIO, reachable: [], needsHidden: 0, pendingNames: [], known: false }
+  if (!data.user) return { people: [], size: 0, inventory: VAZIO, reachable: [], needsHidden: 0, pendingNames: [], duplicates: [], known: false }
   return getHousehold(data.user.id)
 }
