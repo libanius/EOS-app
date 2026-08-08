@@ -4371,3 +4371,64 @@ visível no Inbox/Preparação. A notificação pública de conteúdo aprovado c
 separada da notificação administrativa de save.
 
 ---
+
+## D-131 — Destilar o Mundo: dois grupos no canto, e o verde com um dono só
+
+**Date**: 2026-08-08
+**Status**: DECIDED
+**Roadmap**: HWD — Fase 3 (destilar), escolha do dono
+
+**Context**: A crítica do dashboard mediu o canto superior direito com **três
+grupos** flutuantes disputando o mesmo pedaço de tela — o orbe do Pilot, três
+círculos globais sem rótulo (alfinete / engrenagem / silhueta) e a cápsula verde
+dos controles do mapa — e **cinco objetos verdes** competindo pelo olho na tela
+em repouso. O dono resumiu como "slopy". Numa tela que uma família abre sob
+estresse, um canto assim pede mais do que informa.
+
+Junto com isso, dois defeitos de conteúdo apareceram na medição:
+o veredito em repouso saía cortado no meio da palavra ("0.0 dias de autonomia ·
+reabaste…"), e o cartão de autonomia dizia "limitada pelo recurso mais escasso"
+com quatro barras — bateria e combustível inclusive — quando `autonomyDays` é
+`min(água, comida)` de propósito desde a reversão anterior.
+
+**Decision**:
+
+1. **As três portas globais viram uma.** `AppActions` passa a ser um botão só,
+   que abre uma lista com **Plano da família**, **Minha Ficha de Emergência** e
+   **Configurações** escritos por extenso. Um ícone sem rótulo só se sustenta
+   quando é universal; "engrenagem" e "silhueta" eram duas apostas do usuário.
+   O menu tem três saídas (Esc, tocar fora, escolher) e itens de 44px.
+2. **O chrome volta para a fileira da PilotBar.** Ele tinha sido empurrado para
+   baixo porque 136px não cabiam ao lado da busca; 40px cabem. Com isso o canto
+   perde uma fileira inteira e passa de **três grupos para dois**: a fileira do
+   topo (buscar + Pilot + menu) e a coluna do mapa embaixo. A PilotBar reserva a
+   largura do botão no próprio `right`; `--chrome-h` passa a 46px na página que
+   tem PilotBar, e o orbe se centra pela mesma fonte (D-127 preservado).
+3. **Os controles do mapa recolhem.** Em repouso: **Você** e **···**. Sob um
+   toque: Atualizar, Camadas e (no desktop) Painel. "Você" fica de fora do
+   recolhimento porque centralizar no próprio ponto é o gesto mais usado num
+   mapa — escondê-lo cobraria dois gestos pelo mais comum.
+4. **O verde volta a significar uma coisa.** O acento fica com quem carrega
+   estado de vida: o puck (você no mapa) e a faixa do veredito. "GPS ligado" é
+   ajuste, não risco — diz-se com o ícone aceso em branco.
+5. **O veredito em repouso cabe numa linha.** "de autonomia" sai; a cláusula
+   depois do "·" fica, porque é ela que separa vermelho de âmbar para quem não
+   distingue as duas cores.
+6. **Água/comida e bateria/combustível ficam separadas no cartão.** Duas barras
+   acima ("água ou comida, o que acabar antes"), duas abaixo de uma linha que
+   diz **"Não limita a autonomia"**. Nada foi escondido; o cartão passa a dizer
+   qual barra responde qual pergunta.
+
+**Consequence**: Em repouso o canto tem 4 alvos em 2 grupos, contra 3 grupos
+antes, e nenhuma função saiu do produto — tudo o que recolheu está a um toque.
+`scripts/dashboard-destilar-test.mjs` mede isso no navegador (10 checagens,
+inclusive o controle negativo de sobreposição por `elementFromPoint`, as três
+saídas do menu e a ausência de reticências na faixa). `scripts/weather-layers-test.mjs`
+passou a abrir o grupo antes de tocar em Camadas — se o botão estivesse visível
+em repouso, seria o recolhimento que teria quebrado.
+
+**Não coberto**: o orbe elevado da navegação continua verde. Ele é a única pista
+de "onde estou" numa barra de sete itens, e trocá-lo é uma decisão da navegação,
+não desta tela.
+
+---

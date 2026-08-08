@@ -114,3 +114,38 @@ describe('a severidade nunca é otimista', () => {
     }
   })
 })
+
+describe('a faixa em repouso cabe numa linha (D-131)', () => {
+  /*
+   * A faixa é UMA linha de ~390px dividida entre o número grande, este texto e
+   * o botão. O navegador não avisa quando corta: ele põe reticências e segue.
+   * Foi assim que "reabasteça hoje" virou "reabaste…" na tela do dono.
+   *
+   * 26 caracteres é o que sobra para o texto naquele espaço, medido no
+   * aparelho. Um teste de caractere não substitui a medida no navegador — que
+   * existe em `scripts/dashboard-destilar-test.mjs` — mas pega a regressão
+   * barata: a de alguém escrever uma frase mais longa.
+   */
+  const casos = [
+    { autonomyDays: 0.2, checklistPct: 10 },
+    { autonomyDays: 2, checklistPct: 40 },
+    { autonomyDays: 7, checklistPct: 100 },
+    { autonomyDays: null, checklistPct: 0 },
+  ]
+
+  for (const caso of casos) {
+    for (const pt of [true, false]) {
+      it(`${caso.autonomyDays ?? 'sem medida'} dias, ${pt ? 'pt' : 'en'}`, () => {
+        const v = restingVerdict({
+          riskState: 'stable',
+          score: 14,
+          stateLabel: 'Estável',
+          alertCount: 0,
+          pt,
+          ...caso,
+        })
+        expect(v.lead.length + v.line.length).toBeLessThanOrEqual(30)
+      })
+    }
+  }
+})

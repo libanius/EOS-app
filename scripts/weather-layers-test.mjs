@@ -74,6 +74,24 @@ const admin = (p, o = {}) => fetch(`${URL}${p}`, {
 // banco de produção.
 cleanupOnExit(admin)
 
+/**
+ * Abre o painel de camadas.
+ *
+ * O botão "Camadas" ficou um toque mais fundo quando os controles do mapa
+ * recolheram (D-131) — em repouso a coluna mostra só "Você" e "···". Este
+ * teste passa a fazer o que a pessoa faz: abre o grupo, depois toca em Camadas.
+ * Se o botão estivesse VISÍVEL em repouso, seria o recolhimento que quebrou.
+ */
+async function abrirCamadas(page) {
+  const camadas = page.locator('button[aria-label="Camadas"]')
+  if (!(await camadas.count())) {
+    await page.locator('.wv2-mapcontrols button').last().click()
+    await page.waitForTimeout(400)
+  }
+  await camadas.click()
+}
+
+
 let pass = 0, fail = 0
 const ok = (l, d = '') => { pass++; console.log(`✅ ${l}${d ? ': ' + d : ''}`) }
 const no = (l, d = '') => { fail++; console.log(`❌ ${l}${d ? ': ' + d : ''}`) }
@@ -157,7 +175,7 @@ await page.locator('.wv2-map canvas').waitFor({ timeout: 30000 })
 await page.waitForTimeout(5000)
 
 // ── 4. painel de camadas ────────────────────────────────────────────────────
-await page.locator('button[aria-label="Camadas"]').click()
+await abrirCamadas(page)
 await page.waitForTimeout(600)
 const painel = page.locator('[role="group"][aria-label="Camadas"]')
 const chips = await painel.locator('.wv2-chip').allInnerTexts().catch(() => [])
@@ -207,7 +225,7 @@ impacto.source && impacto.layer && impacto.label
 // preferência persiste
 await page.reload({ waitUntil: 'networkidle' })
 await page.waitForTimeout(4000)
-await page.locator('button[aria-label="Camadas"]').click()
+await abrirCamadas(page)
 await page.waitForTimeout(600)
 const ventoLigado = await page.locator('[role="group"][aria-label="Camadas"] button', { hasText: /^Vento$/ }).getAttribute('class')
 ventoLigado?.includes('on')
@@ -252,7 +270,7 @@ if (alertas) {
 // o fecha — foi assim que este item passou reportando "nenhum ciclone ativo"
 // enquanto a API devolvia a Genevieve.
 if (!(await page.locator('[role="group"][aria-label="Camadas"]').count())) {
-  await page.locator('button[aria-label="Camadas"]').click()
+  await abrirCamadas(page)
 }
 await page.waitForTimeout(1500)
 const linhas = page.locator('.wv2-stormline')

@@ -48,7 +48,8 @@ const COPY = {
     checklistLabel: 'Checklist',
     readiness: 'Prontidão',
     autonomy: 'Autonomia da família',
-    autonomyHint: 'limitada pelo recurso mais escasso',
+    autonomyHint: 'água ou comida, o que acabar antes',
+    autonomyCapability: 'Não limita a autonomia',
     days: 'dias',
     day: 'dia',
     reserves: 'Reservas',
@@ -71,6 +72,8 @@ const COPY = {
     useGps: 'Usar GPS',
     gpsCap: 'Você',
     refreshCap: 'Atualizar',
+    moreControls: 'Mais controles do mapa',
+    lessControls: 'Recolher controles',
     layersLabel: 'Camadas',
     base: 'Base do mapa',
     darkBase: 'Escuro',
@@ -125,7 +128,8 @@ const COPY = {
     checklistLabel: 'Checklist',
     readiness: 'Readiness',
     autonomy: 'Family autonomy',
-    autonomyHint: 'bounded by the scarcest reserve',
+    autonomyHint: 'water or food, whichever runs out first',
+    autonomyCapability: 'Does not bound autonomy',
     days: 'days',
     day: 'day',
     reserves: 'Reserves',
@@ -174,6 +178,8 @@ const COPY = {
     coneNote: 'The cone is the uncertainty of the centre position, not the damage area — wind and rain reach well beyond it.',
     panelCap: 'Panel',
     refresh: 'Refresh data',
+    moreControls: 'More map controls',
+    lessControls: 'Collapse controls',
     panel: 'Show or hide the panel',
     open: 'Open',
     fix: 'Fix',
@@ -235,6 +241,8 @@ export default function WorldV2() {
     })
   }
   const [layersOpen, setLayersOpen] = useState(false)
+  /** Os controles de ajuste do mapa, recolhidos em repouso (D-131). */
+  const [controlsOpen, setControlsOpen] = useState(false)
 
   /*
    * `Escape` fecha o painel de Camadas (D-128).
@@ -517,7 +525,23 @@ export default function WorldV2() {
         </p>
 
 
-        <div className="wv2-mapcontrols">
+        {/*
+          Os controles do mapa recolhem (D-131).
+
+          O relatório mediu dezesseis controles visíveis em repouso e cinco
+          objetos disputando o olho: o orbe do Pilot, esta cápsula verde, o pulso
+          do puck, o número da faixa e o orbe elevado da navegação. Numa tela que
+          uma família abre sob estresse, isso pede mais do que informa.
+
+          "Você" fica de fora do recolhimento de propósito: centralizar no
+          próprio ponto é o gesto mais usado num mapa, e escondê-lo atrás de um
+          toque cobraria dois gestos pelo mais comum. Atualizar e Camadas — que
+          são ajuste, não leitura — entram.
+
+          O que sai da tela em repouso não some do produto: fica a um toque, com
+          o rótulo à vista quando aberto.
+        */}
+        <div className="wv2-mapcontrols" data-open={controlsOpen ? '' : undefined}>
           <IconButton
             label={c.useGps}
             caption={c.gpsCap}
@@ -529,22 +553,39 @@ export default function WorldV2() {
           >
             <LocationIcon />
           </IconButton>
-          <IconButton label={c.refresh} caption={c.refreshCap} onClick={() => { refresh(); data.refresh() }}>
-            <RefreshIcon />
-          </IconButton>
-          <IconButton
-            label={c.layersLabel}
-            caption={c.darkCap}
-            active={layersOpen}
-            onClick={() => { haptic.selection(); setLayersOpen(open => !open) }}
-          >
-            <LayersIcon />
-          </IconButton>
-          {isDesktop && (
-            <IconButton label={c.panel} caption={c.panelCap} active={panelOpen} onClick={() => setPanelOpen(open => !open)}>
-              <PanelIcon />
-            </IconButton>
+
+          {controlsOpen && (
+            <>
+              <IconButton label={c.refresh} caption={c.refreshCap} onClick={() => { refresh(); data.refresh() }}>
+                <RefreshIcon />
+              </IconButton>
+              <IconButton
+                label={c.layersLabel}
+                caption={c.darkCap}
+                active={layersOpen}
+                onClick={() => { haptic.selection(); setLayersOpen(open => !open) }}
+              >
+                <LayersIcon />
+              </IconButton>
+              {isDesktop && (
+                <IconButton label={c.panel} caption={c.panelCap} active={panelOpen} onClick={() => setPanelOpen(open => !open)}>
+                  <PanelIcon />
+                </IconButton>
+              )}
+            </>
           )}
+
+          <IconButton
+            label={controlsOpen ? c.lessControls : c.moreControls}
+            active={controlsOpen}
+            onClick={() => {
+              haptic.selection()
+              setControlsOpen(o => !o)
+              if (controlsOpen) setLayersOpen(false)
+            }}
+          >
+            <span className="wv2-more" aria-hidden="true">{controlsOpen ? '×' : '···'}</span>
+          </IconButton>
         </div>
 
         {/*
@@ -854,6 +895,20 @@ function WorldSections({
           <span className="t-figure">{formatDays(data.autonomyDays)}</span>
           <span className="t-title2 ink-2">{data.autonomyDays === 1 ? c.day : c.days}</span>
         </div>
+        {/*
+          Quatro barras, duas contas diferentes (D-131).
+
+          O rótulo dizia "limitada pelo recurso mais escasso" e logo abaixo
+          vinham quatro barras — dando a entender que a bateria entra na conta.
+          Ela não entra: `autonomyDays` é `min(água, comida)`, e é assim de
+          propósito. Uma casa com dez dias de despensa e o telefone a 10% não
+          "sobrevive 0,3 dias"; ela sobrevive dez dias com menos recurso.
+
+          Água e comida decidem quanto tempo a casa aguenta. Bateria e
+          combustível decidem o que ela CONSEGUE FAZER nesse tempo. São as duas
+          perguntas, e a separação diz qual barra responde qual — sem esconder
+          nenhuma delas.
+        */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           <Bar
             label={c.water}
@@ -867,6 +922,9 @@ function WorldSections({
             fraction={data.foodDays / 8}
             low={data.foodDays < 3}
           />
+        </div>
+        <p className="wv2-capability-note t-caps ink-3">{c.autonomyCapability}</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           <Bar
             label={c.power}
             value={`${formatDays(data.powerDays)} ${c.days}`}

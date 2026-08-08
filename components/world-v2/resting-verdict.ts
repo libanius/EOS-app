@@ -86,7 +86,7 @@ export function restingVerdict(input: {
       return {
         severity: 'watch',
         lead: '—',
-        line: pt ? 'Autonomia da casa não medida' : 'Household autonomy not measured',
+        line: pt ? 'Autonomia não medida' : 'Autonomy not measured',
         source: 'household',
         href: '/preparedness',
       }
@@ -95,11 +95,24 @@ export function restingVerdict(input: {
     return {
       severity: casa,
       lead: dias,
+      /*
+       * Curto de propósito (D-131).
+       *
+       * A faixa em repouso é UMA linha de 390px dividida com o número grande e
+       * com o botão. "0,0 dias de autonomia · reabasteça hoje" não cabia, e o
+       * navegador cortava no meio da palavra: "reabaste…". Um veredito cortado
+       * é pior que nenhum — a pessoa lê que algo está errado e não lê o quê.
+       *
+       * "de autonomia" era a parte descartável: o número com "dias" já diz a
+       * grandeza, e a folha logo abaixo a explica por extenso. O que não podia
+       * sair é a cláusula depois do "·", porque é ela que separa vermelho de
+       * âmbar para quem não distingue as duas cores.
+       */
       line:
         autonomyDays < 1
-          ? (pt ? ' dias de autonomia · reabasteça hoje' : ' days of autonomy · restock today')
+          ? (pt ? ' dias · reabasteça hoje' : ' days · restock today')
           : autonomyDays < 3
-            ? (pt ? ' dias de autonomia · abaixo do mínimo' : ' days of autonomy · below the minimum')
+            ? (pt ? ' dias · abaixo do mínimo' : ' days · below the minimum')
             : (pt ? ` dias · plano ${checklistPct}% feito` : ` days · plan ${checklistPct}% done`),
       source: 'household',
       href: '/preparedness',

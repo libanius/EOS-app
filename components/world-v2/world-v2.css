@@ -1122,7 +1122,8 @@
   z-index: 4;
   top: calc(max(16px, env(safe-area-inset-top, 0px) + 8px));
   left: var(--edge);
-  right: calc(16px + 88px + 10px);
+  /* Reserva a largura do botão de menu, que agora divide esta fileira. */
+  right: calc(16px + 40px + 10px);
   max-width: 520px;
 }
 
@@ -4045,4 +4046,50 @@
   justify-content: space-between;
   gap: var(--s2);
   flex-wrap: wrap;
+}
+
+/* ── Controles do mapa recolhidos (D-131) ────────────────────────────────────
+   Em repouso a coluna tem dois botões: centralizar em você, e "mais". O
+   relatório mediu 16 controles visíveis e cinco objetos disputando o olho —
+   numa tela que uma família abre sob estresse, isso pede mais do que informa.
+
+   Recolhido, a coluna perde a cápsula verde e vira cromo silencioso; aberto,
+   volta a ter peso, porque aí ela é o assunto. */
+.wv2-mapcontrols:not([data-open]) {
+  background: var(--mat-regular);
+  border-color: var(--sep);
+}
+.wv2-mapcontrols .wv2-more {
+  font-size: 1rem;
+  line-height: 1;
+  letter-spacing: 0.06em;
+}
+/* O grupo cresce de cima para baixo a partir do "Você", que fica fixo. */
+.wv2-mapcontrols[data-open] {
+  animation: mapControlsOpen 260ms cubic-bezier(0.2, 0.9, 0.25, 1) both;
+}
+@keyframes mapControlsOpen {
+  from { transform: scaleY(0.92); opacity: 0.7; transform-origin: top center }
+  to   { transform: scaleY(1); opacity: 1; transform-origin: top center }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wv2-mapcontrols[data-open] { animation-duration: 1ms; }
+}
+
+/* ── O verde volta a significar uma coisa (D-131) ────────────────────────────
+   Em repouso a tela tinha cinco objetos verdes: o orbe do Pilot, o "Você"
+   ligado, o pulso do puck, o orbe da navegação e a borda da faixa. Um acento
+   usado cinco vezes não acentua nada — vira o fundo.
+
+   Aqui o verde fica com quem carrega estado de vida: o puck (você no mapa) e a
+   faixa do veredito. "GPS ligado" é informação de ajuste, não de risco: ela se
+   diz com o ícone aceso em branco. */
+.wv2-mapcontrols .wv2-iconbtn.on { color: var(--fg); }
+.wv2-mapcontrols .wv2-iconbtn.on .cap { color: var(--fg); }
+
+/* A linha que separa o que dura do que capacita (D-131). */
+.wv2-capability-note {
+  margin: var(--s4) 0 var(--s3);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--sep);
 }

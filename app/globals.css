@@ -677,15 +677,23 @@ body:has(.sim-banner) .app-actions { top: 56px !important; }
   --chrome-h: 40px;
   --chrome-gap: 10px;
 }
-/* Onde a PilotBar ocupa o topo, o chrome começa abaixo dela. */
+/* O chrome global voltou para a MESMA fileira da PilotBar (D-131).
+   Ele foi empurrado para baixo quando eram três círculos: 136px não cabiam ao
+   lado da barra de busca. Agora é um botão só de 40px, e cabe — com isso o
+   canto perde uma fileira inteira e passa de três grupos para dois: a fileira
+   de cima (buscar + Pilot + menu) e a coluna do mapa embaixo.
+   A PilotBar reserva a largura desse botão no próprio `right`. */
 body:has(.wv2-pilotbar) {
-  --chrome-top: calc(16px + 46px + 12px + env(safe-area-inset-top, 0px));
+  /* A fileira do topo passa a ser a PilotBar, que é mais alta que um orbe. */
+  --chrome-h: 46px;
 }
 /* Quem vem abaixo calcula a partir de `--chrome-top`, e NÃO de uma variável
    pré-calculada aqui: `--chrome-bottom` no `:root` não enxergaria o override
    que o `body:has(...)` acabou de fazer — substituição de variável acontece no
    elemento, e o `:root` é outro elemento. */
-.app-actions { top: var(--chrome-top) !important; }
+/* O orbe do chrome centra na fileira, seja ela de 40px ou de 46px — a conta
+   sai da mesma fonte, então mudar a altura da barra move o orbe junto. */
+.app-actions { top: calc(var(--chrome-top) + (var(--chrome-h) - 40px) / 2) !important; }
 
 /* The Pilot conversation is a focused surface: the global AppActions buttons
    would otherwise sit on top of its close button. */
@@ -1075,3 +1083,52 @@ body:has(.wv2-pilot-chat) .app-actions { display: none; }
 .home-address .ha-btn:disabled { opacity: 0.45; cursor: default; }
 .home-address .ha-error { margin: 0; font-size: 13px; color: #fca5a5; }
 .home-address .ha-ok { margin: 0; font-size: 13px; color: var(--ac); }
+
+/* ── O menu das três portas (D-131) ──────────────────────────────────────────
+   Eram três círculos sem rótulo dividindo o canto com o orbe do Pilot e com a
+   coluna do mapa. Viraram um botão e uma lista com os nomes escritos.
+
+   O painel ancora no botão que o abriu — sai de onde foi tocado e volta para
+   lá, que é o que faz a relação entre gatilho e conteúdo ser óbvia. */
+.app-actions { position: relative; }
+.app-actions-menu {
+  position: absolute;
+  top: 48px;
+  right: 0;
+  min-width: 216px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-radius: 16px;
+  background: rgba(14, 14, 14, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.55);
+  transform-origin: top right;
+  animation: appActionsIn 220ms cubic-bezier(0.2, 0.9, 0.25, 1) both;
+}
+@keyframes appActionsIn {
+  from { opacity: 0; transform: scale(0.94) translateY(-6px) }
+  to   { opacity: 1; transform: scale(1) translateY(0) }
+}
+.app-actions-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  /* 44px de alvo: é o mínimo que um dedo acerta sem mirar. */
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 11px;
+  color: #fafafa;
+  font-size: 0.9375rem;
+  text-decoration: none;
+}
+.app-actions-item:hover, .app-actions-item:focus-visible {
+  background: rgba(255, 255, 255, 0.08);
+}
+.app-actions-item .aa-icon { color: #a1a1aa; display: flex }
+@media (prefers-reduced-motion: reduce) {
+  .app-actions-menu { animation-duration: 1ms; }
+}
