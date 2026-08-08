@@ -24,6 +24,49 @@
 
 ---
 
+## 1-B. Play Store — o que só você pode fazer (D-133)
+
+O lado do código está pronto: manifest válido para TWA, ícone maskable de
+verdade, e a rota `/.well-known/assetlinks.json` já no ar. **Nada disso precisa
+de novo deploy** — o que falta são dois valores que só existem depois que você
+criar o app no Play Console.
+
+**Passo 1 — crie o app no Play Console** e escolha o nome do pacote, por
+exemplo `app.eos.familia`. Ele é permanente: não dá para trocar depois.
+
+**Passo 2 — pegue a impressão digital.** Play Console → *Release* → *Setup* →
+*App signing* → copie o **SHA-256 certificate fingerprint** (o do *App signing
+key*, não o do upload key). Vem no formato `AA:BB:CC:…`, 32 pares.
+
+**Passo 3 — cole na Vercel** (Settings → Environment Variables → Production):
+
+```
+TWA_PACKAGE_NAME=app.eos.familia
+TWA_SHA256_FINGERPRINTS=AA:BB:CC:…            (várias, separadas por vírgula)
+```
+
+Não precisa de commit. A rota lê a variável a cada pedido.
+
+**Passo 4 — confira**, abrindo `https://eos-app-fawn.vercel.app/.well-known/assetlinks.json`.
+Antes de preencher, ela devolve `[]` — que é a verdade: nenhum app autorizado.
+Depois, tem que aparecer o seu pacote. Se aparecer `[]` mesmo com a variável
+posta, a impressão digital está fora do formato e foi descartada de propósito
+(uma malformada faz o Chrome falhar em silêncio e a barra de endereço fica lá
+sem explicar por quê).
+
+**Passo 5 — gere o APK** com o Bubblewrap:
+`npx @bubblewrap/cli init --manifest https://eos-app-fawn.vercel.app/manifest.json`
+
+**O que o Play vai pedir e já existe**: política de privacidade
+(`/privacy`), termos (`/terms`), política de reembolso (`/refund`).
+
+**O que o Play vai pedir e ainda NÃO existe**: as capturas de tela da loja
+(mínimo 2 de celular), o ícone de 512 da ficha da loja e o gráfico de
+destaque 1024×500. Isso é material de listagem, não de código — me diga se
+quer que eu gere.
+
+---
+
 ## 1-A. Migration PENDENTE — `pilot_events` (PILOT-T04 / D-132)
 
 **Aplique `supabase/migrations/20260808150000_pilot_events.sql`** (Dashboard →

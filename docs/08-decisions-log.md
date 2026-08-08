@@ -4497,3 +4497,50 @@ repositório como guarda de privacidade sem guardar nada.
 funciona igual e a rota responde `migration_pending`.
 
 ---
+
+## D-133 — Play Store: o manifest, o ícone que a máscara não corta, e a prova de posse
+
+**Date**: 2026-08-08
+**Status**: DECIDED
+**Roadmap**: preparo para publicação Android (TWA)
+
+**Context**: Um TWA é este site embrulhado num APK. Se o manifest ou o
+Digital Asset Links estiverem errados, o app instala e abre — com a barra de
+endereço do Chrome por cima, ou com o ícone cortado na gaveta. Nada disso falha
+em desenvolvimento; só aparece depois de publicado.
+
+**Decision**:
+
+1. **`assetlinks.json` é rota, não arquivo.** A impressão digital só existe
+   depois que o dono cria o app no Play Console — o Play assina com a chave
+   dele. Um arquivo estático obrigaria commit e deploy para colar esse valor;
+   a rota lê `TWA_PACKAGE_NAME` e `TWA_SHA256_FINGERPRINTS` da Vercel.
+2. **Sem fingerprint, a rota devolve `[]` com 200.** É a resposta verdadeira:
+   nenhum app está autorizado por este site. Um placeholder faria o Chrome
+   tentar verificar, falhar, e o dono caçar um erro que ele mesmo causou.
+3. **Fingerprint malformada é descartada, não publicada.** Uma inválida faz o
+   Chrome falhar a verificação em silêncio — a barra de endereço continua lá
+   sem dizer por quê. Melhor a lista vazia, que se vê.
+4. **O ícone maskable passou a ser um arquivo próprio.** O manifest declarava
+   `icon.svg` como `"any maskable"` e ele não é: o ponto verde do logotipo fica
+   a 221px do centro, e a zona segura de um maskable é o círculo de raio 205 —
+   a máscara circular do Android cortaria o ponto pela metade.
+   `scripts/make-maskable-icon.py` redesenha a mesma composição com fundo full
+   bleed e tudo dentro dos 80% centrais, e **mede os pixels** ao gerar: sai com
+   código 1 se sobrar conteúdo fora da zona segura.
+5. **O manifest ganhou `id`, `lang`, `categories` e três atalhos** (Ficha,
+   Plano, Preparação). Sem `id`, mudar o `start_url` faria o navegador tratar
+   como outro app e a pessoa perderia o que já tinha instalado.
+
+**Consequence**: `lib/__tests__/twa-manifest.test.ts` (10 testes) exige que todo
+ícone declarado exista em disco, que haja PNG maskable de 512, que o SVG **não**
+volte a ser declarado maskable, que o maskable não seja o ícone comum
+reetiquetado, que todo atalho aponte para uma rota que existe, e que nenhuma
+impressão digital seja escrita no repositório.
+
+**O que falta e é do dono**: criar o app no Play Console, colar as duas
+variáveis na Vercel, gerar o APK com o Bubblewrap. Está em
+`docs/PENDENCIAS-DONO.md §1-B`. As capturas de tela da loja e o gráfico de
+destaque também faltam — material de listagem, não de código.
+
+---
