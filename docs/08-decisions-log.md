@@ -4544,3 +4544,78 @@ variáveis na Vercel, gerar o APK com o Bubblewrap. Está em
 destaque também faltam — material de listagem, não de código.
 
 ---
+
+## D-134 — Uma casa, um número: o painel do Mundo entra no modelo de casa
+
+**Date**: 2026-08-08
+**Status**: DECIDED
+**Roadmap**: correção de consistência (D-123 completado)
+
+**Context**: O dono relatou duas coisas que são a mesma: "o Pilot insiste em não
+saber quem está morando em casa" e "as informações não estão batendo".
+
+Não era dado faltando. Medido na conta real dele, no mesmo minuto:
+
+| fonte | dizia |
+| --- | --- |
+| `/api/household` (canônica, D-123) | **3** — ele, Daniela e Paola, confirmados no círculo |
+| painel do Mundo (`useWorldData`) | **1** — contava `family_members`, que estava vazia |
+| prompt do Pilot | **as duas**, a três linhas de distância |
+
+O prompt saía literalmente assim:
+
+```
+FAMÍLIA: Pessoas: 1.
+…
+MEMBROS CADASTRADOS (3): Você, Daniela Oliveira, paola letteriello libanio
+```
+
+Um modelo que recebe duas respostas para a mesma pergunta não escolhe uma: ele
+para de afirmar. A queixa sobre o Pilot era um sintoma; a doença era o painel.
+
+O painel do Mundo foi **a última tela que sobrou do modelo antigo**. Família e
+Preparação já liam `/api/household` desde o D-123; esta não.
+
+**Decision**:
+
+1. **`useWorldData` lê `/api/household`.** Pessoas, vulnerabilidades e a
+   despensa passam a vir da casa somada no servidor. `family_members` continua
+   sendo lido, mas só como rede de segurança — e quando ela é usada, `known`
+   fica `false`, que o guard traduz em WAIT, nunca em GO.
+2. **As reservas do painel são as da CASA.** Ele dividia a MINHA água pelas
+   MINHAS bocas e ignorava a despensa de quem mora junto. Numa casa de três em
+   que só uma conta tem inventário, o painel mostrava zero — a família lia "não
+   temos água" tendo água.
+3. **O servidor não aceita mais o headcount do cliente.** A linha `FAMÍLIA:` do
+   prompt é montada a partir de `getHousehold`, não de `context.people`. Saber
+   quem mora junto exige ler conta de outra pessoa; só o servidor pode, e a RLS
+   garante isso. Sem a casa montada, o prompt diz "não foi possível confirmar" —
+   e manda **não afirmar um número**, em vez de repetir o palpite da tela.
+4. **O rótulo passou a dizer o que a lista é.** "MEMBROS CADASTRADOS" soava a
+   cadastro opcional de dependentes; virou "QUEM MORA NESTA CASA (N) — esta é a
+   lista completa e confirmada". Cada linha diz se a pessoa **tem conta no EOS**
+   (recebe alerta, aparece no mapa, pode ter papel no plano) ou está **sob
+   cuidados de alguém, sem conta** — a diferença muda a instrução, porque "avise
+   a Isadora" não funciona para quem não tem o app.
+
+**Um 500 achado no caminho**: `TONE[context.riskState]` era indexado cru com
+valor do cliente. Um `riskState` fora da lista devolvia `undefined` e a rota
+estourava com **500 de corpo vazio** — o chat não mostrava nem resposta nem
+erro. Agora cai em `watch`. Mesmo princípio: o servidor não pode quebrar porque
+a tela mandou uma palavra que ele não conhece.
+
+**Consequence**: `scripts/household-consistency-test.mjs` (8 checagens) monta
+uma casa real — duas contas confirmadas mais uma dependente, com a despensa
+inteira na conta da OUTRA pessoa — e exige que toda superfície diga o mesmo.
+Inclui o controle negativo que prova que o painel não está mais contando só a
+própria conta, e um cliente que mente dizendo "99 pessoas" para provar que o
+servidor o ignora. O Pilot agora responde `3 pessoas: Você, Parceira, Avó Ana.`
+
+**Um erro do próprio teste, que o preparo silencioso escondeu**: os `insert` de
+semeadura não checavam resposta. Dois falharam (a dependente e o inventário) e o
+teste reprovou o PRODUTO por defeito do preparo — já tinha acontecido aqui com
+um `PGRST102`. Agora `semear()` aborta com o HTTP e o corpo do erro. Foi ela que
+revelou a causa real na execução seguinte: `circle_role_enum` é `Admin/Editor/
+Viewer`, com maiúscula.
+
+---

@@ -17,6 +17,17 @@ type FamilyMemberFicha = {
   medications?: string[] | null
   mobility_impaired?: boolean | null
   is_infant?: boolean | null
+  /**
+   * Tem conta no EOS? (D-134)
+   *
+   * A diferença muda a resposta: quem tem conta recebe alerta, aparece no mapa
+   * e pode ter papel no plano; um dependente não faz nada disso sozinho — ele
+   * depende de quem cuida dele. Sem esta marca o Pilot tratava os dois como a
+   * mesma coisa e sugeria "avise a Paola" para alguém sem telefone.
+   */
+  has_account?: boolean | null
+  /** Quem responde por esta pessoa, quando ela não tem conta. */
+  cared_for_by?: string | null
 }
 
 export type CircleVisibleMemberRecord = {
@@ -72,15 +83,44 @@ export function buildPilotFamilyRecord({
       : `- Emergency contact: ${text(profile?.emergency_contact_name, empty)} · ${text(profile?.emergency_contact_phone, empty)}`,
   )
 
+  /*
+   * O RÓTULO É O CONSERTO (D-134).
+   *
+   * Dizia "MEMBROS CADASTRADOS", que soa a lista de dependentes — e com todos os
+   * campos em "não consta" o modelo lia aquilo como "quase não sei nada desta
+   * família" e passava a hedgear sobre quem mora ali. A lista sempre foi a casa
+   * inteira; faltava ela se apresentar como tal, e dizer quem tem conta.
+   *
+   * "Idade não consta" para um adulto com conta é normal, não é buraco: uma
+   * conta informa a própria ficha, não a própria idade. Dizer isso evita que o
+   * Pilot gaste a resposta pedindo um dado que ninguém devia preencher.
+   */
+  const comConta = members.filter(m => m.has_account).length
+  const dependentes = members.length - comConta
+
   lines.push('')
-  lines.push(pt ? `MEMBROS CADASTRADOS (${members.length}):` : `REGISTERED FAMILY MEMBERS (${members.length}):`)
+  lines.push(
+    pt
+      ? `QUEM MORA NESTA CASA (${members.length}) — esta é a lista completa e confirmada; use-a como certa:`
+      : `WHO LIVES IN THIS HOUSEHOLD (${members.length}) — this is the complete, confirmed list; treat it as certain:`,
+  )
   if (!members.length) {
-    lines.push(pt ? '- nenhum membro dependente cadastrado' : '- no dependent members recorded')
+    lines.push(pt ? '- a casa ainda não foi montada' : '- the household has not been assembled yet')
     return lines.join('\n')
   }
+  lines.push(
+    pt
+      ? `(${comConta} com conta no EOS — recebem alerta e aparecem no mapa; ${dependentes} sob cuidados, sem conta.)`
+      : `(${comConta} with an EOS account — they get alerts and appear on the map; ${dependentes} dependants, no account.)`,
+  )
 
   members.forEach(member => {
     const flags = [
+      member.has_account
+        ? (pt ? 'tem conta no EOS' : 'has an EOS account')
+        : (pt
+            ? `sob cuidados${member.cared_for_by ? ` de ${member.cared_for_by}` : ''}, sem conta`
+            : `dependant${member.cared_for_by ? ` of ${member.cared_for_by}` : ''}, no account`),
       member.is_infant ? (pt ? 'bebê' : 'infant') : '',
       member.mobility_impaired ? (pt ? 'mobilidade reduzida' : 'reduced mobility') : '',
     ].filter(Boolean)

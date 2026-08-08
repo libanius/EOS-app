@@ -676,6 +676,11 @@ export async function POST(request: NextRequest) {
         medications: p.medications,
         mobility_impaired: p.mobilityImpaired,
         is_infant: p.isInfant,
+        // `userId` preenchido é conta própria; nulo é dependente (D-134).
+        has_account: p.userId !== null,
+        cared_for_by: p.dependsOn
+          ? casaLida.people.find(o => o.userId === p.dependsOn)?.name ?? null
+          : null,
       })),
       pt,
     })
@@ -720,9 +725,39 @@ export async function POST(request: NextRequest) {
     /* Knowledge is enrichment; the specialist still answers without it. */
   }
 
-  const household = pt
-    ? `Pessoas: ${context.people}. Bebês: ${context.hasInfants ? 'sim' : 'não'}. Condições médicas: ${context.hasMedicalConditions ? 'sim' : 'não'}. Mobilidade reduzida: ${context.mobilityImpaired}.`
-    : `People: ${context.people}. Infants: ${context.hasInfants ? 'yes' : 'no'}. Medical conditions: ${context.hasMedicalConditions ? 'yes' : 'no'}. Mobility impaired: ${context.mobilityImpaired}.`
+  /*
+   * QUEM MORA NA CASA VEM DO SERVIDOR, NÃO DO CLIENTE (D-134).
+   *
+   * Esta linha usava `context.people`, um número que a tela mandava junto com a
+   * pergunta. Na conta do dono ele valia **1** — a tela contava `family_members`
+   * (dependentes) — enquanto `getHousehold` devolvia **3**, com os nomes certos.
+   *
+   * O prompt saía assim, com as duas coisas a três linhas de distância:
+   *
+   *     FAMÍLIA: Pessoas: 1.
+   *     QUEM MORA NESTA CASA (3): Você, Daniela Oliveira, paola letteriello…
+   *
+   * Um modelo que recebe duas respostas para a mesma pergunta não escolhe uma:
+   * ele para de afirmar. Era essa a queixa — "o Pilot insiste em não saber quem
+   * está morando em casa". Ele sabia; estava sendo desmentido no mesmo prompt.
+   *
+   * O cliente continua mandando `context`, porque de lá vêm risco, clima e
+   * reservas. O que ele não decide mais é quem é a família: isso exige ler
+   * conta de outra pessoa, e só o servidor pode.
+   */
+  const bebes = casa.people.some(p => p.isInfant)
+  const comCondicao = casa.people.some(p => p.medicalConditions.length > 0 || p.medications.length > 0)
+  const semMobilidade = casa.people.filter(p => p.mobilityImpaired).length
+
+  const household = casa.known
+    ? (pt
+        ? `Pessoas: ${casa.size}. Bebês: ${bebes ? 'sim' : 'não'}. Condições médicas: ${comCondicao ? 'sim' : 'não'}. Mobilidade reduzida: ${semMobilidade}.`
+        : `People: ${casa.size}. Infants: ${bebes ? 'yes' : 'no'}. Medical conditions: ${comCondicao ? 'yes' : 'no'}. Mobility impaired: ${semMobilidade}.`)
+    // Sem a casa montada, o honesto é dizer que não sabe — e NÃO repetir o
+    // palpite do cliente, que é o que produzia a contradição.
+    : (pt
+        ? 'Pessoas: não foi possível confirmar quem mora nesta casa agora. Não afirme um número.'
+        : 'People: could not confirm who lives in this household right now. Do not state a number.')
 
   const reserves = pt
     ? `Autonomia ${context.autonomyDays.toFixed(1)} dias (água ${context.waterDays.toFixed(1)}d, comida ${context.foodDays.toFixed(1)}d, energia ${context.powerDays.toFixed(1)}d, combustível ${context.fuelDays.toFixed(1)}d). Checklist ${context.checklistPct}%.`
@@ -745,7 +780,20 @@ export async function POST(request: NextRequest) {
     pt
       ? 'IDIOMA: responda SEMPRE no mesmo idioma da última mensagem do usuário. Se ele escreveu em português, responda em português.'
       : 'LANGUAGE: always answer in the language of the user last message.',
-    TONE[context.riskState][pt ? 'pt' : 'en'],
+    /*
+     * O tom, com rede (D-134).
+     *
+     * Isto era `TONE[context.riskState][...]` cru. `riskState` vem do cliente, e
+     * um valor fora da lista fazia o índice devolver `undefined` — a rota
+     * estourava com `Cannot read properties of undefined (reading 'pt')` e
+     * respondia **500 com corpo vazio**. O chat mostrava nada: nem resposta, nem
+     * erro. Achei isto montando o teste de consistência, mandando `'stable'`
+     * onde o mapa espera `safe | watch | warning | critical`.
+     *
+     * É o mesmo princípio do resto deste conserto: o servidor não pode quebrar
+     * porque a tela mandou uma palavra que ele não conhece.
+     */
+    (TONE[context.riskState] ?? TONE.watch)[pt ? 'pt' : 'en'],
     pt
       ? `SITUAÇÃO: índice de risco ${context.score ?? '—'} (${context.riskState}). ${context.headline}`
       : `SITUATION: risk index ${context.score ?? '—'} (${context.riskState}). ${context.headline}`,

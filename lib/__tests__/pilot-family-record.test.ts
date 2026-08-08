@@ -38,7 +38,61 @@ describe('pilot family record', () => {
   it('does not hide missing medical fields', () => {
     const record = buildPilotFamilyRecord({ pt: true, profile: null, members: [] })
     expect(record).toContain('Nome: não consta')
-    expect(record).toContain('nenhum membro dependente cadastrado')
+    // Lista vazia significa "a casa ainda não foi montada", e não "esta família
+    // não tem dependentes" (D-134). São coisas diferentes, e o Pilot precisa
+    // saber qual das duas é antes de responder sobre quem mora ali.
+    expect(record).toContain('a casa ainda não foi montada')
+  })
+
+  describe('a lista se apresenta como a casa, não como um cadastro (D-134)', () => {
+    /*
+     * O rótulo dizia "MEMBROS CADASTRADOS", que soa a lista de dependentes. Com
+     * todos os campos em "não consta" — normal para um adulto com conta, porque
+     * uma conta informa a própria ficha e não a própria idade — o modelo lia
+     * aquilo como "quase não sei nada desta família" e parava de afirmar quem
+     * morava ali. Era a queixa do dono: "o Pilot insiste em não saber quem está
+     * morando em casa".
+     */
+    const casaDoDono = [
+      { name: 'Você', has_account: true, medications: ['Loratadine'] },
+      { name: 'Daniela Oliveira', has_account: true },
+      { name: 'Paola Libanio', has_account: true },
+    ]
+
+    it('diz que a lista é a casa, completa e confirmada', () => {
+      const record = buildPilotFamilyRecord({ pt: true, profile: null, members: casaDoDono })
+      expect(record).toContain('QUEM MORA NESTA CASA (3)')
+      expect(record).toMatch(/lista completa e confirmada/)
+      // O rótulo antigo não pode voltar: era ele que fazia a lista parecer
+      // um cadastro opcional de dependentes.
+      expect(record).not.toContain('MEMBROS CADASTRADOS')
+    })
+
+    it('separa quem tem conta de quem está sob cuidados', () => {
+      const record = buildPilotFamilyRecord({
+        pt: true,
+        profile: null,
+        members: [
+          { name: 'Você', has_account: true },
+          { name: 'Isadora', has_account: false, cared_for_by: 'Você', age: 25 },
+          { name: 'Fabinho', has_account: false, cared_for_by: 'Você', age: 18 },
+        ],
+      })
+      expect(record).toContain('1 com conta no EOS')
+      expect(record).toContain('2 sob cuidados')
+      // A diferença muda a instrução: "avise a Isadora" não funciona para
+      // alguém que não tem o app.
+      expect(record).toContain('Isadora: idade 25')
+      expect(record).toMatch(/Isadora[^\n]*sob cuidados de Você, sem conta/)
+      expect(record).toMatch(/Você[^\n]*tem conta no EOS/)
+    })
+
+    it('em inglês também', () => {
+      const record = buildPilotFamilyRecord({ pt: false, profile: null, members: casaDoDono })
+      expect(record).toContain('WHO LIVES IN THIS HOUSEHOLD (3)')
+      expect(record).toContain('3 with an EOS account')
+      expect(record).not.toContain('REGISTERED FAMILY MEMBERS')
+    })
   })
 
   it('formats circle member fichas that are shared with the Pilot', () => {
