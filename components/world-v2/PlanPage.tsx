@@ -35,6 +35,7 @@ import {
   defaultPlaceName,
   isRendezvous,
   planGaps,
+  planWarnings,
   type PlanDocument,
   type PlanRole,
   type PlanRoute,
@@ -79,6 +80,10 @@ const COPY = {
     places: 'Lugares importantes',
     placesHint: 'Escola, trabalho, casa de parente. É de onde alguém pode estar quando o plano começar.',
     roles: 'Quem busca quem',
+    fetches: 'busca',
+    warnings: 'Alguém pode ficar para trás',
+    warningsWhy: 'Dá para salvar assim. Mas quem não sai sozinho precisa de um nome ao lado — no dia, ninguém decide isso na hora.',
+    nobodyInParticular: 'ninguém em particular',
     pilotReview: 'Revisão do Pilot',
     pilotReviewBody: 'O Pilot revisa o rascunho e propõe mudanças pequenas. Nada é gravado sozinho: aplique um item por vez e salve o plano depois.',
     pilotApply: 'Aplicar ao rascunho',
@@ -175,6 +180,10 @@ const COPY = {
     places: 'Important places',
     placesHint: 'School, work, a relative’s house. It is where someone might be when the plan starts.',
     roles: 'Who fetches whom',
+    fetches: 'fetches',
+    warnings: 'Someone could be left behind',
+    warningsWhy: 'You can save as is. But whoever cannot leave alone needs a name beside them — on the day, nobody decides this on the spot.',
+    nobodyInParticular: 'nobody in particular',
     pilotReview: 'Pilot review',
     pilotReviewBody: 'Pilot reviews the draft and proposes small changes. Nothing is saved automatically: apply one item at a time and save the plan afterwards.',
     pilotApply: 'Apply to draft',
@@ -288,6 +297,44 @@ export default function PlanPage() {
 
   const circle = useMemo(() => circles.find(x => x.id === circleId) ?? null, [circleId, circles])
   const members = useMemo(() => circle?.members ?? [], [circle])
+
+  /**
+   * Quem é buscado (D-135 fase 3).
+   *
+   * A seção se chama "Quem busca quem" e só sabia dizer QUEM BUSCA: a lista era
+   * de contas do círculo. Quem é buscado normalmente não tem conta — é a
+   * criança, é a avó, é justamente quem não sai sozinho.
+   *
+   * A família contornava escrevendo "buscar a Avó Ana" no texto livre. Funciona
+   * para um humano lendo e falha para todo o resto: o Pilot não raciocina sobre
+   * um nome dentro de uma frase, e a verificação de lacunas não sabia se alguém
+   * tinha ficado sem responsável.
+   */
+  const [dependentes, setDependentes] = useState<Array<{ id: string; name: string; precisaDeAlguem: boolean }>>([])
+
+  useEffect(() => {
+    let cancelado = false
+    fetch('/api/family-members')
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => {
+        if (cancelado || !Array.isArray(d?.members)) return
+        setDependentes(
+          d.members.map((m: {
+            id: string; name: string; age: number | null
+            is_infant?: boolean | null; mobility_impaired?: boolean | null
+          }) => ({
+            id: m.id,
+            name: m.name,
+            // Não sai sozinho. Doze anos é onde o produto já corta em outros
+            // lugares; um adolescente cadastrado como dependente não vira
+            // pendência, senão toda casa grande vira uma lista que ninguém fecha.
+            precisaDeAlguem: Boolean(m.is_infant) || Boolean(m.mobility_impaired) || (typeof m.age === 'number' && m.age < 12),
+          })),
+        )
+      })
+      .catch(() => {})
+    return () => { cancelado = true }
+  }, [])
   // O endereço do perfil serve de ponto de PARTIDA para a casa — nunca é adotado
   // sozinho, porque é o centroide da cidade e a tela precisa dizer isso.
   useEffect(() => {
@@ -419,6 +466,15 @@ export default function PlanPage() {
   )
 
   const gaps = useMemo(() => planGaps({ waypoints, roles }, pt), [waypoints, roles, pt])
+  /*
+   * Avisos que NÃO travam o save (D-135 fase 3).
+   *
+   * "Ninguém ficou encarregado da Avó Ana" é importante e não é estrutural. Se
+   * travasse, uma família que abriu o plano para corrigir uma rota não
+   * conseguiria salvar até resolver outra coisa — e o resultado provável não é
+   * que ela resolva, é que ela feche a tela e perca a correção que veio fazer.
+   */
+  const avisos = useMemo(() => planWarnings({ roles, dependents: dependentes }, pt), [roles, dependentes, pt])
   const envelope = useMemo(() => planEnvelope(waypoints, routes), [waypoints, routes])
   const pilotProposals = useMemo(
     () => reviewPlanWithPilot({ pt, members, waypoints, roles, triggers }),
@@ -650,6 +706,16 @@ export default function PlanPage() {
             />
           </Card>
 
+          {avisos.length > 0 && (
+            <Card className="wv2-plan-note gaps">
+              <strong className="t-sub">{c.warnings}</strong>
+              <ul>
+                {avisos.map(a => <li key={a} className="t-foot ink-2">{a}</li>)}
+              </ul>
+              <p className="t-foot ink-3">{c.warningsWhy}</p>
+            </Card>
+          )}
+
           {gaps.length > 0 && (
             <Card className="wv2-plan-note gaps">
               <strong className="t-sub">{c.missing}</strong>
@@ -864,6 +930,32 @@ export default function PlanPage() {
                 >
                   {members.map(m => <option key={m.user_id} value={m.user_id}>{m.name}</option>)}
                 </select>
+                {/*
+                  A outra metade de "quem busca quem" (D-135 fase 3).
+
+                  Fica ao lado de quem age, não escondido: a família lê a linha
+                  como uma frase — "Paulo busca Avó Ana". "Ninguém em
+                  particular" é o padrão porque a maioria dos papéis não é sobre
+                  uma pessoa ("levar o rádio", "fechar o gás"), e exigir um alvo
+                  transformaria cada um deles numa pergunta sem resposta.
+                */}
+                {dependentes.length > 0 && (
+                  <>
+                    <span className="wv2-plan-role-verb t-foot ink-3">{c.fetches}</span>
+                    <select
+                      className="wv2-input"
+                      value={role.for_member_id ?? ''}
+                      aria-label={c.roles}
+                      onChange={e => {
+                        setDirty(true)
+                        setRoles(list => list.map((r, i) => (i === index ? { ...r, for_member_id: e.target.value || null } : r)))
+                      }}
+                    >
+                      <option value="">{c.nobodyInParticular}</option>
+                      {dependentes.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                    </select>
+                  </>
+                )}
                 <input
                   className="wv2-input"
                   value={role.responsibility}
@@ -879,7 +971,7 @@ export default function PlanPage() {
             <Pill
               onClick={() => {
                 setDirty(true)
-                setRoles(list => [...list, { member_user_id: members[0]?.user_id ?? '', responsibility: '' }])
+                setRoles(list => [...list, { member_user_id: members[0]?.user_id ?? '', for_member_id: null, responsibility: '' }])
               }}
               disabled={!members.length}
             >

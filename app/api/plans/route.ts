@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import webpush from 'web-push'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { logError } from '@/lib/error-log'
 
 /**
  * /api/plans — the family's emergency plan (D-066 / doc 18, PLAN-T01).
@@ -35,7 +36,7 @@ const VAPID_SUBJECT = process.env.VAPID_SUBJECT ?? 'mailto:brightscalegroup@gmai
 
 type Waypoint = { kind: string; name: string; lat: number; lng: number; notes?: string | null; sort_order?: number }
 type Route = { label: string; geometry: unknown; mode?: string; notes?: string | null }
-type Role = { member_user_id: string; responsibility: string }
+type Role = { member_user_id: string; for_member_id?: string | null; responsibility: string }
 type Trigger = { condition: string; action: string; sort_order?: number }
 type PlanRow = { id: string; circle_id: string; name: string; version: number; status: string; updated_at: string }
 
@@ -281,9 +282,28 @@ export async function PUT(request: NextRequest) {
     .map(r => ({
       plan_id: planId,
       member_user_id: r.member_user_id,
+      // Quem é buscado (D-135 fase 3). Nulo na maioria dos papéis, que não são
+      // sobre uma pessoa — "levar o rádio", "fechar o gás".
+      for_member_id: r.for_member_id || null,
       responsibility: r.responsibility.trim().slice(0, 200),
     }))
-  if (roles.length) await admin.from('family_plan_roles').insert(roles)
+  if (roles.length) {
+    const { error: erroPapeis } = await admin.from('family_plan_roles').insert(roles)
+    /*
+     * A coluna `for_member_id` pode não existir ainda. Degrada como os
+     * gatilhos: salva o plano SEM o alvo em vez de perder o plano inteiro —
+     * mas grava o motivo, porque um plano que salva pela metade em silêncio é
+     * pior que um que falha.
+     */
+    if (erroPapeis && (erroPapeis.code === '42703' || erroPapeis.code === 'PGRST204')) {
+      await logError('api/plans:for_member_id', erroPapeis, { userId: user.id })
+      await admin.from('family_plan_roles').insert(
+        roles.map(({ for_member_id: _alvo, ...resto }) => resto),
+      )
+    } else if (erroPapeis) {
+      throw erroPapeis
+    }
+  }
 
   // Triggers degrade on their own: a database without the migration saves the
   // rest of the plan instead of failing the whole write.

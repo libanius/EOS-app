@@ -4681,3 +4681,51 @@ faz isso sozinho.
 **Pendência do dono**: aplicar `20260808200000_invite_joined.sql`.
 
 ---
+
+## D-135 (fase 3) — "Quem busca quem" precisa dos dois
+
+**Date**: 2026-08-08
+**Status**: DECIDED
+**Roadmap**: redundância de fontes de pessoa — fase 3 de 3
+
+**Context**: `family_plan_roles` só tinha `member_user_id` — uma conta. A seção
+da tela se chama "Quem busca quem" e só sabia dizer **quem**. Quem é buscado
+normalmente não tem conta: é a criança, é a avó, é justamente quem não sai
+sozinho e por isso nunca apareceu na lista.
+
+Na prática a família escrevia "buscar a Avó Ana" no texto livre da
+responsabilidade. Funciona para um humano lendo e falha para todo o resto: o
+Pilot não raciocina sobre um nome dentro de uma frase, a verificação de lacunas
+não sabia se alguém tinha ficado sem responsável, e no dia em que o nome for
+corrigido no cadastro o plano continua com o nome velho.
+
+**Decision**:
+
+1. **`for_member_id` aponta para quem é buscado** — um dependente. Nulo na
+   maioria dos papéis, que não são sobre uma pessoa ("levar o rádio", "fechar o
+   gás"); exigir um alvo transformaria cada um deles numa pergunta sem resposta.
+2. **`ON DELETE SET NULL`, nunca CASCADE.** Se a pessoa buscada sai do cadastro,
+   o papel não pode sumir junto: um plano que perde uma linha sozinho é um plano
+   em que a família confia e que não está mais lá.
+3. **Avisar não é bloquear.** O cheque novo — "ninguém ficou encarregado de
+   Avó Ana" — vive em `planWarnings`, não em `planGaps`. Só cobra de quem **não
+   sai sozinho** (bebê, mobilidade reduzida, ou menos de 12 anos): se toda
+   pessoa cadastrada exigisse responsável, uma casa de seis abriria o plano com
+   seis avisos e a família aprenderia a ignorar a seção inteira — junto com a
+   linha da avó, que é a que importa.
+4. **A rota degrada sem a migration**: salva o plano sem o alvo em vez de perder
+   o plano inteiro, e grava o motivo no `error_log`.
+
+**O erro que o teste existente pegou**: a primeira versão pôs o cheque dentro de
+`planGaps`, que **trava o botão Salvar**. O `plan-editor-test` falhou no clique
+— "element is not enabled". Uma família que abrisse o plano para corrigir uma
+rota não conseguiria salvar até resolver outra coisa, e o provável não é que ela
+resolva: é que feche a tela e perca a correção que veio fazer. O próprio
+`planGaps` já dizia isso no comentário, sobre outro caso — *"bloquear o save por
+causa da casa seria eu inventando regra"*. Valia para mim também.
+
+**Consequence**: `lib/__tests__/plan-gaps-dependents.test.ts` (9 testes), com o
+teste que fixa a separação: a avó desamparada **não** entra no que trava o save,
+e as lacunas estruturais continuam travando. `plan-editor-test` voltou a 14/14.
+
+---

@@ -4101,3 +4101,10 @@
   gap: var(--s2);
   margin-top: var(--s3);
 }
+
+/* "Paulo · busca · Avó Ana · levar a bengala" — a linha se lê como frase (D-135). */
+.wv2-plan-role-verb {
+  align-self: center;
+  white-space: nowrap;
+  padding-inline: 2px;
+}

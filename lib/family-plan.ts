@@ -25,7 +25,27 @@ export type PlanWaypoint = {
   sort_order?: number
 }
 
-export type PlanRole = { member_user_id: string; responsibility: string }
+export type PlanRole = {
+  /** Quem AGE. Sempre uma conta: um dependente não executa um plano. */
+  member_user_id: string
+  /**
+   * Quem é BUSCADO (D-135 fase 3).
+   *
+   * Nulo na maioria dos papéis, que não são sobre uma pessoa — "levar o rádio",
+   * "fechar o gás". Preenchido quando são: a criança, a avó, justamente quem
+   * não sai sozinho e por isso nunca teve conta para aparecer na lista.
+   */
+  for_member_id?: string | null
+  responsibility: string
+}
+
+/** Uma pessoa da casa que depende de alguém para sair. */
+export type DependenteDoPlano = {
+  id: string
+  name: string
+  /** Bebê, mobilidade reduzida ou criança: não sai sozinho. */
+  precisaDeAlguem: boolean
+}
 
 /**
  * Rota autoral (doc 18 §5). `geometry` é uma LineString GeoJSON desenhada pela
@@ -198,7 +218,10 @@ export function defaultPlaceName(kind: WaypointKind, pt: boolean): string {
  * Sem os dois não é plano, é mapa — e a UI trata os dois como obrigatórios em
  * vez de deixar salvar algo que não se executa.
  */
-export function planGaps(doc: { waypoints: PlanWaypoint[]; roles: PlanRole[] }, pt: boolean): string[] {
+export function planGaps(
+  doc: { waypoints: PlanWaypoint[]; roles: PlanRole[] },
+  pt: boolean,
+): string[] {
   // A casa NÃO entra aqui de propósito. Ela é a origem de toda distância e a
   // tela grita isso no primeiro cartão — mas o doc 18 §3 define como obrigatório
   // apenas ponto de encontro e papéis, e uma família que combinou os dois tem um
@@ -210,7 +233,37 @@ export function planGaps(doc: { waypoints: PlanWaypoint[]; roles: PlanRole[] }, 
   if (!doc.roles.length) {
     gaps.push(pt ? 'Falta pelo menos um papel: quem busca quem' : 'Missing at least one role: who fetches whom')
   }
+
   return gaps
+}
+
+/**
+ * Avisos que NÃO impedem salvar (D-135 fase 3).
+ *
+ * `planGaps` bloqueia o save, e por isso só pode conter o que o doc 18 §3
+ * define como obrigatório: ponto de encontro e papéis. O comentário lá em cima
+ * já dizia — "bloquear o save por causa da casa seria eu inventando regra" — e
+ * a regra vale para mim também.
+ *
+ * "Ninguém ficou encarregado da Avó Ana" é importante e não é estrutural. Se
+ * bloqueasse, uma família que abriu o plano para corrigir uma rota não
+ * conseguiria salvar enquanto não resolvesse outra coisa — e o resultado
+ * provável não é que ela resolva, é que ela feche a tela e perca a correção
+ * que tinha vindo fazer.
+ *
+ * Só cobra de quem NÃO SAI SOZINHO. Se toda pessoa cadastrada exigisse um
+ * responsável, uma casa de seis abriria o plano com seis avisos e a família
+ * aprenderia a ignorar a seção inteira — junto com a linha da avó, que é a que
+ * importa.
+ */
+export function planWarnings(
+  doc: { roles: PlanRole[]; dependents?: DependenteDoPlano[] },
+  pt: boolean,
+): string[] {
+  return (doc.dependents ?? [])
+    .filter(d => d.precisaDeAlguem)
+    .filter(d => !doc.roles.some(r => r.for_member_id === d.id))
+    .map(d => (pt ? `Ninguém ficou encarregado de ${d.name}` : `Nobody is assigned to ${d.name}`))
 }
 
 /** "sincronizado há 2 dias" — a idade da cópia é parte do plano (doc 18 §6.2). */

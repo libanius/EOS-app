@@ -24,6 +24,21 @@
 
 ---
 
+## 1-D. Migration PENDENTE — `for_member_id` nos papéis do plano (D-135)
+
+**Aplique `supabase/migrations/20260808210000_plan_role_dependent.sql`.**
+
+A seção "Quem busca quem" do plano só sabia dizer QUEM BUSCA — a lista era de
+contas do círculo. Quem é buscado normalmente não tem conta: é a criança, é a
+avó, é justamente quem não sai sozinho. A família contornava escrevendo "buscar
+a Avó Ana" no texto livre, o que funciona para um humano lendo e falha para todo
+o resto.
+
+Até aplicar, o plano salva **sem** o alvo em vez de falhar inteiro, e a falha
+fica no `error_log` como `api/plans:for_member_id`.
+
+---
+
 ## 1-C. Migration PENDENTE — `joined` nos convites (D-135)
 
 **Aplique `supabase/migrations/20260808200000_invite_joined.sql`.** Uma linha:
