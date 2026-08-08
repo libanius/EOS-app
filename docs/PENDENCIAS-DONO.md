@@ -24,6 +24,26 @@
 
 ---
 
+## 1-A. Migration PENDENTE — `pilot_events` (PILOT-T04 / D-132)
+
+**Aplique `supabase/migrations/20260808150000_pilot_events.sql`** (Dashboard →
+SQL Editor → cole e execute). É a telemetria do Pilot, o último portão de
+lançamento.
+
+Até você aplicar, **nada quebra**: a rota responde `migration_pending`, o Pilot
+abre e responde normal, o console fica limpo — isso foi verificado com a tabela
+ausente. O que não acontece é a coleta.
+
+Depois de aplicar, rode `node scripts/pilot-metrics-test.mjs` (9 checagens
+contra o Supabase real) e me avise.
+
+O que a tabela guarda: só enum e contador — qual evento, qual veredito, qual
+intenção, de onde partiu, quantos milissegundos. **Não existe coluna de texto
+livre**: a pergunta que a família faz ao Pilot, a resposta, a coordenada e a
+ficha médica não têm onde caber, e um teste reprova se alguém criar uma.
+
+---
+
 ## 1. Migrations a aplicar no Supabase — ✅ APLICADAS (2026-07-17)
 
 Aplicadas pelo agente via **Management API** (`/v1/projects/{ref}/database/query`), usando um Personal Access Token fornecido pelo dono. Verificadas no schema real.

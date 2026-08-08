@@ -25,6 +25,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { notePilot, msDesdeQueAbriu } from '@/lib/pilot-metrics-client'
 import Link from 'next/link'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useLanguage } from '@/lib/i18n'
@@ -195,6 +196,27 @@ export default function Pilot({
 
   const opening = useMemo(() => askPilot('now', ctx), [ctx])
 
+  /*
+   * Descoberta e retenção (PILOT-T04).
+   *
+   * "Quantas pessoas tocam no Pilot" e "quanto tempo levam até o primeiro
+   * toque" são as duas primeiras perguntas da spec, e as duas se respondem
+   * aqui. O `ms` é `performance.now()` — tempo desde que a página carregou,
+   * que é literalmente a pergunta. O evento de fechar sai por `sendBeacon`,
+   * senão o navegador cancelaria a chamada justamente ao fechar.
+   */
+  const jaContou = useRef(false)
+  useEffect(() => {
+    if (open && !jaContou.current) {
+      jaContou.current = true
+      notePilot('opened', { surface: 'orb', ms: msDesdeQueAbriu() })
+    }
+    if (!open && jaContou.current) {
+      jaContou.current = false
+      notePilot('closed')
+    }
+  }, [open])
+
   /**
    * Rolagem que respeita quem está lendo (D-125).
    *
@@ -295,6 +317,9 @@ export default function Pilot({
   /** Local engine — instant and offline. Used by the suggestion chips. */
   const askLocal = (intent: PilotIntentId, label: string) => {
     haptic.selection()
+    // Qual das cinco intenções a pessoa realmente usa — o `intent` é enum e o
+    // `label` (que é texto) fica de fora de propósito.
+    notePilot('intent', { intent, surface: 'chip' })
     push({ id: nextId(), role: 'user', text: label })
     push(fromAnswer(askPilot(intent, ctx)))
   }
@@ -314,10 +339,16 @@ export default function Pilot({
     push({ id: nextId(), role: 'user', text: question })
 
     if (!online) {
+      // A degradação honesta também é métrica: quantas perguntas o produto
+      // recebe sem rede diz se a promessa "responde quando a rede caiu" está
+      // sendo cobrada de verdade.
+      notePilot('offline', { intent: 'free' })
       push({ id: nextId(), role: 'pilot', text: c.offline })
       return
     }
 
+    notePilot('asked', { intent: 'free', surface: 'bar' })
+    const comecou = msDesdeQueAbriu()
     setBusy(true)
     const history = [...messages, { id: 'x', role: 'user' as const, text: question }]
       .filter(m => m.role === 'user' || m.text)
@@ -473,6 +504,10 @@ export default function Pilot({
             factors: g.binding && g.rules.length ? g.rules.map(r => ({ label: '', value: r })) : undefined,
           })
           criada = true
+          // Segurança (spec §19): com que frequência a regra determinística
+          // fala, e o que ela diz. É o único jeito de saber se o override
+          // existe na prática ou só no código.
+          notePilot('verdict', { verdict: GUARD_TAG[g.verdict] ?? null })
           scrollToEnd()
           return
         }
@@ -494,6 +529,19 @@ export default function Pilot({
             memory: d.memory?.length ? d.memory : undefined,
             destinations: d.destinations?.length ? d.destinations : undefined,
           }))
+          /*
+           * Confiança (spec §19): a resposta chegou, e depois de quanto tempo.
+           *
+           * A espera é medida até o `done` e não até o primeiro `delta` de
+           * propósito: o que a pessoa sente é o tempo até poder AGIR, e as
+           * tarefas só chegam no fim. Medir até a primeira palavra daria um
+           * número bonito que não descreve a experiência de ninguém.
+           */
+          const agora = msDesdeQueAbriu()
+          notePilot('answered', {
+            intent: 'free',
+            ms: comecou !== null && agora !== null ? agora - comecou : null,
+          })
           scrollToEnd()
         }
       }
@@ -523,6 +571,9 @@ export default function Pilot({
   /** One tap turns advice into work. Never automatic. */
   const addTask = async (task: PilotTask) => {
     haptic.impact()
+    // Confiança medida por ato, não por opinião: a pessoa transformou o
+    // conselho em trabalho. O nome da tarefa NÃO viaja — só o fato.
+    notePilot('task_added')
     setAddedTasks(current => new Set(current).add(task.name))
     await fetch('/api/checklist/save-items', {
       method: 'POST',
@@ -542,6 +593,9 @@ export default function Pilot({
 
   const saveMemory = async (memory: PilotMemoryProposal) => {
     haptic.impact()
+    // Personalização (spec §19): a pessoa corrige/confirma uma preferência.
+    // O conteúdo da preferência fica onde já está guardado; aqui só o fato.
+    notePilot('memory_saved')
     setSavedMemory(current => new Set(current).add(memory.proposal_md))
     await fetch('/api/profile/personalization/memory', {
       method: 'POST',
@@ -717,6 +771,7 @@ export default function Pilot({
                                   className="primary"
                                   onClick={() => {
                                     haptic.impact()
+                                    notePilot('handle', { surface: 'orb' })
                                     onShowCourse(destination)
                                     onOpenChange(false)
                                   }}
@@ -745,7 +800,18 @@ export default function Pilot({
                             key={action.href + action.label}
                             href={action.href}
                             className={`wv2-pill${action.primary ? ' primary' : ''}`}
-                            onClick={() => haptic.impact()}
+                            /*
+                              O PROXY de compreensão (spec §19).
+                              A spec pergunta "as pessoas entendem o que o
+                              veredito significa?". Comportamento não responde
+                              isso — só pesquisa responde. O que dá para
+                              observar é se, depois de ler, a pessoa SEGUE a
+                              alça. Está registrado como proxy, e o doc diz que
+                              é proxy: um número apresentado como resposta a
+                              uma pergunta que ele não responde é pior que
+                              nenhum número.
+                            */
+                            onClick={() => { haptic.impact(); notePilot('handle', { surface: 'dock' }) }}
                           >
                             {action.label}
                           </Link>

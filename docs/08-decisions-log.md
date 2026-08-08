@@ -4432,3 +4432,68 @@ de "onde estou" numa barra de sete itens, e trocá-lo é uma decisão da navega�
 não desta tela.
 
 ---
+
+## D-132 — A telemetria do Pilot mede comportamento e recusa conteúdo
+
+**Date**: 2026-08-08
+**Status**: DECIDED
+**Roadmap**: PILOT-T04 (último portão de lançamento)
+
+**Context**: PILOT-T04 era o único item BLOCKED antes do rollout, e não existia
+telemetria nenhuma no app — nem para o Pilot, nem para nada. A spec
+(docs/15, §19) pede cinco famílias: descoberta, compreensão, confiança,
+retenção, personalização e segurança.
+
+O risco óbvio de construir isso é o de sempre com telemetria: ela é a tabela
+que mais cresce e a que menos gente audita. Um dia alguém registra "só a
+pergunta, para depurar", e a conversa da família com o Pilot — que pode conter
+ficha médica, endereço e rotina de criança — passa a viver num lugar que
+ninguém olha.
+
+**Decision**:
+
+1. **A linha de privacidade está no esquema, não só no código.** `pilot_events`
+   não tem coluna de texto livre: são quatro colunas `text`, todas com CHECK de
+   lista fechada, mais um `integer` e o carimbo de tempo. A pergunta, a
+   resposta, a coordenada e a ficha não têm onde caber.
+2. **Allowlist, não denylist.** `parsePilotEvent` aceita cinco chaves e
+   descarta o resto. Com denylist, o dia em que alguém acrescentasse `question`
+   no cliente, ela passaria.
+3. **Nada é descartado em silêncio.** Todo caminho de escape devolve um
+   `skipped` com o motivo, e um evento recusado vira linha no `error_log` —
+   sem o conteúdo. Foi um escape mudo que deixou o push quebrado por meses.
+4. **A métrica nunca derruba o produto.** Todas as respostas são 200, o cliente
+   usa `sendBeacon` e ignora falhas. Verificado com a tabela AUSENTE: a rota
+   responde `migration_pending`, o Pilot abre, responde, e o console fica limpo.
+5. **O vocabulário é o do motor.** As intenções são `now / stay_or_go /
+   endurance / gaps / outside`, lidas de `pilot-engine.ts`, mais `free`. Um
+   teste falha se as duas listas se separarem — um vocabulário paralelo de
+   métrica é como um painel passa a contar uma coisa e o produto a fazer outra.
+6. **O resumo é do dono.** `GET /api/pilot/metrics` reaproveita
+   `ERROR_ALERT_USER_IDS` em vez de criar uma segunda lista de operadores:
+   duas listas divergem, e a que fica velha é sempre a que guarda o acesso.
+
+**O que isto NÃO mede, dito na cara**: a spec pergunta "as pessoas entendem o
+que GO significa?". Comportamento não responde isso — só pesquisa responde. O
+que existe é o PROXY `handle`: depois de ler um veredito, a pessoa seguiu a
+alça? Está registrado como proxy no código e aqui. Um número apresentado como
+resposta a uma pergunta que ele não responde é pior que nenhum número.
+
+**Consequence**: PILOT-T04 sai de BLOCKED. `lib/__tests__/pilot-metrics.test.ts`
+(17 testes) prova a fronteira de privacidade, a paridade código↔banco e que
+nenhum agregado devolve `NaN`. `scripts/pilot-metrics-test.mjs` (9 checagens)
+prova o caminho inteiro contra o Supabase real, incluindo o CHECK do banco como
+segunda porta e o RLS como terceira.
+
+**Um erro que o controle negativo pegou**: a primeira versão do teste "a tabela
+não tem coluna de texto livre" recortava o SQL no primeiro `);` do arquivo — e
+caía dentro de um comentário que terminava com `pilot-engine.ts`);`. Ela via
+duas das quatro colunas e passava. Passou também quando acrescentei uma coluna
+de texto solta de propósito para conferir. O recorte agora é ancorado em linha e
+a asserção é de conjunto exato. Sem o controle negativo, isto teria entrado no
+repositório como guarda de privacidade sem guardar nada.
+
+**Pendência do dono**: aplicar `20260808150000_pilot_events.sql`. Até lá o app
+funciona igual e a rota responde `migration_pending`.
+
+---

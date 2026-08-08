@@ -243,7 +243,7 @@ product phase sequenced.
 | WV2-T11 | PilotBar substitui a busca — o Pilot vira a entrada única | ✅ COMPLETE | 2026-07-28 — D-070; `MapSearch` aposentado |
 | WV2-T12 | Camadas especializadas no mapa: flood area, storm surge, wind impact e direção oficial de tornado | ✅ COMPLETE | 2026-07-31 — D-081. Primeira versão usa polígonos oficiais NWS e impacto de vento derivado do grid existente; tornado só desenha direção se o aviso oficial trouxer movimento. |
 | PILOT-T03 | Rule-backed recommendation states: GO, LIMITED, WAIT, AVOID, PRIORITY OVERRIDE | ✅ COMPLETE | 2026-08-07 — D-125; `lib/pilot-guard.ts` determinístico, veredito como etiqueta (não texto injetado), streaming SSE e rolagem que respeita quem lê |
-| PILOT-T04 | Metrics instrumentation for discovery, trust, retention, personalization, safety | BLOCKED | Needed before production rollout |
+| PILOT-T04 | Metrics instrumentation for discovery, trust, retention, personalization, safety | DONE (D-132) | `pilot_events` + `/api/pilot/metrics`. Sem texto livre por construção. Compreensão fica por proxy (`handle`) — a pergunta real precisa de pesquisa, não de telemetria. Falta o dono aplicar a migration. |
 
 ---
 
