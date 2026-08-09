@@ -177,16 +177,17 @@ export default function BottomNav() {
     const active = isActive(hrefPath(href))
     const label = t(labelKey)
     const unreadCount = surface ? unreadBySurface[surface] ?? 0 : 0
+    const openInboxFromBadge = (event: React.MouseEvent | React.KeyboardEvent) => {
+      if (!surface) return
+      event.preventDefault()
+      event.stopPropagation()
+      window.dispatchEvent(new CustomEvent('eos-open-inbox', { detail: { surface } }))
+    }
+
     return (
       <Link
         key={href}
         href={href}
-        onClick={event => {
-          if (surface && unreadCount > 0) {
-            event.preventDefault()
-            window.dispatchEvent(new CustomEvent('eos-open-inbox', { detail: { surface } }))
-          }
-        }}
         className={`nb${active ? ' on' : ''}`}
         aria-label={label}
         aria-current={active ? 'page' : undefined}
@@ -194,7 +195,16 @@ export default function BottomNav() {
         <span className="nb-icon">
           {icon}
           {unreadCount > 0 && (
-            <span className="nb-badge" aria-label={`${unreadCount} notificações não lidas`}>
+            <span
+              className="nb-badge"
+              role="button"
+              tabIndex={0}
+              aria-label={`${unreadCount} notificações não lidas em ${label}`}
+              onClick={openInboxFromBadge}
+              onKeyDown={event => {
+                if (event.key === 'Enter' || event.key === ' ') openInboxFromBadge(event)
+              }}
+            >
               {unreadCount > 99 ? '99+' : unreadCount}
             </span>
           )}

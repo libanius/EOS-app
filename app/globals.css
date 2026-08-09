@@ -304,6 +304,17 @@ textarea.input { resize: vertical; min-height: 100px; line-height: 1.6; }
   line-height: 1;
   letter-spacing: 0;
   box-shadow: 0 8px 18px rgba(255, 59, 48, 0.35);
+  cursor: pointer;
+}
+.nb-badge::before {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border-radius: 999px;
+}
+.nb-badge:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
 }
 
 .inbox-scrim {

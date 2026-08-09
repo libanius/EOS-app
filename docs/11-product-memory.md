@@ -1,7 +1,7 @@
 # 11 — Product Memory
 
 > Non-obvious facts that don't belong in code comments but must survive across sessions.
-> Last updated: 2026-08-04
+> Last updated: 2026-08-08
 
 ---
 
@@ -161,14 +161,18 @@ de disparar `mark_read` com `keepalive`, reduzindo dependência do estado intern
 do App Router/PWA.
 
 D-116 / NAV-T01 fixa a ordem operacional do BottomNav: Clima é o primeiro ícone
-da esquerda para a direita; Cenário é o último. World continua central; Comms
-mantém o comportamento de abrir Inbox quando houver badge.
+da esquerda para a direita; Cenário é o último. World continua central.
 
 D-117 / NOTIF-T01 separa badges por surface do app. A tabela continua única, mas
 `notificationSurface()` deriva `weather`, `family`, `comms`, `preparedness`,
 `scenario` ou `system` a partir de `metadata.surface`, `scope` e `kind`.
 `/api/comms/notifications` retorna `unread_by_surface`; BottomNav mostra badge
-por ícone; clicar em ícone com badge abre Inbox filtrado pela surface.
+por ícone.
+
+D-138 / NAV-T02 corrige a regressão gerada por D-117: ícone da BottomNav nunca
+deve ter navegação sequestrada por notificação. O clique principal navega para a
+tela; tocar especificamente no badge vermelho abre a Inbox filtrada pela surface.
+Abrir a Inbox não marca nada como lido.
 
 D-118 / LA-T04 fecha o draft antigo de rate-limit sem depender de Upstash:
 Supabase/Postgres é o guardrail distribuído v1 via `consume_rate_limit`; memória

@@ -4,6 +4,32 @@
 
 ---
 
+## D-138 — Badge informa, o ícone navega
+
+**Date**: 2026-08-08
+**Status**: DECIDED
+**Roadmap**: NAV-T02
+
+**Context**: A separação de badges por surface (D-117) resolveu o problema de
+mostrar onde existe coisa nova, mas criou uma regressão operacional: quando um
+ícone tinha badge, o clique principal deixava de navegar e abria a Inbox. Na
+prática, o dono tocava em Clima, Preparação, Comms ou Cenário e o link parecia
+quebrado.
+
+**Decision**:
+
+1. O clique principal em qualquer ícone da BottomNav sempre navega para a tela
+   daquele ícone.
+2. O badge vermelho continua visível e passa a ser o alvo secundário para abrir
+   a Inbox filtrada por surface.
+3. Abrir a Inbox pelo badge não marca notificações como lidas. A regra de leitura
+   continua a mesma: só clicar em um item, ou "marcar todas", altera estado.
+
+**Consequence**: a navegação volta a ser previsível mesmo quando há notificações,
+e a timeline social continua acessível sem sequestrar o primeiro toque.
+
+---
+
 ## D-113 — O agendador sai da Vercel para não pagar Pro, e o segredo que nunca existiu
 
 **Date**: 2026-08-04
