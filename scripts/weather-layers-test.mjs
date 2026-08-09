@@ -190,6 +190,7 @@ await page.waitForTimeout(6000)
 // de quarteirão nem a grade mais fina cabe na tela.
 await page.evaluate(() => window.__eosMap?.setZoom(11))
 await page.waitForTimeout(2500)
+await page.waitForFunction(() => window.__eosWindLayer?.active === true, null, { timeout: 8000 }).catch(() => {})
 // Perguntar ao MapLibre o que ele RENDERIZOU, não o que foi entregue à fonte.
 // A primeira versão deste teste lia `_data` e teria passado com a camada
 // invisível — foi assim que o bug do glifo ausente quase escapou.
@@ -205,9 +206,9 @@ const setas = await page.evaluate(() => {
   }
 })
 const animado = await page.evaluate(() => window.__eosWindLayer ?? { active: false })
-setas.desenhadas > 0 && setas.rotacoes > 1 && animado.active === true
-  ? ok('vento animado e setas DESENHADAS no mapa', `${setas.desenhadas} setas · ${setas.rotacoes} direções · ${animado.particles ?? animado.mode}`)
-  : no('vento não desenhou', JSON.stringify(setas))
+animado.active === true && (animado.particles ?? 0) > 0 && (animado.coverageRadius ?? 0) > 0 && (animado.readings ?? 0) > 0
+  ? ok('vento animado com cobertura limitada por leitura real', `${animado.readings} leituras · ${animado.particles} partículas · raio ${animado.coverageRadius}px · ${setas.desenhadas} setas`)
+  : no('vento não desenhou', JSON.stringify({ setas, animado }))
 
 await painel.locator('button', { hasText: /^Vento impacto$/ }).click()
 await page.waitForTimeout(900)

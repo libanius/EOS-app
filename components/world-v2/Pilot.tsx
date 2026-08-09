@@ -191,6 +191,7 @@ export default function Pilot({
   const [addedTasks, setAddedTasks] = useState<Set<string>>(new Set())
   const [savedMemory, setSavedMemory] = useState<Set<string>>(new Set())
   const streamRef = useRef<HTMLDivElement>(null)
+  const chatRef = useRef<HTMLElement>(null)
   /** Há resposta nova abaixo e a pessoa está lendo mais acima. */
   const [temNovidade, setTemNovidade] = useState(false)
 
@@ -216,6 +217,21 @@ export default function Pilot({
       notePilot('closed')
     }
   }, [open])
+
+  useEffect(() => {
+    if (!open) return
+    const closeIfOutside = (event: PointerEvent | TouchEvent) => {
+      const target = event.target
+      if (target instanceof Node && chatRef.current?.contains(target)) return
+      onOpenChange(false)
+    }
+    document.addEventListener('pointerdown', closeIfOutside, true)
+    document.addEventListener('touchstart', closeIfOutside, true)
+    return () => {
+      document.removeEventListener('pointerdown', closeIfOutside, true)
+      document.removeEventListener('touchstart', closeIfOutside, true)
+    }
+  }, [open, onOpenChange])
 
   /**
    * Rolagem que respeita quem está lendo (D-125).
@@ -665,6 +681,7 @@ export default function Pilot({
       <AnimatePresence>
         {open && (
           <motion.section
+            ref={chatRef}
             className="wv2-pilot-chat wv2-fume"
             data-state={ctx.riskState}
             role="dialog"

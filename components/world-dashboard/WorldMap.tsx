@@ -249,12 +249,12 @@ function windCardinal(deg: number) {
   return WIND_CARDINAL[Math.round((((deg % 360) + 360) % 360) / 22.5) % 16]
 }
 
-function windColor(mph: number) {
-  if (mph >= 40) return 'rgba(255, 69, 58, 0.92)'
-  if (mph >= 30) return 'rgba(255, 159, 10, 0.88)'
-  if (mph >= 20) return 'rgba(255, 214, 10, 0.82)'
-  if (mph >= 10) return 'rgba(122, 215, 255, 0.76)'
-  return 'rgba(185, 245, 255, 0.58)'
+function windColor(mph: number, alpha = 0.88) {
+  if (mph >= 40) return `rgba(255, 255, 255, ${alpha})`
+  if (mph >= 30) return `rgba(255, 204, 79, ${alpha})`
+  if (mph >= 20) return `rgba(57, 214, 144, ${alpha})`
+  if (mph >= 10) return `rgba(54, 166, 255, ${alpha})`
+  return `rgba(117, 92, 255, ${alpha})`
 }
 
 type WindPopup = {
@@ -449,7 +449,10 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
   const windCanvasRef = useRef<HTMLCanvasElement>(null)
   const windFrameRef = useRef<number | null>(null)
   const windParticlesRef = useRef<Array<{ x: number; y: number; age: number; maxAge: number }>>([])
+  const windWashTickRef = useRef(0)
   const [windPopup, setWindPopup] = useState<WindPopup | null>(null)
+  const [viewportWind, setViewportWind] = useState<WindSnapshot | null>(null)
+  const activeWind = viewportWind ?? wind
 
   // Place / reposition family + route overlays from REAL data only (D-064 §5).
   const placeOverlays = async () => {
@@ -1100,6 +1103,54 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
     }
   }, [cyclones, layers?.cyclone])
 
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !readyRef.current || !layers?.wind) {
+      setViewportWind(null)
+      return
+    }
+    let timer: number | null = null
+    let controller: AbortController | null = null
+    let cancelled = false
+
+    const load = () => {
+      controller?.abort()
+      controller = new AbortController()
+      const center = map.getCenter()
+      const bounds = map.getBounds()
+      const lngSpanRaw = Math.abs(bounds.getEast() - bounds.getWest())
+      const lngSpan = lngSpanRaw > 180 ? 360 - lngSpanRaw : lngSpanRaw
+      const latSpan = Math.abs(bounds.getNorth() - bounds.getSouth())
+      const span = Math.min(30, Math.max(0.35, Math.max(lngSpan, latSpan) * 1.18))
+      const grid = span > 12 ? 13 : span > 4 ? 11 : 9
+      fetch(`/api/world/wind?lat=${center.lat.toFixed(4)}&lng=${center.lng.toFixed(4)}&span=${span.toFixed(2)}&grid=${grid}`, {
+        signal: controller.signal,
+        cache: 'no-store',
+      })
+        .then(r => (r.ok ? r.json() : null))
+        .then((data: WindSnapshot | null) => {
+          if (!cancelled && data?.readings?.length) setViewportWind(data)
+        })
+        .catch(() => {})
+    }
+
+    const schedule = () => {
+      if (timer !== null) window.clearTimeout(timer)
+      timer = window.setTimeout(load, 280)
+    }
+
+    load()
+    map.on('moveend', schedule)
+    map.on('zoomend', schedule)
+    return () => {
+      cancelled = true
+      if (timer !== null) window.clearTimeout(timer)
+      controller?.abort()
+      map.off('moveend', schedule)
+      map.off('zoomend', schedule)
+    }
+  }, [layers?.wind])
+
   /**
    * Vento: uma seta por leitura, apontando PARA ONDE ele sopra.
    *
@@ -1113,11 +1164,11 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
     const source = map.getSource('eos-wind') as maplibregl.GeoJSONSource | undefined
     if (!source) return
 
-    const show = Boolean(layers?.wind) && Boolean(wind?.readings.length)
+    const show = Boolean(layers?.wind) && Boolean(activeWind?.readings.length)
     source.setData({
       type: 'FeatureCollection',
       features: show
-        ? (wind?.readings ?? []).map(r => ({
+        ? (activeWind?.readings ?? []).map(r => ({
             type: 'Feature' as const,
             geometry: { type: 'Point' as const, coordinates: [r.lng, r.lat] },
             properties: {
@@ -1128,13 +1179,13 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
           }))
         : [],
     })
-  }, [wind, layers?.wind])
+  }, [activeWind, layers?.wind])
 
   useEffect(() => {
     const map = mapRef.current
     const canvas = windCanvasRef.current
-    const readings = wind?.readings ?? []
-    if (!map || !canvas || !readyRef.current || !layers?.wind || !readings.length) {
+    const readings = activeWind?.readings ?? []
+    if (!map || !canvas || !readyRef.current || !layers?.wind || readings.length < 3) {
       const ctx = canvas?.getContext('2d')
       if (ctx && canvas) ctx.clearRect(0, 0, canvas.width, canvas.height)
       if (windFrameRef.current !== null) cancelAnimationFrame(windFrameRef.current)
@@ -1162,31 +1213,38 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
       return { width: rect.width, height: rect.height }
     }
 
-    const seedParticles = (width: number, height: number) => {
-      const target = reduce ? 90 : Math.min(mobile ? 220 : 420, Math.max(120, Math.floor((width * height) / (mobile ? 1800 : 1300))))
-      const particles = windParticlesRef.current
-      while (particles.length < target) {
-        particles.push({ x: Math.random() * width, y: Math.random() * height, age: Math.random() * 60, maxAge: 45 + Math.random() * 70 })
+    const projected = () => readings.map(r => ({ ...r, p: map.project([r.lng, r.lat]) }))
+
+    const coverageRadius = (pts: ReturnType<typeof projected>) => {
+      if (pts.length < 2) return 0
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
+      for (const r of pts) {
+        minX = Math.min(minX, r.p.x); maxX = Math.max(maxX, r.p.x)
+        minY = Math.min(minY, r.p.y); maxY = Math.max(maxY, r.p.y)
       }
-      if (particles.length > target) particles.length = target
+      const approximateGrid = Math.max(2, Math.round(Math.sqrt(pts.length)) - 1)
+      const spacing = Math.max((maxX - minX) / approximateGrid, (maxY - minY) / approximateGrid)
+      return Math.max(42, Math.min(220, spacing * 0.82))
     }
 
-    const vectorAt = (x: number, y: number) => {
+    const vectorAt = (x: number, y: number, pts: ReturnType<typeof projected>, radius: number) => {
       let sum = 0
       let u = 0
       let v = 0
       let mph = 0
-      for (const r of readings) {
-        const p = map.project([r.lng, r.lat])
-        const dx = p.x - x
-        const dy = p.y - y
-        const w = 1 / Math.max(8, dx * dx + dy * dy)
+      let nearest = Infinity
+      for (const r of pts) {
+        const dx = r.p.x - x
+        const dy = r.p.y - y
+        const d2 = dx * dx + dy * dy
+        nearest = Math.min(nearest, Math.sqrt(d2))
+        const w = 1 / Math.max(18, d2)
         sum += w
         u += (r.uMps ?? 0) * w
         v += (r.vMps ?? 0) * w
         mph += (r.speedMph ?? r.speedKmh * 0.621371) * w
       }
-      if (!sum) return null
+      if (!sum || nearest > radius) return null
       return { u: u / sum, v: v / sum, mph: mph / sum }
     }
 
@@ -1203,69 +1261,105 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
       return { dx: dx / mag, dy: dy / mag }
     }
 
-    const respawn = (p: { x: number; y: number; age: number; maxAge: number }, width: number, height: number) => {
-      p.x = Math.random() * width
-      p.y = Math.random() * height
-      p.age = 0
-      p.maxAge = 45 + Math.random() * 70
+    const boundsOf = (pts: ReturnType<typeof projected>, pad: number, width: number, height: number) => {
+      let minX = width, maxX = 0, minY = height, maxY = 0
+      for (const r of pts) {
+        minX = Math.min(minX, r.p.x); maxX = Math.max(maxX, r.p.x)
+        minY = Math.min(minY, r.p.y); maxY = Math.max(maxY, r.p.y)
+      }
+      return {
+        minX: Math.max(0, minX - pad),
+        maxX: Math.min(width, maxX + pad),
+        minY: Math.max(0, minY - pad),
+        maxY: Math.min(height, maxY + pad),
+      }
     }
 
-    const drawStatic = (width: number, height: number) => {
+    const respawn = (p: { x: number; y: number; age: number; maxAge: number }, box: { minX: number; maxX: number; minY: number; maxY: number }) => {
+      p.x = box.minX + Math.random() * Math.max(1, box.maxX - box.minX)
+      p.y = box.minY + Math.random() * Math.max(1, box.maxY - box.minY)
+      p.age = 0
+      p.maxAge = 35 + Math.random() * 80
+    }
+
+    const drawWash = (width: number, height: number, pts: ReturnType<typeof projected>, radius: number) => {
+      const cell = mobile ? 34 : 28
+      ctx.globalCompositeOperation = 'source-over'
+      for (let y = 0; y < height; y += cell) {
+        for (let x = 0; x < width; x += cell) {
+          const v = vectorAt(x + cell / 2, y + cell / 2, pts, radius)
+          if (!v) continue
+          ctx.fillStyle = windColor(v.mph, 0.16)
+          ctx.fillRect(x, y, cell + 1, cell + 1)
+        }
+      }
+    }
+
+    const drawStatic = (width: number, height: number, pts: ReturnType<typeof projected>, radius: number) => {
       ctx.clearRect(0, 0, width, height)
-      for (const r of readings) {
-        const p = map.project([r.lng, r.lat])
-        const delta = flowDelta(p.x, p.y, r.uMps ?? 0, r.vMps ?? 0)
-        const len = 16 + Math.min(28, (r.speedMph ?? 0) * 0.7)
-        ctx.strokeStyle = windColor(r.speedMph ?? 0)
-        ctx.lineWidth = 1.6
+      drawWash(width, height, pts, radius)
+      for (const r of pts) {
+        const delta = flowDelta(r.p.x, r.p.y, r.uMps ?? 0, r.vMps ?? 0)
+        const len = 14 + Math.min(34, (r.speedMph ?? 0) * 0.72)
+        ctx.strokeStyle = windColor(r.speedMph ?? 0, 0.92)
+        ctx.lineWidth = 1.45
         ctx.beginPath()
-        ctx.moveTo(p.x - delta.dx * len * 0.45, p.y - delta.dy * len * 0.45)
-        ctx.lineTo(p.x + delta.dx * len, p.y + delta.dy * len)
+        ctx.moveTo(r.p.x - delta.dx * len * 0.45, r.p.y - delta.dy * len * 0.45)
+        ctx.lineTo(r.p.x + delta.dx * len, r.p.y + delta.dy * len)
         ctx.stroke()
       }
     }
 
     const tick = () => {
+      const { width, height } = resize()
+      const pts = projected()
+      const radius = coverageRadius(pts)
       if (cancelled || document.visibilityState !== 'visible') {
         windFrameRef.current = requestAnimationFrame(tick)
         return
       }
-      const { width, height } = resize()
       if (reduce) {
-        drawStatic(width, height)
+        drawStatic(width, height, pts, radius)
         ;(window as unknown as { __eosWindLayer?: unknown }).__eosWindLayer = { active: true, mode: 'static', readings: readings.length }
         return
       }
-      seedParticles(width, height)
+      const box = boundsOf(pts, radius, width, height)
+      const target = Math.min(mobile ? 260 : 520, Math.max(140, Math.floor(((box.maxX - box.minX) * (box.maxY - box.minY)) / (mobile ? 1500 : 1100))))
+      while (windParticlesRef.current.length < target) windParticlesRef.current.push({ x: box.minX, y: box.minY, age: 0, maxAge: 1 })
+      if (windParticlesRef.current.length > target) windParticlesRef.current.length = target
+
       ctx.globalCompositeOperation = 'destination-in'
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.88)'
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.84)'
       ctx.fillRect(0, 0, width, height)
       ctx.globalCompositeOperation = 'source-over'
+      windWashTickRef.current = (windWashTickRef.current + 1) % 12
+      if (windWashTickRef.current === 0) drawWash(width, height, pts, radius)
+
       for (const p of windParticlesRef.current) {
-        const vector = vectorAt(p.x, p.y)
-        if (!vector) {
-          respawn(p, width, height)
+        const v = vectorAt(p.x, p.y, pts, radius)
+        if (!v) {
+          respawn(p, box)
           continue
         }
-        const delta = flowDelta(p.x, p.y, vector.u, vector.v)
-        const speed = 0.55 + Math.min(3.8, vector.mph / 14)
+        const delta = flowDelta(p.x, p.y, v.u, v.v)
+        const speed = 0.42 + Math.min(3.7, v.mph / 15)
         const oldX = p.x
         const oldY = p.y
         p.x += delta.dx * speed
         p.y += delta.dy * speed
         p.age += 1
-        if (p.x < -20 || p.x > width + 20 || p.y < -20 || p.y > height + 20 || p.age > p.maxAge) {
-          respawn(p, width, height)
+        if (p.x < box.minX || p.x > box.maxX || p.y < box.minY || p.y > box.maxY || p.age > p.maxAge) {
+          respawn(p, box)
           continue
         }
-        ctx.strokeStyle = windColor(vector.mph)
-        ctx.lineWidth = 1.1
+        ctx.strokeStyle = v.mph >= 34 ? 'rgba(255,255,255,0.86)' : 'rgba(255,255,255,0.58)'
+        ctx.lineWidth = v.mph >= 34 ? 1.7 : 1.05
         ctx.beginPath()
         ctx.moveTo(oldX, oldY)
         ctx.lineTo(p.x, p.y)
         ctx.stroke()
       }
-      ;(window as unknown as { __eosWindLayer?: unknown }).__eosWindLayer = { active: true, mode: 'animated', readings: readings.length, particles: windParticlesRef.current.length }
+      ;(window as unknown as { __eosWindLayer?: unknown }).__eosWindLayer = { active: true, mode: 'animated', readings: readings.length, particles: windParticlesRef.current.length, coverageRadius: Math.round(radius) }
       windFrameRef.current = requestAnimationFrame(tick)
     }
 
@@ -1277,11 +1371,11 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
       ctx.clearRect(0, 0, canvas.width, canvas.height)
       ;(window as unknown as { __eosWindLayer?: unknown }).__eosWindLayer = { active: false }
     }
-  }, [wind, layers?.wind])
+  }, [activeWind, layers?.wind])
 
   useEffect(() => {
     const map = mapRef.current
-    const readings = wind?.readings ?? []
+    const readings = activeWind?.readings ?? []
     if (!map || !readyRef.current || !layers?.wind || !readings.length) {
       setWindPopup(null)
       return
@@ -1297,31 +1391,31 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
           best = r
         }
       }
-      if (!best) return
+      if (!best || bestD > 180) return
       setWindPopup({
         x: event.point.x,
         y: event.point.y,
         speedMph: best.speedMph ?? Math.round(best.speedKmh * 0.621371),
         gustMph: best.gustMph ?? (best.gustKmh === null ? null : Math.round(best.gustKmh * 0.621371)),
         direction: windCardinal(best.fromDeg),
-        forecast: wind?.frames?.[0]?.label ?? 'NOW',
+        forecast: activeWind?.frames?.[0]?.label ?? 'NOW',
       })
     }
     map.on('click', onClick)
     return () => { map.off('click', onClick) }
-  }, [wind, layers?.wind])
+  }, [activeWind, layers?.wind])
 
   useEffect(() => {
     const map = mapRef.current
     if (!map || !readyRef.current) return
     const source = map.getSource('eos-wind-impact') as maplibregl.GeoJSONSource | undefined
     if (!source) return
-    const show = Boolean(layers?.windImpact) && Boolean(wind?.readings.length)
+    const show = Boolean(layers?.windImpact) && Boolean(activeWind?.readings.length)
     source.setData({
       type: 'FeatureCollection',
-      features: show ? windImpactFeatures(wind) : [],
+      features: show ? windImpactFeatures(activeWind) : [],
     })
-  }, [wind, layers?.windImpact])
+  }, [activeWind, layers?.windImpact])
 
   /** Radar e alertas obedecem o interruptor sem serem recarregados. */
   useEffect(() => {
@@ -1485,7 +1579,7 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
       <div ref={plateRef} className="world-plate has-image" style={{ ['--world-image' as string]: `url(${plateUrl})`, transition: 'opacity 800ms ease' }} />
       <div ref={ref} className="world-map" />
       <canvas ref={windCanvasRef} className="world-wind-canvas" data-active={layers?.wind ? 'true' : 'false'} />
-      {layers?.wind && wind?.readings.length ? (
+      {layers?.wind && activeWind?.readings.length ? (
         <div className="world-wind-legend">
           <span>WIND SPEED</span>
           <b>0</b><b>10</b><b>20</b><b>30</b><b>40+ mph</b>

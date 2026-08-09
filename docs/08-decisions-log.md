@@ -31,9 +31,14 @@ World v2.
    re-render React por frame.
 6. Clique/tap no campo de vento mostra card com velocidade, rajada quando
    disponível, direção e forecast real disponível. V1 só mostra `NOW`.
+7. O renderer não pode extrapolar uma grade pequena para o mapa inteiro. Quando
+   a câmera abre, a camada premium pede uma grade proporcional ao viewport e só
+   desenha partículas/cor dentro da distância de cobertura das leituras reais.
+   Fora disso, não há vento desenhado.
 
 **Consequence**: EOS ganha leitura visual de fluxo de vento sem virar produto de
-mapa paralelo e sem prometer resolução/modelos que ainda não existem.
+mapa paralelo e sem prometer resolução/modelos que ainda não existem. Uma camada
+com movimento uniforme no mundo inteiro é tratada como bug, não como fallback.
 
 ---
 

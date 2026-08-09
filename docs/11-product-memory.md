@@ -18,6 +18,11 @@ grade pública Open-Meteo já existente, desde que o contrato interno seja vetor
 U/V. HRRR/NOAA e GFS entram depois como providers do mesmo contrato, não como
 novo produto.
 
+Correção visual obrigatória: a camada não pode pegar uma grade local pequena e
+animar o mundo inteiro na mesma direção. Quando a câmera muda, o mapa pede uma
+grade proporcional ao viewport e desenha somente dentro da cobertura dos pontos
+reais. Fora da cobertura, o overlay fica vazio.
+
 ---
 
 ## EOS Platform: quatro camadas, não quatro produtos (2026-08-03)
