@@ -1,7 +1,7 @@
 # 11 — Product Memory
 
 > Non-obvious facts that don't belong in code comments but must survive across sessions.
-> Last updated: 2026-08-08
+> Last updated: 2026-08-09
 
 ---
 
@@ -180,6 +180,11 @@ unificado. Registro de contexto de tela agora é imperativo via `ref`; registrar
 fatos do dashboard não pode redesenhar a app shell. `npm run test:nav` cria uma
 conta temporária, abre `/dashboard` e exige que Clima, Família, Preparação,
 Comms, Círculos e Cenário mudem a URL.
+
+D-140 / PILOT-T11 define o Pilot como superfície modal dismissible: o X continua,
+mas tocar fora da janela também fecha. O scrim precisa ser `fixed` e acima do
+app shell; a folha do Pilot fica acima do scrim. `node scripts/pilot-orb-test.mjs`
+prova o comportamento junto com a consistência/arraste do orbe.
 
 D-118 / LA-T04 fecha o draft antigo de rate-limit sem depender de Upstash:
 Supabase/Postgres é o guardrail distribuído v1 via `consume_rate_limit`; memória

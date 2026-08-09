@@ -4,6 +4,32 @@
 
 ---
 
+## D-140 — Clicar fora fecha o Pilot
+
+**Date**: 2026-08-09
+**Status**: DECIDED
+**Roadmap**: PILOT-T11
+
+**Context**: O dono abriu o Pilot pelo orbe e esperava o comportamento padrão de
+uma janela/sheet: clicar fora fecha. A UI já tinha um scrim com `onClick`, mas a
+camada estava posicionada como `absolute` dentro do portal de tokens do Pilot,
+que é estático. Na prática, o alvo fora da janela não era confiável como camada
+global.
+
+**Decision**:
+
+1. O Pilot continua podendo fechar pelo X.
+2. A área fora da janela também fecha o Pilot.
+3. A camada externa do Pilot deve ser `fixed`, acima do app shell, e a janela do
+   Pilot deve ficar acima dela.
+4. Clicar dentro da conversa não fecha; só o scrim externo fecha.
+
+**Consequence**: o Pilot passa a se comportar como uma superfície modal normal:
+abre pelo orbe, fecha pelo X, Escape/scrim quando disponível, e não prende o
+usuário numa ação pequena demais.
+
+---
+
 ## D-139 — A BottomNav estava certa, mas o dashboard travava a navegação
 
 **Date**: 2026-08-08

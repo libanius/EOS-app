@@ -19,7 +19,8 @@
  *   3. o orbe NÃO muda de cor com o risco                     ← a regressão antiga
  *   4. existe UM só por tela                                  ← nunca dois caminhos
  *   5. ele abre o mesmo Pilot em qualquer tela
- *   6. e continua arrastável fora do dashboard
+ *   6. tocar fora da janela fecha o Pilot
+ *   7. e continua arrastável fora do dashboard
  *
  * O item 3 é o que mais importa preservar. O risco tem lugares próprios para
  * ser dito — a faixa, o índice, os alertas. Um botão que muda de cor é um botão
@@ -170,7 +171,19 @@ abriuFora > 0 && abriuNoPainel > 0
   ? ok('o orbe abre o mesmo Pilot nas duas', 'a conversa é a mesma superfície')
   : no('o Pilot não abriu igual', `fora=${abriuFora} painel=${abriuNoPainel}`)
 
-// ── 6. e continua arrastável fora do dashboard ─────────────────────────────
+// ── 6. tocar fora fecha ─────────────────────────────────────────────────────
+/*
+ * D-140: o X continua existindo, mas não pode ser a única saída. O topo da tela
+ * fica fora da folha mobile do Pilot, então tocar ali deve acionar o scrim.
+ */
+await page.touchscreen.tap(20, 20)
+await page.waitForTimeout(700)
+const fechouPorFora = await page.locator('.wv2-pilot-chat').count()
+fechouPorFora === 0
+  ? ok('tocar fora da janela fecha o Pilot')
+  : no('tocar fora não fechou o Pilot', `${fechouPorFora} janela(s) ainda aberta(s)`)
+
+// ── 7. e continua arrastável fora do dashboard ─────────────────────────────
 /*
  * O dock é arrastável de propósito (D-079): um botão fixo num canto atrapalha
  * alguém — canhoto, tela grande, lista cujo conteúdo importante mora ali.

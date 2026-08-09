@@ -792,9 +792,9 @@
 
 /* ── Scrim: dim to focus. The Pilot is a decision, so the map steps back. ── */
 .wv2-pilot-scrim {
-  position: absolute;
+  position: fixed;
   inset: 0;
-  z-index: 5;
+  z-index: 899;
   border: 0;
   padding: 0;
   background: rgba(0, 0, 0, 0.32);
@@ -1440,8 +1440,8 @@
    a quiet day and urgent when it is not. */
 
 .wv2-pilot-chat {
-  position: absolute;
-  z-index: 6;
+  position: fixed;
+  z-index: 900;
   left: 0;
   right: 0;
   bottom: 0;
