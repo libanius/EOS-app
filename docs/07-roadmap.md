@@ -132,7 +132,7 @@ product phase sequenced.
 | WV2-T05 | Validação de produção da v2: E2E de navegador, a11y/perf medidos, custo de provider, revisão de privacidade/proveniência | ✅ COMPLETE | 2026-08-04 — D-097 / `docs/29-world-v2-production-validation.md`; `npm run test:world-v2` audita `/dashboard` em mobile/desktop com Playwright, mede load/bytes/recursos e valida a11y/proveniência básica. |
 | WV2-T06 | Rótulos dos controles de mapa no toque | ✅ COMPLETE | 2026-07-29 — legenda visível sob cada ícone (Você / Atualizar / Painel). Toque não tem hover, então o rótulo passou a existir. |
 | WV2-T07 | Reconciliar features do HWD v1 sobre a v2 conforme demanda | ✅ COMPLETE | 2026-08-04 — D-098. Camadas ao vivo e toggle de base já estão na v2; notificar círculo migrou para ações contextuais em `MemberSheet`/execução de plano; novos itens de mapa devem virar tarefas específicas. |
-| WV2-T13 | Camada premium de vento animado no mapa existente | ✅ COMPLETE | 2026-08-09 — D-141; sem mapa novo, canvas lazy, contrato vetorial U/V, grid por viewport e sem extrapolação fora da cobertura real. |
+| WV2-T13 | Camada premium de vento animado no mapa existente | ✅ COMPLETE | 2026-08-09 — D-141; sem mapa novo, canvas lazy, contrato vetorial U/V, popup WIND, gate Premium e Open-Meteo como fonte pública v1. |
 
 ---
 
