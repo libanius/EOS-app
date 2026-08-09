@@ -69,15 +69,14 @@ export function PilotProvider({ children }: { children: React.ReactNode }) {
   const [incoming, setIncoming] = useState<Pergunta | null>(null)
   const cursoRef = useRef<((d: PilotDestination) => void) | null>(null)
   /*
-   * O enriquecimento fica em ESTADO, não em ref.
+   * D-139: contexto de tela é registro imperativo.
    *
-   * A primeira versão usava um ref mais um contador de versão só para forçar o
-   * memo a refazer — e o lint apontou o contador como dependência fantasma, com
-   * razão: era um jeito torto de dizer "isto mudou". Em estado, a mudança se
-   * propaga sozinha, e o dashboard não abre mais o Pilot sem os abrigos que
-   * acabou de carregar.
+   * Guardar isto em estado fez o dashboard e o provider se alimentarem em loop:
+   * WorldV2 registrava um enriquecedor, o provider renderizava, o objeto `pilot`
+   * mudava, e WorldV2 registrava de novo. O Pilot precisa LER a tela atual
+   * quando responde; registrar a tela atual não pode redesenhar a app shell.
    */
-  const [enriquecedor, setEnriquecedor] = useState<((base: PilotContext) => PilotContext) | null>(null)
+  const enriquecedorRef = useRef<((base: PilotContext) => PilotContext) | null>(null)
 
   const ask = useCallback((question: string) => {
     const limpo = question.trim()
@@ -100,13 +99,16 @@ export function PilotProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const registerContext = useCallback((fn: (base: PilotContext) => PilotContext) => {
-    // `() => fn` porque `useState` trata função como atualizador preguiçoso e
-    // chamaria a nossa em vez de guardá-la.
-    setEnriquecedor(() => fn)
-    return () => setEnriquecedor((atual: ((b: PilotContext) => PilotContext) | null) => (atual === fn ? null : atual))
+    enriquecedorRef.current = fn
+    return () => {
+      if (enriquecedorRef.current === fn) enriquecedorRef.current = null
+    }
   }, [])
 
-  const enrich = useCallback((base: PilotContext) => (enriquecedor ? enriquecedor(base) : base), [enriquecedor])
+  const enrich = useCallback((base: PilotContext) => {
+    const enriquecedor = enriquecedorRef.current
+    return enriquecedor ? enriquecedor(base) : base
+  }, [])
 
   const api = useMemo<PilotApi>(
     () => ({ open, setOpen, ask, incoming, registerCourse, showCourse, registerContext, enrich }),

@@ -264,6 +264,7 @@ product phase sequenced.
 | NAV-T01 | Reordenar BottomNav: Clima primeiro, Cenário último | ✅ COMPLETE | 2026-08-04 — D-116; ordem visual: Clima, Família, Preparação, World, Comms, Círculos, Cenário |
 | NOTIF-T01 | Separar badges por ícone/surface | ✅ COMPLETE | 2026-08-04 — D-117; `unread_by_surface` alimenta Clima, Família, Preparação, Comms e Cenário; Inbox abre filtrado pela surface |
 | NAV-T02 | Corrigir links da BottomNav com badges | ✅ COMPLETE | 2026-08-08 — D-138; clique principal navega, badge abre Inbox filtrada |
+| NAV-T03 | Corrigir loop do dashboard que congela a BottomNav | ✅ COMPLETE | 2026-08-08 — D-139; `WorldV2` registra contexto do Pilot sem redesenhar o provider; `npm run test:nav` prova os 6 links |
 | PREP-T00 | Spec + decisão do Preparedness Engine | ✅ COMPLETE | 2026-08-03 — D-085 / `docs/20-preparedness-engine.md`; no code/migration authorized |
 | PREP-T01 | Unificar Checklist + Recursos em Preparação | ✅ COMPLETE | 2026-08-03 — D-086; `/preparedness` is the single surface, `/inventory` and `/checklist` redirect |
 | PREP-T02 | Editar e excluir itens do checklist em Preparação | ✅ COMPLETE | 2026-08-04 — D-121; `/preparedness` edita/exclui itens com botões visíveis por linha; `PATCH /api/checklist/[id]` recalcula `canonical_key` no rename; exclusão é por linha |

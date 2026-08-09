@@ -1,0 +1,129 @@
+/**
+ * BottomNav regression test (D-139).
+ *
+ * Proves the app shell stays responsive from /dashboard and every bottom nav
+ * icon changes URL. Creates a temporary confirmed Supabase user and deletes it.
+ */
+import fs from 'node:fs'
+import { spawn } from 'node:child_process'
+import { config } from 'dotenv'
+import { chromium } from 'playwright'
+import { track, cleanupOnExit, finish } from './lib/test-cleanup.mjs'
+
+config({ path: '.env.local' })
+
+const URL_SB = process.env.NEXT_PUBLIC_SUPABASE_URL
+const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
+const PORT = Number(process.env.PORT || 3058)
+const B = `http://localhost:${PORT}`
+const PASS = 'EosTest#2026!'
+
+if (!URL_SB || !KEY) {
+  console.error('Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY')
+  process.exit(1)
+}
+
+const admin = (path, options = {}) => fetch(`${URL_SB}${path}`, {
+  ...options,
+  headers: {
+    'Content-Type': 'application/json',
+    apikey: KEY,
+    Authorization: `Bearer ${KEY}`,
+    Prefer: 'return=representation',
+    ...options.headers,
+  },
+})
+
+cleanupOnExit(admin)
+
+let pass = 0
+let fail = 0
+const ok = label => { pass += 1; console.log(`✅ ${label}`) }
+const no = (label, detail = '') => { fail += 1; console.log(`❌ ${label}${detail ? `: ${detail}` : ''}`) }
+
+if (!fs.existsSync('.next/BUILD_ID')) {
+  console.error('Faltou `npm run build`.')
+  process.exit(1)
+}
+
+const server = spawn('npx', ['next', 'start', '-p', String(PORT)], { env: process.env, stdio: 'ignore' })
+const stopServer = () => { try { server.kill('SIGTERM') } catch {} }
+process.on('exit', stopServer)
+
+let up = false
+for (let i = 0; i < 60 && !up; i += 1) {
+  await new Promise(resolve => setTimeout(resolve, 500))
+  up = await fetch(`${B}/auth/login`).then(response => response.status < 500).catch(() => false)
+}
+if (!up) {
+  console.error('Servidor não subiu')
+  stopServer()
+  await finish(1)
+}
+
+const email = `eos-nav-${Date.now()}@test.internal`
+const created = await admin('/auth/v1/admin/users', {
+  method: 'POST',
+  body: JSON.stringify({ email, password: PASS, email_confirm: true }),
+}).then(response => response.json())
+if (!created.id) {
+  console.error('Falha criando usuário temporário', created)
+  stopServer()
+  await finish(1)
+}
+track.user(created.id)
+await admin(`/rest/v1/profiles?id=eq.${created.id}`, {
+  method: 'PATCH',
+  body: JSON.stringify({ name: 'Nav Test' }),
+})
+
+const browser = await chromium.launch({ args: ['--no-sandbox'] })
+try {
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, locale: 'pt-BR' })
+  const consoleErrors = []
+  page.on('console', message => {
+    if (message.type() === 'error') consoleErrors.push(message.text())
+  })
+  await page.addInitScript(() => {
+    try { localStorage.setItem('eos-ficha-firstrun', '1') } catch {}
+  })
+
+  await page.goto(`${B}/auth/login`, { waitUntil: 'networkidle' })
+  await page.fill('input[type="email"]', email)
+  await page.fill('input[type="password"]', PASS)
+  await page.locator('button').last().click()
+  await page.waitForURL(/dashboard|ficha|onboarding|preparedness/, { timeout: 30000 }).catch(() => {})
+
+  await page.goto(`${B}/dashboard`, { waitUntil: 'networkidle' })
+  await page.waitForSelector('nav.nav a', { timeout: 20000 })
+  await page.waitForTimeout(1200)
+
+  const loopErrors = consoleErrors.filter(error => error.includes('Maximum update depth'))
+  loopErrors.length === 0
+    ? ok('dashboard não entra em loop de renderização')
+    : no('dashboard entrou em loop de renderização', `${loopErrors.length} warnings`)
+
+  const cases = [
+    ['Clima', /\/weather/],
+    ['Família', /\/family/],
+    ['Preparação', /\/preparedness/],
+    ['Comms', /\/comms/],
+    ['Círculos', /\/circles/],
+    ['Cenário', /\/scenario/],
+  ]
+
+  for (const [label, expected] of cases) {
+    await page.goto(`${B}/dashboard`, { waitUntil: 'networkidle' })
+    await page.waitForSelector('nav.nav a', { timeout: 10000 })
+    await page.locator('nav.nav a', { hasText: label }).first().click({ timeout: 5000 })
+    await page.waitForURL(expected, { timeout: 7000 }).catch(() => {})
+    expected.test(page.url())
+      ? ok(`BottomNav navega para ${label}`)
+      : no(`BottomNav não navegou para ${label}`, page.url())
+  }
+} finally {
+  await browser.close().catch(() => {})
+  stopServer()
+}
+
+await finish(fail ? 1 : 0)

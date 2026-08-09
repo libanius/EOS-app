@@ -174,6 +174,13 @@ deve ter navegação sequestrada por notificação. O clique principal navega pa
 tela; tocar especificamente no badge vermelho abre a Inbox filtrada pela surface.
 Abrir a Inbox não marca nada como lido.
 
+D-139 / NAV-T03 corrige a causa real do "cliquei e nada respondeu" no dashboard:
+`WorldV2` entrava em loop com o `PilotProvider` ao registrar o contexto do Pilot
+unificado. Registro de contexto de tela agora é imperativo via `ref`; registrar
+fatos do dashboard não pode redesenhar a app shell. `npm run test:nav` cria uma
+conta temporária, abre `/dashboard` e exige que Clima, Família, Preparação,
+Comms, Círculos e Cenário mudem a URL.
+
 D-118 / LA-T04 fecha o draft antigo de rate-limit sem depender de Upstash:
 Supabase/Postgres é o guardrail distribuído v1 via `consume_rate_limit`; memória
 fica só como fallback de degradação. Rotas OpenAI caras (`/api/pilot/chat` e

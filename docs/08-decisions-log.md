@@ -4,6 +4,35 @@
 
 ---
 
+## D-139 — A BottomNav estava certa, mas o dashboard travava a navegação
+
+**Date**: 2026-08-08
+**Status**: DECIDED
+**Roadmap**: NAV-T03
+
+**Context**: Depois do D-138, os anchors da BottomNav voltaram a existir e o
+clique principal não era mais interceptado. Mesmo assim, em teste real o toque
+não saía do dashboard. A reprodução com Playwright mostrou o motivo: `WorldV2`
+entrava em `Maximum update depth exceeded`.
+
+O loop vinha da integração do Pilot unificado (D-137): `WorldV2` usava o objeto
+`pilot` inteiro como dependência para registrar curso/contexto. O provider
+atualizava estado ao receber o contexto, recriava o objeto `pilot`, e o dashboard
+registrava de novo.
+
+**Decision**:
+
+1. Efeitos do dashboard não dependem do objeto `pilot` inteiro.
+2. Eles dependem só dos callbacks estáveis que usam (`registerCourse` e
+   `registerContext`).
+3. BottomNav precisa ter teste de navegador próprio: o sucesso é a URL mudar
+   depois de clicar cada ícone.
+
+**Consequence**: corrigir o link visual não basta; a app shell precisa continuar
+responsiva enquanto o dashboard registra fatos no Pilot global.
+
+---
+
 ## D-138 — Badge informa, o ícone navega
 
 **Date**: 2026-08-08

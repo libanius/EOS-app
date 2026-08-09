@@ -227,8 +227,9 @@ export default function WorldV2() {
    * o dock montava outro. Sair do dashboard e voltar perdia tudo o que tinha
    * sido perguntado. Agora o Pilot é um só, montado no layout; aqui ficam a
    * barra de busca e o mapa que ela precisa desenhar.
-   */
+  */
   const pilot = usePilot()
+  const { registerCourse, registerContext } = pilot
   const [recenterNonce, setRecenterNonce] = useState(0)
 
   /** Camadas ligadas pelo usuário — leitura, não dado (D-078). */
@@ -414,13 +415,13 @@ export default function WorldV2() {
   /* "Ver no mapa" só existe onde há mapa. Esta é a tela que tem. */
   useEffect(
     () =>
-      pilot.registerCourse(destination => {
+      registerCourse(destination => {
         setCourse({ ...destination, nonce: Date.now() })
         // Tem que REVELAR o mapa: recolhe a folha, senão o trajeto é desenhado
         // atrás dela.
         setDetent('peek')
       }),
-    [pilot],
+    [registerCourse],
   )
 
   /*
@@ -490,7 +491,7 @@ export default function WorldV2() {
     [metric, state, score, snapshot, hasCoords, coords, data.online, shelterSnapshot, simulation.active, simulation.config, family, cyclones, wind],
   )
 
-  useEffect(() => pilot.registerContext(enriquecer), [pilot, enriquecer])
+  useEffect(() => registerContext(enriquecer), [registerContext, enriquecer])
 
   const sections = (
     <WorldSections
