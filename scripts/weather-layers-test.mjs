@@ -156,7 +156,7 @@ console.log(
 )
 const email = `eos-wx-${Date.now()}@test.internal`
 const u = await admin('/auth/v1/admin/users', { method: 'POST', body: JSON.stringify({ email, password: PASS, email_confirm: true }) }).then(r => r.json())
-await admin(`/rest/v1/profiles?id=eq.${u.id}`, { method: 'PATCH', body: JSON.stringify({ name: 'Clima', location_lat: HOME.latitude, location_lng: HOME.longitude }) })
+await admin(`/rest/v1/profiles?id=eq.${u.id}`, { method: 'PATCH', body: JSON.stringify({ name: 'Clima', plan: 'premium', location_lat: HOME.latitude, location_lng: HOME.longitude }) })
 
 const browser = await chromium.launch({ args: ['--no-sandbox'] })
 const ctx = await browser.newContext({
@@ -171,7 +171,7 @@ await page.fill('input[type="password"]', PASS)
 await page.locator('button').last().click()
 await page.waitForURL(/dashboard|ficha|onboarding/, { timeout: 30000 }).catch(() => {})
 await page.goto(`${B}/dashboard`, { waitUntil: 'networkidle' })
-await page.locator('.wv2-map canvas').waitFor({ timeout: 30000 })
+await page.locator('.wv2-map canvas.maplibregl-canvas').waitFor({ timeout: 30000 })
 await page.waitForTimeout(5000)
 
 // ── 4. painel de camadas ────────────────────────────────────────────────────
@@ -204,8 +204,9 @@ const setas = await page.evaluate(() => {
     rotacoes: new Set(desenhadas.map(f => Math.round(f.properties.rotate))).size,
   }
 })
-setas.desenhadas > 0 && setas.rotacoes > 1
-  ? ok('setas de vento DESENHADAS no mapa', `${setas.desenhadas} visíveis · ${setas.rotacoes} direções distintas`)
+const animado = await page.evaluate(() => window.__eosWindLayer ?? { active: false })
+setas.desenhadas > 0 && setas.rotacoes > 1 && animado.active === true
+  ? ok('vento animado e setas DESENHADAS no mapa', `${setas.desenhadas} setas · ${setas.rotacoes} direções · ${animado.particles ?? animado.mode}`)
   : no('vento não desenhou', JSON.stringify(setas))
 
 await painel.locator('button', { hasText: /^Vento impacto$/ }).click()

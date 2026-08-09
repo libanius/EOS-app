@@ -4,6 +4,39 @@
 
 ---
 
+## D-141 — Vento animado é camada premium no mapa existente
+
+**Date**: 2026-08-09
+**Status**: DECIDED
+**Roadmap**: WV2-T13
+
+**Context**: O dono pediu uma visualização de vento inspirada conceitualmente em
+Windfinder, mas sem criar outro mapa, sem copiar código/asset/design/dado, e sem
+carregar renderer pesado para usuário free. A arquitetura atual já tem MapLibre e
+uma camada `wind` em `WorldMap`; criar uma tela paralela quebraria o Spine da
+World v2.
+
+**Decision**:
+
+1. A camada `wind` passa a suportar partículas/streamlines animadas dentro do
+   `WorldMap` existente.
+2. O provider de vento expõe componentes vetoriais `uMps` e `vMps`; velocidade e
+   direção continuam deriváveis, sem hardcode em fixture.
+3. V1 usa a grade atual Open-Meteo como fonte pública/keyless. HRRR/NOAA e GFS
+   ficam como adapters futuros do mesmo contrato vetorial.
+4. A camada animada é premium. Usuário free vê `Vento PREMIUM`; tocar nela manda
+   para o upgrade sem iniciar canvas/loop/requisição de vento.
+5. A renderização é lazy e imperativa: começa só quando a camada está ativa,
+   cancela `requestAnimationFrame` no cleanup, pausa fora de foco e evita
+   re-render React por frame.
+6. Clique/tap no campo de vento mostra card com velocidade, rajada quando
+   disponível, direção e forecast real disponível. V1 só mostra `NOW`.
+
+**Consequence**: EOS ganha leitura visual de fluxo de vento sem virar produto de
+mapa paralelo e sem prometer resolução/modelos que ainda não existem.
+
+---
+
 ## D-140 — Clicar fora fecha o Pilot
 
 **Date**: 2026-08-09

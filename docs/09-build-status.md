@@ -10,7 +10,9 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Preparedness Engine (PREP/EDU/COMMS/ONB/PILOT) sobre Web/PWA |
-| **Last Completed Task** | **D-140 / PILOT-T11 — Pilot fecha ao tocar fora da janela (2026-08-09)** |
+| **Current Task** | Próximo item do roadmap a selecionar |
+| **Last Completed Task** | **D-141 / WV2-T13 — Camada premium de vento animado no mapa existente (2026-08-09)** |
+| | **D-140 / PILOT-T11 — Pilot fecha ao tocar fora da janela (2026-08-09)** |
 | | **D-139 / NAV-T03 — Loop do dashboard corrigido; BottomNav validada por navegador (2026-08-08)** |
 | | **D-138 / NAV-T02 — Links da BottomNav voltam a navegar quando há badge (2026-08-08)** |
 | | **D-122 / EDU-T07 — Notificação ao salvar conteúdo EDU (2026-08-04)** |
@@ -146,7 +148,7 @@
 | **Platform Alignment** | ✅ D-084: EOS é plataforma multi-superfície com um único core operacional. Web/PWA segue como superfície primária; iOS/Android serão adapters nativos futuros; Automotive é companion mode restrito; Mesh/LoRa segue bloqueado por G-05. `/mobile/` é template/conceitual, não app inicializado. |
 | **Fases pedidas pelo dono (2026-07-31)** | ✅ 1. Camadas de clima + rastreio de ciclone (D-078). 2. Reinventar a aba Família no design system da v2, com componentes dinâmicos. 3. WV2-T05 (a11y/perf), PLAN-T07 (Pilot propõe plano). |
 | **Next Task** | Roadmap sem tarefa `PENDING/IN PROGRESS` após PILOT-T11; próxima frente precisa ser promovida explicitamente no Spine antes de código. |
-| **Build** | ✅ PILOT-T11 validado em 2026-08-09 com `npm run type-check`, `npm test -- --runInBand` (202/202), `npm run build`, `node scripts/pilot-orb-test.mjs` e `git diff --check`. |
+| **Build** | ✅ WV2-T13 validado em 2026-08-09 com `npm run type-check`, `npm test -- --runInBand` (202/202), `npm run build`, `npm run test:nav`, `node scripts/pilot-orb-test.mjs`, `npm run test:weather` e `git diff --check`. |
 | **Plano execução** | ✅ PLAN-T08 MVP: tocar no próprio rosto no mapa abre comando familiar; "Executar plano" carrega um plano escolhido, monta passos determinísticos do host (círculo → gatilhos → papéis → pontos → rotas → encerramento) e alerta o círculo com push preset "Execute o plano da família agora". Sem nova tabela ainda: timeline compartilhada fica para `family_plan_executions`. |
 | **Plano múltiplo** | ✅ PLAN-T09: o círculo pode ter vários planos ativos; `/plan` alterna/cria planos por nome, o executor escolhe qual plano rodar, passos fixos do EOS saem da lista numerada e há cancelar/falso alarme. Migration `20260731000000_multiple_family_plans.sql` aplicada pelo dono. |
 | **Rotas do plano** | ✅ PLAN-T10: cada rota desenhada no plano agora tem handoff "Google Maps" com origem, destino e paradas intermediárias na ordem da `LineString`. O EOS mantém o combinado offline; Google Maps calcula ruas/ETA quando abrir. |

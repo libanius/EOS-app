@@ -652,6 +652,7 @@ export default function Pilot({
             type="button"
             className="wv2-pilot-scrim"
             aria-label={c.close}
+            onPointerDown={() => onOpenChange(false)}
             onClick={() => onOpenChange(false)}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

@@ -12,7 +12,7 @@
  * factors cannot drift apart.
  */
 
-import { useEffect, useCallback, useMemo, useState } from 'react'
+import { useEffect, useCallback, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { restingVerdict } from './resting-verdict'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
@@ -40,6 +40,7 @@ import { directionsUrl, formatDistance, walkingMinutes } from '@/lib/world/navig
 import { useWorldData } from './useWorldData'
 import './world-v2.css'
 import { usePilot } from './PilotProvider'
+import { canAccess, type Plan } from '@/lib/feature-gates'
 
 const COPY = {
   pt: {
@@ -82,6 +83,8 @@ const COPY = {
     layerRadar: 'Chuva',
     layerAlerts: 'Alertas',
     layerWind: 'Vento',
+    premiumTag: 'PREMIUM',
+    windPremiumNote: 'Vento animado exige Premium.',
     layerCyclone: 'Ciclone',
     layerFlood: 'Flood',
     layerSurge: 'Surge',
@@ -160,6 +163,8 @@ const COPY = {
     layerRadar: 'Rain',
     layerAlerts: 'Alerts',
     layerWind: 'Wind',
+    premiumTag: 'PREMIUM',
+    windPremiumNote: 'Animated wind requires Premium.',
     layerCyclone: 'Cyclone',
     layerFlood: 'Flood',
     layerSurge: 'Surge',
@@ -231,17 +236,55 @@ export default function WorldV2() {
   const pilot = usePilot()
   const { registerCourse, registerContext } = pilot
   const [recenterNonce, setRecenterNonce] = useState(0)
+  const [plan, setPlan] = useState<Plan | null>(null)
+  const storedLayersRef = useRef<Partial<MapLayerState> | null>(null)
+
+  useEffect(() => {
+    fetch('/api/profile/plan', { cache: 'no-store' })
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => setPlan((d?.plan ?? 'free') as Plan))
+      .catch(() => setPlan('free'))
+  }, [])
 
   /** Camadas ligadas pelo usuário — leitura, não dado (D-078). */
   const [layers, setLayers] = useState<MapLayerState>(DEFAULT_LAYERS)
   useEffect(() => {
     try {
       const stored = localStorage.getItem('eos-map-layers')
-      if (stored) setLayers(current => ({ ...current, ...JSON.parse(stored) }))
+      if (stored) {
+        const parsed = JSON.parse(stored) as Partial<MapLayerState>
+        storedLayersRef.current = parsed
+        setLayers(current => ({ ...current, ...parsed, wind: false }))
+      }
     } catch { /* private mode ou JSON velho */ }
   }, [])
+  const windAllowed = canAccess('animated_wind', plan ?? 'free')
+  useEffect(() => {
+    if (plan === null) return
+    if (windAllowed && storedLayersRef.current?.wind) {
+      setLayers(current => ({ ...current, wind: true }))
+      return
+    }
+    if (!windAllowed) {
+      setLayers(current => {
+        if (!current.wind) return current
+        const next = { ...current, wind: false }
+        try { localStorage.setItem('eos-map-layers', JSON.stringify(next)) } catch { /* private mode */ }
+        return next
+      })
+    }
+  }, [plan, windAllowed])
   const toggleLayer = (key: keyof MapLayerState) => {
     haptic.selection()
+    if (key === 'wind' && !windAllowed) {
+      setLayers(current => {
+        const next = { ...current, wind: false }
+        try { localStorage.setItem('eos-map-layers', JSON.stringify(next)) } catch { /* private mode */ }
+        return next
+      })
+      window.location.href = '/settings'
+      return
+    }
     setLayers(current => {
       const next = { ...current, [key]: !current[key] }
       try { localStorage.setItem('eos-map-layers', JSON.stringify(next)) } catch { /* private mode */ }
@@ -265,7 +308,8 @@ export default function WorldV2() {
     return () => window.removeEventListener('keydown', sair)
   }, [layersOpen])
 
-  const { cyclones, wind, alerts: locatedAlerts } = useWeatherLayers(coords, layers)
+  const effectiveLayers = useMemo(() => ({ ...layers, wind: layers.wind && windAllowed }), [layers, windAllowed])
+  const { cyclones, wind, alerts: locatedAlerts } = useWeatherLayers(coords, effectiveLayers)
 
   /**
    * Levar a câmera até um alerta.
@@ -528,7 +572,7 @@ export default function WorldV2() {
           focus={focus}
           cyclones={cyclones}
           wind={wind}
-          layers={layers}
+          layers={effectiveLayers}
           onMemberTap={setTappedMember}
           shelters={(shelterSnapshot?.shelters ?? []).map(s => ({ id: s.id, name: s.name, lat: s.lat, lng: s.lng, distanceKm: s.distanceKm }))}
           onMapInteraction={() => setDetent('peek')}
@@ -675,7 +719,10 @@ export default function WorldV2() {
               <div className="row">
                 <button type="button" className={`wv2-chip${layers.radar ? ' on' : ''}`} onClick={() => toggleLayer('radar')}>{c.layerRadar}</button>
                 <button type="button" className={`wv2-chip${layers.alerts ? ' on' : ''}`} onClick={() => toggleLayer('alerts')}>{c.layerAlerts}</button>
-                <button type="button" className={`wv2-chip${layers.wind ? ' on' : ''}`} onClick={() => toggleLayer('wind')}>{c.layerWind}</button>
+                <button type="button" className={`wv2-chip${effectiveLayers.wind ? ' on' : ''}${!windAllowed ? ' premium' : ''}`} onClick={() => toggleLayer('wind')}>
+                  {c.layerWind}
+                  {!windAllowed && <span>{c.premiumTag}</span>}
+                </button>
                 <button type="button" className={`wv2-chip${layers.cyclone ? ' on' : ''}`} onClick={() => toggleLayer('cyclone')}>{c.layerCyclone}</button>
                 <button type="button" className={`wv2-chip${layers.flood ? ' on' : ''}`} onClick={() => toggleLayer('flood')}>{c.layerFlood}</button>
                 <button type="button" className={`wv2-chip${layers.surge ? ' on' : ''}`} onClick={() => toggleLayer('surge')}>{c.layerSurge}</button>
@@ -683,7 +730,8 @@ export default function WorldV2() {
                 <button type="button" className={`wv2-chip${layers.tornado ? ' on' : ''}`} onClick={() => toggleLayer('tornado')}>{c.layerTornado}</button>
               </div>
 
-              {layers.wind && wind?.atUser && (
+              {!windAllowed && <p className="t-foot ink-3">{c.windPremiumNote}</p>}
+              {effectiveLayers.wind && wind?.atUser && (
                 <p className="t-foot ink-2">
                   {c.windHere}: {wind.atUser.speedKmh} km/h {headingLabel(wind.atUser.fromDeg, metric) ?? ''} · {windMeaning(wind.atUser.speedKmh, metric)}
                 </p>

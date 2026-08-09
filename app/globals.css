@@ -309,7 +309,7 @@ textarea.input { resize: vertical; min-height: 100px; line-height: 1.6; }
 .nb-badge::before {
   content: "";
   position: absolute;
-  inset: -8px;
+  inset: -2px;
   border-radius: 999px;
 }
 .nb-badge:focus-visible {

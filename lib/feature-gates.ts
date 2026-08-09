@@ -24,6 +24,7 @@ export const FEATURE_GATES = {
   monitoring_fda: 'premium',       // FDA drug + food recalls
   monitoring_push: 'premium',      // Push notifications for critical alerts
   monitoring_history: 'premium',   // 30-day alert history
+  animated_wind: 'premium',        // D-141: animated wind layer renderer
 
   // ── Circles ───────────────────────────────────────────────────────────────
   circulos: 'family',              // CREATE a circle (D-041: joining an invite is free)

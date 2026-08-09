@@ -32,6 +32,7 @@ const FAMILY_FEATURES: FeatureRow[] = [
   { key: 'settings.planFeatures.monitoring_multilocal', requiredPlan: 'family' },
 ]
 const PREMIUM_FEATURES: FeatureRow[] = [
+  { key: 'settings.planFeatures.animated_wind', requiredPlan: 'premium' },
   { key: 'settings.planFeatures.monitoring_push', requiredPlan: 'premium' },
   { key: 'settings.planFeatures.monitoring_history', requiredPlan: 'premium' },
   { key: 'settings.planFeatures.monitoring_cdc', requiredPlan: 'premium' },

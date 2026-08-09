@@ -5,6 +5,21 @@
 
 ---
 
+## Camada de vento animado mora no WorldMap existente (2026-08-09)
+
+D-141 decidiu que vento animado não vira outro mapa. A camada `wind` da World v2
+é a superfície canônica: MapLibre continua sendo o mapa, e um canvas overlay
+imperativo desenha partículas quando, e somente quando, a camada premium está
+ativa.
+
+Regra de continuidade: usuário free não pode iniciar requisição/renderer pesado
+ao tocar em `Vento`; deve ver `PREMIUM` e ir para upgrade. A fonte v1 pode ser a
+grade pública Open-Meteo já existente, desde que o contrato interno seja vetor
+U/V. HRRR/NOAA e GFS entram depois como providers do mesmo contrato, não como
+novo produto.
+
+---
+
 ## EOS Platform: quatro camadas, não quatro produtos (2026-08-03)
 
 D-084 resolveu a pergunta de plataforma: levar EOS para Web, App Store, Google

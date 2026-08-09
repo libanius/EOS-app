@@ -10,9 +10,9 @@
  * único GET — o que mantém a feature dentro do orçamento de "keyless por padrão"
  * que rege os provedores do EOS.
  *
- * NÃO é um modelo de vento interpolado nem uma animação de partículas. São
- * leituras pontuais, desenhadas como setas, e a UI diz isso. Uma animação bonita
- * insinuaria uma resolução que estes dados não têm.
+ * D-141: o contrato interno também carrega vetor U/V. A fonte v1 continua sendo
+ * uma grade pública Open-Meteo, mas o renderer não fica preso a ela: HRRR/GFS
+ * podem entrar depois entregando o mesmo formato vetorial.
  */
 
 export type WindReading = {
@@ -20,14 +20,26 @@ export type WindReading = {
   lng: number
   /** km/h no nível de 10 m — a altura padrão de medição meteorológica. */
   speedKmh: number
+  /** mph derivado do vetor, usado pela legenda/popup da camada animada. */
+  speedMph: number
   gustKmh: number | null
+  gustMph: number | null
   /** Direção DE ONDE o vento vem, em graus verdadeiros (convenção meteorológica). */
   fromDeg: number
+  /** Direção PARA ONDE o vento sopra, em graus verdadeiros. */
+  toDeg: number
+  /** Componente leste-oeste em m/s. Positivo = leste. */
+  uMps: number
+  /** Componente norte-sul em m/s. Positivo = norte. */
+  vMps: number
 }
 
 export type WindSnapshot = {
   source: 'Open-Meteo'
+  provider: 'open-meteo-current-grid'
+  model: 'Open-Meteo current 10m wind'
   fetchedAt: string
+  frames: Array<{ forecastHour: 0; label: 'NOW'; validAt: string }>
   readings: WindReading[]
   /** Leitura no ponto central, para o texto da UI. */
   atUser: WindReading | null
@@ -70,6 +82,19 @@ export function buildGrid(centre: { lat: number; lng: number }): Array<[number, 
  */
 export const blowingToward = (fromDeg: number) => (fromDeg + 180) % 360
 
+export function vectorFromSpeedDirection(speedKmh: number, fromDeg: number) {
+  const speedMps = speedKmh / 3.6
+  const rad = fromDeg * Math.PI / 180
+  const uMps = -speedMps * Math.sin(rad)
+  const vMps = -speedMps * Math.cos(rad)
+  return {
+    uMps,
+    vMps,
+    toDeg: blowingToward(fromDeg),
+    speedMph: Math.round(speedKmh * 0.621371),
+  }
+}
+
 export async function getWind(
   centre: { lat: number; lng: number },
   signal?: AbortSignal,
@@ -89,7 +114,7 @@ export async function getWind(
   }).catch(() => null)
 
   if (!response?.ok) {
-    return { source: 'Open-Meteo', fetchedAt, readings: [], atUser: null, error: 'wind_unreachable' }
+    return { source: 'Open-Meteo', provider: 'open-meteo-current-grid', model: 'Open-Meteo current 10m wind', fetchedAt, frames: [{ forecastHour: 0, label: 'NOW', validAt: fetchedAt }], readings: [], atUser: null, error: 'wind_unreachable' }
   }
 
   const data = (await response.json().catch(() => null)) as unknown
@@ -109,13 +134,19 @@ export async function getWind(
   const seen = new Set<string>()
   const readings: WindReading[] = items
     .filter(i => typeof i.latitude === 'number' && typeof i.current?.wind_direction_10m === 'number')
-    .map(i => ({
-      lat: i.latitude as number,
-      lng: i.longitude as number,
-      speedKmh: Math.round(i.current?.wind_speed_10m ?? 0),
-      gustKmh: typeof i.current?.wind_gusts_10m === 'number' ? Math.round(i.current.wind_gusts_10m) : null,
-      fromDeg: i.current?.wind_direction_10m as number,
-    }))
+    .map(i => {
+      const speedKmh = Math.round(i.current?.wind_speed_10m ?? 0)
+      const gustKmh = typeof i.current?.wind_gusts_10m === 'number' ? Math.round(i.current.wind_gusts_10m) : null
+      return {
+        lat: i.latitude as number,
+        lng: i.longitude as number,
+        speedKmh,
+        gustKmh,
+        gustMph: gustKmh === null ? null : Math.round(gustKmh * 0.621371),
+        fromDeg: i.current?.wind_direction_10m as number,
+        ...vectorFromSpeedDirection(speedKmh, i.current?.wind_direction_10m as number),
+      }
+    })
     .filter(r => {
       const key = `${r.lat.toFixed(4)},${r.lng.toFixed(4)}`
       if (seen.has(key)) return false
@@ -124,7 +155,7 @@ export async function getWind(
     })
 
   if (!readings.length) {
-    return { source: 'Open-Meteo', fetchedAt, readings: [], atUser: null, error: 'wind_empty' }
+    return { source: 'Open-Meteo', provider: 'open-meteo-current-grid', model: 'Open-Meteo current 10m wind', fetchedAt, frames: [{ forecastHour: 0, label: 'NOW', validAt: fetchedAt }], readings: [], atUser: null, error: 'wind_empty' }
   }
 
   // O ponto mais próximo do centro é o que a UI cita em texto.
@@ -134,7 +165,7 @@ export async function getWind(
     return d < bd ? r : best
   }, readings[0])
 
-  return { source: 'Open-Meteo', fetchedAt, readings, atUser }
+  return { source: 'Open-Meteo', provider: 'open-meteo-current-grid', model: 'Open-Meteo current 10m wind', fetchedAt, frames: [{ forecastHour: 0, label: 'NOW', validAt: fetchedAt }], readings, atUser }
 }
 
 /** Escala de Beaufort resumida — o que aquele número significa na prática. */
