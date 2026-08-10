@@ -79,6 +79,7 @@ const COPY = {
     base: 'Base do mapa',
     darkBase: 'Escuro',
     satCap: 'Satélite',
+    windBase: 'Vento',
     darkCap: 'Camadas',
     layerRadar: 'Chuva',
     layerAlerts: 'Alertas',
@@ -159,6 +160,7 @@ const COPY = {
     base: 'Map base',
     darkBase: 'Dark',
     satCap: 'Satellite',
+    windBase: 'Wind',
     darkCap: 'Layers',
     layerRadar: 'Rain',
     layerAlerts: 'Alerts',
@@ -308,7 +310,44 @@ export default function WorldV2() {
     return () => window.removeEventListener('keydown', sair)
   }, [layersOpen])
 
-  const effectiveLayers = useMemo(() => ({ ...layers, wind: layers.wind && windAllowed }), [layers, windAllowed])
+  /**
+   * Base do mapa. D-144: Vento é modo premium de mapa, não chip empilhado em
+   * cima de Satélite/Escuro.
+   */
+  const [mapBase, setMapBase] = useState<MapBaseMode>('dark')
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('eos-map-base')
+      if (stored === 'dark' || stored === 'satellite' || stored === 'wind') setMapBase(stored)
+    } catch { /* private mode */ }
+  }, [])
+  const setBase = (next: MapBaseMode) => {
+    haptic.selection()
+    if (next === 'wind' && !windAllowed) {
+      setLayers(current => {
+        const cleaned = { ...current, wind: false }
+        try { localStorage.setItem('eos-map-layers', JSON.stringify(cleaned)) } catch { /* private mode */ }
+        return cleaned
+      })
+      window.location.href = '/settings'
+      return
+    }
+    setLayers(current => {
+      const nextLayers = { ...current, wind: next === 'wind' }
+      try { localStorage.setItem('eos-map-layers', JSON.stringify(nextLayers)) } catch { /* private mode */ }
+      return nextLayers
+    })
+    setMapBase(next)
+    setLayersOpen(false)
+    try { localStorage.setItem('eos-map-base', next) } catch { /* private mode */ }
+  }
+  useEffect(() => {
+    if (plan === null || windAllowed || mapBase !== 'wind') return
+    setMapBase('dark')
+    try { localStorage.setItem('eos-map-base', 'dark') } catch { /* private mode */ }
+  }, [plan, windAllowed, mapBase])
+
+  const effectiveLayers = useMemo(() => ({ ...layers, wind: (layers.wind || mapBase === 'wind') && windAllowed }), [layers, mapBase, windAllowed])
   const { cyclones, wind, alerts: locatedAlerts } = useWeatherLayers(coords, effectiveLayers)
 
   /**
@@ -367,23 +406,6 @@ export default function WorldV2() {
     setFocus({ lat: alert.lat, lng: alert.lng, label: alert.title, nonce: Date.now(), kind: 'alert' })
   }
 
-  /**
-   * Camada do mapa. Escuro é o padrão operacional; satélite existe porque o
-   * traço de rua não distingue prédios de um mesmo condomínio, e a imagem sim.
-   * A escolha fica no aparelho: é preferência de leitura, não dado de conta.
-   */
-  const [mapBase, setMapBase] = useState<MapBaseMode>('dark')
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem('eos-map-base')
-      if (stored === 'dark' || stored === 'satellite') setMapBase(stored)
-    } catch { /* private mode */ }
-  }, [])
-  const setBase = (next: MapBaseMode) => {
-    haptic.selection()
-    setMapBase(next)
-    try { localStorage.setItem('eos-map-base', next) } catch { /* private mode */ }
-  }
   const [tappedMember, setTappedMember] = useState<string | null>(null)
   const familyRaw = useCircleFamily(language === 'pt', coords, avatarUrl)
   // A failed instrument must actually be blind, not quietly still working.
@@ -713,16 +735,16 @@ export default function WorldV2() {
               <div className="row">
                 <button type="button" className={`wv2-chip${mapBase === 'dark' ? ' on' : ''}`} onClick={() => setBase('dark')}>{c.darkBase}</button>
                 <button type="button" className={`wv2-chip${mapBase === 'satellite' ? ' on' : ''}`} onClick={() => setBase('satellite')}>{c.satCap}</button>
+                <button type="button" className={`wv2-chip${mapBase === 'wind' ? ' on' : ''}${!windAllowed ? ' premium' : ''}`} onClick={() => setBase('wind')}>
+                  {c.windBase}
+                  {!windAllowed && <span>{c.premiumTag}</span>}
+                </button>
               </div>
 
               <p className="t-caps ink-3">{c.layersLabel}</p>
               <div className="row">
                 <button type="button" className={`wv2-chip${layers.radar ? ' on' : ''}`} onClick={() => toggleLayer('radar')}>{c.layerRadar}</button>
                 <button type="button" className={`wv2-chip${layers.alerts ? ' on' : ''}`} onClick={() => toggleLayer('alerts')}>{c.layerAlerts}</button>
-                <button type="button" className={`wv2-chip${effectiveLayers.wind ? ' on' : ''}${!windAllowed ? ' premium' : ''}`} onClick={() => toggleLayer('wind')}>
-                  {c.layerWind}
-                  {!windAllowed && <span>{c.premiumTag}</span>}
-                </button>
                 <button type="button" className={`wv2-chip${layers.cyclone ? ' on' : ''}`} onClick={() => toggleLayer('cyclone')}>{c.layerCyclone}</button>
                 <button type="button" className={`wv2-chip${layers.flood ? ' on' : ''}`} onClick={() => toggleLayer('flood')}>{c.layerFlood}</button>
                 <button type="button" className={`wv2-chip${layers.surge ? ' on' : ''}`} onClick={() => toggleLayer('surge')}>{c.layerSurge}</button>

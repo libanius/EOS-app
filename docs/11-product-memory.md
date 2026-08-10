@@ -36,6 +36,14 @@ Follow-up de D-143: zoom <= 4.5 deve forçar modo global (`latSpan=170`,
 MapLibre mostra cópias do mundo. Campo escalar muito sutil não serve: usar blend
 normal/opacidade legível para que o mapa realmente mude quando `Vento` liga.
 
+D-144 substitui a UX: `Vento` não deve ser chip de camada sobreposto a
+`Escuro/Satélite`; ele é modo premium de mapa. O painel de base deve mostrar
+`Escuro`, `Satélite` e `Vento`. Clicar em `Vento` fecha o painel, remonta o mapa
+em câmera mundial plana e liga o renderer com grid global mais denso (`25x25`).
+Ao sair para `Escuro`/`Satélite`, o modo vento desliga. Durante troca de base,
+destruir o `WindParticleLayer` antigo; ele não pode ficar preso a um MapLibre
+removido. Campo escalar não redesenha durante `move/zoom` contínuo.
+
 ---
 
 ## EOS Platform: quatro camadas, não quatro produtos (2026-08-03)

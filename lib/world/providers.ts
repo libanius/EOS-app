@@ -24,7 +24,7 @@ export type MapProviderConfig = {
   terrainSource?: string
 }
 
-export type MapBaseMode = 'hybrid' | 'dark' | 'satellite'
+export type MapBaseMode = 'hybrid' | 'dark' | 'satellite' | 'wind'
 
 // Keyless, MapLibre-compatible dark vector basemap (CARTO). Good enough for the
 // automotive-grade dark instrument look without any API key.
@@ -94,20 +94,23 @@ export function getMapConfig(base: MapBaseMode = 'hybrid'): MapProviderConfig {
   // the user can restore the original operational vector look in production.
   const isDark = base === 'dark'
   const isSatellite = base === 'satellite'
+  const isWind = base === 'wind'
   const styleUrl = isDark
     ? CARTO_DARK
     : isSatellite
       ? esriSatelliteStyle()
-      : styleOverride || (key ? `https://api.maptiler.com/maps/hybrid/style.json?key=${key}` : CARTO_DARK)
+      : isWind
+        ? CARTO_DARK
+        : styleOverride || (key ? `https://api.maptiler.com/maps/hybrid/style.json?key=${key}` : CARTO_DARK)
 
   return {
     styleUrl,
-    center: PARKLAND,
-    zoom: 13.1,
-    pitch: 56, // pitched automotive perspective (doc 16 §11.1: ~45–70°)
-    bearing: -18,
-    hasTerrain: !isDark && !isSatellite && Boolean(key),
-    terrainSource: !isDark && !isSatellite && key
+    center: isWind ? [0, 18] : PARKLAND,
+    zoom: isWind ? 1.55 : 13.1,
+    pitch: isWind ? 0 : 56, // pitched automotive perspective (doc 16 §11.1: ~45–70°)
+    bearing: isWind ? 0 : -18,
+    hasTerrain: !isDark && !isSatellite && !isWind && Boolean(key),
+    terrainSource: !isDark && !isSatellite && !isWind && key
       ? `https://api.maptiler.com/tiles/terrain-rgb-v2/tiles.json?key=${key}`
       : undefined,
   }

@@ -72,6 +72,37 @@ pode evoluir sem trocar a superfície.
 
 ---
 
+## D-144 — Vento é modo de mapa premium, não chip empilhado com satélite
+
+**Date**: 2026-08-10
+**Status**: DECIDED
+**Roadmap**: WV2-T16
+
+**Context**: O teste de uso real mostrou que tratar `Vento` como mais uma
+camada empilhada sobre `Escuro`/`Satélite` criou uma experiência confusa e pesada:
+o usuário esperava entrar numa leitura mundial do vento, mas via apenas uma
+animação sobre a câmera atual. Além disso, renderizar campo escalar durante
+pan/zoom travava o mapa.
+
+**Decision**:
+
+1. `Vento` passa a ser uma opção de base/visualização premium junto de
+   `Escuro` e `Satélite`.
+2. Ao selecionar `Vento`, o app liga o renderer premium, troca para câmera
+   mundial plana e mostra o comportamento global do vento.
+3. Ao voltar para `Escuro` ou `Satélite`, o app desliga o modo de vento para não
+   sobrepor experiências incompatíveis.
+4. O campo escalar não deve recalcular durante drag/zoom contínuo; redesenha
+   depois que a câmera estabiliza ou quando chegam novos dados.
+5. A grade global precisa ser mais densa e buscada em blocos para representar
+   regiões diferentes do mundo sem depender de raster tile.
+
+**Consequence**: a experiência passa a seguir o padrão mental do Windfinder:
+escolher `Vento` muda o modo de leitura do mapa, não apenas adiciona um efeito.
+Premium continua bloqueando renderer/fetch/canvas para usuário free.
+
+---
+
 ## D-141 — Vento animado é camada premium no mapa existente
 
 **Date**: 2026-08-09

@@ -443,6 +443,7 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
   const windScalarCanvasRef = useRef<HTMLCanvasElement>(null)
   const windLayerRef = useRef<WindParticleLayer | null>(null)
   const [windPopup, setWindPopup] = useState<WindPopup | null>(null)
+  const [mapReadyNonce, setMapReadyNonce] = useState(0)
 
   const ensureWindLayer = () => {
     const map = mapRef.current
@@ -790,7 +791,7 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
         const maplibregl = (await import('maplibre-gl')).default
         if (cancelled || !ref.current) return
         const cfg = getMapConfig(mapBase)
-        const center: [number, number] = coords ? [coords.lng, coords.lat] : cfg.center
+        const center: [number, number] = mapBase === 'wind' ? cfg.center : coords ? [coords.lng, coords.lat] : cfg.center
         centerRef.current = center
 
         map = new maplibregl.Map({
@@ -798,6 +799,7 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
           style: cfg.styleUrl,
           center, zoom: cfg.zoom, pitch: cfg.pitch, bearing: cfg.bearing,
           attributionControl: false, interactive: true, maxPitch: 75,
+          renderWorldCopies: true,
         })
         mapRef.current = map
         /**
@@ -988,6 +990,7 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
           map.addLayer({ id: 'eos-course', type: 'line', source: 'eos-course', layout: { 'line-cap': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': 3, 'line-opacity': 0.9, 'line-dasharray': [1.6, 1.6] } })
 
           readyRef.current = true
+          setMapReadyNonce(n => n + 1)
           void placeOverlays()
           if (plateRef.current) plateRef.current.style.opacity = '0'
           loadRadar()
@@ -1002,6 +1005,9 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
     const people = peopleMarkersRef.current
     return () => {
       cancelled = true
+      readyRef.current = false
+      windLayerRef.current?.destroy()
+      windLayerRef.current = null
       people.forEach(entry => entry.marker.remove())
       people.clear()
       staticMarkersRef.current.forEach(m => m.remove())
@@ -1012,7 +1018,10 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
       searchMarkerRef.current = null
       courseMarkerRef.current?.remove()
       courseMarkerRef.current = null
+      const exposed = window as unknown as { __eosMap?: MLMap }
+      if (exposed.__eosMap === map) delete exposed.__eosMap
       if (map) map.remove()
+      if (mapRef.current === map) mapRef.current = null
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapBase])
@@ -1130,7 +1139,7 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
           }))
         : [],
     })
-  }, [wind, layers?.wind])
+  }, [wind, layers?.wind, mapReadyNonce])
 
   useEffect(() => {
     ensureWindLayer()
@@ -1144,16 +1153,16 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
   useEffect(() => {
     const layer = ensureWindLayer()
     if (!layer) return
-    layer.setData(wind?.readings ?? [])
-    if (layers?.wind && wind?.readings.length) layer.enable()
+    if (wind?.readings?.length) layer.setData(wind.readings)
+    if (layers?.wind) layer.enable()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [wind])
+  }, [wind, layers?.wind])
 
   useEffect(() => {
     const map = mapRef.current
     const layer = ensureWindLayer()
     if (!map || !layer) return
-    if (layers?.wind && wind?.readings.length) layer.enable()
+    if (layers?.wind) layer.enable()
     else {
       layer.disable()
       setWindPopup(null)
@@ -1168,7 +1177,7 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
       window.removeEventListener('resize', update)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [layers?.wind, wind?.readings.length])
+  }, [layers?.wind, wind?.readings.length, mapReadyNonce])
 
   useEffect(() => {
     const map = mapRef.current
@@ -1185,11 +1194,11 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
       const bounds = map.getBounds()
       const lngSpan = Math.min(360, Math.abs(bounds.getEast() - bounds.getWest()))
       const latSpan = Math.abs(bounds.getNorth() - bounds.getSouth())
-      const globalWind = map.getZoom() <= 4.5
+      const globalWind = mapBase === 'wind' || map.getZoom() <= 4.5
       const latSpanRequest = globalWind ? 170 : Math.min(170, Math.max(0.35, latSpan * 1.2))
       const lngSpanRequest = globalWind ? 360 : Math.min(360, Math.max(0.35, lngSpan * 1.2))
       const broadSpan = Math.max(latSpanRequest, lngSpanRequest)
-      const grid = globalWind ? 17 : broadSpan > 90 ? 17 : broadSpan > 35 ? 15 : broadSpan > 10 ? 13 : broadSpan > 3 ? 11 : 9
+      const grid = globalWind ? 25 : broadSpan > 90 ? 17 : broadSpan > 35 ? 15 : broadSpan > 10 ? 13 : broadSpan > 3 ? 11 : 9
       fetch(`/api/world/wind?lat=${center.lat.toFixed(4)}&lng=${center.lng.toFixed(4)}&latSpan=${latSpanRequest.toFixed(2)}&lngSpan=${lngSpanRequest.toFixed(2)}&grid=${grid}`, {
         signal: controller.signal,
         cache: 'no-store',
@@ -1217,7 +1226,7 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
       map.off('zoomend', schedule)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [layers?.wind])
+  }, [layers?.wind, mapBase, mapReadyNonce])
 
   useEffect(() => {
     const map = mapRef.current

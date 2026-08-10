@@ -135,6 +135,7 @@ product phase sequenced.
 | WV2-T13 | Camada premium de vento animado no mapa existente | ✅ COMPLETE | 2026-08-09 — D-141; sem mapa novo, canvas lazy, contrato vetorial U/V, popup WIND, gate Premium e Open-Meteo como fonte pública v1. |
 | WV2-T14 | Refazer vento animado como `WindParticleLayer` com bilinear e sem flicker | ✅ COMPLETE | 2026-08-10 — D-142; layer engine imperativo, grid regular 9×9+ por viewport, bilinear, sem React por frame e sem wash piscando. |
 | WV2-T15 | Expandir vento para campo escalar premium no WorldMap inteiro | ✅ COMPLETE | 2026-08-10 — D-143; canvas escalar cliente a partir de grid numérico, sem raster tile layer, com partículas vetoriais por cima e gate Premium preservado. |
+| WV2-T16 | Transformar vento em modo de mapa premium mundial | ✅ COMPLETE | 2026-08-10 — D-144; `Escuro/Satélite/Vento` como bases mutuamente claras, câmera mundial e grid global mais denso sem travar pan/zoom. |
 
 ---
 

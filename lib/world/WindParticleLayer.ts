@@ -47,7 +47,7 @@ const DEFAULT_CONFIG: WindParticleLayerConfig = {
   maxAgeMin: 42,
   maxAgeJitter: 78,
   scalarOpacity: 0.78,
-  scalarMaxDpr: 1.25,
+  scalarMaxDpr: 0.72,
 }
 
 function uniqSorted(values: number[]) {
@@ -230,7 +230,6 @@ export class WindParticleLayer {
   updateViewport() {
     if (!this.enabled) return
     this.resize()
-    this.scheduleScalarRender()
   }
 
   sample(lng: number, lat: number) {

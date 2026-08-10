@@ -179,16 +179,19 @@ await abrirCamadas(page)
 await page.waitForTimeout(600)
 const painel = page.locator('[role="group"][aria-label="Camadas"]')
 const chips = await painel.locator('.wv2-chip').allInnerTexts().catch(() => [])
-chips.includes('Chuva') && chips.includes('Vento') && chips.includes('Ciclone') && chips.includes('Flood') && chips.includes('Surge') && chips.includes('Vento impacto') && chips.includes('Tornado') && chips.includes('Satélite')
+chips.includes('Chuva') && chips.includes('Vento') && chips.includes('Ciclone') && chips.includes('Flood') && chips.includes('Surge') && chips.includes('Vento impacto') && chips.includes('Tornado') && chips.includes('Satélite') && chips.includes('Escuro')
   ? ok('painel de camadas com base e camadas', chips.join(' · '))
   : no('painel incompleto', JSON.stringify(chips))
 
 // ── 5. ligar o vento inicia o campo escalar e o layer bilinear de partículas ─
 await painel.locator('button', { hasText: /^Vento$/ }).click()
 await page.waitForTimeout(6000)
-// Afasta um pouco a câmera: a asserção é sobre VER várias direções, e num zoom
-// de quarteirão nem a grade mais fina cabe na tela.
-await page.evaluate(() => window.__eosMap?.setZoom(4))
+await page.waitForFunction(() => {
+  try { return Boolean(window.__eosMap?.loaded?.() && window.__eosMap?.getSource?.('eos-wind')) } catch { return false }
+}, null, { timeout: 12000 }).catch(() => {})
+// D-144: Vento é um modo de mapa. O clique já deve levar para câmera mundial;
+// o setZoom abaixo só estabiliza o teste se o navegador restaurou zoom antigo.
+await page.evaluate(() => window.__eosMap?.setZoom(Math.min(window.__eosMap?.getZoom?.() ?? 4, 4)))
 await page.waitForTimeout(4500)
 await page.waitForFunction(() => window.__eosWindLayer?.active === true, null, { timeout: 8000 }).catch(() => {})
 // Perguntar ao MapLibre o que ele RENDERIZOU, não o que foi entregue à fonte.
@@ -196,7 +199,11 @@ await page.waitForFunction(() => window.__eosWindLayer?.active === true, null, {
 // invisível — foi assim que o bug do glifo ausente quase escapou.
 const setas = await page.evaluate(() => {
   const map = window.__eosMap
-  if (!map) return { erro: 'mapa não exposto' }
+  try {
+    if (!map?.loaded?.() || !map?.getSource?.('eos-wind')) return { erro: 'mapa ou fonte de vento não expostos' }
+  } catch {
+    return { erro: 'mapa removido durante troca de base' }
+  }
   const naFonte = map.querySourceFeatures('eos-wind')
   const desenhadas = map.queryRenderedFeatures({ layers: ['eos-wind'] })
   return {
@@ -206,10 +213,28 @@ const setas = await page.evaluate(() => {
   }
 })
 const animado = await page.evaluate(() => window.__eosWindLayer ?? { active: false })
-animado.active === true && animado.mode === 'bilinear' && animado.scalar === true && animado.wrapsWorld === true && (animado.scalarPixels ?? 0) > 0 && (animado.particles ?? 0) > 1000 && typeof animado.grid === 'string'
+animado.active === true && animado.mode === 'bilinear' && animado.scalar === true && animado.wrapsWorld === true && (animado.scalarPixels ?? 0) > 0 && (animado.particles ?? 0) > 1000 && animado.grid === '25x25'
   ? ok('vento escalar e animado bilinear ativos no mapa', `${animado.grid} · ${animado.scalarPixels} px escalares · ${animado.particles} partículas · ${setas.desenhadas} setas fallback`)
   : no('vento não desenhou', JSON.stringify({ setas, animado }))
 
+const mapBox = await page.locator('.wv2-map canvas.maplibregl-canvas').boundingBox()
+if (mapBox) {
+  const beforeZoom = await page.evaluate(() => window.__eosMap?.getZoom?.() ?? null)
+  const t0 = Date.now()
+  await page.mouse.move(mapBox.x + mapBox.width * 0.5, mapBox.y + 120)
+  await page.mouse.wheel(0, -500)
+  await page.waitForTimeout(700)
+  const afterZoom = await page.evaluate(() => window.__eosMap?.getZoom?.() ?? null)
+  const elapsed = Date.now() - t0
+  beforeZoom !== null && afterZoom !== null && afterZoom > beforeZoom + 0.15 && elapsed < 2500
+    ? ok('modo vento continua interativo', `zoom ${elapsed}ms · ${beforeZoom.toFixed(2)} → ${afterZoom.toFixed(2)}`)
+    : no('modo vento travou ou não respondeu ao zoom', `elapsed=${elapsed} before=${beforeZoom} after=${afterZoom}`)
+} else {
+  no('canvas do mapa ausente no modo vento')
+}
+
+await abrirCamadas(page)
+await page.waitForTimeout(400)
 await painel.locator('button', { hasText: /^Vento impacto$/ }).click()
 await page.waitForTimeout(900)
 const impacto = await page.evaluate(() => {

@@ -88,7 +88,7 @@ function rangeAround(center: number, span: number, min: number, max: number): [n
 }
 
 export function buildGrid(centre: { lat: number; lng: number }, options: WindGridOptions = {}): Array<[number, number]> {
-  const grid = Math.round(clamp(options.grid ?? GRID, 3, 17))
+  const grid = Math.round(clamp(options.grid ?? GRID, 3, 25))
   const baseSpan = options.spanDeg ?? SPAN_DEG
   const latSpan = clamp(options.latSpanDeg ?? baseSpan, 0.15, 170)
   const lngSpan = clamp(options.lngSpanDeg ?? baseSpan, 0.15, 360)
@@ -134,29 +134,34 @@ export async function getWind(
 ): Promise<WindSnapshot> {
   const fetchedAt = new Date().toISOString()
   const grid = buildGrid(centre, options)
-  const params = new URLSearchParams({
-    latitude: grid.map(p => p[0].toFixed(4)).join(','),
-    longitude: grid.map(p => p[1].toFixed(4)).join(','),
-    current: 'wind_speed_10m,wind_direction_10m,wind_gusts_10m',
-    wind_speed_unit: 'kmh',
-  })
+  const chunkSize = 160
+  const chunks: Array<Array<[number, number]>> = []
+  for (let i = 0; i < grid.length; i += chunkSize) chunks.push(grid.slice(i, i + chunkSize))
 
-  const response = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`, {
-    signal,
-    next: { revalidate: 600 },
-  }).catch(() => null)
+  const responses = await Promise.all(chunks.map(async chunk => {
+    const params = new URLSearchParams({
+      latitude: chunk.map(p => p[0].toFixed(4)).join(','),
+      longitude: chunk.map(p => p[1].toFixed(4)).join(','),
+      current: 'wind_speed_10m,wind_direction_10m,wind_gusts_10m',
+      wind_speed_unit: 'kmh',
+    })
+    const response = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`, {
+      signal,
+      next: { revalidate: 600 },
+    }).catch(() => null)
+    if (!response?.ok) return []
+    const data = (await response.json().catch(() => null)) as unknown
+    return (Array.isArray(data) ? data : data ? [data] : []) as Array<{
+      latitude?: number
+      longitude?: number
+      current?: { wind_speed_10m?: number; wind_direction_10m?: number; wind_gusts_10m?: number }
+    }>
+  }))
 
-  if (!response?.ok) {
+  const items = responses.flat()
+  if (!items.length) {
     return { source: 'Open-Meteo', provider: 'open-meteo-current-grid', model: 'Open-Meteo current 10m wind', fetchedAt, frames: [{ forecastHour: 0, label: 'NOW', validAt: fetchedAt }], readings: [], atUser: null, error: 'wind_unreachable' }
   }
-
-  const data = (await response.json().catch(() => null)) as unknown
-  // Com um ponto só o Open-Meteo devolve objeto; com vários, lista.
-  const items = (Array.isArray(data) ? data : data ? [data] : []) as Array<{
-    latitude?: number
-    longitude?: number
-    current?: { wind_speed_10m?: number; wind_direction_10m?: number; wind_gusts_10m?: number }
-  }>
 
   /**
    * O Open-Meteo pode devolver a coordenada da CÉLULA do modelo, não a que foi
