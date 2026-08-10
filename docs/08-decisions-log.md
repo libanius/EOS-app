@@ -4,6 +4,39 @@
 
 ---
 
+## D-142 — Vento animado precisa ser um layer engine, não um efeito dentro do React
+
+**Date**: 2026-08-10
+**Status**: DECIDED
+**Roadmap**: WV2-T14
+
+**Context**: A primeira tentativa de vento animado mostrou movimento, mas ainda
+parecia fake em padrões amplos: o renderer interpolava direto no componente e
+ficava fácil extrapolar demais ou piscar ao trocar dados. O dono trouxe um prompt
+mais preciso baseado em Windfinder/earth.nullschool: canvas overlay, pool de
+partículas, bilinear sobre grid U/V, pause em background e interface
+`enable/disable/updateViewport`.
+
+**Decision**:
+
+1. Criar um módulo independente `WindParticleLayer`, sem estado React por frame.
+2. O módulo recebe `canvas`, `map`, `readings` e expõe `enable()`, `disable()`,
+   `setData()`, `updateViewport()` e `destroy()`.
+3. O grid de dados continua vindo do provider público atual, mas é normalizado
+   em eixos `lat/lng` e interpolado por bilinear quando possível.
+4. Fora do grid, a partícula é reposicionada; o renderer não inventa vento em
+   área sem dado.
+5. A animação usa somente fade de rastro estável. Não haverá raster/wash
+   colorido redesenhado por blocos enquanto isso causar flicker.
+6. Parâmetros de densidade, fade, largura de linha e escala de cor ficam em um
+   objeto de configuração para ajuste posterior.
+
+**Consequence**: o efeito deixa de ser um adorno acoplado ao `WorldMap` e vira
+um adapter visual testável. O visual pode evoluir para HRRR/GFS e mais partículas
+sem misturar fetch, React e render loop.
+
+---
+
 ## D-141 — Vento animado é camada premium no mapa existente
 
 **Date**: 2026-08-09

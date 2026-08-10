@@ -18,6 +18,12 @@ grade pública Open-Meteo já existente, desde que o contrato interno seja vetor
 U/V. HRRR/NOAA e GFS entram depois como providers do mesmo contrato, não como
 novo produto.
 
+D-142 corrige a forma de implementar: vento animado deve viver num módulo
+imperativo `WindParticleLayer`, com `enable/disable/updateViewport`, pool próprio
+de partículas e interpolação bilinear quando a grade permite. React só liga e
+desliga a camada; não participa do frame loop. A camada não deve usar wash
+colorido em blocos se isso voltar a piscar.
+
 ---
 
 ## EOS Platform: quatro camadas, não quatro produtos (2026-08-03)

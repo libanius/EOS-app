@@ -26,6 +26,7 @@ import { getMapConfig } from '@/lib/world/providers'
 import type { CycloneSnapshot } from '@/lib/world/cyclones'
 import type { WindSnapshot } from '@/lib/world/wind'
 import { blowingToward } from '@/lib/world/wind'
+import { WindParticleLayer } from '@/lib/world/WindParticleLayer'
 import type { MapBaseMode } from '@/lib/world/providers'
 
 // D-064 §5: no mock overlays. This component used to invent three family pins
@@ -249,14 +250,6 @@ function windCardinal(deg: number) {
   return WIND_CARDINAL[Math.round((((deg % 360) + 360) % 360) / 22.5) % 16]
 }
 
-function windColor(mph: number) {
-  if (mph >= 40) return 'rgba(255, 69, 58, 0.92)'
-  if (mph >= 30) return 'rgba(255, 159, 10, 0.88)'
-  if (mph >= 20) return 'rgba(255, 214, 10, 0.82)'
-  if (mph >= 10) return 'rgba(122, 215, 255, 0.76)'
-  return 'rgba(185, 245, 255, 0.58)'
-}
-
 type WindPopup = {
   x: number
   y: number
@@ -447,9 +440,16 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
   const centerRef = useRef<[number, number] | null>(null)
   const plateRef = useRef<HTMLDivElement>(null)
   const windCanvasRef = useRef<HTMLCanvasElement>(null)
-  const windFrameRef = useRef<number | null>(null)
-  const windParticlesRef = useRef<Array<{ x: number; y: number; age: number; maxAge: number }>>([])
+  const windLayerRef = useRef<WindParticleLayer | null>(null)
   const [windPopup, setWindPopup] = useState<WindPopup | null>(null)
+
+  const ensureWindLayer = () => {
+    const map = mapRef.current
+    const canvas = windCanvasRef.current
+    if (!map || !canvas || !readyRef.current) return null
+    if (!windLayerRef.current) windLayerRef.current = new WindParticleLayer(map, canvas)
+    return windLayerRef.current
+  }
 
   // Place / reposition family + route overlays from REAL data only (D-064 §5).
   const placeOverlays = async () => {
@@ -1131,153 +1131,89 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
   }, [wind, layers?.wind])
 
   useEffect(() => {
+    ensureWindLayer()
+    return () => {
+      windLayerRef.current?.destroy()
+      windLayerRef.current = null
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    const layer = ensureWindLayer()
+    if (!layer) return
+    layer.setData(wind?.readings ?? [])
+    if (layers?.wind && wind?.readings.length) layer.enable()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wind])
+
+  useEffect(() => {
     const map = mapRef.current
-    const canvas = windCanvasRef.current
-    const readings = wind?.readings ?? []
-    if (!map || !canvas || !readyRef.current || !layers?.wind || !readings.length) {
-      const ctx = canvas?.getContext('2d')
-      if (ctx && canvas) ctx.clearRect(0, 0, canvas.width, canvas.height)
-      if (windFrameRef.current !== null) cancelAnimationFrame(windFrameRef.current)
-      windFrameRef.current = null
-      ;(window as unknown as { __eosWindLayer?: unknown }).__eosWindLayer = { active: false }
-      return
+    const layer = ensureWindLayer()
+    if (!map || !layer) return
+    if (layers?.wind && wind?.readings.length) layer.enable()
+    else {
+      layer.disable()
+      setWindPopup(null)
     }
+    const update = () => layer.updateViewport()
+    map.on('move', update)
+    map.on('zoom', update)
+    window.addEventListener('resize', update)
+    return () => {
+      map.off('move', update)
+      map.off('zoom', update)
+      window.removeEventListener('resize', update)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [layers?.wind, wind?.readings.length])
 
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
+  useEffect(() => {
+    const map = mapRef.current
+    const layer = ensureWindLayer()
+    if (!map || !layer || !readyRef.current || !layers?.wind) return
+    let timer: number | null = null
+    let controller: AbortController | null = null
     let cancelled = false
-    const reduce = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    const mobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 700px)').matches
 
-    const resize = () => {
-      const rect = canvas.getBoundingClientRect()
-      const dpr = Math.min(window.devicePixelRatio || 1, mobile ? 1.5 : 2)
-      const w = Math.max(1, Math.floor(rect.width * dpr))
-      const h = Math.max(1, Math.floor(rect.height * dpr))
-      if (canvas.width !== w || canvas.height !== h) {
-        canvas.width = w
-        canvas.height = h
-      }
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-      return { width: rect.width, height: rect.height }
+    const load = () => {
+      controller?.abort()
+      controller = new AbortController()
+      const center = map.getCenter()
+      const bounds = map.getBounds()
+      const lngSpanRaw = Math.abs(bounds.getEast() - bounds.getWest())
+      const lngSpan = lngSpanRaw > 180 ? 360 - lngSpanRaw : lngSpanRaw
+      const latSpan = Math.abs(bounds.getNorth() - bounds.getSouth())
+      const span = Math.min(30, Math.max(0.35, Math.max(lngSpan, latSpan) * 1.15))
+      const grid = span > 10 ? 13 : span > 3 ? 11 : 9
+      fetch(`/api/world/wind?lat=${center.lat.toFixed(4)}&lng=${center.lng.toFixed(4)}&span=${span.toFixed(2)}&grid=${grid}`, {
+        signal: controller.signal,
+        cache: 'no-store',
+      })
+        .then(r => (r.ok ? r.json() : null))
+        .then((snap: WindSnapshot | null) => {
+          if (!cancelled && snap?.readings?.length) layer.setData(snap.readings)
+        })
+        .catch(() => {})
     }
 
-    const seedParticles = (width: number, height: number) => {
-      const target = reduce ? 90 : Math.min(mobile ? 220 : 420, Math.max(120, Math.floor((width * height) / (mobile ? 1800 : 1300))))
-      const particles = windParticlesRef.current
-      while (particles.length < target) {
-        particles.push({ x: Math.random() * width, y: Math.random() * height, age: Math.random() * 60, maxAge: 45 + Math.random() * 70 })
-      }
-      if (particles.length > target) particles.length = target
+    const schedule = () => {
+      if (timer !== null) window.clearTimeout(timer)
+      timer = window.setTimeout(load, 350)
     }
 
-    const vectorAt = (x: number, y: number) => {
-      let sum = 0
-      let u = 0
-      let v = 0
-      let mph = 0
-      for (const r of readings) {
-        const p = map.project([r.lng, r.lat])
-        const dx = p.x - x
-        const dy = p.y - y
-        const w = 1 / Math.max(8, dx * dx + dy * dy)
-        sum += w
-        u += (r.uMps ?? 0) * w
-        v += (r.vMps ?? 0) * w
-        mph += (r.speedMph ?? r.speedKmh * 0.621371) * w
-      }
-      if (!sum) return null
-      return { u: u / sum, v: v / sum, mph: mph / sum }
-    }
-
-    const flowDelta = (x: number, y: number, u: number, v: number) => {
-      const here = map.unproject([x, y])
-      const meters = 120
-      const latRad = here.lat * Math.PI / 180
-      const lng = here.lng + (u * meters) / (111_320 * Math.max(0.15, Math.cos(latRad)))
-      const lat = here.lat + (v * meters) / 110_540
-      const there = map.project([lng, lat])
-      const dx = there.x - x
-      const dy = there.y - y
-      const mag = Math.hypot(dx, dy) || 1
-      return { dx: dx / mag, dy: dy / mag }
-    }
-
-    const respawn = (p: { x: number; y: number; age: number; maxAge: number }, width: number, height: number) => {
-      p.x = Math.random() * width
-      p.y = Math.random() * height
-      p.age = 0
-      p.maxAge = 45 + Math.random() * 70
-    }
-
-    const drawStatic = (width: number, height: number) => {
-      ctx.clearRect(0, 0, width, height)
-      for (const r of readings) {
-        const p = map.project([r.lng, r.lat])
-        const delta = flowDelta(p.x, p.y, r.uMps ?? 0, r.vMps ?? 0)
-        const len = 16 + Math.min(28, (r.speedMph ?? 0) * 0.7)
-        ctx.strokeStyle = windColor(r.speedMph ?? 0)
-        ctx.lineWidth = 1.6
-        ctx.beginPath()
-        ctx.moveTo(p.x - delta.dx * len * 0.45, p.y - delta.dy * len * 0.45)
-        ctx.lineTo(p.x + delta.dx * len, p.y + delta.dy * len)
-        ctx.stroke()
-      }
-    }
-
-    const tick = () => {
-      if (cancelled || document.visibilityState !== 'visible') {
-        windFrameRef.current = requestAnimationFrame(tick)
-        return
-      }
-      const { width, height } = resize()
-      if (reduce) {
-        drawStatic(width, height)
-        ;(window as unknown as { __eosWindLayer?: unknown }).__eosWindLayer = { active: true, mode: 'static', readings: readings.length }
-        return
-      }
-      seedParticles(width, height)
-      ctx.globalCompositeOperation = 'destination-in'
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.88)'
-      ctx.fillRect(0, 0, width, height)
-      ctx.globalCompositeOperation = 'source-over'
-      for (const p of windParticlesRef.current) {
-        const vector = vectorAt(p.x, p.y)
-        if (!vector) {
-          respawn(p, width, height)
-          continue
-        }
-        const delta = flowDelta(p.x, p.y, vector.u, vector.v)
-        const speed = 0.55 + Math.min(3.8, vector.mph / 14)
-        const oldX = p.x
-        const oldY = p.y
-        p.x += delta.dx * speed
-        p.y += delta.dy * speed
-        p.age += 1
-        if (p.x < -20 || p.x > width + 20 || p.y < -20 || p.y > height + 20 || p.age > p.maxAge) {
-          respawn(p, width, height)
-          continue
-        }
-        ctx.strokeStyle = windColor(vector.mph)
-        ctx.lineWidth = 1.1
-        ctx.beginPath()
-        ctx.moveTo(oldX, oldY)
-        ctx.lineTo(p.x, p.y)
-        ctx.stroke()
-      }
-      ;(window as unknown as { __eosWindLayer?: unknown }).__eosWindLayer = { active: true, mode: 'animated', readings: readings.length, particles: windParticlesRef.current.length }
-      windFrameRef.current = requestAnimationFrame(tick)
-    }
-
-    windFrameRef.current = requestAnimationFrame(tick)
+    load()
+    map.on('moveend', schedule)
+    map.on('zoomend', schedule)
     return () => {
       cancelled = true
-      if (windFrameRef.current !== null) cancelAnimationFrame(windFrameRef.current)
-      windFrameRef.current = null
-      ctx.clearRect(0, 0, canvas.width, canvas.height)
-      ;(window as unknown as { __eosWindLayer?: unknown }).__eosWindLayer = { active: false }
+      if (timer !== null) window.clearTimeout(timer)
+      controller?.abort()
+      map.off('moveend', schedule)
+      map.off('zoomend', schedule)
     }
-  }, [wind, layers?.wind])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [layers?.wind])
 
   useEffect(() => {
     const map = mapRef.current
@@ -1287,6 +1223,12 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
       return
     }
     const onClick = (event: { point: { x: number; y: number } }) => {
+      const lngLat = map.unproject([event.point.x, event.point.y])
+      const sampled = windLayerRef.current?.sample(lngLat.lng, lngLat.lat)
+      if (!sampled) {
+        setWindPopup(null)
+        return
+      }
       let best: (typeof readings)[number] | null = null
       let bestD = Number.POSITIVE_INFINITY
       for (const r of readings) {
@@ -1301,7 +1243,7 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
       setWindPopup({
         x: event.point.x,
         y: event.point.y,
-        speedMph: best.speedMph ?? Math.round(best.speedKmh * 0.621371),
+        speedMph: Math.round(sampled.speedMph),
         gustMph: best.gustMph ?? (best.gustKmh === null ? null : Math.round(best.gustKmh * 0.621371)),
         direction: windCardinal(best.fromDeg),
         forecast: wind?.frames?.[0]?.label ?? 'NOW',

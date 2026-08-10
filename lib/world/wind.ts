@@ -46,7 +46,7 @@ export type WindSnapshot = {
   error?: string
 }
 
-/** 5×5 = 25 leituras. Mais que isso não muda a leitura visual e pesa na rede. */
+/** Grade local padrão; o mapa animado pode pedir uma grade maior do viewport. */
 const GRID = 5
 
 /**
@@ -61,12 +61,23 @@ const GRID = 5
  */
 const SPAN_DEG = 0.15
 
-export function buildGrid(centre: { lat: number; lng: number }): Array<[number, number]> {
-  const step = SPAN_DEG / (GRID - 1)
-  const start = -SPAN_DEG / 2
+export type WindGridOptions = {
+  spanDeg?: number
+  grid?: number
+}
+
+function clamp(n: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, n))
+}
+
+export function buildGrid(centre: { lat: number; lng: number }, options: WindGridOptions = {}): Array<[number, number]> {
+  const grid = Math.round(clamp(options.grid ?? GRID, 3, 13))
+  const span = clamp(options.spanDeg ?? SPAN_DEG, 0.15, 30)
+  const step = span / (grid - 1)
+  const start = -span / 2
   const points: Array<[number, number]> = []
-  for (let row = 0; row < GRID; row += 1) {
-    for (let col = 0; col < GRID; col += 1) {
+  for (let row = 0; row < grid; row += 1) {
+    for (let col = 0; col < grid; col += 1) {
       points.push([centre.lat + start + row * step, centre.lng + start + col * step])
     }
   }
@@ -98,9 +109,10 @@ export function vectorFromSpeedDirection(speedKmh: number, fromDeg: number) {
 export async function getWind(
   centre: { lat: number; lng: number },
   signal?: AbortSignal,
+  options: WindGridOptions = {},
 ): Promise<WindSnapshot> {
   const fetchedAt = new Date().toISOString()
-  const grid = buildGrid(centre)
+  const grid = buildGrid(centre, options)
   const params = new URLSearchParams({
     latitude: grid.map(p => p[0].toFixed(4)).join(','),
     longitude: grid.map(p => p[1].toFixed(4)).join(','),
@@ -126,20 +138,20 @@ export async function getWind(
   }>
 
   /**
-   * O Open-Meteo devolve a coordenada da CÉLULA do modelo, não a que foi pedida.
-   * Quando a grade é mais fina que o modelo, dois pontos meus caem na mesma
-   * célula — e eu desenharia duas setas idênticas, empilhadas no mesmo pixel.
-   * Não é dado errado; é ruído visual que finge densidade que não existe.
+   * O Open-Meteo pode devolver a coordenada da CÉLULA do modelo, não a que foi
+   * pedida. Para o layer bilinear, a grade precisa continuar regular; por isso
+   * a posição visual é a coordenada pedida, e os valores meteorológicos vêm da
+   * resposta correspondente.
    */
-  const seen = new Set<string>()
   const readings: WindReading[] = items
-    .filter(i => typeof i.latitude === 'number' && typeof i.current?.wind_direction_10m === 'number')
-    .map(i => {
+    .map((i, index) => {
+      const requested = grid[index]
+      if (!requested || typeof i.current?.wind_direction_10m !== 'number') return null
       const speedKmh = Math.round(i.current?.wind_speed_10m ?? 0)
       const gustKmh = typeof i.current?.wind_gusts_10m === 'number' ? Math.round(i.current.wind_gusts_10m) : null
       return {
-        lat: i.latitude as number,
-        lng: i.longitude as number,
+        lat: requested[0],
+        lng: requested[1],
         speedKmh,
         gustKmh,
         gustMph: gustKmh === null ? null : Math.round(gustKmh * 0.621371),
@@ -147,12 +159,7 @@ export async function getWind(
         ...vectorFromSpeedDirection(speedKmh, i.current?.wind_direction_10m as number),
       }
     })
-    .filter(r => {
-      const key = `${r.lat.toFixed(4)},${r.lng.toFixed(4)}`
-      if (seen.has(key)) return false
-      seen.add(key)
-      return true
-    })
+    .filter((r): r is WindReading => r !== null)
 
   if (!readings.length) {
     return { source: 'Open-Meteo', provider: 'open-meteo-current-grid', model: 'Open-Meteo current 10m wind', fetchedAt, frames: [{ forecastHour: 0, label: 'NOW', validAt: fetchedAt }], readings: [], atUser: null, error: 'wind_empty' }
