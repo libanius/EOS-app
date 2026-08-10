@@ -63,6 +63,8 @@ const SPAN_DEG = 0.15
 
 export type WindGridOptions = {
   spanDeg?: number
+  latSpanDeg?: number
+  lngSpanDeg?: number
   grid?: number
 }
 
@@ -70,15 +72,34 @@ function clamp(n: number, min: number, max: number) {
   return Math.min(max, Math.max(min, n))
 }
 
+function rangeAround(center: number, span: number, min: number, max: number): [number, number] {
+  if (span >= max - min) return [min, max]
+  let from = center - span / 2
+  let to = center + span / 2
+  if (from < min) {
+    to += min - from
+    from = min
+  }
+  if (to > max) {
+    from -= to - max
+    to = max
+  }
+  return [clamp(from, min, max), clamp(to, min, max)]
+}
+
 export function buildGrid(centre: { lat: number; lng: number }, options: WindGridOptions = {}): Array<[number, number]> {
-  const grid = Math.round(clamp(options.grid ?? GRID, 3, 13))
-  const span = clamp(options.spanDeg ?? SPAN_DEG, 0.15, 30)
-  const step = span / (grid - 1)
-  const start = -span / 2
+  const grid = Math.round(clamp(options.grid ?? GRID, 3, 17))
+  const baseSpan = options.spanDeg ?? SPAN_DEG
+  const latSpan = clamp(options.latSpanDeg ?? baseSpan, 0.15, 170)
+  const lngSpan = clamp(options.lngSpanDeg ?? baseSpan, 0.15, 360)
+  const [minLat, maxLat] = rangeAround(centre.lat, latSpan, -85, 85)
+  const [minLng, maxLng] = rangeAround(centre.lng, lngSpan, -179.5, 179.5)
+  const latStep = (maxLat - minLat) / (grid - 1)
+  const lngStep = (maxLng - minLng) / (grid - 1)
   const points: Array<[number, number]> = []
   for (let row = 0; row < grid; row += 1) {
     for (let col = 0; col < grid; col += 1) {
-      points.push([centre.lat + start + row * step, centre.lng + start + col * step])
+      points.push([minLat + row * latStep, minLng + col * lngStep])
     }
   }
   return points

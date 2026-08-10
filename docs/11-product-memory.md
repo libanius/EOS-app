@@ -1,7 +1,7 @@
 # 11 — Product Memory
 
 > Non-obvious facts that don't belong in code comments but must survive across sessions.
-> Last updated: 2026-08-09
+> Last updated: 2026-08-10
 
 ---
 
@@ -23,6 +23,13 @@ imperativo `WindParticleLayer`, com `enable/disable/updateViewport`, pool própr
 de partículas e interpolação bilinear quando a grade permite. React só liga e
 desliga a camada; não participa do frame loop. A camada não deve usar wash
 colorido em blocos se isso voltar a piscar.
+
+D-143 amplia a regra: `wind` premium não é raster tile layer. A leitura ampla do
+WorldMap deve vir de um canvas escalar gerado no cliente a partir de dados
+numéricos de grade, com interpolação bilinear por pixel e LUT/colormap própria.
+Esse canvas é independente do canvas de partículas: o campo escalar só redesenha
+quando dados ou viewport mudam; partículas continuam no `requestAnimationFrame`.
+Usuário sem Premium não deve iniciar fetch amplo, canvas ou loop.
 
 ---
 

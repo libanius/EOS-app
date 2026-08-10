@@ -9,6 +9,8 @@ export type WindParticleLayerConfig = {
   speedScale: number
   maxAgeMin: number
   maxAgeJitter: number
+  scalarOpacity: number
+  scalarMaxDpr: number
 }
 
 type Particle = {
@@ -42,6 +44,8 @@ const DEFAULT_CONFIG: WindParticleLayerConfig = {
   speedScale: 0.00018,
   maxAgeMin: 42,
   maxAgeJitter: 78,
+  scalarOpacity: 0.62,
+  scalarMaxDpr: 1.25,
 }
 
 function uniqSorted(values: number[]) {
@@ -54,6 +58,29 @@ function colorFor(speedMph: number) {
   if (speedMph >= 22) return 'rgba(74,222,128,0.78)'
   if (speedMph >= 12) return 'rgba(82,178,255,0.72)'
   return 'rgba(136,116,255,0.58)'
+}
+
+function scalarColor(speedMph: number, opacity: number): [number, number, number, number] {
+  const stops: Array<[number, number, number, number]> = [
+    [0, 72, 66, 255],
+    [10, 55, 185, 242],
+    [20, 82, 222, 128],
+    [32, 255, 214, 10],
+    [45, 255, 130, 44],
+    [62, 255, 69, 58],
+    [85, 255, 255, 255],
+  ]
+  if (speedMph <= stops[0][0]) return [stops[0][1], stops[0][2], stops[0][3], Math.round(120 * opacity)]
+  for (let i = 0; i < stops.length - 1; i += 1) {
+    const a = stops[i]
+    const b = stops[i + 1]
+    if (speedMph <= b[0]) {
+      const t = (speedMph - a[0]) / (b[0] - a[0])
+      const mix = (x: number, y: number) => Math.round(x + (y - x) * t)
+      return [mix(a[1], b[1]), mix(a[2], b[2]), mix(a[3], b[3]), Math.round(255 * opacity)]
+    }
+  }
+  return [255, 255, 255, Math.round(245 * opacity)]
 }
 
 function makeGrid(readings: WindReading[]): Grid | null {
@@ -119,19 +146,30 @@ export class WindParticleLayer {
   private map: MLMap
   private canvas: HTMLCanvasElement
   private ctx: CanvasRenderingContext2D
+  private scalarCanvas: HTMLCanvasElement | null
+  private scalarCtx: CanvasRenderingContext2D | null
   private config: WindParticleLayerConfig
   private particles: Particle[] = []
   private grid: Grid | null = null
   private enabled = false
   private frame: number | null = null
+  private scalarTimer: number | null = null
+  private scalarPixels = 0
   private hidden = false
 
-  constructor(map: MLMap, canvas: HTMLCanvasElement, config: Partial<WindParticleLayerConfig> = {}) {
+  constructor(
+    map: MLMap,
+    canvas: HTMLCanvasElement,
+    scalarCanvas: HTMLCanvasElement | null = null,
+    config: Partial<WindParticleLayerConfig> = {},
+  ) {
     const ctx = canvas.getContext('2d')
     if (!ctx) throw new Error('wind_canvas_unavailable')
     this.map = map
     this.canvas = canvas
     this.ctx = ctx
+    this.scalarCanvas = scalarCanvas
+    this.scalarCtx = scalarCanvas?.getContext('2d', { willReadFrequently: false }) ?? null
     this.config = { ...DEFAULT_CONFIG, ...config }
     this.handleVisibility = this.handleVisibility.bind(this)
     document.addEventListener('visibilitychange', this.handleVisibility)
@@ -141,6 +179,7 @@ export class WindParticleLayer {
     if (this.enabled) return
     this.enabled = true
     this.resize()
+    this.scheduleScalarRender()
     this.ensureParticles()
     this.loop()
   }
@@ -148,8 +187,11 @@ export class WindParticleLayer {
   disable() {
     this.enabled = false
     if (this.frame !== null) cancelAnimationFrame(this.frame)
+    if (this.scalarTimer !== null) window.clearTimeout(this.scalarTimer)
     this.frame = null
+    this.scalarTimer = null
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height)
+    this.clearScalar()
     this.debug(false)
   }
 
@@ -165,6 +207,7 @@ export class WindParticleLayer {
     this.particles = []
     if (this.enabled) {
       this.resize()
+      this.scheduleScalarRender()
       this.ensureParticles()
       this.debug(true)
     }
@@ -173,6 +216,7 @@ export class WindParticleLayer {
   updateViewport() {
     if (!this.enabled) return
     this.resize()
+    this.scheduleScalarRender()
   }
 
   sample(lng: number, lat: number) {
@@ -182,6 +226,7 @@ export class WindParticleLayer {
   private handleVisibility() {
     this.hidden = document.visibilityState !== 'visible'
     if (!this.hidden && this.enabled && this.frame === null) this.loop()
+    if (!this.hidden && this.enabled) this.scheduleScalarRender()
   }
 
   private resize() {
@@ -194,6 +239,73 @@ export class WindParticleLayer {
       this.canvas.height = height
     }
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+  }
+
+  private resizeScalar() {
+    const canvas = this.scalarCanvas
+    const ctx = this.scalarCtx
+    if (!canvas || !ctx) return null
+    const rect = canvas.getBoundingClientRect()
+    const dpr = Math.min(window.devicePixelRatio || 1, this.config.scalarMaxDpr)
+    const width = Math.max(1, Math.floor(rect.width * dpr))
+    const height = Math.max(1, Math.floor(rect.height * dpr))
+    if (canvas.width !== width || canvas.height !== height) {
+      canvas.width = width
+      canvas.height = height
+    }
+    ctx.setTransform(1, 0, 0, 1, 0, 0)
+    return { width, height, dpr }
+  }
+
+  private clearScalar() {
+    const canvas = this.scalarCanvas
+    const ctx = this.scalarCtx
+    if (!canvas || !ctx) return
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    this.scalarPixels = 0
+  }
+
+  private scheduleScalarRender() {
+    if (!this.enabled || this.hidden) return
+    if (this.scalarTimer !== null) window.clearTimeout(this.scalarTimer)
+    this.scalarTimer = window.setTimeout(() => {
+      this.scalarTimer = null
+      this.renderScalarField()
+    }, 120)
+  }
+
+  private renderScalarField() {
+    const grid = this.grid
+    const ctx = this.scalarCtx
+    const size = this.resizeScalar()
+    if (!grid || !ctx || !size) {
+      this.clearScalar()
+      return
+    }
+    const { width, height, dpr } = size
+    const image = ctx.createImageData(width, height)
+    const data = image.data
+    let drawn = 0
+    for (let y = 0; y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) {
+        const lngLat = this.map.unproject([x / dpr, y / dpr])
+        const vector = interpolate(grid, lngLat.lng, lngLat.lat)
+        const idx = (y * width + x) * 4
+        if (!vector) {
+          data[idx + 3] = 0
+          continue
+        }
+        const [r, g, b, a] = scalarColor(vector.speedMph, this.config.scalarOpacity)
+        data[idx] = r
+        data[idx + 1] = g
+        data[idx + 2] = b
+        data[idx + 3] = a
+        drawn += 1
+      }
+    }
+    ctx.putImageData(image, 0, 0)
+    this.scalarPixels = drawn
+    this.debug(true)
   }
 
   private targetCount() {
@@ -279,6 +391,8 @@ export class WindParticleLayer {
       ? {
           active: true,
           mode: 'bilinear',
+          scalar: Boolean(this.scalarCanvas),
+          scalarPixels: this.scalarPixels,
           particles: this.particles.length,
           readings: this.grid ? this.grid.lats.length * this.grid.lngs.length : 0,
           grid: this.grid ? `${this.grid.lngs.length}x${this.grid.lats.length}` : null,

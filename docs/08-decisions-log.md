@@ -37,6 +37,41 @@ sem misturar fetch, React e render loop.
 
 ---
 
+## D-143 — Vento premium combina campo escalar em canvas e partículas vetoriais
+
+**Date**: 2026-08-10
+**Status**: DECIDED
+**Roadmap**: WV2-T15
+
+**Context**: O dono pediu que o vento fosse legível no WorldMap inteiro, não
+apenas perto da localização do usuário, e explicitou que a camada não pode ser
+um raster tile layer como satélite/radar. A leitura visual precisa nascer de
+dados numéricos de grade: para cada pixel visível, o cliente interpola o valor
+do grid e aplica uma escala de cor. A animação de partículas continua útil para
+direção, mas não deve ser o único sinal visual.
+
+**Decision**:
+
+1. A camada `wind` premium passa a ter dois canvases independentes:
+   - um canvas de campo escalar, renderizado no cliente a partir de magnitude do
+     vento interpolada por bilinear;
+   - um canvas de partículas vetoriais por cima, para mostrar direção e fluxo.
+2. O campo escalar não usa tiles de imagem, não reutiliza o loader de tiles de
+   satélite/radar e não busca raster pré-renderizado de servidor.
+3. A área buscada acompanha o viewport do mapa, com grade mais ampla para zoom
+   global e recarga apenas em mudança significativa de câmera.
+4. O canvas escalar é renderizado apenas quando dados/viewport mudam; o loop de
+   `requestAnimationFrame` continua exclusivo das partículas para evitar flicker.
+5. A feature permanece premium: usuário sem Premium não inicia fetch amplo,
+   canvas, loop ou renderizador pesado; tocar em `Vento PREMIUM` leva ao upgrade.
+
+**Consequence**: a camada passa a se comportar como Windfinder/earth.nullschool
+em arquitetura, mas dentro do EOS: MapLibre fornece projeção/câmera, o EOS
+calcula a imagem visível a partir do grid numérico e o provider meteorológico
+pode evoluir sem trocar a superfície.
+
+---
+
 ## D-141 — Vento animado é camada premium no mapa existente
 
 **Date**: 2026-08-09

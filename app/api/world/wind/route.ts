@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { getWind } from '@/lib/world/wind'
 
 /**
- * GET /api/world/wind?lat=&lng=&span=&grid= — grade de vento.
+ * GET /api/world/wind?lat=&lng=&span=&latSpan=&lngSpan=&grid= — grade de vento.
  *
  * Uma seta só, na casa do usuário, não mostra que o vento gira nem de que lado o
  * mar empurra. O Open-Meteo aceita listas de coordenadas. A grade padrão é
@@ -18,6 +18,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'lat e lng são obrigatórios.' }, { status: 400 })
   }
   const span = parseFloat(request.nextUrl.searchParams.get('span') ?? '')
+  const latSpan = parseFloat(request.nextUrl.searchParams.get('latSpan') ?? '')
+  const lngSpan = parseFloat(request.nextUrl.searchParams.get('lngSpan') ?? '')
   const grid = parseInt(request.nextUrl.searchParams.get('grid') ?? '', 10)
 
   try {
@@ -26,6 +28,8 @@ export async function GET(request: NextRequest) {
       undefined,
       {
         spanDeg: Number.isFinite(span) ? span : undefined,
+        latSpanDeg: Number.isFinite(latSpan) ? latSpan : undefined,
+        lngSpanDeg: Number.isFinite(lngSpan) ? lngSpan : undefined,
         grid: Number.isFinite(grid) ? grid : undefined,
       },
     )

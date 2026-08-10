@@ -1,7 +1,7 @@
 # 09 — Build Status
 
 > The single most important file for resuming a session. Read this first after AGENTS.md.
-> Last updated: 2026-08-09
+> Last updated: 2026-08-10
 
 ---
 
@@ -11,7 +11,8 @@
 |---|---|
 | **Current Phase** | Preparedness Engine (PREP/EDU/COMMS/ONB/PILOT) sobre Web/PWA |
 | **Current Task** | Próximo item do roadmap a selecionar |
-| **Last Completed Task** | **D-142 / WV2-T14 — Vento animado como WindParticleLayer bilinear, sem flicker (2026-08-10)** |
+| **Last Completed Task** | **D-143 / WV2-T15 — Campo escalar premium de vento no WorldMap inteiro, sem raster tile layer (2026-08-10)** |
+| | **D-142 / WV2-T14 — Vento animado como WindParticleLayer bilinear, sem flicker (2026-08-10)** |
 | | **D-141 / WV2-T13 — Camada premium de vento animado no mapa existente (2026-08-09)** |
 | | **D-140 / PILOT-T11 — Pilot fecha ao tocar fora da janela (2026-08-09)** |
 | | **D-139 / NAV-T03 — Loop do dashboard corrigido; BottomNav validada por navegador (2026-08-08)** |
@@ -149,7 +150,8 @@
 | **Platform Alignment** | ✅ D-084: EOS é plataforma multi-superfície com um único core operacional. Web/PWA segue como superfície primária; iOS/Android serão adapters nativos futuros; Automotive é companion mode restrito; Mesh/LoRa segue bloqueado por G-05. `/mobile/` é template/conceitual, não app inicializado. |
 | **Fases pedidas pelo dono (2026-07-31)** | ✅ 1. Camadas de clima + rastreio de ciclone (D-078). 2. Reinventar a aba Família no design system da v2, com componentes dinâmicos. 3. WV2-T05 (a11y/perf), PLAN-T07 (Pilot propõe plano). |
 | **Next Task** | Roadmap sem tarefa `PENDING/IN PROGRESS` após PILOT-T11; próxima frente precisa ser promovida explicitamente no Spine antes de código. |
-| **Build** | ✅ WV2-T14 validado em 2026-08-10 com `npm run type-check`, `npm test -- --runInBand` (202/202), `npm run build`, `npm run test:weather` (8/8; `WindParticleLayer` bilinear `9x9`, 780 partículas) e `git diff --check`. |
+| **Build** | ✅ WV2-T15 validado em 2026-08-10 com `npm run type-check`, `npm test -- --runInBand` (202/202), `npm run build`, `npm run test:weather` (8/8; `15x15`, 365119 px escalares, 780 partículas) e `git diff --check`. |
+| | ✅ WV2-T14 validado em 2026-08-10 com `npm run type-check`, `npm test -- --runInBand` (202/202), `npm run build`, `npm run test:weather` (8/8; `WindParticleLayer` bilinear `9x9`, 780 partículas) e `git diff --check`. |
 | **Plano execução** | ✅ PLAN-T08 MVP: tocar no próprio rosto no mapa abre comando familiar; "Executar plano" carrega um plano escolhido, monta passos determinísticos do host (círculo → gatilhos → papéis → pontos → rotas → encerramento) e alerta o círculo com push preset "Execute o plano da família agora". Sem nova tabela ainda: timeline compartilhada fica para `family_plan_executions`. |
 | **Plano múltiplo** | ✅ PLAN-T09: o círculo pode ter vários planos ativos; `/plan` alterna/cria planos por nome, o executor escolhe qual plano rodar, passos fixos do EOS saem da lista numerada e há cancelar/falso alarme. Migration `20260731000000_multiple_family_plans.sql` aplicada pelo dono. |
 | **Rotas do plano** | ✅ PLAN-T10: cada rota desenhada no plano agora tem handoff "Google Maps" com origem, destino e paradas intermediárias na ordem da `LineString`. O EOS mantém o combinado offline; Google Maps calcula ruas/ETA quando abrir. |

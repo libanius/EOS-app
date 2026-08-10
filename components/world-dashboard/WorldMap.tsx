@@ -440,14 +440,16 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
   const centerRef = useRef<[number, number] | null>(null)
   const plateRef = useRef<HTMLDivElement>(null)
   const windCanvasRef = useRef<HTMLCanvasElement>(null)
+  const windScalarCanvasRef = useRef<HTMLCanvasElement>(null)
   const windLayerRef = useRef<WindParticleLayer | null>(null)
   const [windPopup, setWindPopup] = useState<WindPopup | null>(null)
 
   const ensureWindLayer = () => {
     const map = mapRef.current
     const canvas = windCanvasRef.current
+    const scalarCanvas = windScalarCanvasRef.current
     if (!map || !canvas || !readyRef.current) return null
-    if (!windLayerRef.current) windLayerRef.current = new WindParticleLayer(map, canvas)
+    if (!windLayerRef.current) windLayerRef.current = new WindParticleLayer(map, canvas, scalarCanvas)
     return windLayerRef.current
   }
 
@@ -1181,12 +1183,13 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
       controller = new AbortController()
       const center = map.getCenter()
       const bounds = map.getBounds()
-      const lngSpanRaw = Math.abs(bounds.getEast() - bounds.getWest())
-      const lngSpan = lngSpanRaw > 180 ? 360 - lngSpanRaw : lngSpanRaw
+      const lngSpan = Math.min(360, Math.abs(bounds.getEast() - bounds.getWest()))
       const latSpan = Math.abs(bounds.getNorth() - bounds.getSouth())
-      const span = Math.min(30, Math.max(0.35, Math.max(lngSpan, latSpan) * 1.15))
-      const grid = span > 10 ? 13 : span > 3 ? 11 : 9
-      fetch(`/api/world/wind?lat=${center.lat.toFixed(4)}&lng=${center.lng.toFixed(4)}&span=${span.toFixed(2)}&grid=${grid}`, {
+      const latSpanRequest = Math.min(170, Math.max(0.35, latSpan * 1.2))
+      const lngSpanRequest = Math.min(360, Math.max(0.35, lngSpan * 1.2))
+      const broadSpan = Math.max(latSpanRequest, lngSpanRequest)
+      const grid = broadSpan > 90 ? 17 : broadSpan > 35 ? 15 : broadSpan > 10 ? 13 : broadSpan > 3 ? 11 : 9
+      fetch(`/api/world/wind?lat=${center.lat.toFixed(4)}&lng=${center.lng.toFixed(4)}&latSpan=${latSpanRequest.toFixed(2)}&lngSpan=${lngSpanRequest.toFixed(2)}&grid=${grid}`, {
         signal: controller.signal,
         cache: 'no-store',
       })
@@ -1426,6 +1429,7 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
     <div className="world-map-wrap" aria-hidden="true">
       <div ref={plateRef} className="world-plate has-image" style={{ ['--world-image' as string]: `url(${plateUrl})`, transition: 'opacity 800ms ease' }} />
       <div ref={ref} className="world-map" />
+      <canvas ref={windScalarCanvasRef} className="world-wind-scalar-canvas" data-active={layers?.wind ? 'true' : 'false'} />
       <canvas ref={windCanvasRef} className="world-wind-canvas" data-active={layers?.wind ? 'true' : 'false'} />
       {layers?.wind && wind?.readings.length ? (
         <div className="world-wind-legend">
