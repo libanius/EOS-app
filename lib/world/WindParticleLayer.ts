@@ -7,6 +7,7 @@ export type WindParticleLayerConfig = {
   fadeAlpha: number
   lineWidth: number
   speedScale: number
+  globalParticleMultiplier: number
   maxAgeMin: number
   maxAgeJitter: number
   scalarOpacity: number
@@ -41,10 +42,11 @@ const DEFAULT_CONFIG: WindParticleLayerConfig = {
   mobileParticleCount: 780,
   fadeAlpha: 0.9,
   lineWidth: 1.05,
-  speedScale: 0.00018,
+  speedScale: 0.00014,
+  globalParticleMultiplier: 2.35,
   maxAgeMin: 42,
   maxAgeJitter: 78,
-  scalarOpacity: 0.62,
+  scalarOpacity: 0.78,
   scalarMaxDpr: 1.25,
 }
 
@@ -142,6 +144,18 @@ function interpolate(grid: Grid, lng: number, lat: number): Vector | null {
   }
 }
 
+function gridWrapsWorld(grid: Grid) {
+  return grid.maxLng - grid.minLng > 330
+}
+
+function normalizeLngForGrid(grid: Grid, lng: number) {
+  if (!gridWrapsWorld(grid)) return lng
+  let normalized = ((((lng + 180) % 360) + 360) % 360) - 180
+  if (normalized < grid.minLng) normalized = grid.minLng
+  if (normalized > grid.maxLng) normalized = grid.maxLng
+  return normalized
+}
+
 export class WindParticleLayer {
   private map: MLMap
   private canvas: HTMLCanvasElement
@@ -220,7 +234,7 @@ export class WindParticleLayer {
   }
 
   sample(lng: number, lat: number) {
-    return this.grid ? interpolate(this.grid, lng, lat) : null
+    return this.grid ? interpolate(this.grid, normalizeLngForGrid(this.grid, lng), lat) : null
   }
 
   private handleVisibility() {
@@ -289,7 +303,7 @@ export class WindParticleLayer {
     for (let y = 0; y < height; y += 1) {
       for (let x = 0; x < width; x += 1) {
         const lngLat = this.map.unproject([x / dpr, y / dpr])
-        const vector = interpolate(grid, lngLat.lng, lngLat.lat)
+        const vector = interpolate(grid, normalizeLngForGrid(grid, lngLat.lng), lngLat.lat)
         const idx = (y * width + x) * 4
         if (!vector) {
           data[idx + 3] = 0
@@ -310,7 +324,9 @@ export class WindParticleLayer {
 
   private targetCount() {
     const mobile = window.matchMedia('(max-width: 700px)').matches
-    return mobile ? this.config.mobileParticleCount : this.config.particleCount
+    const base = mobile ? this.config.mobileParticleCount : this.config.particleCount
+    if (this.grid && gridWrapsWorld(this.grid)) return Math.round(base * this.config.globalParticleMultiplier)
+    return base
   }
 
   private ensureParticles() {
@@ -350,8 +366,10 @@ export class WindParticleLayer {
     }
     const old = this.map.project([p.lng, p.lat])
     const latRad = p.lat * Math.PI / 180
-    p.lng += (vector.uMps * this.config.speedScale) / Math.max(0.2, Math.cos(latRad))
-    p.lat += vector.vMps * this.config.speedScale
+    const globalScale = this.grid && gridWrapsWorld(this.grid) ? 0.58 : 1
+    p.lng += (vector.uMps * this.config.speedScale * globalScale) / Math.max(0.2, Math.cos(latRad))
+    p.lat += vector.vMps * this.config.speedScale * globalScale
+    if (this.grid) p.lng = normalizeLngForGrid(this.grid, p.lng)
     const moved = this.grid ? interpolate(this.grid, p.lng, p.lat) : null
     if (!moved) {
       this.respawn(p)
@@ -393,6 +411,7 @@ export class WindParticleLayer {
           mode: 'bilinear',
           scalar: Boolean(this.scalarCanvas),
           scalarPixels: this.scalarPixels,
+          wrapsWorld: this.grid ? gridWrapsWorld(this.grid) : false,
           particles: this.particles.length,
           readings: this.grid ? this.grid.lats.length * this.grid.lngs.length : 0,
           grid: this.grid ? `${this.grid.lngs.length}x${this.grid.lats.length}` : null,

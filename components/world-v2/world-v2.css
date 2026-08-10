@@ -1082,14 +1082,14 @@
 }
 .wv2 .world-wind-scalar-canvas {
   z-index: 2;
-  mix-blend-mode: color-dodge;
-  filter: saturate(1.2) contrast(1.05);
+  mix-blend-mode: normal;
+  filter: saturate(1.35) contrast(1.08);
 }
 .wv2 .world-wind-canvas {
   z-index: 3;
   mix-blend-mode: screen;
 }
-.wv2 .world-wind-scalar-canvas[data-active='true'] { opacity: 0.48; }
+.wv2 .world-wind-scalar-canvas[data-active='true'] { opacity: 0.68; }
 .wv2 .world-wind-canvas[data-active='true'] { opacity: 0.86; }
 .wv2 .world-wind-legend {
   position: absolute;

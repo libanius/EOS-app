@@ -188,8 +188,8 @@ await painel.locator('button', { hasText: /^Vento$/ }).click()
 await page.waitForTimeout(6000)
 // Afasta um pouco a câmera: a asserção é sobre VER várias direções, e num zoom
 // de quarteirão nem a grade mais fina cabe na tela.
-await page.evaluate(() => window.__eosMap?.setZoom(5))
-await page.waitForTimeout(3500)
+await page.evaluate(() => window.__eosMap?.setZoom(4))
+await page.waitForTimeout(4500)
 await page.waitForFunction(() => window.__eosWindLayer?.active === true, null, { timeout: 8000 }).catch(() => {})
 // Perguntar ao MapLibre o que ele RENDERIZOU, não o que foi entregue à fonte.
 // A primeira versão deste teste lia `_data` e teria passado com a camada
@@ -206,7 +206,7 @@ const setas = await page.evaluate(() => {
   }
 })
 const animado = await page.evaluate(() => window.__eosWindLayer ?? { active: false })
-animado.active === true && animado.mode === 'bilinear' && animado.scalar === true && (animado.scalarPixels ?? 0) > 0 && (animado.particles ?? 0) > 0 && typeof animado.grid === 'string'
+animado.active === true && animado.mode === 'bilinear' && animado.scalar === true && animado.wrapsWorld === true && (animado.scalarPixels ?? 0) > 0 && (animado.particles ?? 0) > 1000 && typeof animado.grid === 'string'
   ? ok('vento escalar e animado bilinear ativos no mapa', `${animado.grid} · ${animado.scalarPixels} px escalares · ${animado.particles} partículas · ${setas.desenhadas} setas fallback`)
   : no('vento não desenhou', JSON.stringify({ setas, animado }))
 

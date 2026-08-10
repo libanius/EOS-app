@@ -1185,10 +1185,11 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
       const bounds = map.getBounds()
       const lngSpan = Math.min(360, Math.abs(bounds.getEast() - bounds.getWest()))
       const latSpan = Math.abs(bounds.getNorth() - bounds.getSouth())
-      const latSpanRequest = Math.min(170, Math.max(0.35, latSpan * 1.2))
-      const lngSpanRequest = Math.min(360, Math.max(0.35, lngSpan * 1.2))
+      const globalWind = map.getZoom() <= 4.5
+      const latSpanRequest = globalWind ? 170 : Math.min(170, Math.max(0.35, latSpan * 1.2))
+      const lngSpanRequest = globalWind ? 360 : Math.min(360, Math.max(0.35, lngSpan * 1.2))
       const broadSpan = Math.max(latSpanRequest, lngSpanRequest)
-      const grid = broadSpan > 90 ? 17 : broadSpan > 35 ? 15 : broadSpan > 10 ? 13 : broadSpan > 3 ? 11 : 9
+      const grid = globalWind ? 17 : broadSpan > 90 ? 17 : broadSpan > 35 ? 15 : broadSpan > 10 ? 13 : broadSpan > 3 ? 11 : 9
       fetch(`/api/world/wind?lat=${center.lat.toFixed(4)}&lng=${center.lng.toFixed(4)}&latSpan=${latSpanRequest.toFixed(2)}&lngSpan=${lngSpanRequest.toFixed(2)}&grid=${grid}`, {
         signal: controller.signal,
         cache: 'no-store',

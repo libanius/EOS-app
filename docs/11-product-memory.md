@@ -31,6 +31,11 @@ Esse canvas é independente do canvas de partículas: o campo escalar só redese
 quando dados ou viewport mudam; partículas continuam no `requestAnimationFrame`.
 Usuário sem Premium não deve iniciar fetch amplo, canvas ou loop.
 
+Follow-up de D-143: zoom <= 4.5 deve forçar modo global (`latSpan=170`,
+`lngSpan=360`, `grid=17`) e o renderer precisa normalizar longitudes quando o
+MapLibre mostra cópias do mundo. Campo escalar muito sutil não serve: usar blend
+normal/opacidade legível para que o mapa realmente mude quando `Vento` liga.
+
 ---
 
 ## EOS Platform: quatro camadas, não quatro produtos (2026-08-03)
