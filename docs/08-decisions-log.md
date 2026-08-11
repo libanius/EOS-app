@@ -161,6 +161,33 @@ tem vento fraco. A camada animada comunica fluxo mesmo sem tempestade ativa.
 
 ---
 
+## D-147 — Vento animado deve parecer fluxo contínuo, não ticks piscando
+
+**Date**: 2026-08-10
+**Status**: DECIDED
+**Roadmap**: WV2-T19
+
+**Context**: D-146 resolveu contraste, mas expôs outro problema: o renderer
+desenhava um rastro mínimo maior que o deslocamento real da partícula. O usuário
+passou a ver pequenos segmentos aparecendo e desaparecendo, não fluxo. A
+referência correta é um campo com caudas contínuas, onde o movimento deixa uma
+memória visual que se apaga gradualmente.
+
+**Decision**:
+
+1. O deslocamento mínimo deve mover a própria partícula, não desenhar uma linha
+   artificial desconectada da posição seguinte.
+2. O fade deve preservar frames anteriores por mais tempo, criando cauda real.
+3. Partículas devem viver mais tempo antes de respawn, reduzindo sensação de
+   nascimento/sumiço.
+4. O ajuste continua visual: não altera velocidade reportada, popup, API nem
+   provider.
+
+**Consequence**: O modo Vento passa de pontos/ticks visíveis para streamlines
+animadas contínuas, mais próximas de Windfinder/earth.nullschool.
+
+---
+
 ## D-141 — Vento animado é camada premium no mapa existente
 
 **Date**: 2026-08-09

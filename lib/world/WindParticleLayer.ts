@@ -12,6 +12,7 @@ export type WindParticleLayerConfig = {
   maxAgeJitter: number
   scalarOpacity: number
   scalarMaxDpr: number
+  minStepPx: number
 }
 
 type Particle = {
@@ -40,14 +41,15 @@ type Grid = {
 const DEFAULT_CONFIG: WindParticleLayerConfig = {
   particleCount: 1800,
   mobileParticleCount: 780,
-  fadeAlpha: 0.9,
-  lineWidth: 1.45,
-  speedScale: 0.00022,
+  fadeAlpha: 0.965,
+  lineWidth: 1.25,
+  speedScale: 0.0002,
   globalParticleMultiplier: 2.7,
-  maxAgeMin: 42,
-  maxAgeJitter: 78,
+  maxAgeMin: 120,
+  maxAgeJitter: 170,
   scalarOpacity: 0.78,
   scalarMaxDpr: 0.72,
+  minStepPx: 1.45,
 }
 
 function uniqSorted(values: number[]) {
@@ -366,28 +368,33 @@ export class WindParticleLayer {
     const old = this.map.project([p.lng, p.lat])
     const latRad = p.lat * Math.PI / 180
     const globalScale = this.grid && gridWrapsWorld(this.grid) ? 0.58 : 1
-    p.lng += (vector.uMps * this.config.speedScale * globalScale) / Math.max(0.2, Math.cos(latRad))
-    p.lat += vector.vMps * this.config.speedScale * globalScale
+    const deltaLng = (vector.uMps * this.config.speedScale * globalScale) / Math.max(0.2, Math.cos(latRad))
+    const deltaLat = vector.vMps * this.config.speedScale * globalScale
+    p.lng += deltaLng
+    p.lat += deltaLat
     if (this.grid) p.lng = normalizeLngForGrid(this.grid, p.lng)
+    const firstNext = this.map.project([p.lng, p.lat])
+    const firstDx = firstNext.x - old.x
+    const firstDy = firstNext.y - old.y
+    const firstDist = Math.sqrt(firstDx * firstDx + firstDy * firstDy)
+    if (firstDist > 0 && firstDist < this.config.minStepPx) {
+      const boost = this.config.minStepPx / firstDist
+      p.lng += deltaLng * (boost - 1)
+      p.lat += deltaLat * (boost - 1)
+      if (this.grid) p.lng = normalizeLngForGrid(this.grid, p.lng)
+    }
     const moved = this.grid ? interpolate(this.grid, p.lng, p.lat) : null
     if (!moved) {
       this.respawn(p)
       return
     }
     const next = this.map.project([p.lng, p.lat])
-    const dx = next.x - old.x
-    const dy = next.y - old.y
-    const dist = Math.sqrt(dx * dx + dy * dy)
-    const minTrail = vector.speedMph >= 22 ? 3.8 : 2.6
-    const trail = dist > 0 && dist < minTrail
-      ? { x: old.x + (dx / dist) * minTrail, y: old.y + (dy / dist) * minTrail }
-      : next
     this.ctx.strokeStyle = colorFor(vector.speedMph)
     this.ctx.lineWidth = vector.speedMph >= 32 ? this.config.lineWidth * 1.55 : this.config.lineWidth
     this.ctx.lineCap = 'round'
     this.ctx.beginPath()
     this.ctx.moveTo(old.x, old.y)
-    this.ctx.lineTo(trail.x, trail.y)
+    this.ctx.lineTo(next.x, next.y)
     this.ctx.stroke()
     p.age += 1
     if (p.age > p.maxAge) this.respawn(p)
@@ -425,7 +432,9 @@ export class WindParticleLayer {
           readings: this.grid ? this.grid.lats.length * this.grid.lngs.length : 0,
           grid: this.grid ? `${this.grid.lngs.length}x${this.grid.lats.length}` : null,
           lineWidth: this.config.lineWidth,
-          minTrailPx: 2.6,
+          minStepPx: this.config.minStepPx,
+          fadeAlpha: this.config.fadeAlpha,
+          maxAgeMin: this.config.maxAgeMin,
         }
       : { active: false }
   }

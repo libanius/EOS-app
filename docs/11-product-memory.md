@@ -60,6 +60,12 @@ em tela, paleta de maior contraste e partículas com opacidade total sobre o
 campo escalar. Não reduzir isso sem substituir por outra verificação visual,
 senão o modo Vento volta a parecer um mapa colorido estático.
 
+D-147 ajusta a semântica visual do rastro: não desenhar segmentos artificiais
+maiores que o deslocamento real da partícula. Isso cria ticks piscando. O passo
+mínimo deve avançar a posição da própria partícula, e o canvas deve reter frames
+anteriores com `fadeAlpha` alto para formar cauda contínua. Partículas também
+devem viver mais tempo antes de respawn.
+
 ---
 
 ## EOS Platform: quatro camadas, não quatro produtos (2026-08-03)
