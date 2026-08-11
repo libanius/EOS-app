@@ -265,6 +265,31 @@ mais parecida com Windfinder/earth.nullschool, sem custo extra de provider.
 
 ---
 
+## D-151 — Controles de vento colapsam no mobile
+
+**Date**: 2026-08-11
+**Status**: DECIDED
+**Roadmap**: WV2-T23
+
+**Context**: Os sliders de `Fluxo` e `Rastro` resolveram a preferência visual,
+mas no celular o painel ficou escondido ou competindo com o bottom nav e os
+controles do mapa. Controle que existe mas não é alcançável no mobile não serve.
+
+**Decision**:
+
+1. No desktop, a legenda/controles do vento podem ficar abertos.
+2. No mobile, o painel deve ficar em posição lateral e colapsado por padrão,
+   abrindo com um botão compacto.
+3. Ao expandir, os sliders devem continuar ajustando o renderer imediatamente,
+   sem fetch novo e sem remontar o mapa.
+4. O painel expandido não pode cobrir a navegação inferior nem a coluna de
+   controles principais do mapa.
+
+**Consequence**: O modo Vento continua ajustável no celular sem esconder os
+sliders nem poluir permanentemente a tela.
+
+---
+
 ## D-141 — Vento animado é camada premium no mapa existente
 
 **Date**: 2026-08-09

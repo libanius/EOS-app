@@ -85,6 +85,11 @@ e os sliders `Fluxo` e `Rastro` ajustam apenas o `WindParticleLayer` imperativo.
 Essas preferências ficam em `localStorage` (`eos-wind-renderer`) e não podem
 disparar novo fetch de vento nem remontar o mapa.
 
+D-151 corrige a ergonomia mobile: os sliders do vento não podem ficar presos
+atrás do bottom nav nem competir com a coluna de controles do mapa. No celular,
+o painel fica lateral/direito e colapsado por padrão em um botão `Vento`; ao
+abrir, mostra timeline, `Fluxo` e `Rastro`. No desktop, permanece aberto.
+
 ---
 
 ## EOS Platform: quatro camadas, não quatro produtos (2026-08-03)

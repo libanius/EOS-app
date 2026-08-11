@@ -227,6 +227,12 @@ animado.active === true && animado.mode === 'bilinear' && animado.scalar === tru
   ? ok('vento escalar e animado bilinear ativos no mapa', `${animado.grid} · ${animado.scalarPixels} px escalares · ${animado.visibleParticles}/${animado.particles} partículas visíveis · cauda fade ${animado.fadeAlpha} · segmento máx ${animado.maxSegmentPx}px`)
   : no('vento não desenhou', JSON.stringify({ setas, animado }))
 
+const windToggle = page.locator('.world-wind-toggle')
+if (await windToggle.count()) {
+  const collapsed = await page.locator('.world-wind-legend[data-open="false"]').count()
+  if (collapsed) await windToggle.click()
+}
+await page.waitForTimeout(250)
 const controlsOk = await page.evaluate(() => {
   const controls = Array.from(document.querySelectorAll('.world-wind-control input'))
   if (controls.length < 2) return { ok: false, reason: 'controles ausentes' }

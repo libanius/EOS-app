@@ -524,6 +524,7 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
   const [viewportWind, setViewportWind] = useState<WindSnapshot | null>(null)
   const [windDensity, setWindDensity] = useState(1)
   const [windTrail, setWindTrail] = useState(0.62)
+  const [windControlsOpen, setWindControlsOpen] = useState(false)
 
   const ensureWindLayer = () => {
     const map = mapRef.current
@@ -1580,10 +1581,18 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
       <canvas ref={windScalarCanvasRef} className="world-wind-scalar-canvas" data-active={layers?.wind ? 'true' : 'false'} />
       <canvas ref={windCanvasRef} className="world-wind-canvas" data-active={layers?.wind ? 'true' : 'false'} />
       {layers?.wind && windForMap?.readings.length ? (
-        <div className="world-wind-legend">
-          <span>WIND SPEED</span>
-          <b>0</b><b>10</b><b>20</b><b>30</b><b>40+ mph</b>
-          <i aria-hidden="true" />
+        <div className="world-wind-legend" data-open={windControlsOpen ? 'true' : 'false'}>
+          <button
+            type="button"
+            className="world-wind-toggle"
+            aria-expanded={windControlsOpen}
+            onClick={() => setWindControlsOpen(open => !open)}
+          >
+            Vento
+          </button>
+          <span className="world-wind-title">WIND SPEED</span>
+          <b className="world-wind-scale">0</b><b className="world-wind-scale">10</b><b className="world-wind-scale">20</b><b className="world-wind-scale">30</b><b className="world-wind-scale">40+ mph</b>
+          <i className="world-wind-ramp" aria-hidden="true" />
           {windForMap.frames.length > 1 ? (
             <label className="world-wind-time">
               <span>{activeWindFrame?.label ?? 'NOW'}</span>

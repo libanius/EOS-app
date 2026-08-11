@@ -1112,9 +1112,20 @@
   -webkit-backdrop-filter: blur(14px);
   pointer-events: none;
 }
+.wv2 .world-wind-toggle {
+  display: none;
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 10px;
+  background: rgba(122, 215, 255, 0.18);
+  color: #ffffff;
+  font: inherit;
+  letter-spacing: 0.08em;
+  pointer-events: auto;
+}
 .wv2 .world-wind-legend span { color: #ffffff; }
 .wv2 .world-wind-legend b { font-size: 0.5625rem; font-weight: 800; color: rgba(255, 255, 255, 0.72); }
-.wv2 .world-wind-legend i {
+.wv2 .world-wind-ramp {
   grid-column: 2 / -1;
   height: 4px;
   border-radius: 999px;
@@ -1139,6 +1150,40 @@
 .wv2 .world-wind-control input {
   width: 100%;
   accent-color: #7ad7ff;
+}
+@media (max-width: 700px) {
+  .wv2 .world-wind-legend {
+    left: auto;
+    right: 12px;
+    bottom: calc(var(--nav-inset) + 72px);
+    max-width: min(230px, calc(100vw - 28px));
+    grid-template-columns: 1fr;
+    justify-items: stretch;
+    gap: 8px;
+    pointer-events: auto;
+  }
+  .wv2 .world-wind-toggle { display: block; }
+  .wv2 .world-wind-legend[data-open='false'] {
+    width: auto;
+    padding: 6px;
+    border-radius: 999px;
+    background: rgba(5, 7, 10, 0.64);
+  }
+  .wv2 .world-wind-legend[data-open='false'] .world-wind-title,
+  .wv2 .world-wind-legend[data-open='false'] .world-wind-scale,
+  .wv2 .world-wind-legend[data-open='false'] .world-wind-ramp,
+  .wv2 .world-wind-legend[data-open='false'] .world-wind-time,
+  .wv2 .world-wind-legend[data-open='false'] .world-wind-control {
+    display: none;
+  }
+  .wv2 .world-wind-legend[data-open='true'] {
+    padding: 10px;
+    border-radius: 14px;
+    background: rgba(5, 7, 10, 0.78);
+  }
+  .wv2 .world-wind-legend[data-open='true'] .world-wind-ramp { grid-column: 1 / -1; }
+  .wv2 .world-wind-time,
+  .wv2 .world-wind-control { grid-template-columns: 54px minmax(120px, 1fr); }
 }
 .wv2 .world-wind-popup {
   position: absolute;

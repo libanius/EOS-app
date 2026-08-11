@@ -142,6 +142,7 @@ product phase sequenced.
 | WV2-T20 | Eliminar linhas retas artificiais no vento animado | ✅ COMPLETE | 2026-08-10 — D-148; escolher cópia de mundo mais próxima e descartar segmentos longos de projeção/respawn. |
 | WV2-T21 | Manter densidade no zoom e velocidade proporcional ao vento | ✅ COMPLETE | 2026-08-11 — D-149; respawn na viewport visível e passo visual proporcional à velocidade. |
 | WV2-T22 | Sliders de densidade e rastro do vento | ✅ COMPLETE | 2026-08-11 — D-150; usuário controla quantidade de partículas e tamanho/memória do rastro sem refetch. |
+| WV2-T23 | Controles de vento colapsáveis no mobile | ✅ COMPLETE | 2026-08-11 — D-151; painel lateral compacto no celular, aberto no desktop. |
 
 ---
 
