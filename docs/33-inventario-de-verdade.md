@@ -99,6 +99,23 @@ teste que roda contra dados reais.
 - **Service worker, plano em cópia local, carta do plano desenhada sem rede.**
   Provado dentro de `plan-editor-test`.
 
+### Vento animado (Premium)
+- **Camada de partículas animada com `requestAnimationFrame`**, campo escalar
+  próprio e controles de densidade, rastro, opacidade e tom.
+  `lib/world/WindParticleLayer.ts`, montada por
+  `components/world-dashboard/WorldMap.tsx`, que é o mapa que o dashboard atual
+  usa. Bloqueada por `canAccess('animated_wind')`.
+- Decidido em D-141..D-144: usuário sem Premium não inicia fetch amplo, canvas
+  nem loop de frames.
+
+> **CORREÇÃO DE AUDITORIA (2026-08-11).** A primeira versão deste documento
+> classificou o vento animado como PARCIAL, afirmando que ele vivia numa "tela
+> legada não alcançável". Estava errado: o `WorldV2` **importa** o `WorldMap` de
+> `components/world-dashboard/` — é o mesmo mapa, e a camada está viva no
+> dashboard de produção. O erro veio de eu ter deduzido pelo nome do diretório
+> em vez de seguir o import. Um inventário de verdade que erra é pior que
+> nenhum, e por isso a correção fica registrada em vez de ser apagada.
+
 ### Educação (EDU)
 - **Base de conhecimento com FEMA, Cruz Vermelha, OMS, SAS, SAMHSA, NCTSN** e
   busca semântica. `edu`, `edu-rag`, `edu-actions` (unit).
@@ -127,7 +144,6 @@ Usar em campanha com menos especificidade, ou pedir um teste antes.
 | --- | --- |
 | "Qualidade do ar **(AirNow)**" | O AQI existe e funciona, mas vem do **Open-Meteo**. E não está bloqueado: todo usuário já vê. Reescrever como "Qualidade do ar" e decidir se é grátis mesmo |
 | "Desastres **e abrigos** (FEMA)" | **Abrigos: reais** (FEMA National Shelter System, e o código se recusa a prometer vaga ou acessibilidade a partir de um feed que não tem esse dado). **Declarações de desastre: não existem.** Reescrever como "Abrigos ativos (FEMA)" |
-| "Camada de vento **animada**" | O bloqueio por plano funciona, mas o dashboard atual desenha **setas**. A camada animada de partículas existe e está montada só numa tela legada, não alcançável pela navegação |
 | "Múltiplos círculos" (Premium) | Não há limite nenhum no código: **todos já podem**. Não é falha de entrega, mas o Premium não está dando nada aqui |
 | "Notificações push críticas" (Premium) | Funciona, mas o cron **não checa plano** — manda para todo inscrito |
 
@@ -144,10 +160,14 @@ Anunciado na tabela de planos e/ou na landing page, sem uma linha de código:
 - **"Exportar ficha como PDF"** — o `pdf-parse` do projeto **lê** PDFs (a base
   de conhecimento), não gera
 
-**Consequência para o produto, não só para o texto:** o Premium tem cinco itens
-na tabela e **quatro não existem**. Depois da limpeza ele fica com push (que o
-Família já recebe na prática) e a camada de vento. **O Premium precisa ser
-repensado antes de qualquer campanha que o venda.**
+**Consequência para o produto, não só para o texto:** dos seis diferenciais do
+Premium, **três não existem** (CDC, FDA, histórico), o PDF também não, e dois
+são entregues a todos na prática (push, múltiplos círculos). Sobra **um
+exclusivo real: a camada de vento animada** — que é boa, é técnica e é
+defensável, mas é uma feature de mapa sustentando um plano inteiro.
+
+**O Premium precisa ser repensado antes de qualquer campanha que o venda.** Não
+é problema de texto: é um plano com um diferencial só.
 
 ---
 
