@@ -522,13 +522,15 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
   const [mapReadyNonce, setMapReadyNonce] = useState(0)
   const [windFrameIndex, setWindFrameIndex] = useState(0)
   const [viewportWind, setViewportWind] = useState<WindSnapshot | null>(null)
+  const [windDensity, setWindDensity] = useState(1)
+  const [windTrail, setWindTrail] = useState(0.62)
 
   const ensureWindLayer = () => {
     const map = mapRef.current
     const canvas = windCanvasRef.current
     const scalarCanvas = windScalarCanvasRef.current
     if (!map || !canvas || !readyRef.current) return null
-    if (!windLayerRef.current) windLayerRef.current = new WindParticleLayer(map, canvas, scalarCanvas)
+    if (!windLayerRef.current) windLayerRef.current = new WindParticleLayer(map, canvas, scalarCanvas, windRendererConfig)
     return windLayerRef.current
   }
 
@@ -537,6 +539,33 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
   const setWindFrameFromInput = (event: FormEvent<HTMLInputElement>) => {
     setWindFrameIndex(Number(event.currentTarget.value))
   }
+  const windRendererConfig = useMemo(() => ({
+    particleCount: Math.round(1400 * windDensity),
+    mobileParticleCount: Math.round(520 * windDensity),
+    globalParticleMultiplier: 1.9,
+    fadeAlpha: 0.925 + windTrail * 0.06,
+    lineWidth: 0.95 + windTrail * 0.55,
+    maxAgeMin: Math.round(70 + windTrail * 95),
+    maxAgeJitter: Math.round(90 + windTrail * 185),
+    minStepPx: 0.95 + windTrail * 0.65,
+  }), [windDensity, windTrail])
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem('eos-wind-renderer')
+      if (!raw) return
+      const parsed = JSON.parse(raw) as { density?: number; trail?: number }
+      if (typeof parsed.density === 'number') setWindDensity(Math.min(1.6, Math.max(0.35, parsed.density)))
+      if (typeof parsed.trail === 'number') setWindTrail(Math.min(1, Math.max(0.2, parsed.trail)))
+    } catch {}
+  }, [])
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('eos-wind-renderer', JSON.stringify({ density: windDensity, trail: windTrail }))
+    } catch {}
+  }, [windDensity, windTrail])
+  useEffect(() => {
+    windLayerRef.current?.updateConfig(windRendererConfig)
+  }, [windRendererConfig])
   const activeCycloneTargets = useMemo(
     () => (cyclones?.storms ?? []).map(storm => stormAtTime(storm, cyclones?.forecastPoints, activeWindFrame?.validAt)),
     [cyclones, activeWindFrame?.validAt],
@@ -1569,6 +1598,30 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
               />
             </label>
           ) : null}
+          <label className="world-wind-control">
+            <span>FLUXO</span>
+            <input
+              type="range"
+              min={0.35}
+              max={1.6}
+              step={0.05}
+              value={windDensity}
+              onInput={event => setWindDensity(Number(event.currentTarget.value))}
+              onChange={event => setWindDensity(Number(event.currentTarget.value))}
+            />
+          </label>
+          <label className="world-wind-control">
+            <span>RASTRO</span>
+            <input
+              type="range"
+              min={0.2}
+              max={1}
+              step={0.05}
+              value={windTrail}
+              onInput={event => setWindTrail(Number(event.currentTarget.value))}
+              onChange={event => setWindTrail(Number(event.currentTarget.value))}
+            />
+          </label>
         </div>
       ) : null}
       {windPopup && layers?.wind ? (

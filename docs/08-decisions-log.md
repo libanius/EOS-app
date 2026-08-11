@@ -240,6 +240,31 @@ do próprio ponto, e a animação comunica intensidade relativa do vento.
 
 ---
 
+## D-150 — Usuário controla densidade e rastro do vento
+
+**Date**: 2026-08-11
+**Status**: DECIDED
+**Roadmap**: WV2-T22
+
+**Context**: Manter densidade no zoom resolveu o sumiço de partículas, mas o
+padrão ficou visualmente poluído para alguns usuários. O modo Vento precisa ser
+legível por padrão e ajustável por preferência pessoal.
+
+**Decision**:
+
+1. O modo Vento terá controles visíveis para quantidade de partículas e tamanho
+   do rastro.
+2. O padrão deve ser menos carregado que WV2-T21.
+3. Ajustar os sliders não deve refazer fetch de vento nem remontar o mapa; deve
+   atualizar somente o renderer imperativo.
+4. A velocidade relativa continua vindo do vetor: vento fraco mais lento, vento
+   forte mais rápido.
+
+**Consequence**: O usuário pode escolher entre uma leitura limpa ou uma leitura
+mais parecida com Windfinder/earth.nullschool, sem custo extra de provider.
+
+---
+
 ## D-141 — Vento animado é camada premium no mapa existente
 
 **Date**: 2026-08-09

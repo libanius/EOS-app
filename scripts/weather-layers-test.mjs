@@ -223,9 +223,27 @@ const setas = await page.evaluate(() => {
   }
 })
 const animado = await page.evaluate(() => window.__eosWindLayer ?? { active: false })
-animado.active === true && animado.mode === 'bilinear' && animado.scalar === true && animado.wrapsWorld === true && (animado.scalarPixels ?? 0) > 0 && (animado.particles ?? 0) > 1000 && (animado.visibleParticles ?? 0) > 250 && animado.grid === '25x25' && (animado.lineWidth ?? 0) >= 1.2 && (animado.minStepPx ?? 0) >= 1.4 && (animado.speedScale ?? 0) >= 0.00023 && (animado.maxSegmentPx ?? 99) <= 40 && (animado.fadeAlpha ?? 0) >= 0.96 && (animado.maxAgeMin ?? 0) >= 100
+animado.active === true && animado.mode === 'bilinear' && animado.scalar === true && animado.wrapsWorld === true && (animado.scalarPixels ?? 0) > 0 && (animado.particles ?? 0) > 700 && (animado.visibleParticles ?? 0) > 220 && animado.grid === '25x25' && (animado.lineWidth ?? 0) >= 1.2 && (animado.minStepPx ?? 0) >= 1.3 && (animado.speedScale ?? 0) >= 0.00023 && (animado.maxSegmentPx ?? 99) <= 40 && (animado.fadeAlpha ?? 0) >= 0.96 && (animado.maxAgeMin ?? 0) >= 100
   ? ok('vento escalar e animado bilinear ativos no mapa', `${animado.grid} · ${animado.scalarPixels} px escalares · ${animado.visibleParticles}/${animado.particles} partículas visíveis · cauda fade ${animado.fadeAlpha} · segmento máx ${animado.maxSegmentPx}px`)
   : no('vento não desenhou', JSON.stringify({ setas, animado }))
+
+const controlsOk = await page.evaluate(() => {
+  const controls = Array.from(document.querySelectorAll('.world-wind-control input'))
+  if (controls.length < 2) return { ok: false, reason: 'controles ausentes' }
+  const before = window.__eosWindLayer ?? {}
+  const density = controls[0]
+  const trail = controls[1]
+  density.value = '1.4'
+  density.dispatchEvent(new Event('input', { bubbles: true }))
+  trail.value = '0.95'
+  trail.dispatchEvent(new Event('input', { bubbles: true }))
+  return { ok: true, beforeParticles: before.particles }
+})
+await page.waitForTimeout(650)
+const tunedWind = await page.evaluate(() => window.__eosWindLayer ?? {})
+controlsOk.ok && tunedWind.particles > (controlsOk.beforeParticles ?? 0) && tunedWind.fadeAlpha >= 0.98
+  ? ok('sliders de vento ajustam fluxo e rastro', `${controlsOk.beforeParticles} → ${tunedWind.particles} partículas · fade ${tunedWind.fadeAlpha}`)
+  : no('sliders de vento não aplicaram configuração', JSON.stringify({ controlsOk, tunedWind }))
 
 const timelineOk = await page.evaluate(() => {
   const input = document.querySelector('.world-wind-time input')

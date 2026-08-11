@@ -40,12 +40,12 @@ type Grid = {
 }
 
 const DEFAULT_CONFIG: WindParticleLayerConfig = {
-  particleCount: 1800,
-  mobileParticleCount: 780,
+  particleCount: 1400,
+  mobileParticleCount: 520,
   fadeAlpha: 0.965,
   lineWidth: 1.25,
   speedScale: 0.00024,
-  globalParticleMultiplier: 2.7,
+  globalParticleMultiplier: 1.9,
   maxAgeMin: 120,
   maxAgeJitter: 170,
   scalarOpacity: 0.78,
@@ -234,6 +234,13 @@ export class WindParticleLayer {
       this.ensureParticles()
       this.debug(true)
     }
+  }
+
+  updateConfig(config: Partial<WindParticleLayerConfig>) {
+    this.config = { ...this.config, ...config }
+    if (!this.enabled) return
+    this.ensureParticles()
+    this.debug(true)
   }
 
   updateViewport() {

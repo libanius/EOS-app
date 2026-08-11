@@ -79,6 +79,12 @@ local fica com 1 ou 0 segmentos. O movimento visual também precisa ser
 proporcional à velocidade: o piso de passo é dependente de `speedMph`, não igual
 para vento fraco e forte.
 
+D-150 torna a poluição visual configurável pelo usuário. O padrão do vento deve
+ser mais limpo que WV2-T21 (`mobileParticleCount=520`, `globalParticleMultiplier=1.9`),
+e os sliders `Fluxo` e `Rastro` ajustam apenas o `WindParticleLayer` imperativo.
+Essas preferências ficam em `localStorage` (`eos-wind-renderer`) e não podem
+disparar novo fetch de vento nem remontar o mapa.
+
 ---
 
 ## EOS Platform: quatro camadas, não quatro produtos (2026-08-03)

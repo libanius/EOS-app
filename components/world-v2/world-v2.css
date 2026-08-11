@@ -1120,20 +1120,23 @@
   border-radius: 999px;
   background: linear-gradient(90deg, rgba(185,245,255,0.62), rgba(122,215,255,0.76), rgba(255,214,10,0.82), rgba(255,159,10,0.88), rgba(255,69,58,0.92));
 }
-.wv2 .world-wind-time {
+.wv2 .world-wind-time,
+.wv2 .world-wind-control {
   grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: 38px minmax(112px, 1fr);
+  grid-template-columns: 48px minmax(112px, 1fr);
   align-items: center;
   gap: 8px;
   pointer-events: auto;
 }
-.wv2 .world-wind-time span {
+.wv2 .world-wind-time span,
+.wv2 .world-wind-control span {
   font-size: 0.5625rem;
   font-weight: 900;
   color: rgba(255, 255, 255, 0.86);
 }
-.wv2 .world-wind-time input {
+.wv2 .world-wind-time input,
+.wv2 .world-wind-control input {
   width: 100%;
   accent-color: #7ad7ff;
 }
