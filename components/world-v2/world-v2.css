@@ -1089,8 +1089,8 @@
   z-index: 3;
   mix-blend-mode: screen;
 }
-.wv2 .world-wind-scalar-canvas[data-active='true'] { opacity: 0.68; }
-.wv2 .world-wind-canvas[data-active='true'] { opacity: 0.86; }
+.wv2 .world-wind-scalar-canvas[data-active='true'] { opacity: 0.56; }
+.wv2 .world-wind-canvas[data-active='true'] { opacity: 1; }
 .wv2 .world-wind-legend {
   position: absolute;
   left: 14px;

@@ -10,8 +10,9 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Preparedness Engine (PREP/EDU/COMMS/ONB/PILOT) sobre Web/PWA |
-| **Current Task** | Roadmap sem tarefa `PENDING/IN PROGRESS` após WV2-T17; próxima frente precisa ser promovida explicitamente no Spine antes de código. |
-| **Last Completed Task** | **D-145 / WV2-T17 — Vento premium sincronizado com Hurricane Tracker, sem provider pago (2026-08-10)** |
+| **Current Task** | Roadmap sem tarefa `PENDING/IN PROGRESS` após WV2-T18; próxima frente precisa ser promovida explicitamente no Spine antes de código. |
+| **Last Completed Task** | **D-146 / WV2-T18 — Rastros do vento perceptíveis mesmo em vento fraco (2026-08-10)** |
+| | **D-145 / WV2-T17 — Vento premium sincronizado com Hurricane Tracker, sem provider pago (2026-08-10)** |
 | | **D-144 / WV2-T16 — Vento como modo premium mundial, separado de Escuro/Satélite (2026-08-10)** |
 | | **D-143 / WV2-T15 — Campo escalar premium de vento no WorldMap inteiro, sem raster tile layer (2026-08-10)** |
 | | **D-142 / WV2-T14 — Vento animado como WindParticleLayer bilinear, sem flicker (2026-08-10)** |
@@ -151,8 +152,9 @@
 | **In Progress** | — |
 | **Platform Alignment** | ✅ D-084: EOS é plataforma multi-superfície com um único core operacional. Web/PWA segue como superfície primária; iOS/Android serão adapters nativos futuros; Automotive é companion mode restrito; Mesh/LoRa segue bloqueado por G-05. `/mobile/` é template/conceitual, não app inicializado. |
 | **Fases pedidas pelo dono (2026-07-31)** | ✅ 1. Camadas de clima + rastreio de ciclone (D-078). 2. Reinventar a aba Família no design system da v2, com componentes dinâmicos. 3. WV2-T05 (a11y/perf), PLAN-T07 (Pilot propõe plano). |
-| **Next Task** | Roadmap sem tarefa `PENDING/IN PROGRESS` após WV2-T17; próxima frente precisa ser promovida explicitamente no Spine antes de código. |
-| **Build** | ✅ WV2-T17 validado em 2026-08-10 com `npm run type-check`, `npm test -- --runInBand` (202/202), `npm run build`, `npm run test:weather` (11/11; Open-Meteo `best_match` com 25 frames, canvas `25x25`, timeline frame 3 aplicada, zoom interativo e sem provider pago). |
+| **Next Task** | Roadmap sem tarefa `PENDING/IN PROGRESS` após WV2-T18; próxima frente precisa ser promovida explicitamente no Spine antes de código. |
+| **Build** | ✅ WV2-T18 validado em 2026-08-10 com `npm run type-check`, `npm test -- --runInBand` (202/202), `npm run build`, `npm run test:weather` (11/11; vento fraco 7 km/h, canvas `25x25`, 2106 partículas, rastro mínimo 2.6px, timeline frame 3). |
+| | ✅ WV2-T17 validado em 2026-08-10 com `npm run type-check`, `npm test -- --runInBand` (202/202), `npm run build`, `npm run test:weather` (11/11; Open-Meteo `best_match` com 25 frames, canvas `25x25`, timeline frame 3 aplicada, zoom interativo e sem provider pago). |
 | | ✅ WV2-T16 validado em 2026-08-10 com `npm run type-check`, `npm test -- --runInBand` (202/202), `npm run build`, `npm run test:weather` (9/9; `Escuro/Satélite/Vento`, modo mundial `25x25`, 195696 px escalares, 1833 partículas, zoom interativo 1.55→2.14 em 798 ms). |
 | | ✅ WV2-T15 follow-up validado em 2026-08-10 com `npm run type-check`, `npm test -- --runInBand` (202/202), `npm run build`, `npm run test:weather` (8/8; zoom global `17x17`, 378000 px escalares, 1833 partículas, `wrapsWorld=true`). |
 | | ✅ WV2-T15 validado em 2026-08-10 com `npm run type-check`, `npm test -- --runInBand` (202/202), `npm run build`, `npm run test:weather` (8/8; `15x15`, 365119 px escalares, 780 partículas) e `git diff --check`. |

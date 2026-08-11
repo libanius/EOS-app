@@ -216,8 +216,8 @@ const setas = await page.evaluate(() => {
   }
 })
 const animado = await page.evaluate(() => window.__eosWindLayer ?? { active: false })
-animado.active === true && animado.mode === 'bilinear' && animado.scalar === true && animado.wrapsWorld === true && (animado.scalarPixels ?? 0) > 0 && (animado.particles ?? 0) > 1000 && animado.grid === '25x25'
-  ? ok('vento escalar e animado bilinear ativos no mapa', `${animado.grid} · ${animado.scalarPixels} px escalares · ${animado.particles} partículas · ${setas.desenhadas} setas fallback`)
+animado.active === true && animado.mode === 'bilinear' && animado.scalar === true && animado.wrapsWorld === true && (animado.scalarPixels ?? 0) > 0 && (animado.particles ?? 0) > 1000 && animado.grid === '25x25' && (animado.lineWidth ?? 0) >= 1.4 && (animado.minTrailPx ?? 0) >= 2.5
+  ? ok('vento escalar e animado bilinear ativos no mapa', `${animado.grid} · ${animado.scalarPixels} px escalares · ${animado.particles} partículas · rastro ${animado.minTrailPx}px`)
   : no('vento não desenhou', JSON.stringify({ setas, animado }))
 
 const timelineOk = await page.evaluate(() => {

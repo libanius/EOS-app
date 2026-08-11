@@ -58,8 +58,8 @@
 .world-wind-scalar-canvas, .world-wind-canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; opacity: 0; transition: opacity 180ms ease; }
 .world-wind-scalar-canvas { z-index: 2; mix-blend-mode: normal; filter: saturate(1.35) contrast(1.08); }
 .world-wind-canvas { z-index: 3; mix-blend-mode: screen; }
-.world-wind-scalar-canvas[data-active='true'] { opacity: 0.66; }
-.world-wind-canvas[data-active='true'] { opacity: 0.82; }
+.world-wind-scalar-canvas[data-active='true'] { opacity: 0.54; }
+.world-wind-canvas[data-active='true'] { opacity: 1; }
 .world-wind-legend { position: absolute; left: 14px; bottom: 86px; z-index: 5; display: grid; grid-template-columns: auto repeat(5, auto); align-items: center; gap: 7px; padding: 8px 10px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); background: rgba(5,7,10,0.72); color: rgba(255,255,255,0.8); font-size: 10px; font-weight: 800; letter-spacing: 0.08em; pointer-events: none; }
 .world-wind-legend span { color: #fff; }
 .world-wind-legend b { font-size: 9px; color: rgba(255,255,255,0.72); }

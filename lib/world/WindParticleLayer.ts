@@ -41,9 +41,9 @@ const DEFAULT_CONFIG: WindParticleLayerConfig = {
   particleCount: 1800,
   mobileParticleCount: 780,
   fadeAlpha: 0.9,
-  lineWidth: 1.05,
-  speedScale: 0.00014,
-  globalParticleMultiplier: 2.35,
+  lineWidth: 1.45,
+  speedScale: 0.00022,
+  globalParticleMultiplier: 2.7,
   maxAgeMin: 42,
   maxAgeJitter: 78,
   scalarOpacity: 0.78,
@@ -55,11 +55,11 @@ function uniqSorted(values: number[]) {
 }
 
 function colorFor(speedMph: number) {
-  if (speedMph >= 45) return 'rgba(255,255,255,0.92)'
-  if (speedMph >= 32) return 'rgba(255,202,88,0.86)'
-  if (speedMph >= 22) return 'rgba(74,222,128,0.78)'
-  if (speedMph >= 12) return 'rgba(82,178,255,0.72)'
-  return 'rgba(136,116,255,0.58)'
+  if (speedMph >= 45) return 'rgba(255,255,255,0.98)'
+  if (speedMph >= 32) return 'rgba(255,221,104,0.94)'
+  if (speedMph >= 22) return 'rgba(142,255,184,0.9)'
+  if (speedMph >= 12) return 'rgba(190,242,255,0.88)'
+  return 'rgba(226,241,255,0.82)'
 }
 
 function scalarColor(speedMph: number, opacity: number): [number, number, number, number] {
@@ -375,11 +375,19 @@ export class WindParticleLayer {
       return
     }
     const next = this.map.project([p.lng, p.lat])
+    const dx = next.x - old.x
+    const dy = next.y - old.y
+    const dist = Math.sqrt(dx * dx + dy * dy)
+    const minTrail = vector.speedMph >= 22 ? 3.8 : 2.6
+    const trail = dist > 0 && dist < minTrail
+      ? { x: old.x + (dx / dist) * minTrail, y: old.y + (dy / dist) * minTrail }
+      : next
     this.ctx.strokeStyle = colorFor(vector.speedMph)
-    this.ctx.lineWidth = vector.speedMph >= 32 ? this.config.lineWidth * 1.45 : this.config.lineWidth
+    this.ctx.lineWidth = vector.speedMph >= 32 ? this.config.lineWidth * 1.55 : this.config.lineWidth
+    this.ctx.lineCap = 'round'
     this.ctx.beginPath()
     this.ctx.moveTo(old.x, old.y)
-    this.ctx.lineTo(next.x, next.y)
+    this.ctx.lineTo(trail.x, trail.y)
     this.ctx.stroke()
     p.age += 1
     if (p.age > p.maxAge) this.respawn(p)
@@ -416,6 +424,8 @@ export class WindParticleLayer {
           particles: this.particles.length,
           readings: this.grid ? this.grid.lats.length * this.grid.lngs.length : 0,
           grid: this.grid ? `${this.grid.lngs.length}x${this.grid.lats.length}` : null,
+          lineWidth: this.config.lineWidth,
+          minTrailPx: 2.6,
         }
       : { active: false }
   }

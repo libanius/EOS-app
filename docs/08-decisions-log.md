@@ -136,6 +136,31 @@ Open-Meteo; núcleo tropical = NHC + perfil físico simplificado.
 
 ---
 
+## D-146 — Vento animado precisa ser visível também em vento fraco
+
+**Date**: 2026-08-10
+**Status**: DECIDED
+**Roadmap**: WV2-T18
+
+**Context**: Depois de D-145, produção mostrava o campo escalar e a leitura local
+de vento, mas os rastros animados quase não apareciam em regiões com vento baixo
+ou moderado. O dado estava presente; o problema era visual: deslocamento
+subpixel, linha fina e cores muito próximas da base azul/verde.
+
+**Decision**:
+
+1. O renderer deve manter direção e intensidade relativas, mas garantir um
+   comprimento mínimo de rastro em tela para que o usuário perceba circulação.
+2. Vento fraco não deve sumir; usa linha ciano/branca com opacidade suficiente,
+   enquanto ventos fortes continuam amarelo/vermelho/branco.
+3. Esse ajuste é somente visual. Não altera provider, cálculo de velocidade,
+   popup nem leitura numérica.
+
+**Consequence**: O modo Vento deixa de parecer um raster estático quando a região
+tem vento fraco. A camada animada comunica fluxo mesmo sem tempestade ativa.
+
+---
+
 ## D-141 — Vento animado é camada premium no mapa existente
 
 **Date**: 2026-08-09

@@ -54,6 +54,12 @@ sustentado, rumo e velocidade do tracker. Isto é coerência visual operacional,
 não previsão proprietária: cone/trilha oficiais continuam sendo os produtos do
 NHC e providers pagos seguem fora de escopo.
 
+D-146 corrige a legibilidade: se a API informa vento, o usuário precisa ver
+rastros circulando mesmo em vento fraco. O `WindParticleLayer` usa linha mínima
+em tela, paleta de maior contraste e partículas com opacidade total sobre o
+campo escalar. Não reduzir isso sem substituir por outra verificação visual,
+senão o modo Vento volta a parecer um mapa colorido estático.
+
 ---
 
 ## EOS Platform: quatro camadas, não quatro produtos (2026-08-03)
