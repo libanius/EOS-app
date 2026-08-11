@@ -235,24 +235,31 @@ if (await windToggle.count()) {
 await page.waitForTimeout(250)
 const controlsOk = await page.evaluate(() => {
   const controls = Array.from(document.querySelectorAll('.world-wind-control input'))
-  if (controls.length < 3) return { ok: false, reason: 'controles ausentes' }
+  if (controls.length < 4) return { ok: false, reason: 'controles ausentes' }
   const before = window.__eosWindLayer ?? {}
   const density = controls[0]
   const trail = controls[1]
   const opacity = controls[2]
+  const arrows = controls[3]
   density.value = '1.4'
   density.dispatchEvent(new Event('input', { bubbles: true }))
   trail.value = '0.95'
   trail.dispatchEvent(new Event('input', { bubbles: true }))
   opacity.value = '0.35'
   opacity.dispatchEvent(new Event('input', { bubbles: true }))
+  arrows.value = '0'
+  arrows.dispatchEvent(new Event('input', { bubbles: true }))
   return { ok: true, beforeParticles: before.particles }
 })
 await page.waitForTimeout(650)
 const tunedWind = await page.evaluate(() => window.__eosWindLayer ?? {})
-controlsOk.ok && tunedWind.particles > (controlsOk.beforeParticles ?? 0) && tunedWind.fadeAlpha >= 0.98 && tunedWind.scalarOpacity < 0.55 && tunedWind.particleOpacity < 0.7
-  ? ok('sliders de vento ajustam fluxo, rastro e mapa', `${controlsOk.beforeParticles} → ${tunedWind.particles} partículas · fade ${tunedWind.fadeAlpha} · opacidade ${tunedWind.scalarOpacity}`)
-  : no('sliders de vento não aplicaram configuração', JSON.stringify({ controlsOk, tunedWind }))
+const arrowPaint = await page.evaluate(() => ({
+  icon: window.__eosMap?.getPaintProperty?.('eos-wind', 'icon-opacity'),
+  text: window.__eosMap?.getPaintProperty?.('eos-wind-label', 'text-opacity'),
+}))
+controlsOk.ok && tunedWind.particles > (controlsOk.beforeParticles ?? 0) && tunedWind.fadeAlpha >= 0.98 && tunedWind.scalarOpacity < 0.55 && tunedWind.particleOpacity < 0.7 && arrowPaint.icon === 0 && arrowPaint.text === 0
+  ? ok('sliders de vento ajustam fluxo, rastro, mapa e setas', `${controlsOk.beforeParticles} → ${tunedWind.particles} partículas · fade ${tunedWind.fadeAlpha} · opacidade ${tunedWind.scalarOpacity} · setas ${arrowPaint.icon}`)
+  : no('sliders de vento não aplicaram configuração', JSON.stringify({ controlsOk, tunedWind, arrowPaint }))
 
 const timelineOk = await page.evaluate(() => {
   const input = document.querySelector('.world-wind-time input')
@@ -284,7 +291,7 @@ if (mapBox) {
   ;(zoomWind.visibleParticles ?? 0) > 250
     ? ok('vento mantém densidade no zoom', `${zoomWind.visibleParticles}/${zoomWind.particles} partículas visíveis`)
     : no('vento perdeu densidade no zoom', JSON.stringify(zoomWind))
-  await page.mouse.click(mapBox.x + mapBox.width * 0.5, mapBox.y + mapBox.height * 0.5)
+  await page.mouse.click(mapBox.x + 24, mapBox.y + 24)
   await page.waitForTimeout(250)
   ;(await page.locator('.world-wind-legend[data-open="false"]').count()) === 1
     ? ok('painel de vento recolhe ao tocar fora')

@@ -96,6 +96,12 @@ D-152 muda o painel para flutuante/colapsável em todas as viewports. O botão
 controla transparência do campo escalar e partículas via CSS vars +
 `WindParticleLayer.updateConfig`, sem novo fetch.
 
+D-153 separa as setas fallback (`eos-wind` e `eos-wind-label`) das partículas.
+O slider `Setas` controla apenas `icon-opacity` e `text-opacity`: 0 esconde
+totalmente as setas/números azuis, 1 restaura a tint/label. Não remover a camada,
+porque ela ainda é fallback/debug e continua útil quando partículas/canvas
+falham.
+
 ---
 
 ## EOS Platform: quatro camadas, não quatro produtos (2026-08-03)

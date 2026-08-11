@@ -18,7 +18,7 @@
  * here lands on both screens.
  */
 
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent, type MouseEvent, type PointerEvent } from 'react'
 import type { Map as MLMap, Marker as MLMarker } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { useRisk } from '@/components/v2/RiskProvider'
@@ -526,6 +526,7 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
   const [windDensity, setWindDensity] = useState(1)
   const [windTrail, setWindTrail] = useState(0.62)
   const [windMapOpacity, setWindMapOpacity] = useState(0.72)
+  const [windArrowTint, setWindArrowTint] = useState(1)
   const [windControlsOpen, setWindControlsOpen] = useState(false)
 
   const ensureWindLayer = () => {
@@ -558,29 +559,42 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
     try {
       const raw = window.localStorage.getItem('eos-wind-renderer')
       if (!raw) return
-      const parsed = JSON.parse(raw) as { density?: number; trail?: number; mapOpacity?: number }
+      const parsed = JSON.parse(raw) as { density?: number; trail?: number; mapOpacity?: number; arrowTint?: number }
       if (typeof parsed.density === 'number') setWindDensity(Math.min(1.6, Math.max(0.35, parsed.density)))
       if (typeof parsed.trail === 'number') setWindTrail(Math.min(1, Math.max(0.2, parsed.trail)))
       if (typeof parsed.mapOpacity === 'number') setWindMapOpacity(Math.min(1, Math.max(0.25, parsed.mapOpacity)))
+      if (typeof parsed.arrowTint === 'number') setWindArrowTint(Math.min(1, Math.max(0, parsed.arrowTint)))
     } catch {}
   }, [])
   useEffect(() => {
     try {
-      window.localStorage.setItem('eos-wind-renderer', JSON.stringify({ density: windDensity, trail: windTrail, mapOpacity: windMapOpacity }))
+      window.localStorage.setItem('eos-wind-renderer', JSON.stringify({ density: windDensity, trail: windTrail, mapOpacity: windMapOpacity, arrowTint: windArrowTint }))
     } catch {}
-  }, [windDensity, windTrail, windMapOpacity])
+  }, [windDensity, windTrail, windMapOpacity, windArrowTint])
   useEffect(() => {
     windLayerRef.current?.updateConfig(windRendererConfig)
   }, [windRendererConfig])
   useEffect(() => {
+    const map = mapRef.current
+    if (!map || !readyRef.current) return
+    if (map.getLayer('eos-wind')) map.setPaintProperty('eos-wind', 'icon-opacity', windArrowTint * 0.95)
+    if (map.getLayer('eos-wind-label')) map.setPaintProperty('eos-wind-label', 'text-opacity', windArrowTint * 0.8)
+  }, [windArrowTint, mapReadyNonce])
+  useEffect(() => {
     if (!windControlsOpen) return
-    const onPointerDown = (event: PointerEvent) => {
+    const closeIfOutside = (event: Event) => {
       const target = event.target as Node | null
       if (target && windLegendRef.current?.contains(target)) return
       setWindControlsOpen(false)
     }
-    document.addEventListener('pointerdown', onPointerDown)
-    return () => { document.removeEventListener('pointerdown', onPointerDown) }
+    document.addEventListener('pointerdown', closeIfOutside, true)
+    document.addEventListener('mousedown', closeIfOutside, true)
+    document.addEventListener('click', closeIfOutside, true)
+    return () => {
+      document.removeEventListener('pointerdown', closeIfOutside, true)
+      document.removeEventListener('mousedown', closeIfOutside, true)
+      document.removeEventListener('click', closeIfOutside, true)
+    }
   }, [windControlsOpen])
   const activeCycloneTargets = useMemo(
     () => (cyclones?.storms ?? []).map(storm => stormAtTime(storm, cyclones?.forecastPoints, activeWindFrame?.validAt)),
@@ -1589,8 +1603,20 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courseTo, coords?.lat, coords?.lng])
 
+  const closeWindControlsFromMap = (event: PointerEvent<HTMLDivElement> | MouseEvent<HTMLDivElement>) => {
+    if (!windControlsOpen) return
+    const target = event.target as Node | null
+    if (target && windLegendRef.current?.contains(target)) return
+    setWindControlsOpen(false)
+  }
+
   return (
-    <div className="world-map-wrap" aria-hidden="true">
+    <div
+      className="world-map-wrap"
+      aria-hidden="true"
+      onPointerDownCapture={closeWindControlsFromMap}
+      onClickCapture={closeWindControlsFromMap}
+    >
       <div ref={plateRef} className="world-plate has-image" style={{ ['--world-image' as string]: `url(${plateUrl})`, transition: 'opacity 800ms ease' }} />
       <div ref={ref} className="world-map" />
       <canvas
@@ -1666,6 +1692,18 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
               value={windMapOpacity}
               onInput={event => setWindMapOpacity(Number(event.currentTarget.value))}
               onChange={event => setWindMapOpacity(Number(event.currentTarget.value))}
+            />
+          </label>
+          <label className="world-wind-control">
+            <span>SETAS</span>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={windArrowTint}
+              onInput={event => setWindArrowTint(Number(event.currentTarget.value))}
+              onChange={event => setWindArrowTint(Number(event.currentTarget.value))}
             />
           </label>
         </div>

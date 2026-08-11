@@ -318,6 +318,29 @@ usuário quiser.
 
 ---
 
+## D-153 — Setas fallback do vento também são controláveis
+
+**Date**: 2026-08-11
+**Status**: DECIDED
+**Roadmap**: WV2-T25
+
+**Context**: Mesmo com controle de partículas, rastro e transparência do overlay,
+as setas azuis/números do fallback vetorial continuavam visíveis e podiam poluir
+a leitura. Elas são úteis como fallback e orientação, mas devem ser opcionais.
+
+**Decision**:
+
+1. Adicionar slider `Setas` no painel de vento.
+2. Valor 0 oculta completamente ícones e labels da camada `eos-wind`.
+3. Valor máximo restaura tint/labels em opacidade cheia.
+4. O controle altera apenas propriedades de paint do MapLibre; não altera dados,
+   provider, canvas, popup ou fetch.
+
+**Consequence**: O usuário pode escolher entre leitura puramente por partículas
+ou partículas + setas numéricas.
+
+---
+
 ## D-141 — Vento animado é camada premium no mapa existente
 
 **Date**: 2026-08-09

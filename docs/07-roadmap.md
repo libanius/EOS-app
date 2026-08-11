@@ -144,6 +144,7 @@ product phase sequenced.
 | WV2-T22 | Sliders de densidade e rastro do vento | ✅ COMPLETE | 2026-08-11 — D-150; usuário controla quantidade de partículas e tamanho/memória do rastro sem refetch. |
 | WV2-T23 | Controles de vento colapsáveis no mobile | ✅ COMPLETE | 2026-08-11 — D-151; painel lateral compacto no celular, aberto no desktop. |
 | WV2-T24 | Painel de vento flutuante com transparência | ✅ COMPLETE | 2026-08-11 — D-152; colapsável em desktop/mobile, fecha ao clicar fora e slider `Mapa` controla opacidade do overlay. |
+| WV2-T25 | Slider para setas fallback do vento | ✅ COMPLETE | 2026-08-11 — D-153; controle `Setas` oculta ou mostra ícones/labels `eos-wind` sem refetch. |
 
 ---
 
