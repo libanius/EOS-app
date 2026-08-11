@@ -213,6 +213,33 @@ fluxo curvo/contínuo produzido pelos vetores de vento.
 
 ---
 
+## D-149 — Densidade e velocidade do vento devem ser locais ao viewport
+
+**Date**: 2026-08-11
+**Status**: DECIDED
+**Roadmap**: WV2-T21
+
+**Context**: No modo global, as partículas eram distribuídas pela grade inteira.
+Ao aproximar o zoom, a viewport passava a cobrir uma fração pequena do mundo e a
+tela ficava com poucos segmentos visíveis, às vezes um ou zero. Além disso, o
+passo visual mínimo deixava ventos fracos e fortes parecidos demais.
+
+**Decision**:
+
+1. Partículas devem nascer prioritariamente dentro da viewport visível, com uma
+   margem pequena, para manter densidade visual ao dar zoom.
+2. Partículas que saírem muito da viewport devem ser recicladas para dentro da
+   área visível, sem desenhar linha de salto.
+3. O passo mínimo deixa de ser igual para todos: ventos fracos continuam mais
+   lentos, ventos fortes avançam mais rápido, preservando legibilidade sem
+   igualar velocidades.
+4. Não alterar API, provider, popup, valor numérico nem o campo escalar.
+
+**Consequence**: O usuário vê fluxo contínuo tanto no mapa mundial quanto perto
+do próprio ponto, e a animação comunica intensidade relativa do vento.
+
+---
+
 ## D-141 — Vento animado é camada premium no mapa existente
 
 **Date**: 2026-08-09

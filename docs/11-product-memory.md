@@ -1,7 +1,7 @@
 # 11 — Product Memory
 
 > Non-obvious facts that don't belong in code comments but must survive across sessions.
-> Last updated: 2026-08-10
+> Last updated: 2026-08-11
 
 ---
 
@@ -71,6 +71,13 @@ partícula deve desenhar para a cópia horizontal mais próxima do ponto anterio
 Se o segmento projetado ainda ultrapassar o limite visual (`maxSegmentPx`), o
 renderer descarta o desenho e respawna a partícula. Essas linhas são artefato de
 projeção/respawn, não vento.
+
+D-149 mantém densidade no zoom: partículas devem nascer prioritariamente dentro
+da viewport visível e partículas fora da tela devem ser recicladas para a área
+visível. Não voltar a distribuir o pool inteiro pela grade global, senão o zoom
+local fica com 1 ou 0 segmentos. O movimento visual também precisa ser
+proporcional à velocidade: o piso de passo é dependente de `speedMph`, não igual
+para vento fraco e forte.
 
 ---
 

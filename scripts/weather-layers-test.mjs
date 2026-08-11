@@ -223,8 +223,8 @@ const setas = await page.evaluate(() => {
   }
 })
 const animado = await page.evaluate(() => window.__eosWindLayer ?? { active: false })
-animado.active === true && animado.mode === 'bilinear' && animado.scalar === true && animado.wrapsWorld === true && (animado.scalarPixels ?? 0) > 0 && (animado.particles ?? 0) > 1000 && animado.grid === '25x25' && (animado.lineWidth ?? 0) >= 1.2 && (animado.minStepPx ?? 0) >= 1.4 && (animado.maxSegmentPx ?? 99) <= 40 && (animado.fadeAlpha ?? 0) >= 0.96 && (animado.maxAgeMin ?? 0) >= 100
-  ? ok('vento escalar e animado bilinear ativos no mapa', `${animado.grid} · ${animado.scalarPixels} px escalares · ${animado.particles} partículas · cauda fade ${animado.fadeAlpha} · segmento máx ${animado.maxSegmentPx}px`)
+animado.active === true && animado.mode === 'bilinear' && animado.scalar === true && animado.wrapsWorld === true && (animado.scalarPixels ?? 0) > 0 && (animado.particles ?? 0) > 1000 && (animado.visibleParticles ?? 0) > 250 && animado.grid === '25x25' && (animado.lineWidth ?? 0) >= 1.2 && (animado.minStepPx ?? 0) >= 1.4 && (animado.speedScale ?? 0) >= 0.00023 && (animado.maxSegmentPx ?? 99) <= 40 && (animado.fadeAlpha ?? 0) >= 0.96 && (animado.maxAgeMin ?? 0) >= 100
+  ? ok('vento escalar e animado bilinear ativos no mapa', `${animado.grid} · ${animado.scalarPixels} px escalares · ${animado.visibleParticles}/${animado.particles} partículas visíveis · cauda fade ${animado.fadeAlpha} · segmento máx ${animado.maxSegmentPx}px`)
   : no('vento não desenhou', JSON.stringify({ setas, animado }))
 
 const timelineOk = await page.evaluate(() => {
@@ -249,9 +249,14 @@ if (mapBox) {
   await page.waitForTimeout(700)
   const afterZoom = await page.evaluate(() => window.__eosMap?.getZoom?.() ?? null)
   const elapsed = Date.now() - t0
+  await page.waitForTimeout(900)
+  const zoomWind = await page.evaluate(() => window.__eosWindLayer ?? {})
   beforeZoom !== null && afterZoom !== null && afterZoom > beforeZoom + 0.15 && elapsed < 2500
     ? ok('modo vento continua interativo', `zoom ${elapsed}ms · ${beforeZoom.toFixed(2)} → ${afterZoom.toFixed(2)}`)
     : no('modo vento travou ou não respondeu ao zoom', `elapsed=${elapsed} before=${beforeZoom} after=${afterZoom}`)
+  ;(zoomWind.visibleParticles ?? 0) > 250
+    ? ok('vento mantém densidade no zoom', `${zoomWind.visibleParticles}/${zoomWind.particles} partículas visíveis`)
+    : no('vento perdeu densidade no zoom', JSON.stringify(zoomWind))
 } else {
   no('canvas do mapa ausente no modo vento')
 }

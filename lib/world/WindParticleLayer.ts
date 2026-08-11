@@ -44,7 +44,7 @@ const DEFAULT_CONFIG: WindParticleLayerConfig = {
   mobileParticleCount: 780,
   fadeAlpha: 0.965,
   lineWidth: 1.25,
-  speedScale: 0.0002,
+  speedScale: 0.00024,
   globalParticleMultiplier: 2.7,
   maxAgeMin: 120,
   maxAgeJitter: 170,
@@ -158,6 +158,10 @@ function normalizeLngForGrid(grid: Grid, lng: number) {
   if (normalized < grid.minLng) normalized = grid.minLng
   if (normalized > grid.maxLng) normalized = grid.maxLng
   return normalized
+}
+
+function clamp(n: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, n))
 }
 
 export class WindParticleLayer {
@@ -293,6 +297,26 @@ export class WindParticleLayer {
     return { x: projected.x + shift, y: projected.y }
   }
 
+  private projectedInViewport(point: { x: number; y: number }, margin = 140) {
+    const rect = this.canvas.getBoundingClientRect()
+    return point.x >= -margin && point.x <= rect.width + margin && point.y >= -margin && point.y <= rect.height + margin
+  }
+
+  private viewportCandidate(grid: Grid): { lng: number; lat: number } {
+    const bounds = this.map.getBounds()
+    const south = clamp(bounds.getSouth(), grid.minLat, grid.maxLat)
+    const north = clamp(bounds.getNorth(), grid.minLat, grid.maxLat)
+    const latMin = Math.min(south, north)
+    const latMax = Math.max(south, north)
+    const rawWest = bounds.getWest()
+    const rawEast = bounds.getEast()
+    const lngSpan = Math.max(0.01, rawEast - rawWest)
+    const lat = latMin + Math.random() * Math.max(0.01, latMax - latMin)
+    let lng = rawWest + Math.random() * lngSpan
+    lng = gridWrapsWorld(grid) ? normalizeLngForGrid(grid, lng) : clamp(lng, grid.minLng, grid.maxLng)
+    return { lng, lat }
+  }
+
   private scheduleScalarRender() {
     if (!this.enabled || this.hidden) return
     if (this.scalarTimer !== null) window.clearTimeout(this.scalarTimer)
@@ -359,9 +383,15 @@ export class WindParticleLayer {
   private respawn(p: Particle) {
     const grid = this.grid
     if (!grid) return
-    for (let attempt = 0; attempt < 18; attempt += 1) {
-      const lng = grid.minLng + Math.random() * (grid.maxLng - grid.minLng)
-      const lat = grid.minLat + Math.random() * (grid.maxLat - grid.minLat)
+    for (let attempt = 0; attempt < 30; attempt += 1) {
+      const candidate = attempt < 24
+        ? this.viewportCandidate(grid)
+        : {
+            lng: grid.minLng + Math.random() * (grid.maxLng - grid.minLng),
+            lat: grid.minLat + Math.random() * (grid.maxLat - grid.minLat),
+          }
+      const lng = gridWrapsWorld(grid) ? normalizeLngForGrid(grid, candidate.lng) : candidate.lng
+      const lat = candidate.lat
       if (interpolate(grid, lng, lat)) {
         p.lng = lng
         p.lat = lat
@@ -379,6 +409,10 @@ export class WindParticleLayer {
       return
     }
     const old = this.map.project([p.lng, p.lat])
+    if (!this.projectedInViewport(old)) {
+      this.respawn(p)
+      return
+    }
     const latRad = p.lat * Math.PI / 180
     const globalScale = this.grid && gridWrapsWorld(this.grid) ? 0.58 : 1
     const deltaLng = (vector.uMps * this.config.speedScale * globalScale) / Math.max(0.2, Math.cos(latRad))
@@ -390,8 +424,9 @@ export class WindParticleLayer {
     const firstDx = firstNext.x - old.x
     const firstDy = firstNext.y - old.y
     const firstDist = Math.sqrt(firstDx * firstDx + firstDy * firstDy)
-    if (firstDist > 0 && firstDist < this.config.minStepPx) {
-      const boost = this.config.minStepPx / firstDist
+    const speedFloor = Math.min(this.config.minStepPx, 0.22 + vector.speedMph * 0.055)
+    if (firstDist > 0 && firstDist < speedFloor) {
+      const boost = speedFloor / firstDist
       p.lng += deltaLng * (boost - 1)
       p.lat += deltaLat * (boost - 1)
       if (this.grid) p.lng = normalizeLngForGrid(this.grid, p.lng)
@@ -441,6 +476,9 @@ export class WindParticleLayer {
   }
 
   private debug(active: boolean) {
+    const visibleParticles = active
+      ? this.particles.filter(p => this.projectedInViewport(this.map.project([p.lng, p.lat]), 0)).length
+      : 0
     ;(window as unknown as { __eosWindLayer?: unknown }).__eosWindLayer = active
       ? {
           active: true,
@@ -451,10 +489,12 @@ export class WindParticleLayer {
           frameIndex: this.grid?.cells?.[0]?.find(Boolean)?.frameIndex ?? 0,
           cycloneAdjusted: this.grid ? this.grid.cells.flat().filter(r => r?.cycloneAdjusted).length : 0,
           particles: this.particles.length,
+          visibleParticles,
           readings: this.grid ? this.grid.lats.length * this.grid.lngs.length : 0,
           grid: this.grid ? `${this.grid.lngs.length}x${this.grid.lats.length}` : null,
           lineWidth: this.config.lineWidth,
           minStepPx: this.config.minStepPx,
+          speedScale: this.config.speedScale,
           maxSegmentPx: this.config.maxSegmentPx,
           skippedSegments: this.skippedSegments,
           fadeAlpha: this.config.fadeAlpha,

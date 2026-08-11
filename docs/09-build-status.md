@@ -1,7 +1,7 @@
 # 09 — Build Status
 
 > The single most important file for resuming a session. Read this first after AGENTS.md.
-> Last updated: 2026-08-10
+> Last updated: 2026-08-11
 
 ---
 
@@ -10,8 +10,9 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Preparedness Engine (PREP/EDU/COMMS/ONB/PILOT) sobre Web/PWA |
-| **Current Task** | Roadmap sem tarefa `PENDING/IN PROGRESS` após WV2-T20; próxima frente precisa ser promovida explicitamente no Spine antes de código. |
-| **Last Completed Task** | **D-148 / WV2-T20 — Linhas retas artificiais removidas do vento animado (2026-08-10)** |
+| **Current Task** | Roadmap sem tarefa `PENDING/IN PROGRESS` após WV2-T21; próxima frente precisa ser promovida explicitamente no Spine antes de código. |
+| **Last Completed Task** | **D-149 / WV2-T21 — Densidade do vento mantida no zoom e velocidade proporcional (2026-08-11)** |
+| | **D-148 / WV2-T20 — Linhas retas artificiais removidas do vento animado (2026-08-10)** |
 | | **D-147 / WV2-T19 — Vento animado com fluxo contínuo e cauda real (2026-08-10)** |
 | | **D-146 / WV2-T18 — Rastros do vento perceptíveis mesmo em vento fraco (2026-08-10)** |
 | | **D-145 / WV2-T17 — Vento premium sincronizado com Hurricane Tracker, sem provider pago (2026-08-10)** |
@@ -154,8 +155,9 @@
 | **In Progress** | — |
 | **Platform Alignment** | ✅ D-084: EOS é plataforma multi-superfície com um único core operacional. Web/PWA segue como superfície primária; iOS/Android serão adapters nativos futuros; Automotive é companion mode restrito; Mesh/LoRa segue bloqueado por G-05. `/mobile/` é template/conceitual, não app inicializado. |
 | **Fases pedidas pelo dono (2026-07-31)** | ✅ 1. Camadas de clima + rastreio de ciclone (D-078). 2. Reinventar a aba Família no design system da v2, com componentes dinâmicos. 3. WV2-T05 (a11y/perf), PLAN-T07 (Pilot propõe plano). |
-| **Next Task** | Roadmap sem tarefa `PENDING/IN PROGRESS` após WV2-T20; próxima frente precisa ser promovida explicitamente no Spine antes de código. |
-| **Build** | ✅ WV2-T20 validado em 2026-08-10 com `npm run type-check`, `npm test -- --runInBand` (202/202), `npm run build`, `npm run test:weather` (11/11; canvas `25x25`, 2106 partículas, cauda `fade=0.965`, segmento máximo 34px, timeline frame 3). |
+| **Next Task** | Roadmap sem tarefa `PENDING/IN PROGRESS` após WV2-T21; próxima frente precisa ser promovida explicitamente no Spine antes de código. |
+| **Build** | ✅ WV2-T21 validado em 2026-08-11 com `npm run type-check`, `npm test -- --runInBand` (202/202), `npm run build`, `npm run test:weather` (12/12; 1764/2106 partículas visíveis antes do zoom, 1371/2106 depois do zoom, `speedScale=0.00024`, timeline frame 3). |
+| | ✅ WV2-T20 validado em 2026-08-10 com `npm run type-check`, `npm test -- --runInBand` (202/202), `npm run build`, `npm run test:weather` (11/11; canvas `25x25`, 2106 partículas, cauda `fade=0.965`, segmento máximo 34px, timeline frame 3). |
 | | ✅ WV2-T19 validado em 2026-08-10 com `npm run type-check`, `npm test -- --runInBand` (202/202), `npm run build`, `npm run test:weather` (11/11; vento fraco 4 km/h, canvas `25x25`, 2106 partículas, cauda `fade=0.965`, timeline frame 3). |
 | | ✅ WV2-T18 validado em 2026-08-10 com `npm run type-check`, `npm test -- --runInBand` (202/202), `npm run build`, `npm run test:weather` (11/11; vento fraco 7 km/h, canvas `25x25`, 2106 partículas, rastro mínimo 2.6px, timeline frame 3). |
 | | ✅ WV2-T17 validado em 2026-08-10 com `npm run type-check`, `npm test -- --runInBand` (202/202), `npm run build`, `npm run test:weather` (11/11; Open-Meteo `best_match` com 25 frames, canvas `25x25`, timeline frame 3 aplicada, zoom interativo e sem provider pago). |
