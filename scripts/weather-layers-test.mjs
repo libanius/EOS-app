@@ -62,7 +62,7 @@ async function findAlertedPlace() {
 }
 
 const alerted = await findAlertedPlace()
-const HOME = alerted ?? PARKLAND
+let HOME = alerted ?? PARKLAND
 
 const admin = (p, o = {}) => fetch(`${URL}${p}`, {
   ...o,
@@ -137,7 +137,12 @@ if (cyc.empty) {
 }
 
 // ── 3. vento em grade ───────────────────────────────────────────────────────
-const wind = await fetch(`${B}/api/world/wind?lat=${HOME.latitude}&lng=${HOME.longitude}`).then(r => r.json())
+let wind = await fetch(`${B}/api/world/wind?lat=${HOME.latitude}&lng=${HOME.longitude}`).then(r => r.json())
+if (!(wind.readings?.length >= 4) && alerted) {
+  note('Ponto de alerta sem grade de vento suficiente; usando Parkland para validar o renderer.')
+  HOME = PARKLAND
+  wind = await fetch(`${B}/api/world/wind?lat=${HOME.latitude}&lng=${HOME.longitude}`).then(r => r.json())
+}
 const distintos = new Set((wind.readings ?? []).map(r => `${r.lat},${r.lng}`)).size
 // A grade pedida tem 25 pontos, mas chegam menos por dois motivos legítimos: o
 // Open-Meteo responde pela CÉLULA do modelo (e células repetidas são descartadas
@@ -153,9 +158,11 @@ Array.isArray(wind.frames) && wind.frames.length > 1 && Array.isArray(wind.frame
 
 // ── navegador ───────────────────────────────────────────────────────────────
 console.log(
-  alerted
+  alerted && HOME !== PARKLAND
     ? `— rodando em ${HOME.latitude.toFixed(3)}, ${HOME.longitude.toFixed(3)} (alerta ativo: ${alerted.event})`
-    : '— sem alerta ativo no país; rodando em Parkland',
+    : alerted
+      ? '— alerta ativo sem vento em grade; renderer rodando em Parkland'
+      : '— sem alerta ativo no país; rodando em Parkland',
 )
 const email = `eos-wx-${Date.now()}@test.internal`
 const u = await admin('/auth/v1/admin/users', { method: 'POST', body: JSON.stringify({ email, password: PASS, email_confirm: true }) }).then(r => r.json())
@@ -216,8 +223,8 @@ const setas = await page.evaluate(() => {
   }
 })
 const animado = await page.evaluate(() => window.__eosWindLayer ?? { active: false })
-animado.active === true && animado.mode === 'bilinear' && animado.scalar === true && animado.wrapsWorld === true && (animado.scalarPixels ?? 0) > 0 && (animado.particles ?? 0) > 1000 && animado.grid === '25x25' && (animado.lineWidth ?? 0) >= 1.2 && (animado.minStepPx ?? 0) >= 1.4 && (animado.fadeAlpha ?? 0) >= 0.96 && (animado.maxAgeMin ?? 0) >= 100
-  ? ok('vento escalar e animado bilinear ativos no mapa', `${animado.grid} · ${animado.scalarPixels} px escalares · ${animado.particles} partículas · cauda fade ${animado.fadeAlpha}`)
+animado.active === true && animado.mode === 'bilinear' && animado.scalar === true && animado.wrapsWorld === true && (animado.scalarPixels ?? 0) > 0 && (animado.particles ?? 0) > 1000 && animado.grid === '25x25' && (animado.lineWidth ?? 0) >= 1.2 && (animado.minStepPx ?? 0) >= 1.4 && (animado.maxSegmentPx ?? 99) <= 40 && (animado.fadeAlpha ?? 0) >= 0.96 && (animado.maxAgeMin ?? 0) >= 100
+  ? ok('vento escalar e animado bilinear ativos no mapa', `${animado.grid} · ${animado.scalarPixels} px escalares · ${animado.particles} partículas · cauda fade ${animado.fadeAlpha} · segmento máx ${animado.maxSegmentPx}px`)
   : no('vento não desenhou', JSON.stringify({ setas, animado }))
 
 const timelineOk = await page.evaluate(() => {

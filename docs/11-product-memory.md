@@ -66,6 +66,12 @@ mínimo deve avançar a posição da própria partícula, e o canvas deve reter 
 anteriores com `fadeAlpha` alto para formar cauda contínua. Partículas também
 devem viver mais tempo antes de respawn.
 
+D-148 remove linhas retas artificiais: quando o mapa global repete o mundo, a
+partícula deve desenhar para a cópia horizontal mais próxima do ponto anterior.
+Se o segmento projetado ainda ultrapassar o limite visual (`maxSegmentPx`), o
+renderer descarta o desenho e respawna a partícula. Essas linhas são artefato de
+projeção/respawn, não vento.
+
 ---
 
 ## EOS Platform: quatro camadas, não quatro produtos (2026-08-03)

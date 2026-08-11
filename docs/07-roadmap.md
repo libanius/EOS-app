@@ -139,6 +139,7 @@ product phase sequenced.
 | WV2-T17 | Sincronizar vento premium com Hurricane Tracker | ✅ COMPLETE | 2026-08-10 — D-145; frames horários Open-Meteo `best_match`, timeline única, posição interpolada do ciclone e perfil paramétrico NHC perto do centro. |
 | WV2-T18 | Tornar rastros do vento perceptíveis em vento fraco | ✅ COMPLETE | 2026-08-10 — D-146; mínimo visual de rastro e paleta de partículas com contraste real sobre o campo escalar. |
 | WV2-T19 | Transformar ticks do vento em fluxo contínuo com cauda real | ✅ COMPLETE | 2026-08-10 — D-147; mover a partícula pelo passo visual mínimo, fade lento e vida maior antes do respawn. |
+| WV2-T20 | Eliminar linhas retas artificiais no vento animado | ✅ COMPLETE | 2026-08-10 — D-148; escolher cópia de mundo mais próxima e descartar segmentos longos de projeção/respawn. |
 
 ---
 

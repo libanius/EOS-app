@@ -188,6 +188,31 @@ animadas contínuas, mais próximas de Windfinder/earth.nullschool.
 
 ---
 
+## D-148 — Vento animado não pode desenhar saltos retos de projeção
+
+**Date**: 2026-08-10
+**Status**: DECIDED
+**Roadmap**: WV2-T20
+
+**Context**: Com caudas contínuas, alguns artefatos ficaram visíveis como linhas
+retas longas. Eles não são vento: são saltos de projeção quando a partícula
+cruza borda/cópia do mundo ou reaparece perto do limite da grade, e o canvas
+liga o ponto antigo ao novo.
+
+**Decision**:
+
+1. O renderer deve escolher a cópia horizontal mais próxima do ponto anterior
+   quando o mapa mostra o mundo repetido.
+2. Segmentos acima de um limite visual plausível devem ser descartados e a
+   partícula deve renascer sem desenhar linha.
+3. Esse guardrail vale apenas para o canvas animado; não altera campo escalar,
+   vetor, velocidade ou popup.
+
+**Consequence**: Linhas retas artificiais desaparecem, preservando apenas o
+fluxo curvo/contínuo produzido pelos vetores de vento.
+
+---
+
 ## D-141 — Vento animado é camada premium no mapa existente
 
 **Date**: 2026-08-09

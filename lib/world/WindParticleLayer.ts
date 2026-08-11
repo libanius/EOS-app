@@ -13,6 +13,7 @@ export type WindParticleLayerConfig = {
   scalarOpacity: number
   scalarMaxDpr: number
   minStepPx: number
+  maxSegmentPx: number
 }
 
 type Particle = {
@@ -50,6 +51,7 @@ const DEFAULT_CONFIG: WindParticleLayerConfig = {
   scalarOpacity: 0.78,
   scalarMaxDpr: 0.72,
   minStepPx: 1.45,
+  maxSegmentPx: 34,
 }
 
 function uniqSorted(values: number[]) {
@@ -171,6 +173,7 @@ export class WindParticleLayer {
   private frame: number | null = null
   private scalarTimer: number | null = null
   private scalarPixels = 0
+  private skippedSegments = 0
   private hidden = false
 
   constructor(
@@ -278,6 +281,16 @@ export class WindParticleLayer {
     if (!canvas || !ctx) return
     ctx.clearRect(0, 0, canvas.width, canvas.height)
     this.scalarPixels = 0
+  }
+
+  private closestProjectedPoint(old: { x: number; y: number }, lng: number, lat: number) {
+    const projected = this.map.project([lng, lat])
+    if (!this.grid || !gridWrapsWorld(this.grid)) return projected
+    const wrapped = this.map.project([lng + 360, lat])
+    const worldWidth = Math.abs(wrapped.x - projected.x)
+    if (!Number.isFinite(worldWidth) || worldWidth <= 0) return projected
+    const shift = Math.round((old.x - projected.x) / worldWidth) * worldWidth
+    return { x: projected.x + shift, y: projected.y }
   }
 
   private scheduleScalarRender() {
@@ -388,7 +401,15 @@ export class WindParticleLayer {
       this.respawn(p)
       return
     }
-    const next = this.map.project([p.lng, p.lat])
+    const next = this.closestProjectedPoint(old, p.lng, p.lat)
+    const segmentDx = next.x - old.x
+    const segmentDy = next.y - old.y
+    const segmentLength = Math.sqrt(segmentDx * segmentDx + segmentDy * segmentDy)
+    if (!Number.isFinite(segmentLength) || segmentLength > this.config.maxSegmentPx) {
+      this.skippedSegments += 1
+      this.respawn(p)
+      return
+    }
     this.ctx.strokeStyle = colorFor(vector.speedMph)
     this.ctx.lineWidth = vector.speedMph >= 32 ? this.config.lineWidth * 1.55 : this.config.lineWidth
     this.ctx.lineCap = 'round'
@@ -413,6 +434,7 @@ export class WindParticleLayer {
     this.ctx.fillRect(0, 0, rect.width, rect.height)
     this.ctx.globalCompositeOperation = 'source-over'
     this.ensureParticles()
+    this.skippedSegments = 0
     this.particles.forEach(p => this.stepParticle(p))
     this.debug(true)
     this.frame = requestAnimationFrame(this.loop)
@@ -433,6 +455,8 @@ export class WindParticleLayer {
           grid: this.grid ? `${this.grid.lngs.length}x${this.grid.lats.length}` : null,
           lineWidth: this.config.lineWidth,
           minStepPx: this.config.minStepPx,
+          maxSegmentPx: this.config.maxSegmentPx,
+          skippedSegments: this.skippedSegments,
           fadeAlpha: this.config.fadeAlpha,
           maxAgeMin: this.config.maxAgeMin,
         }
