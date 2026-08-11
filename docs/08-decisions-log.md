@@ -103,6 +103,39 @@ Premium continua bloqueando renderer/fetch/canvas para usuário free.
 
 ---
 
+## D-145 — Vento premium sincroniza com Hurricane Tracker sem provider pago
+
+**Date**: 2026-08-10
+**Status**: DECIDED
+**Roadmap**: WV2-T17
+
+**Context**: O modo Vento mundial existe, mas a grade gratuita global suaviza o
+centro de ciclones tropicais. O resultado fica incoerente: o Hurricane Tracker
+pode mostrar um sistema intenso enquanto o campo de vento animado parece fraco
+perto do centro. O dono pediu alta fidelidade sem contratar provider novo,
+usando Open-Meteo e os dados já disponíveis do tracker NHC.
+
+**Decision**:
+
+1. A API de vento continua Open-Meteo gratuita, usando `models=best_match`,
+   `cell_selection=nearest` e frames horários cacheados no mesmo fetch.
+2. O modo Vento passa a ter um `currentTime/currentFrame` que controla o frame
+   do campo de vento e a leitura do Hurricane Tracker.
+3. Quando há ciclone ativo, o renderer mistura o vento de fundo Open-Meteo com
+   um perfil paramétrico local baseado em posição e vento máximo sustentado do
+   NHC. Se raios oficiais de vento existirem depois, eles entram como parâmetros
+   do mesmo perfil.
+4. A transição entre perfil ciclônico e campo de fundo deve ser suave; não pode
+   haver salto visual no limite da tempestade.
+5. Zoom manual segue usando a mesma rota e busca em blocos; não duplicar lógica
+   de provider nem criar API paga.
+
+**Consequence**: EOS deixa de depender da resolução bruta do modelo global para
+representar intensidade perto do olho. A visualização continua honesta: fundo =
+Open-Meteo; núcleo tropical = NHC + perfil físico simplificado.
+
+---
+
 ## D-141 — Vento animado é camada premium no mapa existente
 
 **Date**: 2026-08-09

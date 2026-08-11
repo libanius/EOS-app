@@ -411,6 +411,8 @@ export class WindParticleLayer {
           scalar: Boolean(this.scalarCanvas),
           scalarPixels: this.scalarPixels,
           wrapsWorld: this.grid ? gridWrapsWorld(this.grid) : false,
+          frameIndex: this.grid?.cells?.[0]?.find(Boolean)?.frameIndex ?? 0,
+          cycloneAdjusted: this.grid ? this.grid.cells.flat().filter(r => r?.cycloneAdjusted).length : 0,
           particles: this.particles.length,
           readings: this.grid ? this.grid.lats.length * this.grid.lngs.length : 0,
           grid: this.grid ? `${this.grid.lngs.length}x${this.grid.lats.length}` : null,

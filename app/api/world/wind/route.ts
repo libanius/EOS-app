@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { getWind } from '@/lib/world/wind'
 
 /**
- * GET /api/world/wind?lat=&lng=&span=&latSpan=&lngSpan=&grid= — grade de vento.
+ * GET /api/world/wind?lat=&lng=&span=&latSpan=&lngSpan=&grid=&forecastHours=&model= — grade de vento.
  *
  * Uma seta só, na casa do usuário, não mostra que o vento gira nem de que lado o
  * mar empurra. O Open-Meteo aceita listas de coordenadas. A grade padrão é
@@ -21,6 +21,9 @@ export async function GET(request: NextRequest) {
   const latSpan = parseFloat(request.nextUrl.searchParams.get('latSpan') ?? '')
   const lngSpan = parseFloat(request.nextUrl.searchParams.get('lngSpan') ?? '')
   const grid = parseInt(request.nextUrl.searchParams.get('grid') ?? '', 10)
+  const forecastHours = parseInt(request.nextUrl.searchParams.get('forecastHours') ?? '', 10)
+  const model = request.nextUrl.searchParams.get('model') ?? ''
+  const cellSelection = request.nextUrl.searchParams.get('cellSelection') ?? ''
 
   try {
     const snapshot = await getWind(
@@ -31,6 +34,9 @@ export async function GET(request: NextRequest) {
         latSpanDeg: Number.isFinite(latSpan) ? latSpan : undefined,
         lngSpanDeg: Number.isFinite(lngSpan) ? lngSpan : undefined,
         grid: Number.isFinite(grid) ? grid : undefined,
+        forecastHours: Number.isFinite(forecastHours) ? forecastHours : undefined,
+        model: model || undefined,
+        cellSelection: cellSelection === 'land' || cellSelection === 'sea' || cellSelection === 'nearest' ? cellSelection : undefined,
       },
     )
     return NextResponse.json(snapshot, {

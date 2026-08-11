@@ -18,14 +18,14 @@
  * here lands on both screens.
  */
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import type { Map as MLMap, Marker as MLMarker } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { useRisk } from '@/components/v2/RiskProvider'
 import { getMapConfig } from '@/lib/world/providers'
-import type { CycloneSnapshot } from '@/lib/world/cyclones'
+import type { CycloneSnapshot, CycloneStorm } from '@/lib/world/cyclones'
 import type { WindSnapshot } from '@/lib/world/wind'
-import { blowingToward } from '@/lib/world/wind'
+import { blendCycloneWind, blowingToward } from '@/lib/world/wind'
 import { WindParticleLayer } from '@/lib/world/WindParticleLayer'
 import type { MapBaseMode } from '@/lib/world/providers'
 
@@ -259,6 +259,81 @@ type WindPopup = {
   forecast: string
 }
 
+type CycloneWindTarget = Pick<CycloneStorm, 'id' | 'name' | 'lat' | 'lng' | 'windKmh' | 'headingDeg' | 'speedKmh'>
+
+function featurePoint(feature: GeoJSON.Feature): { lat: number; lng: number } | null {
+  if (feature.geometry?.type !== 'Point') return null
+  const coordinates = feature.geometry.coordinates
+  const lng = Number(coordinates[0])
+  const lat = Number(coordinates[1])
+  return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null
+}
+
+function featureTimeMs(properties: Record<string, unknown>, baseMs: number, fallbackIndex: number): number {
+  const directKeys = ['validtime', 'validTime', 'valid_time', 'forecastTime', 'datetime', 'date_time', 'flDateTime', 'time']
+  for (const key of directKeys) {
+    const value = properties[key] ?? properties[key.toUpperCase()]
+    if (typeof value === 'string') {
+      const parsed = Date.parse(value)
+      if (Number.isFinite(parsed)) return parsed
+    }
+    if (typeof value === 'number' && Number.isFinite(value) && value > 1_000_000_000) return value * (value < 10_000_000_000 ? 1000 : 1)
+  }
+
+  const hourKeys = ['tau', 'TAU', 'fcstprd', 'forecastHour', 'forecast_hour']
+  for (const key of hourKeys) {
+    const raw = properties[key]
+    const hours = typeof raw === 'number' ? raw : parseFloat(String(raw ?? ''))
+    if (Number.isFinite(hours)) return baseMs + hours * 60 * 60 * 1000
+  }
+
+  return baseMs + (fallbackIndex + 1) * 6 * 60 * 60 * 1000
+}
+
+function stormAtTime(
+  storm: CycloneStorm,
+  forecastPoints: GeoJSON.FeatureCollection | null | undefined,
+  validAt: string | null | undefined,
+): CycloneWindTarget {
+  const targetMs = validAt ? Date.parse(validAt) : NaN
+  const baseMs = Date.parse(storm.updatedAt)
+  if (!Number.isFinite(targetMs) || !Number.isFinite(baseMs) || !forecastPoints?.features?.length) return storm
+
+  const wantedName = storm.name.trim().toUpperCase()
+  const candidates = forecastPoints.features
+    .filter(feature => {
+      const properties = (feature.properties ?? {}) as Record<string, unknown>
+      const name = String(properties.stormname ?? properties.name ?? properties.STORMNAME ?? '').trim().toUpperCase()
+      const id = String(properties.stormid ?? properties.id ?? properties.STORMID ?? '').trim().toUpperCase()
+      return !name || name === wantedName || id === storm.id.toUpperCase()
+    })
+    .map((feature, index) => {
+      const point = featurePoint(feature)
+      if (!point) return null
+      const properties = (feature.properties ?? {}) as Record<string, unknown>
+      return { ...point, timeMs: featureTimeMs(properties, baseMs, index) }
+    })
+    .filter((point): point is { lat: number; lng: number; timeMs: number } => point !== null)
+    .sort((a, b) => a.timeMs - b.timeMs)
+
+  if (!candidates.length) return storm
+  const points = [{ lat: storm.lat, lng: storm.lng, timeMs: baseMs }, ...candidates]
+  if (targetMs <= points[0].timeMs) return storm
+  const nextIndex = points.findIndex(point => point.timeMs >= targetMs)
+  if (nextIndex < 0) {
+    const last = points[points.length - 1]
+    return { ...storm, lat: last.lat, lng: last.lng }
+  }
+  const prev = points[Math.max(0, nextIndex - 1)]
+  const next = points[nextIndex]
+  const t = (targetMs - prev.timeMs) / Math.max(1, next.timeMs - prev.timeMs)
+  return {
+    ...storm,
+    lat: prev.lat + (next.lat - prev.lat) * t,
+    lng: prev.lng + (next.lng - prev.lng) * t,
+  }
+}
+
 /**
  * The self marker is a PUCK, not a pin — deliberately a different kind of object.
  *
@@ -442,8 +517,11 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
   const windCanvasRef = useRef<HTMLCanvasElement>(null)
   const windScalarCanvasRef = useRef<HTMLCanvasElement>(null)
   const windLayerRef = useRef<WindParticleLayer | null>(null)
+  const windTimeInputRef = useRef<HTMLInputElement | null>(null)
   const [windPopup, setWindPopup] = useState<WindPopup | null>(null)
   const [mapReadyNonce, setMapReadyNonce] = useState(0)
+  const [windFrameIndex, setWindFrameIndex] = useState(0)
+  const [viewportWind, setViewportWind] = useState<WindSnapshot | null>(null)
 
   const ensureWindLayer = () => {
     const map = mapRef.current
@@ -453,6 +531,20 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
     if (!windLayerRef.current) windLayerRef.current = new WindParticleLayer(map, canvas, scalarCanvas)
     return windLayerRef.current
   }
+
+  const windForMap = viewportWind ?? wind
+  const activeWindFrame = windForMap?.frames?.[windFrameIndex] ?? windForMap?.frames?.[0] ?? null
+  const setWindFrameFromInput = (event: FormEvent<HTMLInputElement>) => {
+    setWindFrameIndex(Number(event.currentTarget.value))
+  }
+  const activeCycloneTargets = useMemo(
+    () => (cyclones?.storms ?? []).map(storm => stormAtTime(storm, cyclones?.forecastPoints, activeWindFrame?.validAt)),
+    [cyclones, activeWindFrame?.validAt],
+  )
+  const activeWindReadings = useMemo(() => {
+    const frameReadings = windForMap?.frameReadings?.[windFrameIndex] ?? windForMap?.readings ?? []
+    return blendCycloneWind(frameReadings, activeCycloneTargets)
+  }, [windForMap, windFrameIndex, activeCycloneTargets])
 
   // Place / reposition family + route overlays from REAL data only (D-064 §5).
   const placeOverlays = async () => {
@@ -1090,7 +1182,7 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
     if (on && cyclones?.storms.length) {
       void (async () => {
         const maplibregl = (await import('maplibre-gl')).default
-        for (const storm of cyclones.storms) {
+        for (const storm of activeCycloneTargets) {
           if (!Number.isFinite(storm.lat) || !Number.isFinite(storm.lng)) continue
           const el = document.createElement('div')
           el.className = 'w-storm'
@@ -1109,7 +1201,7 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
         }
       })()
     }
-  }, [cyclones, layers?.cyclone])
+  }, [cyclones, activeCycloneTargets, layers?.cyclone])
 
   /**
    * Vento: uma seta por leitura, apontando PARA ONDE ele sopra.
@@ -1124,22 +1216,22 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
     const source = map.getSource('eos-wind') as maplibregl.GeoJSONSource | undefined
     if (!source) return
 
-    const show = Boolean(layers?.wind) && Boolean(wind?.readings.length)
+    const show = Boolean(layers?.wind) && Boolean(activeWindReadings.length)
     source.setData({
       type: 'FeatureCollection',
       features: show
-        ? (wind?.readings ?? []).map(r => ({
+        ? activeWindReadings.map(r => ({
             type: 'Feature' as const,
             geometry: { type: 'Point' as const, coordinates: [r.lng, r.lat] },
             properties: {
               rotate: blowingToward(r.fromDeg),
               label: `${r.speedKmh}`,
-              strong: r.speedKmh >= 39 ? 1 : 0,
+              strong: r.speedKmh >= 39 || r.cycloneAdjusted ? 1 : 0,
             },
           }))
         : [],
     })
-  }, [wind, layers?.wind, mapReadyNonce])
+  }, [activeWindReadings, layers?.wind, mapReadyNonce])
 
   useEffect(() => {
     ensureWindLayer()
@@ -1153,10 +1245,10 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
   useEffect(() => {
     const layer = ensureWindLayer()
     if (!layer) return
-    if (wind?.readings?.length) layer.setData(wind.readings)
+    if (activeWindReadings.length) layer.setData(activeWindReadings)
     if (layers?.wind) layer.enable()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [wind, layers?.wind])
+  }, [activeWindReadings, layers?.wind])
 
   useEffect(() => {
     const map = mapRef.current
@@ -1165,6 +1257,8 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
     if (layers?.wind) layer.enable()
     else {
       layer.disable()
+      setViewportWind(null)
+      setWindFrameIndex(0)
       setWindPopup(null)
     }
     const update = () => layer.updateViewport()
@@ -1177,7 +1271,19 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
       window.removeEventListener('resize', update)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [layers?.wind, wind?.readings.length, mapReadyNonce])
+  }, [layers?.wind, activeWindReadings.length, mapReadyNonce])
+
+  useEffect(() => {
+    const input = windTimeInputRef.current
+    if (!input) return
+    const sync = () => setWindFrameIndex(Number(input.value))
+    input.addEventListener('input', sync)
+    input.addEventListener('change', sync)
+    return () => {
+      input.removeEventListener('input', sync)
+      input.removeEventListener('change', sync)
+    }
+  }, [windForMap?.frames.length])
 
   useEffect(() => {
     const map = mapRef.current
@@ -1198,14 +1304,17 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
       const latSpanRequest = globalWind ? 170 : Math.min(170, Math.max(0.35, latSpan * 1.2))
       const lngSpanRequest = globalWind ? 360 : Math.min(360, Math.max(0.35, lngSpan * 1.2))
       const broadSpan = Math.max(latSpanRequest, lngSpanRequest)
-      const grid = globalWind ? 25 : broadSpan > 90 ? 17 : broadSpan > 35 ? 15 : broadSpan > 10 ? 13 : broadSpan > 3 ? 11 : 9
-      fetch(`/api/world/wind?lat=${center.lat.toFixed(4)}&lng=${center.lng.toFixed(4)}&latSpan=${latSpanRequest.toFixed(2)}&lngSpan=${lngSpanRequest.toFixed(2)}&grid=${grid}`, {
+      const grid = globalWind ? 25 : broadSpan > 90 ? 19 : broadSpan > 35 ? 21 : 25
+      fetch(`/api/world/wind?lat=${center.lat.toFixed(4)}&lng=${center.lng.toFixed(4)}&latSpan=${latSpanRequest.toFixed(2)}&lngSpan=${lngSpanRequest.toFixed(2)}&grid=${grid}&forecastHours=25&model=best_match&cellSelection=nearest`, {
         signal: controller.signal,
         cache: 'no-store',
       })
         .then(r => (r.ok ? r.json() : null))
         .then((snap: WindSnapshot | null) => {
-          if (!cancelled && snap?.readings?.length) layer.setData(snap.readings)
+          if (!cancelled && snap?.readings?.length) {
+            setViewportWind(snap)
+            setWindFrameIndex(current => Math.min(current, Math.max(0, (snap.frames?.length ?? 1) - 1)))
+          }
         })
         .catch(() => {})
     }
@@ -1230,7 +1339,7 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
 
   useEffect(() => {
     const map = mapRef.current
-    const readings = wind?.readings ?? []
+    const readings = activeWindReadings
     if (!map || !readyRef.current || !layers?.wind || !readings.length) {
       setWindPopup(null)
       return
@@ -1259,24 +1368,24 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
         speedMph: Math.round(sampled.speedMph),
         gustMph: best.gustMph ?? (best.gustKmh === null ? null : Math.round(best.gustKmh * 0.621371)),
         direction: windCardinal(best.fromDeg),
-        forecast: wind?.frames?.[0]?.label ?? 'NOW',
+        forecast: activeWindFrame?.label ?? 'NOW',
       })
     }
     map.on('click', onClick)
     return () => { map.off('click', onClick) }
-  }, [wind, layers?.wind])
+  }, [activeWindReadings, activeWindFrame, layers?.wind])
 
   useEffect(() => {
     const map = mapRef.current
     if (!map || !readyRef.current) return
     const source = map.getSource('eos-wind-impact') as maplibregl.GeoJSONSource | undefined
     if (!source) return
-    const show = Boolean(layers?.windImpact) && Boolean(wind?.readings.length)
+    const show = Boolean(layers?.windImpact) && Boolean(activeWindReadings.length)
     source.setData({
       type: 'FeatureCollection',
-      features: show ? windImpactFeatures(wind) : [],
+      features: show ? windImpactFeatures({ ...(windForMap ?? {}), readings: activeWindReadings } as WindSnapshot) : [],
     })
-  }, [wind, layers?.windImpact])
+  }, [windForMap, activeWindReadings, layers?.windImpact])
 
   /** Radar e alertas obedecem o interruptor sem serem recarregados. */
   useEffect(() => {
@@ -1441,11 +1550,25 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
       <div ref={ref} className="world-map" />
       <canvas ref={windScalarCanvasRef} className="world-wind-scalar-canvas" data-active={layers?.wind ? 'true' : 'false'} />
       <canvas ref={windCanvasRef} className="world-wind-canvas" data-active={layers?.wind ? 'true' : 'false'} />
-      {layers?.wind && wind?.readings.length ? (
+      {layers?.wind && windForMap?.readings.length ? (
         <div className="world-wind-legend">
           <span>WIND SPEED</span>
           <b>0</b><b>10</b><b>20</b><b>30</b><b>40+ mph</b>
           <i aria-hidden="true" />
+          {windForMap.frames.length > 1 ? (
+            <label className="world-wind-time">
+              <span>{activeWindFrame?.label ?? 'NOW'}</span>
+              <input
+                ref={windTimeInputRef}
+                type="range"
+                min={0}
+                max={windForMap.frames.length - 1}
+                value={windFrameIndex}
+                onInput={setWindFrameFromInput}
+                onChange={setWindFrameFromInput}
+              />
+            </label>
+          ) : null}
         </div>
       ) : null}
       {windPopup && layers?.wind ? (

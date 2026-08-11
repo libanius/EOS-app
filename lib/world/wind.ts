@@ -13,7 +13,14 @@
  * D-141: o contrato interno também carrega vetor U/V. A fonte v1 continua sendo
  * uma grade pública Open-Meteo, mas o renderer não fica preso a ela: HRRR/GFS
  * podem entrar depois entregando o mesmo formato vetorial.
+ *
+ * D-145: para o modo premium sincronizado com ciclones, a mesma rota passa a
+ * buscar frames horários e usa `models=best_match` explicitamente. O Open-Meteo
+ * continua sendo o único provider gratuito de fundo; perto de ciclones, o
+ * cliente mistura esse fundo com um perfil paramétrico baseado no NHC.
  */
+
+import type { CycloneStorm } from './cyclones'
 
 export type WindReading = {
   lat: number
@@ -32,15 +39,21 @@ export type WindReading = {
   uMps: number
   /** Componente norte-sul em m/s. Positivo = norte. */
   vMps: number
+  /** Índice do frame dentro de `WindSnapshot.frames`. Ausente em leituras legadas. */
+  frameIndex?: number
+  validAt?: string
+  /** Marca leituras cujo vetor foi ajustado pelo perfil de ciclone NHC. */
+  cycloneAdjusted?: boolean
 }
 
 export type WindSnapshot = {
   source: 'Open-Meteo'
   provider: 'open-meteo-current-grid'
-  model: 'Open-Meteo current 10m wind'
+  model: string
   fetchedAt: string
-  frames: Array<{ forecastHour: 0; label: 'NOW'; validAt: string }>
+  frames: Array<{ forecastHour: number; label: string; validAt: string }>
   readings: WindReading[]
+  frameReadings?: WindReading[][]
   /** Leitura no ponto central, para o texto da UI. */
   atUser: WindReading | null
   error?: string
@@ -66,6 +79,9 @@ export type WindGridOptions = {
   latSpanDeg?: number
   lngSpanDeg?: number
   grid?: number
+  forecastHours?: number
+  model?: string
+  cellSelection?: 'land' | 'sea' | 'nearest'
 }
 
 function clamp(n: number, min: number, max: number) {
@@ -127,6 +143,100 @@ export function vectorFromSpeedDirection(speedKmh: number, fromDeg: number) {
   }
 }
 
+function vectorFromToDirection(speedKmh: number, toDeg: number) {
+  const speedMps = speedKmh / 3.6
+  const rad = toDeg * Math.PI / 180
+  return {
+    uMps: speedMps * Math.sin(rad),
+    vMps: speedMps * Math.cos(rad),
+  }
+}
+
+function vectorToSpeedDirection(uMps: number, vMps: number) {
+  const speedKmh = Math.sqrt(uMps ** 2 + vMps ** 2) * 3.6
+  const toDeg = ((Math.atan2(uMps, vMps) * 180 / Math.PI) + 360) % 360
+  return {
+    speedKmh: Math.round(speedKmh),
+    speedMph: Math.round(speedKmh * 0.621371),
+    toDeg,
+    fromDeg: blowingToward(toDeg),
+    uMps,
+    vMps,
+  }
+}
+
+function distanceKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
+  const R = 6371
+  const rad = (d: number) => d * Math.PI / 180
+  const dLat = rad(b.lat - a.lat)
+  const dLng = rad(b.lng - a.lng)
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)))
+}
+
+function bearingDeg(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
+  const rad = (d: number) => d * Math.PI / 180
+  const deg = (r: number) => r * 180 / Math.PI
+  const y = Math.sin(rad(b.lng - a.lng)) * Math.cos(rad(b.lat))
+  const x =
+    Math.cos(rad(a.lat)) * Math.sin(rad(b.lat)) -
+    Math.sin(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.cos(rad(b.lng - a.lng))
+  return (deg(Math.atan2(y, x)) + 360) % 360
+}
+
+function smoothstep(edge0: number, edge1: number, value: number) {
+  const t = clamp((value - edge0) / Math.max(0.0001, edge1 - edge0), 0, 1)
+  return t * t * (3 - 2 * t)
+}
+
+export function blendCycloneWind(
+  readings: WindReading[],
+  storms: Array<Pick<CycloneStorm, 'id' | 'name' | 'lat' | 'lng' | 'windKmh' | 'headingDeg' | 'speedKmh'>>,
+): WindReading[] {
+  if (!storms.length || !readings.length) return readings
+  return readings.map(reading => {
+    let out = reading
+    for (const storm of storms) {
+      if (!Number.isFinite(storm.lat) || !Number.isFinite(storm.lng) || storm.windKmh < 63) continue
+      const center = { lat: storm.lat, lng: storm.lng }
+      const d = distanceKm(center, reading)
+      const rmwKm = clamp(18 + storm.windKmh * 0.18, 28, 58)
+      const outerKm = clamp(rmwKm * 8.5, 240, 720)
+      if (d > outerKm) continue
+
+      const safeD = Math.max(1, d)
+      const eyeFactor = safeD < rmwKm ? 0.32 + 0.68 * (safeD / rmwKm) : (rmwKm / safeD) ** 0.72
+      const cycloneSpeed = Math.max(0, storm.windKmh * eyeFactor)
+      const radial = bearingDeg(center, reading)
+      const toDeg = (radial + (storm.lat >= 0 ? -90 : 90) + 360) % 360
+      const circulation = vectorFromToDirection(cycloneSpeed, toDeg)
+      const translation = storm.headingDeg !== null && storm.speedKmh !== null
+        ? vectorFromToDirection(storm.speedKmh * 0.35, storm.headingDeg)
+        : { uMps: 0, vMps: 0 }
+      const cyclone = {
+        uMps: circulation.uMps + translation.uMps,
+        vMps: circulation.vMps + translation.vMps,
+      }
+      const weight = 1 - smoothstep(outerKm * 0.58, outerKm, d)
+      if (weight <= 0) continue
+      const merged = vectorToSpeedDirection(
+        out.uMps * (1 - weight) + cyclone.uMps * weight,
+        out.vMps * (1 - weight) + cyclone.vMps * weight,
+      )
+      out = {
+        ...out,
+        ...merged,
+        gustKmh: Math.max(out.gustKmh ?? 0, Math.round(merged.speedKmh * 1.22)),
+        gustMph: Math.max(out.gustMph ?? 0, Math.round(merged.speedMph * 1.22)),
+        cycloneAdjusted: true,
+      }
+    }
+    return out
+  })
+}
+
 export async function getWind(
   centre: { lat: number; lng: number },
   signal?: AbortSignal,
@@ -135,6 +245,9 @@ export async function getWind(
   const fetchedAt = new Date().toISOString()
   const grid = buildGrid(centre, options)
   const chunkSize = 160
+  const forecastHours = Math.round(clamp(options.forecastHours ?? 25, 1, 49))
+  const model = options.model ?? 'best_match'
+  const cellSelection = options.cellSelection ?? 'nearest'
   const chunks: Array<Array<[number, number]>> = []
   for (let i = 0; i < grid.length; i += chunkSize) chunks.push(grid.slice(i, i + chunkSize))
 
@@ -143,7 +256,12 @@ export async function getWind(
       latitude: chunk.map(p => p[0].toFixed(4)).join(','),
       longitude: chunk.map(p => p[1].toFixed(4)).join(','),
       current: 'wind_speed_10m,wind_direction_10m,wind_gusts_10m',
+      hourly: 'wind_speed_10m,wind_direction_10m,wind_gusts_10m',
       wind_speed_unit: 'kmh',
+      timezone: 'UTC',
+      forecast_hours: String(forecastHours),
+      models: model,
+      cell_selection: cellSelection,
     })
     const response = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`, {
       signal,
@@ -155,13 +273,19 @@ export async function getWind(
       latitude?: number
       longitude?: number
       current?: { wind_speed_10m?: number; wind_direction_10m?: number; wind_gusts_10m?: number }
+      hourly?: { time?: string[]; wind_speed_10m?: number[]; wind_direction_10m?: number[]; wind_gusts_10m?: number[] }
     }>
   }))
 
   const items = responses.flat()
   if (!items.length) {
-    return { source: 'Open-Meteo', provider: 'open-meteo-current-grid', model: 'Open-Meteo current 10m wind', fetchedAt, frames: [{ forecastHour: 0, label: 'NOW', validAt: fetchedAt }], readings: [], atUser: null, error: 'wind_unreachable' }
+    return { source: 'Open-Meteo', provider: 'open-meteo-current-grid', model: `Open-Meteo ${model} 10m wind`, fetchedAt, frames: [{ forecastHour: 0, label: 'NOW', validAt: fetchedAt }], readings: [], atUser: null, error: 'wind_unreachable' }
   }
+
+  const times = items.find(i => i.hourly?.time?.length)?.hourly?.time?.slice(0, forecastHours) ?? []
+  const frames = times.length
+    ? times.map((time, index) => ({ forecastHour: index, label: index === 0 ? 'NOW' : `+${index}h`, validAt: time.endsWith('Z') ? time : `${time}:00Z` }))
+    : [{ forecastHour: 0, label: 'NOW', validAt: fetchedAt }]
 
   /**
    * O Open-Meteo pode devolver a coordenada da CÉLULA do modelo, não a que foi
@@ -170,7 +294,7 @@ export async function getWind(
    * resposta correspondente.
    */
   const readings: WindReading[] = items
-    .map((i, index) => {
+    .map((i, index): WindReading | null => {
       const requested = grid[index]
       if (!requested || typeof i.current?.wind_direction_10m !== 'number') return null
       const speedKmh = Math.round(i.current?.wind_speed_10m ?? 0)
@@ -182,13 +306,36 @@ export async function getWind(
         gustKmh,
         gustMph: gustKmh === null ? null : Math.round(gustKmh * 0.621371),
         fromDeg: i.current?.wind_direction_10m as number,
+        frameIndex: 0,
+        validAt: frames[0]?.validAt ?? fetchedAt,
         ...vectorFromSpeedDirection(speedKmh, i.current?.wind_direction_10m as number),
       }
     })
     .filter((r): r is WindReading => r !== null)
 
+  const frameReadings: WindReading[][] = frames.map((frame, frameIndex) => items
+    .map((i, index): WindReading | null => {
+      const requested = grid[index]
+      const dir = i.hourly?.wind_direction_10m?.[frameIndex]
+      if (!requested || typeof dir !== 'number') return null
+      const speedKmh = Math.round(i.hourly?.wind_speed_10m?.[frameIndex] ?? 0)
+      const gustKmh = typeof i.hourly?.wind_gusts_10m?.[frameIndex] === 'number' ? Math.round(i.hourly.wind_gusts_10m[frameIndex]) : null
+      return {
+        lat: requested[0],
+        lng: requested[1],
+        speedKmh,
+        gustKmh,
+        gustMph: gustKmh === null ? null : Math.round(gustKmh * 0.621371),
+        fromDeg: dir,
+        frameIndex,
+        validAt: frame.validAt,
+        ...vectorFromSpeedDirection(speedKmh, dir),
+      }
+    })
+    .filter((r): r is WindReading => r !== null))
+
   if (!readings.length) {
-    return { source: 'Open-Meteo', provider: 'open-meteo-current-grid', model: 'Open-Meteo current 10m wind', fetchedAt, frames: [{ forecastHour: 0, label: 'NOW', validAt: fetchedAt }], readings: [], atUser: null, error: 'wind_empty' }
+    return { source: 'Open-Meteo', provider: 'open-meteo-current-grid', model: `Open-Meteo ${model} 10m wind`, fetchedAt, frames, readings: [], frameReadings: [], atUser: null, error: 'wind_empty' }
   }
 
   // O ponto mais próximo do centro é o que a UI cita em texto.
@@ -198,7 +345,7 @@ export async function getWind(
     return d < bd ? r : best
   }, readings[0])
 
-  return { source: 'Open-Meteo', provider: 'open-meteo-current-grid', model: 'Open-Meteo current 10m wind', fetchedAt, frames: [{ forecastHour: 0, label: 'NOW', validAt: fetchedAt }], readings, atUser }
+  return { source: 'Open-Meteo', provider: 'open-meteo-current-grid', model: `Open-Meteo ${model} 10m wind`, fetchedAt, frames, readings, frameReadings, atUser }
 }
 
 /** Escala de Beaufort resumida — o que aquele número significa na prática. */

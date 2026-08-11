@@ -44,6 +44,16 @@ Ao sair para `Escuro`/`Satélite`, o modo vento desliga. Durante troca de base,
 destruir o `WindParticleLayer` antigo; ele não pode ficar preso a um MapLibre
 removido. Campo escalar não redesenha durante `move/zoom` contínuo.
 
+D-145 sincroniza vento premium com Hurricane Tracker sem provider pago. A rota
+`/api/world/wind` agora pode entregar frames horários cacheados do Open-Meteo com
+`models=best_match`; o slider de tempo do modo Vento escolhe o frame, sem refetch
+por frame. O mesmo tempo interpola o alvo visual do ciclone entre pontos de
+previsão do NHC quando eles existirem. Perto do centro, o campo de fundo é
+misturado com um perfil paramétrico local baseado em posição, vento máximo
+sustentado, rumo e velocidade do tracker. Isto é coerência visual operacional,
+não previsão proprietária: cone/trilha oficiais continuam sendo os produtos do
+NHC e providers pagos seguem fora de escopo.
+
 ---
 
 ## EOS Platform: quatro camadas, não quatro produtos (2026-08-03)

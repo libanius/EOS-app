@@ -147,6 +147,9 @@ const distintos = new Set((wind.readings ?? []).map(r => `${r.lat},${r.lng}`)).s
 wind.readings?.length >= 4 && distintos === wind.readings.length && wind.atUser
   ? ok('campo de vento em grade', `${wind.readings.length} leituras · aqui ${wind.atUser.speedKmh} km/h de ${wind.atUser.fromDeg}°`)
   : no('vento não veio em grade', `leituras=${wind.readings?.length} distintos=${distintos}`)
+Array.isArray(wind.frames) && wind.frames.length > 1 && Array.isArray(wind.frameReadings) && wind.model?.includes('best_match')
+  ? ok('vento com frames horários Open-Meteo', `${wind.model} · ${wind.frames.length} frames`)
+  : no('vento sem timeline/cache horário', `model=${wind.model} frames=${wind.frames?.length} frameReadings=${wind.frameReadings?.length}`)
 
 // ── navegador ───────────────────────────────────────────────────────────────
 console.log(
@@ -216,6 +219,19 @@ const animado = await page.evaluate(() => window.__eosWindLayer ?? { active: fal
 animado.active === true && animado.mode === 'bilinear' && animado.scalar === true && animado.wrapsWorld === true && (animado.scalarPixels ?? 0) > 0 && (animado.particles ?? 0) > 1000 && animado.grid === '25x25'
   ? ok('vento escalar e animado bilinear ativos no mapa', `${animado.grid} · ${animado.scalarPixels} px escalares · ${animado.particles} partículas · ${setas.desenhadas} setas fallback`)
   : no('vento não desenhou', JSON.stringify({ setas, animado }))
+
+const timelineOk = await page.evaluate(() => {
+  const input = document.querySelector('.world-wind-time input')
+  if (!input) return { ok: false, reason: 'slider ausente' }
+  input.value = '3'
+  input.dispatchEvent(new Event('input', { bubbles: true }))
+  return { ok: true }
+})
+await page.waitForTimeout(500)
+const frameDebug = await page.evaluate(() => window.__eosWindLayer ?? {})
+timelineOk.ok && frameDebug.frameIndex === 3
+  ? ok('timeline de vento troca frame sem novo modo', `frame=${frameDebug.frameIndex}`)
+  : no('timeline de vento não atualizou frame', JSON.stringify({ timelineOk, frameDebug }))
 
 const mapBox = await page.locator('.wv2-map canvas.maplibregl-canvas').boundingBox()
 if (mapBox) {
