@@ -235,20 +235,23 @@ if (await windToggle.count()) {
 await page.waitForTimeout(250)
 const controlsOk = await page.evaluate(() => {
   const controls = Array.from(document.querySelectorAll('.world-wind-control input'))
-  if (controls.length < 2) return { ok: false, reason: 'controles ausentes' }
+  if (controls.length < 3) return { ok: false, reason: 'controles ausentes' }
   const before = window.__eosWindLayer ?? {}
   const density = controls[0]
   const trail = controls[1]
+  const opacity = controls[2]
   density.value = '1.4'
   density.dispatchEvent(new Event('input', { bubbles: true }))
   trail.value = '0.95'
   trail.dispatchEvent(new Event('input', { bubbles: true }))
+  opacity.value = '0.35'
+  opacity.dispatchEvent(new Event('input', { bubbles: true }))
   return { ok: true, beforeParticles: before.particles }
 })
 await page.waitForTimeout(650)
 const tunedWind = await page.evaluate(() => window.__eosWindLayer ?? {})
-controlsOk.ok && tunedWind.particles > (controlsOk.beforeParticles ?? 0) && tunedWind.fadeAlpha >= 0.98
-  ? ok('sliders de vento ajustam fluxo e rastro', `${controlsOk.beforeParticles} → ${tunedWind.particles} partículas · fade ${tunedWind.fadeAlpha}`)
+controlsOk.ok && tunedWind.particles > (controlsOk.beforeParticles ?? 0) && tunedWind.fadeAlpha >= 0.98 && tunedWind.scalarOpacity < 0.55 && tunedWind.particleOpacity < 0.7
+  ? ok('sliders de vento ajustam fluxo, rastro e mapa', `${controlsOk.beforeParticles} → ${tunedWind.particles} partículas · fade ${tunedWind.fadeAlpha} · opacidade ${tunedWind.scalarOpacity}`)
   : no('sliders de vento não aplicaram configuração', JSON.stringify({ controlsOk, tunedWind }))
 
 const timelineOk = await page.evaluate(() => {
@@ -281,6 +284,11 @@ if (mapBox) {
   ;(zoomWind.visibleParticles ?? 0) > 250
     ? ok('vento mantém densidade no zoom', `${zoomWind.visibleParticles}/${zoomWind.particles} partículas visíveis`)
     : no('vento perdeu densidade no zoom', JSON.stringify(zoomWind))
+  await page.mouse.click(mapBox.x + mapBox.width * 0.5, mapBox.y + mapBox.height * 0.5)
+  await page.waitForTimeout(250)
+  ;(await page.locator('.world-wind-legend[data-open="false"]').count()) === 1
+    ? ok('painel de vento recolhe ao tocar fora')
+    : no('painel de vento não recolheu ao tocar fora')
 } else {
   no('canvas do mapa ausente no modo vento')
 }

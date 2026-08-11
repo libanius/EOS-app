@@ -290,6 +290,34 @@ sliders nem poluir permanentemente a tela.
 
 ---
 
+## D-152 — Painel de vento vira controle flutuante colapsável com transparência
+
+**Date**: 2026-08-11
+**Status**: DECIDED
+**Roadmap**: WV2-T24
+
+**Context**: O painel de vento ainda podia ficar escondido atrás do painel
+principal no desktop, e faltava controle de transparência para enxergar melhor o
+mapa base. O comportamento desejado é um controle flutuante que aparece e
+desaparece sob comando, fecha ao tocar fora e não força o usuário a aceitar uma
+opacidade fixa.
+
+**Decision**:
+
+1. O painel de vento deve ser colapsável em desktop e mobile.
+2. O botão compacto `Vento` abre/fecha o painel; clicar fora recolhe.
+3. No desktop, o painel fica à esquerda, mais ao centro da viewport, deslocado
+   para fora do painel principal.
+4. Adicionar slider `Mapa` para controlar a transparência do overlay de vento.
+5. Sliders continuam alterando apenas o renderer/canvas, sem novo fetch e sem
+   remontar o mapa.
+
+**Consequence**: O modo Vento fica controlável sem esconder mapa, painel
+principal ou navegação, e a leitura pode priorizar vento ou mapa conforme o
+usuário quiser.
+
+---
+
 ## D-141 — Vento animado é camada premium no mapa existente
 
 **Date**: 2026-08-09

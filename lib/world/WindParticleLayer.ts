@@ -7,6 +7,7 @@ export type WindParticleLayerConfig = {
   fadeAlpha: number
   lineWidth: number
   speedScale: number
+  particleOpacity: number
   globalParticleMultiplier: number
   maxAgeMin: number
   maxAgeJitter: number
@@ -45,6 +46,7 @@ const DEFAULT_CONFIG: WindParticleLayerConfig = {
   fadeAlpha: 0.965,
   lineWidth: 1.25,
   speedScale: 0.00024,
+  particleOpacity: 1,
   globalParticleMultiplier: 1.9,
   maxAgeMin: 120,
   maxAgeJitter: 170,
@@ -240,6 +242,7 @@ export class WindParticleLayer {
     this.config = { ...this.config, ...config }
     if (!this.enabled) return
     this.ensureParticles()
+    this.scheduleScalarRender()
     this.debug(true)
   }
 
@@ -453,12 +456,14 @@ export class WindParticleLayer {
       return
     }
     this.ctx.strokeStyle = colorFor(vector.speedMph)
+    this.ctx.globalAlpha = this.config.particleOpacity
     this.ctx.lineWidth = vector.speedMph >= 32 ? this.config.lineWidth * 1.55 : this.config.lineWidth
     this.ctx.lineCap = 'round'
     this.ctx.beginPath()
     this.ctx.moveTo(old.x, old.y)
     this.ctx.lineTo(next.x, next.y)
     this.ctx.stroke()
+    this.ctx.globalAlpha = 1
     p.age += 1
     if (p.age > p.maxAge) this.respawn(p)
   }
@@ -500,6 +505,8 @@ export class WindParticleLayer {
           readings: this.grid ? this.grid.lats.length * this.grid.lngs.length : 0,
           grid: this.grid ? `${this.grid.lngs.length}x${this.grid.lats.length}` : null,
           lineWidth: this.config.lineWidth,
+          particleOpacity: this.config.particleOpacity,
+          scalarOpacity: this.config.scalarOpacity,
           minStepPx: this.config.minStepPx,
           speedScale: this.config.speedScale,
           maxSegmentPx: this.config.maxSegmentPx,

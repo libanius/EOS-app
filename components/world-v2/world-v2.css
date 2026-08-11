@@ -1089,12 +1089,14 @@
   z-index: 3;
   mix-blend-mode: screen;
 }
-.wv2 .world-wind-scalar-canvas[data-active='true'] { opacity: 0.56; }
-.wv2 .world-wind-canvas[data-active='true'] { opacity: 1; }
+.wv2 .world-wind-scalar-canvas[data-active='true'] { opacity: var(--wind-scalar-opacity, 0.56); }
+.wv2 .world-wind-canvas[data-active='true'] { opacity: var(--wind-particle-opacity, 1); }
 .wv2 .world-wind-legend {
   position: absolute;
-  left: 14px;
-  bottom: calc(var(--nav-inset) + 14px);
+  left: clamp(320px, 28vw, 520px);
+  top: 46%;
+  bottom: auto;
+  transform: translateY(-50%);
   z-index: 5;
   display: grid;
   grid-template-columns: auto repeat(5, auto);
@@ -1110,10 +1112,10 @@
   letter-spacing: 0.08em;
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  pointer-events: none;
+  pointer-events: auto;
 }
 .wv2 .world-wind-toggle {
-  display: none;
+  display: block;
   border: 0;
   border-radius: 999px;
   padding: 8px 10px;
@@ -1151,35 +1153,36 @@
   width: 100%;
   accent-color: #7ad7ff;
 }
+.wv2 .world-wind-legend[data-open='false'] {
+  width: auto;
+  padding: 6px;
+  border-radius: 999px;
+  background: rgba(5, 7, 10, 0.64);
+}
+.wv2 .world-wind-legend[data-open='false'] .world-wind-title,
+.wv2 .world-wind-legend[data-open='false'] .world-wind-scale,
+.wv2 .world-wind-legend[data-open='false'] .world-wind-ramp,
+.wv2 .world-wind-legend[data-open='false'] .world-wind-time,
+.wv2 .world-wind-legend[data-open='false'] .world-wind-control {
+  display: none;
+}
+.wv2 .world-wind-legend[data-open='true'] {
+  padding: 10px;
+  border-radius: 14px;
+  background: rgba(5, 7, 10, 0.78);
+}
 @media (max-width: 700px) {
   .wv2 .world-wind-legend {
     left: auto;
     right: 12px;
+    top: auto;
     bottom: calc(var(--nav-inset) + 72px);
+    transform: none;
     max-width: min(230px, calc(100vw - 28px));
     grid-template-columns: 1fr;
     justify-items: stretch;
     gap: 8px;
     pointer-events: auto;
-  }
-  .wv2 .world-wind-toggle { display: block; }
-  .wv2 .world-wind-legend[data-open='false'] {
-    width: auto;
-    padding: 6px;
-    border-radius: 999px;
-    background: rgba(5, 7, 10, 0.64);
-  }
-  .wv2 .world-wind-legend[data-open='false'] .world-wind-title,
-  .wv2 .world-wind-legend[data-open='false'] .world-wind-scale,
-  .wv2 .world-wind-legend[data-open='false'] .world-wind-ramp,
-  .wv2 .world-wind-legend[data-open='false'] .world-wind-time,
-  .wv2 .world-wind-legend[data-open='false'] .world-wind-control {
-    display: none;
-  }
-  .wv2 .world-wind-legend[data-open='true'] {
-    padding: 10px;
-    border-radius: 14px;
-    background: rgba(5, 7, 10, 0.78);
   }
   .wv2 .world-wind-legend[data-open='true'] .world-wind-ramp { grid-column: 1 / -1; }
   .wv2 .world-wind-time,

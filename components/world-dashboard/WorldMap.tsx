@@ -518,12 +518,14 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
   const windScalarCanvasRef = useRef<HTMLCanvasElement>(null)
   const windLayerRef = useRef<WindParticleLayer | null>(null)
   const windTimeInputRef = useRef<HTMLInputElement | null>(null)
+  const windLegendRef = useRef<HTMLDivElement | null>(null)
   const [windPopup, setWindPopup] = useState<WindPopup | null>(null)
   const [mapReadyNonce, setMapReadyNonce] = useState(0)
   const [windFrameIndex, setWindFrameIndex] = useState(0)
   const [viewportWind, setViewportWind] = useState<WindSnapshot | null>(null)
   const [windDensity, setWindDensity] = useState(1)
   const [windTrail, setWindTrail] = useState(0.62)
+  const [windMapOpacity, setWindMapOpacity] = useState(0.72)
   const [windControlsOpen, setWindControlsOpen] = useState(false)
 
   const ensureWindLayer = () => {
@@ -549,24 +551,37 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
     maxAgeMin: Math.round(70 + windTrail * 95),
     maxAgeJitter: Math.round(90 + windTrail * 185),
     minStepPx: 0.95 + windTrail * 0.65,
-  }), [windDensity, windTrail])
+    scalarOpacity: 0.28 + windMapOpacity * 0.58,
+    particleOpacity: 0.42 + windMapOpacity * 0.58,
+  }), [windDensity, windTrail, windMapOpacity])
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem('eos-wind-renderer')
       if (!raw) return
-      const parsed = JSON.parse(raw) as { density?: number; trail?: number }
+      const parsed = JSON.parse(raw) as { density?: number; trail?: number; mapOpacity?: number }
       if (typeof parsed.density === 'number') setWindDensity(Math.min(1.6, Math.max(0.35, parsed.density)))
       if (typeof parsed.trail === 'number') setWindTrail(Math.min(1, Math.max(0.2, parsed.trail)))
+      if (typeof parsed.mapOpacity === 'number') setWindMapOpacity(Math.min(1, Math.max(0.25, parsed.mapOpacity)))
     } catch {}
   }, [])
   useEffect(() => {
     try {
-      window.localStorage.setItem('eos-wind-renderer', JSON.stringify({ density: windDensity, trail: windTrail }))
+      window.localStorage.setItem('eos-wind-renderer', JSON.stringify({ density: windDensity, trail: windTrail, mapOpacity: windMapOpacity }))
     } catch {}
-  }, [windDensity, windTrail])
+  }, [windDensity, windTrail, windMapOpacity])
   useEffect(() => {
     windLayerRef.current?.updateConfig(windRendererConfig)
   }, [windRendererConfig])
+  useEffect(() => {
+    if (!windControlsOpen) return
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null
+      if (target && windLegendRef.current?.contains(target)) return
+      setWindControlsOpen(false)
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => { document.removeEventListener('pointerdown', onPointerDown) }
+  }, [windControlsOpen])
   const activeCycloneTargets = useMemo(
     () => (cyclones?.storms ?? []).map(storm => stormAtTime(storm, cyclones?.forecastPoints, activeWindFrame?.validAt)),
     [cyclones, activeWindFrame?.validAt],
@@ -1578,10 +1593,20 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
     <div className="world-map-wrap" aria-hidden="true">
       <div ref={plateRef} className="world-plate has-image" style={{ ['--world-image' as string]: `url(${plateUrl})`, transition: 'opacity 800ms ease' }} />
       <div ref={ref} className="world-map" />
-      <canvas ref={windScalarCanvasRef} className="world-wind-scalar-canvas" data-active={layers?.wind ? 'true' : 'false'} />
-      <canvas ref={windCanvasRef} className="world-wind-canvas" data-active={layers?.wind ? 'true' : 'false'} />
+      <canvas
+        ref={windScalarCanvasRef}
+        className="world-wind-scalar-canvas"
+        data-active={layers?.wind ? 'true' : 'false'}
+        style={{ ['--wind-scalar-opacity' as string]: String(0.18 + windMapOpacity * 0.56) }}
+      />
+      <canvas
+        ref={windCanvasRef}
+        className="world-wind-canvas"
+        data-active={layers?.wind ? 'true' : 'false'}
+        style={{ ['--wind-particle-opacity' as string]: String(0.42 + windMapOpacity * 0.58) }}
+      />
       {layers?.wind && windForMap?.readings.length ? (
-        <div className="world-wind-legend" data-open={windControlsOpen ? 'true' : 'false'}>
+        <div ref={windLegendRef} className="world-wind-legend" data-open={windControlsOpen ? 'true' : 'false'}>
           <button
             type="button"
             className="world-wind-toggle"
@@ -1629,6 +1654,18 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
               value={windTrail}
               onInput={event => setWindTrail(Number(event.currentTarget.value))}
               onChange={event => setWindTrail(Number(event.currentTarget.value))}
+            />
+          </label>
+          <label className="world-wind-control">
+            <span>MAPA</span>
+            <input
+              type="range"
+              min={0.25}
+              max={1}
+              step={0.05}
+              value={windMapOpacity}
+              onInput={event => setWindMapOpacity(Number(event.currentTarget.value))}
+              onChange={event => setWindMapOpacity(Number(event.currentTarget.value))}
             />
           </label>
         </div>

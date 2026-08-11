@@ -90,6 +90,12 @@ atrás do bottom nav nem competir com a coluna de controles do mapa. No celular,
 o painel fica lateral/direito e colapsado por padrão em um botão `Vento`; ao
 abrir, mostra timeline, `Fluxo` e `Rastro`. No desktop, permanece aberto.
 
+D-152 muda o painel para flutuante/colapsável em todas as viewports. O botão
+`Vento` abre/fecha, e pointerdown fora do painel recolhe. No desktop, posicionar
+à esquerda e mais ao centro, deslocado do painel principal. O slider `Mapa`
+controla transparência do campo escalar e partículas via CSS vars +
+`WindParticleLayer.updateConfig`, sem novo fetch.
+
 ---
 
 ## EOS Platform: quatro camadas, não quatro produtos (2026-08-03)
