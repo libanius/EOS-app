@@ -107,6 +107,42 @@ try {
     ? ok('chip ativo na Visão é "Visão"')
     : no('chip ativo errado na Visão', atual)
 
+  // ── 2b. A faixa GRUDA ao rolar ────────────────────────────────────────────
+  // Trocar de seção depois de rolar é o movimento mais comum da tela. Se a
+  // faixa sobe junto com o conteúdo, ela existe só para quem está no topo — e
+  // aí não é navegação, é enfeite.
+  await page.evaluate(() => window.scrollTo(0, 900))
+  await page.waitForTimeout(400)
+  const caixa = await navLocal.boundingBox()
+  const alturaJanela = page.viewportSize()?.height ?? 844
+  const grudou = !!caixa && caixa.y >= -1 && caixa.y < alturaJanela / 2
+  grudou
+    ? ok('a faixa continua visível depois de rolar')
+    : no('a faixa sobe junto com o conteúdo', caixa ? `y=${Math.round(caixa.y)}` : 'fora da tela')
+  await page.evaluate(() => window.scrollTo(0, 0))
+  await page.waitForTimeout(200)
+
+  // Mesma checagem numa janela larga. `position: sticky` quebra quando algum
+  // ancestral tem `overflow` e NÃO é o elemento que realmente rola — e qual
+  // elemento rola pode mudar com a largura.
+  await page.setViewportSize({ width: 800, height: 1000 })
+  await page.reload({ waitUntil: 'networkidle' })
+  await navLocal.waitFor({ timeout: 20000 })
+  const rolou = await page.evaluate(() => {
+    window.scrollTo(0, 900)
+    const doc = document.scrollingElement
+    return { janela: window.scrollY, doc: doc ? doc.scrollTop : -1 }
+  })
+  await page.waitForTimeout(400)
+  const caixaLarga = await navLocal.boundingBox()
+  const grudouLargo = !!caixaLarga && caixaLarga.y >= -1 && caixaLarga.y < 500
+  grudouLargo
+    ? ok('a faixa gruda também em janela larga')
+    : no('a faixa NÃO gruda em janela larga', `y=${caixaLarga ? Math.round(caixaLarga.y) : 'null'} scrollY=${rolou.janela}`)
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.reload({ waitUntil: 'networkidle' })
+  await navLocal.waitFor({ timeout: 20000 })
+
   // ── 3. O chip navega de verdade (rota, não estado em memória) ─────────────
   await navLocal.locator('a', { hasText: 'O que falta' }).click()
   await page.waitForURL(/\/preparedness\/o-que-falta/, { timeout: 10000 }).catch(() => {})
