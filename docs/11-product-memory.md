@@ -68,6 +68,23 @@ funcionando por adaptadores. Nenhum passo irreversível antes de um cutover
 explícito. Quem propuser reescrever inventário, plano, Pilot, EDU e simulação
 antes de mexer na UI está indo contra D-155.
 
+**Alerta reordena; não cria (D-168).** Um aviso de furacão não inventa que
+falta água — torna urgente a que já faltava. A reavaliação lê os MESMOS itens de
+`lib/attention` que a Visão mostra em repouso, para não existir uma segunda
+verdade sobre a casa. E alerta relevante **sem lacuna correspondente não
+interrompe**: dizer "atenção" quando a casa está pronta gasta a atenção que o
+próximo evento vai precisar.
+
+**Nenhuma chamada de modelo no cron.** A reavaliação roda quando o usuário
+chega, onde ele pode confirmar. No cron seria proposta gerada para milhares de
+casas que talvez nunca abram o app — custo, ruído, e escrita preparada sem
+ninguém para consentir.
+
+**Fronteira de palavra em padrão de alerta é obrigatória.** Sem `\b`, `neve`
+casa dentro de **nevoeiro** e um aviso de neblina passa a pressionar comida e
+água. Alarme por coincidência de letras é pior que alarme nenhum: parece
+fundamentado.
+
 **A tarefa sobrevive ao briefing (D-167).** O cartão some; a linha fica no
 checklist e será lida semanas depois, sozinha. Item que depende do contexto que
 já não está na tela é pior que nenhum — ocupa espaço prometendo memória que não

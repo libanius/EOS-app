@@ -6,6 +6,8 @@ import { saveSnapshot, loadSnapshot } from '@/lib/sync'
 import PreparednessNav from './PreparednessNav'
 import { attentionItems, type AttentionItem } from '@/lib/attention'
 import { BRIEFING_KIT_TYPE, buildBriefingProposals, type BriefingProposal } from '@/lib/briefing-actions'
+import { reassess } from '@/lib/alert-reassessment'
+import { useRisk } from '@/components/v2/RiskProvider'
 import { useLanguage } from '@/lib/i18n'
 import {
   formatGallons,
@@ -246,6 +248,12 @@ const DEFAULT_INVENTORY: Inventory = {
 
 export default function PreparednessPage() {
   const { language, t } = useLanguage()
+  /*
+   * D-168: o alerta ao vivo vem do RiskProvider, que já está montado no layout
+   * e já carregou. Nenhum fetch novo — a Preparação lê a MESMA verdade que o
+   * MUNDO mostra, e duas telas que buscam a mesma coisa acabam divergindo.
+   */
+  const { snapshot } = useRisk()
   const [inv, setInv] = useState<Inventory>(DEFAULT_INVENTORY)
   const [memberCount, setMemberCount] = useState(0)
   /**
@@ -445,6 +453,14 @@ export default function PreparednessPage() {
     essentialDone: essenciais.filter(i => i.acquired).length,
     essentialTotal: essenciais.length,
   })
+
+  /*
+   * A reavaliação é DETERMINÍSTICA e roda aqui, com o usuário presente. Nenhuma
+   * IA decide se o evento importa, e nada é preparado no cron para uma casa que
+   * talvez nunca abra o app.
+   */
+  const reavaliacao = reassess(snapshot?.alerts ?? [], atencao)
+
   const autonomyDays = house?.autonomyDays != null ? Math.floor(house.autonomyDays) : Math.floor(inv.food_days)
   const aiRiskColor: Record<AIRiskLevel, string> = {
     baixo: 'var(--ac)',
@@ -634,6 +650,40 @@ export default function PreparednessPage() {
             </div>
           )}
         </div>
+        )}
+
+        {/*
+          ── Alerta ativo reordena o que é urgente ──────────────────────────
+          A quarta entrada do laço (docs/37 §6). O alerta não cria necessidade
+          nova: ele torna urgente a que já existia, e empurra o resto para
+          baixo.
+
+          Alerta relevante SEM lacuna correspondente não aparece aqui. A casa
+          está pronta para este evento, e dizer "atenção" assim mesmo gasta a
+          atenção que o próximo evento vai precisar.
+        */}
+        {reavaliacao.warranted && reavaliacao.alert && (
+          <div style={S.alertaBloco}>
+            <div style={S.alertaTopo}>
+              <span style={S.alertaMarca} aria-hidden>⚠</span>
+              <span style={S.alertaFonte}>{reavaliacao.alert.source.toUpperCase()}</span>
+              <span style={S.alertaSeveridade}>{reavaliacao.alert.severity}</span>
+            </div>
+            <p style={S.alertaTitulo}>{reavaliacao.alert.headline}</p>
+            <p style={S.alertaTexto}>
+              {language === 'pt'
+                ? `Por causa deste alerta, ${reavaliacao.gaps.length} ${reavaliacao.gaps.length === 1 ? 'lacuna fica' : 'lacunas ficam'} urgente${reavaliacao.gaps.length === 1 ? '' : 's'}:`
+                : `Because of this alert, ${reavaliacao.gaps.length} gap${reavaliacao.gaps.length === 1 ? '' : 's'} became urgent:`}
+            </p>
+            <div style={S.atencaoLista}>
+              {reavaliacao.gaps.map(item => (
+                <a key={item.kind} href={item.where === 'requirements' ? '/preparedness/o-que-falta' : '/preparedness/o-que-tenho'} style={S.atencaoLinha}>
+                  <span style={{ ...S.atencaoMarca, color: 'var(--ac3)' }} aria-hidden>›</span>
+                  <span style={S.atencaoTexto}>{fraseAtencao(item, language === 'pt')}</span>
+                </a>
+              ))}
+            </div>
+          </div>
         )}
 
         {/*
@@ -1090,6 +1140,22 @@ const S: Record<string, React.CSSProperties> = {
     color: 'var(--mu)', textTransform: 'uppercase' as const,
     fontFamily: "'DM Mono', monospace", marginBottom: 2,
   },
+  alertaBloco: {
+    marginTop: 20, padding: '14px 16px', borderRadius: 12,
+    border: '1px solid rgba(255,107,107,0.35)', background: 'rgba(255,107,107,0.06)',
+  },
+  alertaTopo: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 },
+  alertaMarca: { fontSize: 13, color: 'var(--ac3)' },
+  alertaFonte: {
+    fontSize: 10, fontWeight: 700, letterSpacing: 1.2, color: 'var(--ac3)',
+    fontFamily: "'DM Mono', monospace",
+  },
+  alertaSeveridade: {
+    fontSize: 10, fontWeight: 700, letterSpacing: 1, color: 'var(--mu)',
+    fontFamily: "'DM Mono', monospace", marginLeft: 'auto',
+  },
+  alertaTitulo: { margin: '0 0 6px', fontSize: 14, fontWeight: 700, color: 'var(--tx)', lineHeight: 1.4 },
+  alertaTexto: { margin: '0 0 4px', fontSize: 13, color: 'var(--mu)', lineHeight: 1.45 },
   atencaoBloco: {
     marginTop: 20, padding: '14px 16px', borderRadius: 12,
     border: '1px solid var(--bd)', background: 'var(--sf)',

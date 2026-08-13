@@ -10,9 +10,11 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Preparedness Engine (PREP/EDU/COMMS/ONB/PILOT) sobre Web/PWA |
-| **Current Task** | **PREP-T08 — alerta oficial → reavaliação.** PENDING, aguardando autorização. É a **quarta e última entrada** do laço fechado: as outras três (EDU, simulação, Pilot) já existiam, e o briefing virou ação em D-166. Depois: T09 (dedup/damping) e T10 (cutover). |
+| **Current Task** | **PREP-T08 fase 2** — notificação do cron apontando para a reavaliação, e lacunas do alerta virando propostas confirmáveis. PENDING. Depois: T09 (dedup/damping) e T10 (cutover). |
 | **Migrações aplicadas** | As duas de Preparedness State **aplicadas em 2026-08-13** e verificadas por REST: `locations`, `holdings`, `kits`, `requirements` → 200. Nenhuma pendência operacional. |
-| **Last Completed Task** | **D-166 / PREP-T14 — Briefing termina em ação confirmável (2026-08-13)** |
+| **Last Completed Task** | **D-168 / PREP-T08 fase 1 — Alerta vira reavaliação determinística (2026-08-13)** |
+| | **D-167 / PREP-T14 — A tarefa carrega o próprio contexto (2026-08-13)** |
+| | **D-166 / PREP-T14 — Briefing termina em ação confirmável (2026-08-13)** |
 | | **D-165 / PREP-T07 fase 2 — A Visão decide; o estoque muda de tela (2026-08-13)** |
 | | **D-164 / PREP-T07 fase 1 — Navegação local; kit vira filtro (2026-08-13)** |
 | | **D-163 / PREP-T13 — Mínimo de água é o da FEMA: 3 dias por pessoa (2026-08-13)** |

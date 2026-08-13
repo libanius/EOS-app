@@ -4,6 +4,65 @@
 
 ---
 
+## D-168 — Alerta oficial vira reavaliação; nenhuma IA decide relevância
+
+**Date**: 2026-08-13
+**Status**: DECIDED
+**Roadmap**: PREP-T08 (fase 1)
+**Spec**: `docs/37-preparedness-state.md` §5, §6
+
+**Context**: A quarta e última entrada do laço fechado. As outras três — EDU
+(D-119), simulação (D-092) e Pilot (D-093) — já existiam; o alerta era o único
+que terminava numa notificação e parava ali. O cron já fazia a parte difícil:
+validar severidade e deduplicar por `source_key`.
+
+**Decision**:
+
+1. **A reavaliação é determinística e pura.** Nenhuma IA decide se existe aviso
+   oficial, se ele importa, ou o que ele pressiona (`docs/37` §6). A IA pode
+   explicar depois; não pode ser a trava.
+
+2. **Nenhuma chamada de modelo no cron.** A reavaliação roda **quando o usuário
+   chega**, na tela, onde ele pode confirmar. Rodar no cron significaria gerar
+   proposta para milhares de casas que talvez nunca abram o app: custo, ruído, e
+   escrita preparada sem ninguém presente para consentir.
+
+3. **O alerta não cria necessidade nova — ele reordena a que existe.** Um aviso
+   de furacão não inventa que falta água; torna urgente a água que já faltava.
+   A reavaliação lê os **mesmos** itens de `lib/attention` que a Visão mostra em
+   repouso, para que não exista uma segunda verdade sobre a casa.
+
+4. **Alerta relevante SEM lacuna correspondente não interrompe.** A casa está
+   pronta para aquele evento, e dizer "atenção" assim mesmo gasta a atenção que
+   o próximo evento vai precisar.
+
+5. **Evento que não sabemos mapear não vira "tudo é urgente".** Nesse caso só o
+   que já é crítico aparece: alargar o alarme por ignorância é o oposto de
+   informar.
+
+6. **A Visão lê o snapshot global de risco**, já montado no layout. Nenhum fetch
+   novo — duas telas que buscam a mesma coisa acabam divergindo.
+
+7. **`OFFICIAL_ALERT` ganha o valor correspondente no armazenamento legado**, e
+   já era procedência válida em `requirements` (D-161). Sem migração.
+
+**Consequence**:
+
+- **Um teste pegou um defeito real de casamento de padrão.** Sem fronteira de
+  palavra, `neve` casa dentro de **nevoeiro**, e um aviso de neblina passaria a
+  pressionar comida e água. Todos os padrões ganharam `\b`, e "nevoeiro não é
+  neve" virou teste. Alarme por coincidência de letras é pior que alarme
+  nenhum, porque parece fundamentado.
+- O laço fechado do `docs/37` está **completo nas quatro entradas**.
+- Fase 2 (pendente): a notificação do cron apontar direto para a reavaliação, e
+  as lacunas do alerta virarem propostas confirmáveis com `provenance =
+  OFFICIAL_ALERT`.
+
+**Não autorizado por D-168**: chamar modelo no cron, escrever sem confirmação,
+migração, mudar o cron.
+
+---
+
 ## D-167 — A tarefa precisa carregar o próprio contexto
 
 **Date**: 2026-08-13

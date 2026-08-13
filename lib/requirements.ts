@@ -73,6 +73,10 @@ const PROVENANCE_BY_LEGACY_KIT: Record<string, Provenance> = {
   EDU_CONTENT: 'EDU',
   PILOT_RECOMMENDATION: 'PILOT',
   SIMULATION_DEBRIEF: 'SIMULATION',
+  // D-168: alerta oficial é a quarta entrada do laço. `OFFICIAL_ALERT` já era
+  // procedência válida em `requirements`; aqui ela ganha o valor correspondente
+  // no armazenamento legado.
+  OFFICIAL_ALERT: 'OFFICIAL_ALERT',
 }
 
 export type KitTypeSplit = {
