@@ -4,6 +4,72 @@
 
 ---
 
+## D-160 — Holdings e Locations nascem ao lado do legado, não no lugar dele
+
+**Date**: 2026-08-13
+**Status**: DECIDED
+**Roadmap**: PREP-T04
+**Spec**: `docs/37-preparedness-state.md` §15, §16, §28
+
+**Context**: D-155 definiu que o núcleo da Preparação é o par
+`Requirement ↔ Holding`. PREP-T04 é o estágio 1 do §28 — aditivo — e cria o
+lado **Holding**: o que a família tem, e onde.
+
+`resource_inventory` é uma linha por perfil com sete escalares. Não representa
+objeto, quantidade por objeto nem lugar; é por isso que "onde está minha água
+de reserva?" não tem resposta possível hoje.
+
+**Decision**:
+
+1. **Duas tabelas novas, vazias, ao lado das antigas.** `locations` (árvore por
+   `parent_id`) e `holdings`. Nada é alterado, removido ou migrado.
+   `resource_inventory` e `checklists` continuam sendo a verdade.
+
+2. **Um adaptador projeta o legado**, e é ele que o app lê. Enquanto as tabelas
+   novas estiverem vazias — ou nem existirem —, o estado vem dos sete escalares,
+   e o número na tela não muda. `lib/holdings-store.ts` é a porta única.
+
+3. **Itens de checklist NÃO viram Holdings.** Item marcado carrega quantidade
+   **planejada**, não medida, e carrega `kit_type`, não lugar. Ele é
+   `Requirement` com estado `met` — PREP-T05. Projetá-lo como Holding
+   reintroduziria, numa camada mais funda, o defeito que PREP-T11 removeu.
+   *(Este ponto corrige um critério de aceitação que eu mesmo havia escrito no
+   roadmap antes de codificar.)*
+
+4. **`CONSUMABLE` × `DURABLE` no banco**, não como convenção. É o que impede um
+   torniquete de virar quatro torniquetes sem sistema de reserva: consumível
+   conta quantidade dentro de um lugar; durável é presença e cobre qualquer
+   requisito alcançável dali.
+
+5. **Unidade é coluna.** Um galão de 5 é `5` + `gal`. A conversão para litros
+   acontece num lugar só (`toLiters`), e **unidade desconhecida é ignorada,
+   nunca chutada** — palpite viraria autonomia inventada.
+
+6. **A autonomia nova tem que dar exatamente a antiga.** Provado por teste sobre
+   seis cenários. Uma quinta conta de prontidão seria defeito, não feature.
+
+7. **O código funciona com a migração não aplicada.** Só `42P01` degrada;
+   qualquer outro erro estoura. Mascarar falha de leitura num app de emergência
+   é o equivalente a dizer "pode ir" sem saber.
+
+8. **RLS igual ao contrato existente**: `profile_id = auth.uid()`. Um lugar é
+   pelo menos tão sensível quanto uma quantidade — "gerador e 200 galões na
+   fazenda, nesta coordenada" é exatamente o que não pode vazar por padrão.
+
+**Consequence**:
+
+- A migração está escrita e **precisa ser aplicada pelo dono no SQL Editor** do
+  Supabase: o ambiente do agente não tem credencial de banco (mesmo padrão de
+  D-038 e do Stripe). Até lá, o app roda projetando o legado.
+- Nenhuma tela muda. PREP-T04 é fundação; a superfície é PREP-T07.
+- O outro lado do par (`requirements`, `kits`) é PREP-T05, de propósito: juntar
+  os dois numa migração só repetiria a confusão que estamos desfazendo.
+
+**Não autorizado por D-160**: backfill, cutover, mudança de tela, compartilhamento
+de holdings com o círculo.
+
+---
+
 ## D-159 — A régua da água é a da FEMA: 1 galão por pessoa por dia
 
 **Date**: 2026-08-12

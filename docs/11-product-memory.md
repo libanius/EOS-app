@@ -68,6 +68,26 @@ funcionando por adaptadores. Nenhum passo irreversível antes de um cutover
 explícito. Quem propuser reescrever inventário, plano, Pilot, EDU e simulação
 antes de mexer na UI está indo contra D-155.
 
+**Holdings e Locations existem no código antes de existirem no banco
+(D-160, PREP-T04).** A migração
+`20260813000000_preparedness_holdings_locations.sql` está escrita e **o dono a
+aplica no SQL Editor** — o agente não tem credencial de banco (padrão D-038).
+Enquanto isso, `lib/holdings-store.ts` projeta o legado e nada muda na tela.
+**Só `42P01` degrada**; qualquer outro erro estoura. Mascarar falha de leitura
+aqui é o equivalente a dizer "pode ir" sem saber — e este projeto já acendeu um
+banner "migration pendente" falso por tratar erro de coluna como tabela ausente.
+
+**Item de checklist NÃO vira Holding.** Foi tentador e está errado: item marcado
+carrega quantidade **planejada** (não medida) e `kit_type` (não lugar). Ele é
+`Requirement` com estado `met`, e isso é PREP-T05. Projetá-lo como Holding
+reintroduziria, numa camada mais funda, o defeito que PREP-T11 removeu. *Este
+ponto corrigiu um critério de aceitação escrito no próprio roadmap antes de
+codificar — critério não é imune a revisão.*
+
+**A autonomia do modelo novo tem que dar EXATAMENTE a do antigo**, e há teste
+sobre seis cenários provando. Enquanto os dois modelos coexistirem, divergência
+não é evolução: é a quinta conta de prontidão, que `docs/37` §24.2 proíbe.
+
 **Todo kit é Preparação (D-157, decisão do dono).** Pesca, Caça, Acampamento,
 Bug Out, Geral e qualquer kit criado pelo usuário. `Kit` **não tem**
 discriminador de propósito — nada de `is_preparedness`, nada de separar kit

@@ -365,19 +365,40 @@ provenance.
 
 ---
 
+## Migration written, NOT YET APPLIED
+
+> ⚠️ **`locations` and `holdings` do not exist in the production database yet.**
+> The migration `supabase/migrations/20260813000000_preparedness_holdings_locations.sql`
+> (PREP-T04 / D-160) is written and committed; **the owner applies it in the
+> Supabase SQL Editor** — the agent environment has no database credentials
+> (same pattern as D-038 and Stripe).
+>
+> Until it is applied, the app reads the legacy projection through
+> `lib/holdings-store.ts` and nothing changes on screen.
+>
+> **When applied, move both tables into "Core Tables" above and delete this
+> block** — a data model that keeps a permanent "coming soon" section stops
+> being a data model.
+
+| Table | Shape | Purpose |
+|---|---|---|
+| `locations` | `id · profile_id · parent_id (self) · name · kind · is_default · lat · lng` | Where things physically are. Tree. `HOME` is the only kind with calculation meaning (D-156) |
+| `holdings` | `id · profile_id · location_id · resource_key · label · kind · quantity · unit` | What the family actually has. `kind ∈ CONSUMABLE\|DURABLE`. Unique on `(profile_id, location_id, resource_key)` |
+
+`holdings.resource_key` is deliberately the same identity as
+`checklists.canonical_key`: it is the key that joins *needing* to *having*.
+
 ## Proposed / NOT IMPLEMENTED
 
-This document describes the **current implemented model only**. Nothing below
-this line exists in the database.
+This document describes the **current implemented model only**. Nothing in this
+section exists in the database or in a migration.
 
-D-155 / PREP-T03 specifies a Preparedness State model with five proposed
-entities — `Holding`, `Requirement`, `Location`, `Kit`, `ReadinessAssessment`.
-**The detailed proposed model lives exclusively in
-[`37-preparedness-state.md`](37-preparedness-state.md)** and is deliberately not
-duplicated here, so that this file never reads as if those tables exist.
-
-When a proposed entity is implemented, its table moves *into* the sections above
-in the same commit as its migration, and the reference here is removed.
+D-155 / PREP-T03 specifies five entities. Two of them (`Location`, `Holding`)
+have a migration above. The remaining three — **`Requirement`, `Kit`,
+`ReadinessAssessment`** — are specified in
+[`37-preparedness-state.md`](37-preparedness-state.md) and deliberately not
+duplicated here, so this file never reads as if those tables exist.
+`Requirement` and `Kit` are PREP-T05.
 
 ---
 

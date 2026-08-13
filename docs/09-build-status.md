@@ -10,8 +10,10 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Preparedness Engine (PREP/EDU/COMMS/ONB/PILOT) sobre Web/PWA |
-| **Current Task** | **PREP-T04 — Holdings + Location padrão.** PENDING, aguardando autorização do dono: é a primeira tarefa com **migração de banco**. PREP-T13 (rever limiares da nota de água) está PENDING em paralelo e não bloqueia. |
-| **Last Completed Task** | **PREP-T11 — Checklist para de escrever no estoque; água em galão FEMA (2026-08-12)** |
+| **Current Task** | **PREP-T05 — Requirements + separação kit/procedência.** PENDING, aguardando autorização do dono (traz migração própria). PREP-T13 (limiares da nota de água) segue PENDING em paralelo e não bloqueia. |
+| **⚠ Pendência operacional** | **Aplicar `supabase/migrations/20260813000000_preparedness_holdings_locations.sql` no Supabase SQL Editor.** Sem isso as tabelas `locations`/`holdings` não existem — o app funciona normalmente (projeta o legado), mas PREP-T05 não pode começar. O ambiente do agente não tem credencial de banco (padrão D-038). |
+| **Last Completed Task** | **D-160 / PREP-T04 — Holdings + Location padrão (2026-08-13)** |
+| | **PREP-T11 — Checklist para de escrever no estoque; água em galão FEMA (2026-08-12)** |
 | | **D-159 / PREP-T12 — Régua da água é a da FEMA: 1 galão por pessoa por dia (2026-08-12)** |
 | | **D-158 — Água em galão; unidade nunca contradiz o nome do campo (2026-08-12)** |
 | | **D-157 — Todo kit é Preparação; não existe classe "lazer" (2026-08-12)** |
