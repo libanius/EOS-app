@@ -197,8 +197,6 @@ export default function RequirementsPage() {
   return (
     <div style={S.page}>
       <div style={S.width}>
-        <PreparednessNav />
-
         <div style={S.header}>
           <div>
             <p style={S.eyebrow}>{t('inventory.preparedness')}</p>
@@ -210,6 +208,9 @@ export default function RequirementsPage() {
             </button>
           )}
         </div>
+
+        {/* Mesma ordem da Visão: título, depois seções (D-164). */}
+        <PreparednessNav />
 
         {/*
           Filtro por kit. Só aparece quando há mais de um grupo: um filtro com

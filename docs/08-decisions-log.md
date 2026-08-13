@@ -61,6 +61,19 @@ embaixo do outro, e nada dizia qual mochila estava sendo editada.
   sub-rota de domínio não custa nada à navegação global, e promessa assim só
   vale medida. `npm run test:nav` também segue verde (7/7).
 
+**Adendo — 2026-08-13, decisão do dono: a faixa fica ABAIXO do título.**
+
+Primeiro você sabe em que domínio está, depois escolhe a seção; ao rolar, o
+título sai e a faixa fica grudada — o comportamento de título grande do iOS.
+Vale para a Visão e para "O que falta", que devem ter a mesma ordem.
+
+Como a decisão foi tomada: o dono é orientado a visual e disse que precisava
+**ver** para opinar. As duas posições foram capturadas do app rodando (390px,
+2×) e comparadas lado a lado. Descrever posição de elemento em texto para quem
+decide por imagem é pedir um palpite, não uma decisão — e a posição foi
+resolvida com **dois** chips, mais barato que resolver com os três que a fase 2
+traz.
+
 **Não autorizado por D-164**: extrair os editores de recurso (fase 2), mover
 `/plan` ou `/edu`, mexer na BottomNav, backfill.
 

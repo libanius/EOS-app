@@ -568,8 +568,6 @@ export default function PreparednessPage() {
   return (
     <div style={S.page}>
       <div style={S.pageWidth}>
-        <PreparednessNav />
-
         {/* Header */}
         <div style={S.header}>
           <div>
@@ -581,6 +579,13 @@ export default function PreparednessPage() {
             {saved && !isPending && <span style={S.savedBadge}>✓ salvo</span>}
           </div>
         </div>
+
+        {/*
+          A faixa vem DEPOIS do título: primeiro você sabe em que domínio está,
+          depois escolhe a seção. Ao rolar, o título sai e a faixa fica grudada
+          no topo — é o comportamento de título grande do iOS.
+        */}
+        <PreparednessNav />
 
         {saveError && (
           <div style={S.errorBanner}>⚠ {saveError}</div>
