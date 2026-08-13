@@ -173,6 +173,37 @@ try {
     ? ok('voltar do subtópico devolve à Visão')
     : no('voltar não devolveu à Visão', page.url())
 
+  // ── 5b. O terceiro chip e o endereço antigo do estoque ────────────────────
+  await page.goto(`${B}/preparedness`, { waitUntil: 'networkidle' })
+  await navLocal.waitFor({ timeout: 20000 })
+  const chips = await navLocal.locator('a').count()
+  chips === 3
+    ? ok('a faixa tem os 3 destinos')
+    : no('a faixa não tem 3 destinos', String(chips))
+
+  await navLocal.locator('a', { hasText: 'O que tenho' }).click()
+  await page.waitForURL(/\/preparedness\/o-que-tenho/, { timeout: 10000 }).catch(() => {})
+  const foiParaEstoque = page.url().includes('/preparedness/o-que-tenho')
+  foiParaEstoque
+    ? ok('chip navega para /preparedness/o-que-tenho')
+    : no('chip do estoque não navegou', page.url())
+
+  await page.goto(`${B}/inventory`, { waitUntil: 'networkidle' })
+  const redirEstoque = page.url().includes('/preparedness/o-que-tenho')
+  redirEstoque
+    ? ok('/inventory redireciona para o estoque')
+    : no('/inventory não redirecionou', page.url())
+
+  // ── 5c. A Visão não edita nada ────────────────────────────────────────────
+  // É o ponto da fase 2: tela de decisão, não de manutenção. Um stepper aqui
+  // significa que um editor voltou a vazar para a Visão.
+  await page.goto(`${B}/preparedness`, { waitUntil: 'networkidle' })
+  await navLocal.waitFor({ timeout: 20000 })
+  const steppers = await page.locator('main input[inputmode], [role="switch"]').count()
+  steppers === 0
+    ? ok('a Visão não tem nenhum editor')
+    : no('a Visão voltou a ter editor', String(steppers))
+
   // ── 6. O endereço antigo não vira 404 ─────────────────────────────────────
   await page.goto(`${B}/checklist`, { waitUntil: 'networkidle' })
   const redirecionou = page.url().includes('/preparedness/o-que-falta')

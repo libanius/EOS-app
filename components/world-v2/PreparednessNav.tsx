@@ -44,6 +44,7 @@ type Destino = { href: string; pt: string; en: string }
  */
 const DESTINOS: Destino[] = [
   { href: '/preparedness', pt: 'Visão', en: 'Overview' },
+  { href: '/preparedness/o-que-tenho', pt: 'O que tenho', en: 'What I have' },
   { href: '/preparedness/o-que-falta', pt: 'O que falta', en: 'What’s missing' },
 ]
 

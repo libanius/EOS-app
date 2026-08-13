@@ -1,15 +1,13 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useRealtimeSync } from '@/hooks/useRealtimeSync'
 import { saveSnapshot, loadSnapshot } from '@/lib/sync'
-import NumericStepper from '@/components/NumericStepper'
 import PreparednessNav from './PreparednessNav'
+import { attentionItems, type AttentionItem } from '@/lib/attention'
 import { useLanguage } from '@/lib/i18n'
 import {
   formatGallons,
-  gallonsToLiters,
-  litersToGallons,
   GALLON_SHORT,
   WATER_ADEQUATE_LITERS_PER_PERSON,
   WATER_CRITICAL_LITERS_PER_PERSON,
@@ -43,7 +41,6 @@ type Inventory = {
   cash_amount: number
 }
 
-type ResourceState = 'critical' | 'high' | 'ok'
 type ReadinessLevel = 'critical' | 'low' | 'adequate' | 'excellent'
 type AIRiskLevel = 'baixo' | 'medio' | 'alto'
 
@@ -92,83 +89,6 @@ function calcReadiness(
     score >= 25 ? 'low'       : 'critical'
 
   return { score, level }
-}
-
-// ─── Resource state helper ────────────────────────────────────────────────────
-
-function getResourceState(
-  value: number,
-  threshold: number,
-  criticalThreshold: number,
-  membersCount: number,
-  perPerson: boolean,
-): ResourceState {
-  const mc = Math.max(membersCount, 1)
-  const effective = perPerson && membersCount > 0 ? value / mc : value
-  if (effective < criticalThreshold) return 'critical'
-  if (effective < threshold) return 'high'
-  return 'ok'
-}
-
-// ─── ResourceCard ─────────────────────────────────────────────────────────────
-
-type ResourceCardProps = {
-  icon: string
-  title: string
-  value: number
-  threshold: number           // per-person (or absolute) threshold for LOW
-  criticalThreshold: number   // threshold for CRITICAL
-  membersCount: number
-  perPerson?: boolean         // divide by membersCount before comparing?
-  optional?: boolean
-  children: React.ReactNode
-}
-
-function ResourceCard({
-  icon,
-  title,
-  value,
-  threshold,
-  criticalThreshold,
-  membersCount,
-  perPerson = false,
-  optional = false,
-  children,
-}: ResourceCardProps) {
-  const { t } = useLanguage()
-  const state = getResourceState(
-    value, threshold, criticalThreshold, membersCount, perPerson,
-  )
-
-  const border =
-    state === 'critical' ? '1px solid rgba(255,107,107,0.4)' :
-    state === 'high'     ? '1px solid rgba(255,179,71,0.4)'  :
-                           '1px solid var(--bd)'
-
-  const bg =
-    state === 'critical' ? 'rgba(255,107,107,0.06)' :
-    state === 'high'     ? 'rgba(255,179,71,0.04)'  :
-                           'var(--sf)'
-
-  return (
-    <div style={{ ...S.card, border, background: bg }}>
-      <div style={S.cardHeader}>
-        <span style={S.cardIcon}>{icon}</span>
-        <span style={S.cardTitle}>{title}</span>
-
-        {state === 'critical' && (
-          <span style={{ ...S.badge, ...S.badgeCritical }}>⚠ {t('inventory.critical')}</span>
-        )}
-        {state === 'high' && (
-          <span style={{ ...S.badge, ...S.badgeHigh }}>▲ {t('inventory.low')}</span>
-        )}
-        {optional && state === 'ok' && (
-          <span style={S.optionalTag}>{t('inventory.optional')}</span>
-        )}
-      </div>
-      {children}
-    </div>
-  )
 }
 
 // ─── ReadinessSummary ─────────────────────────────────────────────────────────
@@ -305,53 +225,11 @@ function ReadinessSummary({ score, level, memberCount, autonomyDays }: Readiness
 
 // ─── Toggle ───────────────────────────────────────────────────────────────────
 
-type ToggleRowProps = {
-  label: string
-  description: string
-  value: boolean
-  onChange: (v: boolean) => void
-  disabled?: boolean
-}
-
-function ToggleRow({ label, description, value, onChange, disabled = false }: ToggleRowProps) {
-  return (
-    <div style={S.toggleRow}>
-      <div style={S.toggleMeta}>
-        <span style={S.toggleLabel}>{label}</span>
-        <span style={S.toggleDesc}>{description}</span>
-      </div>
-      <button
-        role="switch"
-        aria-checked={value}
-        onClick={() => !disabled && onChange(!value)}
-        style={{
-          ...S.toggle,
-          ...(value ? S.toggleOn : S.toggleOff),
-          ...(disabled ? S.toggleDisabled : {}),
-        }}
-        aria-label={label}
-        disabled={disabled}
-      >
-        <span
-          style={{
-            ...S.toggleThumb,
-            transform: value ? 'translateX(20px)' : 'translateX(2px)',
-          }}
-        />
-      </button>
-    </div>
-  )
-}
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
-
 /**
  * D-159 + D-163: uma chave, um aviso, uma vez.
  *
- * A chave mudou junto com a régua. As duas mudanças — unidade e limiar —
- * chegaram com um dia de diferença e são a MESMA ideia ("adotamos o padrão da
- * FEMA"); mandar dois avisos seguidos seria transformar honestidade em
- * insistência. Quem já dispensou o primeiro vê o novo uma vez, e acabou.
+ * O aviso mora na VISÃO e não em "O que eu tenho": ele explica por que a
+ * autonomia encolheu, e autonomia é o que a Visão mostra.
  */
 const RULER_NOTICE_KEY = 'eos-water-fema-standard-seen'
 
@@ -383,14 +261,13 @@ export default function PreparednessPage() {
   const [aiError, setAiError] = useState<string | null>(null)
   const [aiBriefing, setAiBriefing] = useState<AIReadinessBriefing | null>(null)
   const [aiLoading, setAiLoading] = useState(false)
-  const [saved, setSaved] = useState(false)
-  const [isPending, startTransition] = useTransition()
 
   /**
    * O aviso da régua nova (D-159). Nasce escondido e só aparece depois de
    * montar: ler `localStorage` durante o render faria o servidor e o cliente
    * discordarem, e um aviso que pisca é pior que nenhum.
    */
+  const [briefingAberto, setBriefingAberto] = useState(false)
   const [showRulerNotice, setShowRulerNotice] = useState(false)
   useEffect(() => {
     try {
@@ -406,7 +283,6 @@ export default function PreparednessPage() {
 
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([])
 
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // ── Load ───────────────────────────────────────────────────────────────────
   const loadData = useCallback(async () => {
@@ -496,41 +372,11 @@ export default function PreparednessPage() {
   }, [t])
 
   // ── Auto-save ──────────────────────────────────────────────────────────────
-  const save = useCallback((data: Inventory) => {
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => {
-      startTransition(async () => {
-        setSaveError(null)
-        setSaved(false)
-        try {
-          const res = await fetch('/api/inventory', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data),
-          })
-          if (!res.ok) {
-            const body = await res.json()
-            setSaveError(body.error ?? t('common.saveError'))
-          } else {
-            setSaved(true)
-            setTimeout(() => setSaved(false), 2000)
-          }
-        } catch {
-          setSaveError(t('inventory.networkSaveError'))
-        }
-      })
-    }, 600)
-  }, [t])
 
 
 
 
 
-  function update<K extends keyof Inventory>(key: K, value: Inventory[K]) {
-    const next = { ...inv, [key]: value }
-    setInv(next)
-    save(next)
-  }
 
   // ── Derived ────────────────────────────────────────────────────────────────
   /*
@@ -544,11 +390,25 @@ export default function PreparednessPage() {
     ? { ...inv, water_liters: house.water, food_days: house.size > 0 ? house.foodPersonDays / house.size : 0 }
     : inv
   const { score, level } = calcReadiness(invParaNota, memberCount)
+
+  /*
+   * A lista de atenção lê a CASA quando ela é conhecida — os mesmos números da
+   * nota. `house?.size ?? 0` e não `memberCount`: zero significa desconhecido,
+   * e `lib/attention` transforma isso num item próprio em vez de dividir por 1
+   * em silêncio.
+   */
+  const essenciais = checklistItems.filter(i => i.tier === 'ESSENTIAL')
+  const atencao = attentionItems({
+    waterLiters: invParaNota.water_liters,
+    foodDays: invParaNota.food_days,
+    batteryPercent: inv.battery_percent,
+    hasMedicalKit: inv.has_medical_kit,
+    hasCommunicationDevice: inv.has_communication_device,
+    householdSize: house?.size ?? 0,
+    essentialDone: essenciais.filter(i => i.acquired).length,
+    essentialTotal: essenciais.length,
+  })
   const autonomyDays = house?.autonomyDays != null ? Math.floor(house.autonomyDays) : Math.floor(inv.food_days)
-  const batteryColor =
-    inv.battery_percent >= 60 ? 'var(--ac)' :
-    inv.battery_percent >= 30 ? 'var(--warn)' :
-                                'var(--ac3)'
   const aiRiskColor: Record<AIRiskLevel, string> = {
     baixo: 'var(--ac)',
     medio: 'var(--warn)',
@@ -573,10 +433,6 @@ export default function PreparednessPage() {
           <div>
             <p style={S.headerLabel}>{t('inventory.eyebrow')}</p>
             <h1 style={S.headerTitle}>{t('inventory.title')}</h1>
-          </div>
-          <div style={S.headerStatus}>
-            {isPending && <span style={S.savingDot} />}
-            {saved && !isPending && <span style={S.savedBadge}>✓ salvo</span>}
           </div>
         </div>
 
@@ -621,18 +477,28 @@ export default function PreparednessPage() {
           autonomyDays={autonomyDays}
         />
 
-        <a href="/edu" style={{ ...S.card, display: 'block', textDecoration: 'none', marginBottom: 18 }}>
-          <p style={{ fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' as const, color: 'var(--mu)', margin: 0 }}>EOS EDU</p>
-          <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--tx)', margin: '6px 0 4px' }}>
-            {language === 'pt' ? 'Conteúdo educativo aprovado' : 'Approved educational content'}
-          </h2>
-          <p style={{ fontSize: 14, color: 'var(--mu)', margin: 0, lineHeight: 1.5 }}>
-            {language === 'pt'
-              ? 'Guias e vídeos versionados por cenário, com fonte visível antes de virarem tarefa ou RAG.'
-              : 'Scenario-tagged guides and videos with visible source before becoming a task or RAG input.'}
-          </p>
-        </a>
+        {/*
+          ── Briefing de IA, recolhido ──────────────────────────────────────
+          Ele ocupava o segundo lugar mais valioso da tela e, na maioria das
+          visitas, estava VAZIO — um espaço nobre guardado para um placeholder.
+          Agora é uma linha; quem quer, abre.
 
+          Achado do dono, registrado como PREP-T14: depois da análise ele não
+          gera CTA nenhum. Um briefing que termina em prosa contraria a regra 1
+          do D-085 — "preparação é acionável ou não pertence aqui". Recolher
+          resolve o espaço; NÃO resolve isso.
+        */}
+        {!briefingAberto && !aiBriefing ? (
+          <button type="button" onClick={() => setBriefingAberto(true)} style={S.linhaAcao}>
+            <span style={S.portaTexto}>
+              <span style={S.portaTitulo}>{t('inventory.aiTitle')}</span>
+              <span style={S.portaEstado}>
+                {language === 'pt' ? 'Análise da sua prontidão com IA' : 'AI analysis of your readiness'}
+              </span>
+            </span>
+            <span style={S.portaSeta} aria-hidden>›</span>
+          </button>
+        ) : (
         <div style={S.aiCard}>
           <div style={S.aiHeader}>
             <div>
@@ -686,187 +552,58 @@ export default function PreparednessPage() {
             </div>
           )}
         </div>
+        )}
 
         {/*
-          ── Água ────────────────────────────────────────────────────────────
-          D-158/D-159: a pessoa vê GALÕES; o banco continua guardando LITROS.
-          A conversão acontece só aqui, na borda.
+          ── Precisa de atenção ─────────────────────────────────────────────
+          Os seis editores saíram daqui (fase 2). O que fica é o SINAL deles.
 
-          Os limiares seguem em litros e com os mesmos valores de antes (4/2 por
-          pessoa) de propósito: PREP-T11 troca a unidade e a régua da autonomia,
-          e NÃO mexe no rigor da nota. Rever "adequado = ~1 dia de água" contra
-          o mínimo de 3 dias da FEMA é PREP-T13 — duas mudanças de severidade
-          não viajam na mesma entrega.
+          A nota dizia "37/100 · crítico" no topo e o que ela diagnosticava
+          ficava 400px abaixo, preso dentro de cada card. Não havia caminho do
+          problema até a ação — a tela respondia "onde estou" e não respondia
+          "para onde eu vou". Agora cada problema é uma linha que leva ao lugar
+          onde se conserta.
+
+          A regra mora em `lib/attention.ts`, com teste: uma decisão de
+          segurança dentro de JSX não teria como ser verificada.
         */}
-        <ResourceCard
-          icon="💧"
-          title={t('inventory.water')}
-          value={inv.water_liters}
-          threshold={WATER_ADEQUATE_LITERS_PER_PERSON}
-          criticalThreshold={WATER_CRITICAL_LITERS_PER_PERSON}
-          membersCount={memberCount}
-          perPerson
-        >
-          {/* Big display */}
-          <div style={S.bigValueWrap}>
-            <span style={S.bigValue}>
-              {litersToGallons(inv.water_liters).toLocaleString(language === 'pt' ? 'pt-BR' : 'en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
-            </span>
-            <span style={S.bigValueUnit}>{t('inventory.gallons')}</span>
+        <div style={S.atencaoBloco}>
+          <div style={S.atencaoTopo}>
+            <p style={S.summaryLabel}>{language === 'pt' ? 'Precisa de atenção' : 'Needs attention'}</p>
+            {atencao.length > 0 && <span style={S.atencaoContagem}>{atencao.length}</span>}
           </div>
-          {memberCount > 0 && (
-            <p style={S.perPersonHint}>
-              {formatGallons(inv.water_liters / memberCount)} {GALLON_SHORT} / {t('inventory.perPerson')}
+
+          {atencao.length === 0 ? (
+            /*
+              Nada pendente é dito com palavras, e não sumindo: uma seção que
+              desaparece é indistinguível de uma que falhou ao carregar.
+            */
+            <p style={S.atencaoVazio}>
+              {language === 'pt'
+                ? 'Nada pendente nos itens que o EOS acompanha.'
+                : 'Nothing pending in what EOS tracks.'}
             </p>
+          ) : (
+            <div style={S.atencaoLista}>
+              {atencao.map(item => {
+                const destino = item.where === 'requirements' ? '/preparedness/o-que-falta'
+                  : item.where === 'household' ? '/family/cadastro'
+                  : '/preparedness/o-que-tenho'
+                const cor = item.severity === 'critical' ? 'var(--ac3)'
+                  : item.severity === 'unknown' ? 'var(--mu)'
+                  : 'var(--warn)'
+                const marca = item.severity === 'critical' ? '⚠' : item.severity === 'unknown' ? '?' : '▲'
+                return (
+                  <a key={item.kind} href={destino} style={S.atencaoLinha}>
+                    <span style={{ ...S.atencaoMarca, color: cor }} aria-hidden>{marca}</span>
+                    <span style={S.atencaoTexto}>{fraseAtencao(item, language === 'pt')}</span>
+                    <span style={S.portaSeta} aria-hidden>›</span>
+                  </a>
+                )
+              })}
+            </div>
           )}
-          <div style={{ marginTop: 12 }}>
-            <NumericStepper
-              value={Number(litersToGallons(inv.water_liters).toFixed(1))}
-              step={0.5}
-              min={0}
-              decimals={1}
-              label={t('inventory.water')}
-              unit={GALLON_SHORT}
-              accent
-              disabled={isPending}
-              onChange={(v) => update('water_liters', Number(gallonsToLiters(v).toFixed(2)))}
-            />
-          </div>
-        </ResourceCard>
-
-        {/* ── Comida — threshold: 1 dia CRÍTICO, 3 dias BAIXO ─────────────── */}
-        <ResourceCard
-          icon="🍱"
-          title={t('inventory.food')}
-          value={inv.food_days}
-          threshold={3}
-          criticalThreshold={1}
-          membersCount={memberCount}
-          perPerson={false}
-        >
-          <NumericStepper
-            value={inv.food_days}
-            step={1}
-            min={0}
-            decimals={0}
-            label={t('inventory.supplyDays')}
-            unit={t('inventory.days')}
-            disabled={isPending}
-            onChange={(v) => update('food_days', v)}
-          />
-        </ResourceCard>
-
-        {/* ── Combustível — opcional, 0 L = BAIXO ─────────────────────────── */}
-        <ResourceCard
-          icon="⛽"
-          title={t('inventory.fuel')}
-          value={inv.fuel_liters}
-          threshold={5}
-          criticalThreshold={0.001}   // essentially 0 = critical
-          membersCount={memberCount}
-          perPerson={false}
-          optional
-        >
-          <NumericStepper
-            value={inv.fuel_liters}
-            step={1}
-            min={0}
-            decimals={1}
-            label={t('inventory.fuel')}
-            unit={t('inventory.liters')}
-            disabled={isPending}
-            onChange={(v) => update('fuel_liters', v)}
-          />
-        </ResourceCard>
-
-        {/* ── Bateria — threshold: 30% BAIXO, 10% CRÍTICO ─────────────────── */}
-        <ResourceCard
-          icon="🔋"
-          title={t('inventory.battery')}
-          value={inv.battery_percent}
-          threshold={30}
-          criticalThreshold={10}
-          membersCount={memberCount}
-          perPerson={false}
-        >
-          <div style={S.batteryBarTrack}>
-            <div
-              style={{
-                ...S.batteryBarFill,
-                width: `${inv.battery_percent}%`,
-                background: batteryColor,
-              }}
-            />
-          </div>
-          <NumericStepper
-            value={inv.battery_percent}
-            step={5}
-            min={0}
-            max={100}
-            decimals={0}
-            label={t('inventory.charge')}
-            unit="%"
-            disabled={isPending}
-            onChange={(v) => update('battery_percent', v)}
-          />
-        </ResourceCard>
-
-        {/* ── Equipamentos ─────────────────────────────────────────────────── */}
-        <div
-          style={{
-            ...S.card,
-            border:
-              !inv.has_medical_kit && !inv.has_communication_device
-                ? '1px solid rgba(255,179,71,0.4)'
-                : '1px solid var(--bd)',
-            background:
-              !inv.has_medical_kit && !inv.has_communication_device
-                ? 'rgba(255,179,71,0.04)'
-                : 'var(--sf)',
-          }}
-        >
-          <div style={S.cardHeader}>
-            <span style={S.cardIcon}>🎒</span>
-            <span style={S.cardTitle}>{t('inventory.equipment')}</span>
-            {!inv.has_medical_kit && !inv.has_communication_device && (
-              <span style={{ ...S.badge, ...S.badgeHigh }}>▲ {t('inventory.low')}</span>
-            )}
-          </div>
-          <ToggleRow
-            label={t('inventory.medicalKit')}
-            description={t('inventory.medicalKitDesc')}
-            value={inv.has_medical_kit}
-            onChange={(v) => update('has_medical_kit', v)}
-            disabled={isPending}
-          />
-          <div style={S.toggleDivider} />
-          <ToggleRow
-            label={t('inventory.communication')}
-            description={t('inventory.communicationDesc')}
-            value={inv.has_communication_device}
-            onChange={(v) => update('has_communication_device', v)}
-            disabled={isPending}
-          />
         </div>
-
-        {/* ── Dinheiro ─────────────────────────────────────────────────────── */}
-        <div style={S.card}>
-          <div style={S.cardHeader}>
-            <span style={S.cardIcon}>💵</span>
-            <span style={S.cardTitle}>{t('inventory.cash')}</span>
-          </div>
-          <NumericStepper
-            value={inv.cash_amount}
-            step={50}
-            min={0}
-            decimals={0}
-            label={t('inventory.availableAmount')}
-            unit="R$"
-            disabled={isPending}
-            onChange={(v) => update('cash_amount', v)}
-          />
-        </div>
-
 
         {/*
           ── Porta para "O que falta" ────────────────────────────────────────
@@ -878,6 +615,28 @@ export default function PreparednessPage() {
           Este cartão está dentro da rolagem e ao alcance do polegar; os chips
           do topo são o caminho de repetição.
         */}
+        <a href="/preparedness/o-que-tenho" style={S.porta}>
+          <span style={S.portaTexto}>
+            <span style={S.portaTitulo}>{language === 'pt' ? 'O que eu tenho' : 'What I have'}</span>
+            <span style={S.portaEstado}>
+              {language === 'pt'
+                ? `${formatGallons(inv.water_liters)} ${GALLON_SHORT} de água · ${Math.floor(inv.food_days)} dias de comida`
+                : `${formatGallons(inv.water_liters)} ${GALLON_SHORT} water · ${Math.floor(inv.food_days)} days food`}
+            </span>
+          </span>
+          <span style={S.portaSeta} aria-hidden>›</span>
+        </a>
+
+        <a href="/edu" style={S.porta}>
+          <span style={S.portaTexto}>
+            <span style={S.portaTitulo}>{language === 'pt' ? 'Aprender' : 'Learn'}</span>
+            <span style={S.portaEstado}>
+              {language === 'pt' ? 'Guias e vídeos aprovados, por cenário' : 'Approved guides and videos, by scenario'}
+            </span>
+          </span>
+          <span style={S.portaSeta} aria-hidden>›</span>
+        </a>
+
         <a href="/preparedness/o-que-falta" style={S.porta}>
           <span style={S.portaTexto}>
             <span style={S.portaTitulo}>{language === 'pt' ? 'O que falta' : 'What’s missing'}</span>
@@ -894,6 +653,43 @@ export default function PreparednessPage() {
       </div>
     </div>
   )
+}
+
+/**
+ * A frase de cada item de atenção.
+ *
+ * O texto mora aqui e não em `lib/attention`: a biblioteca devolve FATOS
+ * (quantos dias, quantos de quantos), e traduzir é trabalho da tela. Misturar
+ * os dois tornaria a regra de segurança dependente de idioma.
+ */
+function fraseAtencao(item: AttentionItem, pt: boolean): string {
+  const dias = item.detail.days ?? 0
+  switch (item.kind) {
+    case 'household-unknown':
+      return pt
+        ? 'Não sabemos quantas pessoas moram aqui — os números abaixo são estimativas'
+        : 'We don’t know how many people live here — the numbers below are estimates'
+    case 'water':
+      return pt
+        ? `Água: ${dias.toFixed(1)} dia(s) por pessoa, contra ${WATER_MIN_DAYS_FEMA} do mínimo`
+        : `Water: ${dias.toFixed(1)} day(s) per person, against a ${WATER_MIN_DAYS_FEMA}-day minimum`
+    case 'food':
+      return pt
+        ? `Comida: ${dias.toFixed(0)} dia(s) de suprimento`
+        : `Food: ${dias.toFixed(0)} day(s) of supply`
+    case 'battery':
+      return pt
+        ? `Bateria em ${Math.round(item.detail.percent ?? 0)}%`
+        : `Battery at ${Math.round(item.detail.percent ?? 0)}%`
+    case 'medical-kit':
+      return pt ? 'Sem kit médico registrado' : 'No medical kit on record'
+    case 'comms':
+      return pt ? 'Sem rádio ou meio de comunicação reserva' : 'No radio or backup comms'
+    case 'checklist-essential':
+      return pt
+        ? `Checklist essencial: ${item.detail.done} de ${item.detail.total}`
+        : `Essential checklist: ${item.detail.done} of ${item.detail.total}`
+  }
 }
 
 function AIList({
@@ -1211,6 +1007,30 @@ const S: Record<string, React.CSSProperties> = {
     fontSize: 10, fontWeight: 700, letterSpacing: '1.2px',
     color: 'var(--mu)', textTransform: 'uppercase' as const,
     fontFamily: "'DM Mono', monospace", marginBottom: 2,
+  },
+  atencaoBloco: {
+    marginTop: 20, padding: '14px 16px', borderRadius: 12,
+    border: '1px solid var(--bd)', background: 'var(--sf)',
+  },
+  atencaoTopo: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  atencaoContagem: {
+    fontSize: 12, fontWeight: 700, color: 'var(--mu)',
+    fontFamily: "'DM Mono', monospace",
+  },
+  atencaoVazio: { margin: '8px 0 0', fontSize: 13, color: 'var(--mu)', lineHeight: 1.5 },
+  atencaoLista: { display: 'flex', flexDirection: 'column' as const, marginTop: 4 },
+  atencaoLinha: {
+    display: 'flex', alignItems: 'center', gap: 10, minHeight: 44,
+    padding: '8px 0', borderBottom: '1px solid var(--bd)', textDecoration: 'none',
+  },
+  atencaoMarca: { fontSize: 13, width: 16, flexShrink: 0, textAlign: 'center' as const },
+  atencaoTexto: { flex: 1, fontSize: 13, color: 'var(--tx)', lineHeight: 1.45, minWidth: 0 },
+  /* Mesma forma da porta, mas é botão: abre em vez de navegar. */
+  linhaAcao: {
+    display: 'flex', alignItems: 'center', gap: 12, width: '100%',
+    marginTop: 20, padding: '16px', borderRadius: 12,
+    border: '1px solid var(--bd)', background: 'var(--sf)',
+    minHeight: 44, cursor: 'pointer', textAlign: 'left' as const,
   },
   porta: {
     display: 'flex', alignItems: 'center', gap: 12, marginTop: 24,

@@ -68,6 +68,17 @@ funcionando por adaptadores. Nenhum passo irreversível antes de um cutover
 explícito. Quem propuser reescrever inventário, plano, Pilot, EDU e simulação
 antes de mexer na UI está indo contra D-155.
 
+**Desconhecido não pode virar conta silenciosa (D-165).** O app usa
+`max(size, 1)` para não dividir por zero ao calcular por pessoa. Isso é defesa
+correta e resposta errada: uma casa de quatro avaliada como se fosse uma parece
+quatro vezes mais preparada. `lib/attention.ts` transforma tamanho desconhecido
+num item próprio e rebaixa a severidade dos dependentes para `unknown`. Mesma
+família de regra do `unknown ≠ covered`.
+
+**Nada pendente se diz com palavras, não sumindo.** Uma seção vazia que
+desaparece é indistinguível de uma que falhou ao carregar — num app de
+emergência isso é a diferença entre "está tudo certo" e "não sei".
+
 **Extrair tela pode remover feature em silêncio — quase aconteceu (D-164).**
 Ao tirar o checklist da Visão, os diálogos de **editar item** e de
 **confirmação antes de excluir** (ambos de D-121) teriam ficado para trás sem

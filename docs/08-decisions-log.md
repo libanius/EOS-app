@@ -4,6 +4,71 @@
 
 ---
 
+## D-165 — A Visão decide; o estoque muda de tela
+
+**Date**: 2026-08-13
+**Status**: DECIDED
+**Roadmap**: PREP-T07 (fase 2)
+**Spec**: `docs/36-preparacao-arquitetura-interna.md` §4, `docs/37` §29.2
+
+**Context**: A Preparação empilhava três cadências na mesma rolagem —
+diagnóstico (segundos, em dúvida ou em evento), manutenção de estoque (mensal)
+e sessão de compra. A tarefa mais lenta ficava entre a pessoa e a mais urgente.
+E a nota dizia "crítico" no topo enquanto o que ela diagnosticava ficava 400px
+abaixo, preso dentro de cada card: a tela respondia *"onde estou"* e não
+respondia *"para onde eu vou"* (achado P2 do `docs/36`).
+
+**Decision** — as duas respostas do dono viraram estas regras:
+
+1. **A Visão fica com "precisa de atenção".** Cada problema é uma linha que
+   leva ao lugar onde se conserta. **Sem dado novo**: os sinais já eram
+   calculados, só viviam espalhados.
+
+2. **A Visão não edita nada.** Os seis editores foram para
+   `/preparedness/o-que-tenho`. Provado por teste de navegador — um stepper na
+   Visão significa que um editor vazou de volta.
+
+3. **A regra de atenção é função pura e testada** (`lib/attention.ts`, 20
+   testes). Uma decisão de segurança dentro de JSX não teria como ser
+   verificada.
+
+4. **Casa de tamanho desconhecido é item de atenção próprio.** O resto do app
+   usa `max(size, 1)` para não dividir por zero — defesa correta virando
+   resposta errada: uma casa de quatro avaliada como se fosse uma parece quatro
+   vezes mais preparada do que é. Agora o EOS diz que não sabe, e a severidade
+   dos itens dependentes cai para `unknown` em vez de afirmar veredito sobre
+   uma casa que ele não conhece.
+
+5. **Nada pendente é dito com palavras, não sumindo.** Uma seção que desaparece
+   é indistinguível de uma que falhou ao carregar.
+
+6. **O briefing de IA sai do segundo lugar** e vira linha que abre. Ele ocupava
+   o melhor espaço da tela e, na maioria das visitas, estava vazio — espaço
+   nobre guardado para um placeholder.
+
+7. **O card do EDU vira porta**, junto das outras. Ele estava entre a nota e o
+   briefing, no ponto em que a pessoa está diagnosticando e não estudando.
+
+8. **Filtro por localização não entra ainda.** Existe uma localização até os
+   holdings serem preenchidos, e filtro de uma opção é ruído ocupando a
+   primeira dobra — mesma regra do filtro de kits.
+
+**Consequence**:
+
+- A Visão caiu de 1348 para 1173 linhas e deixou de ser tela de manutenção.
+- `/inventory` volta a ter destino exato, como `/checklist` na fase 1.
+- `test:prep-nav` vai de 11 para **15** checagens.
+- **Achado do dono virou tarefa**: depois da análise, o briefing **não gera
+  CTA**. Isso contraria a regra 1 do D-085 — *"preparação é acionável ou não
+  pertence aqui"* — e recolher o card resolve o espaço, não o defeito.
+  É **PREP-T14**: `next_steps` deve virar requisito confirmável com
+  `provenance`, pelo mesmo contrato de Pilot/EDU/simulação.
+
+**Não autorizado por D-165**: PREP-T14, mover `/plan` ou `/edu`, filtro de
+localização, backfill.
+
+---
+
 ## D-164 — Preparação ganha navegação local; kit vira filtro, procedência vira selo
 
 **Date**: 2026-08-13
