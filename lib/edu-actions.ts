@@ -57,7 +57,12 @@ export function cleanEduActionText(value: string) {
     .trim()
 }
 
-function looksActionable(value: string) {
+/**
+ * Exportado em PREP-T14: o briefing de prontidão usa o MESMO julgamento do
+ * EDU sobre o que é ação e o que é prosa. Uma segunda lista de verbos seria a
+ * quinta cópia de constante desta frente.
+ */
+export function looksActionable(value: string) {
   const normalized = value
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')

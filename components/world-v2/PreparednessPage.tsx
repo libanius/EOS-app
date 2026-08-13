@@ -5,6 +5,7 @@ import { useRealtimeSync } from '@/hooks/useRealtimeSync'
 import { saveSnapshot, loadSnapshot } from '@/lib/sync'
 import PreparednessNav from './PreparednessNav'
 import { attentionItems, type AttentionItem } from '@/lib/attention'
+import { BRIEFING_KIT_TYPE, buildBriefingProposals, type BriefingProposal } from '@/lib/briefing-actions'
 import { useLanguage } from '@/lib/i18n'
 import {
   formatGallons,
@@ -268,6 +269,8 @@ export default function PreparednessPage() {
    * discordarem, e um aviso que pisca é pior que nenhum.
    */
   const [briefingAberto, setBriefingAberto] = useState(false)
+  /** Uma proposta por vez: `salvando` enquanto grava, `salvo` depois. */
+  const [salvos, setSalvos] = useState<Record<string, 'salvando' | 'salvo'>>({})
   const [showRulerNotice, setShowRulerNotice] = useState(false)
   useEffect(() => {
     try {
@@ -350,6 +353,38 @@ export default function PreparednessPage() {
   useEffect(() => { loadData() }, [loadData])
   useRealtimeSync(['resource_inventory', 'family_members', 'checklists'], () => { void loadData() })
 
+  /**
+   * O usuário confirma UMA proposta. Só então algo é gravado (D-085 regra 2).
+   *
+   * Vai para o mesmo endereço de Pilot, EDU e simulação — a lista de requisitos
+   * —, com `kit_type` de recomendação do Pilot, e aparece em "O que falta" com
+   * o selo "via Pilot". Fonte visível é obrigatória (D-085 regra 3).
+   */
+  const confirmarProposta = useCallback(async (proposta: BriefingProposal) => {
+    setSalvos(prev => ({ ...prev, [proposta.name]: 'salvando' }))
+    try {
+      const res = await fetch('/api/checklist/save-items', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          kitType: BRIEFING_KIT_TYPE,
+          items: [{ name: proposta.name, tier: proposta.tier, quantity: proposta.quantity, unit: proposta.unit }],
+        }),
+      })
+      if (!res.ok) throw new Error('save failed')
+      setSalvos(prev => ({ ...prev, [proposta.name]: 'salvo' }))
+      void loadData()
+    } catch {
+      // Volta ao estado anterior: um botão que diz "salvo" sem ter salvado é
+      // pior que um botão que falhou.
+      setSalvos(prev => {
+        const next = { ...prev }
+        delete next[proposta.name]
+        return next
+      })
+    }
+  }, [loadData])
+
   const loadAIBriefing = useCallback(async () => {
     setAiLoading(true)
     setAiError(null)
@@ -397,6 +432,8 @@ export default function PreparednessPage() {
    * e `lib/attention` transforma isso num item próprio em vez de dividir por 1
    * em silêncio.
    */
+  const propostas = aiBriefing ? buildBriefingProposals(aiBriefing) : []
+
   const essenciais = checklistItems.filter(i => i.tier === 'ESSENTIAL')
   const atencao = attentionItems({
     waterLiters: invParaNota.water_liters,
@@ -548,7 +585,52 @@ export default function PreparednessPage() {
                 <AIList title={t('inventory.strengths')} items={aiBriefing.strengths} />
               </div>
 
-              <AIList title={t('inventory.nextSteps')} items={aiBriefing.next_steps} fullWidth />
+              {/*
+                ── Próximos passos viram AÇÃO ────────────────────────────────
+                Achado do dono: o briefing terminava em prosa. Isso contraria a
+                regra 1 do D-085 — "preparação é acionável ou não pertence
+                aqui" —, que o EOS escrevia e não cumpria na própria tela de
+                prontidão.
+
+                Cada proposta é confirmada UMA A UMA. Nada é gravado por ter
+                sido gerado: escrita silenciosa a partir de saída de modelo é o
+                que a arquitetura proíbe (docs/37 §4), e vale igual quando o
+                modelo acerta.
+              */}
+              {propostas.length > 0 && (
+                <div style={S.propostas}>
+                  <p style={S.summaryLabel}>{t('inventory.nextSteps')}</p>
+                  {propostas.map(proposta => {
+                    const estado = salvos[proposta.name]
+                    return (
+                      <div key={proposta.name} style={S.proposta}>
+                        <span style={S.propostaTexto}>{proposta.name}</span>
+                        {estado === 'salvo' ? (
+                          <span style={S.propostaFeito}>
+                            {language === 'pt' ? '✓ na lista' : '✓ on the list'}
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled={estado === 'salvando'}
+                            onClick={() => confirmarProposta(proposta)}
+                            style={S.propostaBotao}
+                          >
+                            {estado === 'salvando'
+                              ? (language === 'pt' ? 'Salvando…' : 'Saving…')
+                              : (language === 'pt' ? 'Adicionar' : 'Add')}
+                          </button>
+                        )}
+                      </div>
+                    )
+                  })}
+                  <p style={S.propostaRodape}>
+                    {language === 'pt'
+                      ? 'Vai para “O que falta”, marcado como sugestão do Pilot.'
+                      : 'Goes to “What’s missing”, marked as a Pilot suggestion.'}
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -1025,6 +1107,18 @@ const S: Record<string, React.CSSProperties> = {
   },
   atencaoMarca: { fontSize: 13, width: 16, flexShrink: 0, textAlign: 'center' as const },
   atencaoTexto: { flex: 1, fontSize: 13, color: 'var(--tx)', lineHeight: 1.45, minWidth: 0 },
+  propostas: { marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--bd)' },
+  proposta: {
+    display: 'flex', alignItems: 'center', gap: 12, minHeight: 44, padding: '6px 0',
+  },
+  propostaTexto: { flex: 1, fontSize: 13, color: 'var(--tx)', lineHeight: 1.45, minWidth: 0 },
+  propostaBotao: {
+    flexShrink: 0, minHeight: 36, padding: '0 14px', borderRadius: 8,
+    border: '1px solid rgba(0,229,160,0.4)', background: 'rgba(0,229,160,0.1)',
+    color: 'var(--ac)', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+  },
+  propostaFeito: { flexShrink: 0, fontSize: 12, fontWeight: 700, color: 'var(--ac)' },
+  propostaRodape: { margin: '8px 0 0', fontSize: 12, color: 'var(--mu)', lineHeight: 1.45 },
   /* Mesma forma da porta, mas é botão: abre em vez de navegar. */
   linhaAcao: {
     display: 'flex', alignItems: 'center', gap: 12, width: '100%',

@@ -4,6 +4,67 @@
 
 ---
 
+## D-166 — O briefing termina em ação confirmável, não em prosa
+
+**Date**: 2026-08-13
+**Status**: DECIDED
+**Roadmap**: PREP-T14
+**Achado**: dono do produto
+
+**Context**: `/api/ai/readiness` produzia visão geral, prioridades, forças e
+próximos passos — tudo texto, nenhuma saída. A pessoa lia *"aumente a reserva
+de água"* e não tinha o que tocar.
+
+O dono apontou: *"após a análise, ele não gera CTA"*. Isso contraria a **regra
+1 do D-085**, escrita pelo próprio Spine:
+
+> "Preparação é acionável ou não pertence aqui. Conteúdo que não produz
+> entendimento, uma tarefa, um material, um papel, uma revisão de plano ou uma
+> melhoria de comunicação fica fora."
+
+O EOS escrevia a regra e não a cumpria na sua própria tela de prontidão.
+
+**Decision**:
+
+1. **`next_steps` vira proposta confirmável**, pelo mesmo contrato de Pilot
+   (D-093), EDU (D-119) e debrief da simulação (D-092).
+
+2. **Uma confirmação por proposta.** Nada é gravado por ter sido gerado —
+   escrita silenciosa a partir de saída de modelo é o que a arquitetura proíbe
+   (`docs/37` §4), e vale igual quando o modelo acerta.
+
+3. **Prioridade só entra quando parece ação.** Uma prioridade costuma ser
+   diagnóstico ("água abaixo do mínimo"); transformá-la em tarefa produziria um
+   item que ninguém consegue executar nem marcar como feito, e uma lista cheia
+   desses ensina a ignorar a lista. `strengths` nunca entra: é o que já está bom.
+
+4. **Sem procedência nova.** Grava como `PILOT_RECOMMENDATION` — o briefing é
+   interpretação de IA sobre o estado da família, que é a definição do Pilot
+   (`docs/37` §8). Um valor novo exigiria migração para ampliar o CHECK de
+   `provenance` e criaria uma sexta procedência para dois lugares onde o **mesmo
+   raciocínio** acontece. Distinguir conversa de briefing é trabalho de
+   `provenance_ref`, coluna que `requirements` já tem (D-161).
+
+5. **O julgamento do que é ação é o MESMO do EDU.** `looksActionable` foi
+   exportado em vez de copiado — uma segunda lista de verbos seria a quinta
+   cópia de constante desta frente.
+
+**Consequence**:
+
+- O item confirmado aparece em "O que falta" com o selo **"via Pilot"**, que a
+  fase 1 já desenhou. Fonte visível é obrigatória (D-085 regra 3), e o caminho
+  inteiro — propor, confirmar, aparecer com origem — passa a existir sem código
+  novo de exibição.
+- Falha de gravação **volta o botão ao estado anterior**: um botão dizendo
+  "salvo" sem ter salvado é pior que um botão que falhou.
+- O laço fechado do `docs/37` ganha sua entrada mais barata. Continuam faltando
+  os alertas (PREP-T08), que é a quarta e última.
+
+**Não autorizado por D-166**: escrever sem confirmação, criar procedência nova,
+migração, mexer no contrato de saída do modelo.
+
+---
+
 ## D-165 — A Visão decide; o estoque muda de tela
 
 **Date**: 2026-08-13

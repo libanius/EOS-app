@@ -68,6 +68,16 @@ funcionando por adaptadores. Nenhum passo irreversível antes de um cutover
 explícito. Quem propuser reescrever inventário, plano, Pilot, EDU e simulação
 antes de mexer na UI está indo contra D-155.
 
+**Diagnóstico não é ação (D-166).** "Água abaixo do mínimo" descreve estado;
+não há o que executar nem o que marcar como feito. Ao transformar saída de IA
+em tarefa, só entra o que começa com verbo de ação (`looksActionable`, exportado
+do EDU e não copiado). Uma lista cheia de diagnósticos disfarçados de tarefa
+ensina o usuário a ignorar a lista.
+
+**Nada é gravado por ter sido gerado.** Toda proposta de IA — Pilot, EDU,
+simulação, briefing — precisa de confirmação item a item. Vale igual quando o
+modelo acerta: a regra é sobre quem decide, não sobre qualidade da sugestão.
+
 **Desconhecido não pode virar conta silenciosa (D-165).** O app usa
 `max(size, 1)` para não dividir por zero ao calcular por pessoa. Isso é defesa
 correta e resposta errada: uma casa de quatro avaliada como se fosse uma parece
