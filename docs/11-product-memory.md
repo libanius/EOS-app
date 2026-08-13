@@ -84,10 +84,22 @@ renomeá-lo, e PREP-T11 muda só a exibição; e **no modelo novo unidade é dad
 vez só, na matemática de cobertura.
 
 **A régua da água é a da FEMA: 1 galão americano (3,785 L) por pessoa por dia
-(D-159, decisão do dono).** O EOS usava 3 L — `WATER_PER_PERSON_DAY = 3` em
-`lib/household.ts:170`, com o literal **duplicado** em
-`lib/simulation-debrief.ts:76` e `components/world-v2/useWorldData.ts:104`, e
-travado por `household.test.ts:73`. A constante passa a existir num lugar só.
+(D-159).** Implementado em PREP-T11. A constante mora em **`lib/units.ts`** e em
+lugar nenhum mais. Eram **cinco** cópias, não três: `lib/household.ts`,
+`lib/simulation-debrief.ts`, `components/world-v2/useWorldData.ts`,
+`components/world-v2/usePilotFacts.ts` e duas multiplicações inline `3 * people`
+nas telas legacy. Quem for procurar, procure por todas.
+
+**Litro é armazenamento; galão é exibição.** `resource_inventory.water_liters`
+guarda litros e continua guardando — a conversão acontece só na borda
+(`litersToGallons`/`gallonsToLiters`). O campo só é renomeado quando PREP-T04
+trouxer `Holding.quantity` + `unit`. **Combustível continua em litros**; só a
+água virou galão.
+
+**Três testes fixavam o número antigo e quebraram na troca da régua.** Foram
+reescritos para derivar de `WATER_LITERS_PER_PERSON_DAY` em vez de repetir o
+literal. Regra que vale para o resto: teste sobre régua deriva da constante;
+teste que repete o número vira âncora do erro.
 
 **A autonomia exibida cai ~21% e isso NÃO pode ser silencioso.** Ninguém ficou
 menos preparado — a régua é que estava curta. Mas num app de emergência um
@@ -97,8 +109,18 @@ número que mais precisa ser confiável. PREP-T11 mostra uma nota única
 explicando. **Lição geral: mudança de régua exige aviso; mudança de dado não.**
 
 **Um teste que trava um número errado é parte do erro.**
-`household.test.ts:73` afirmava `toBe(3)` e é corrigido no mesmo commit que a
+`household.test.ts:73` afirmava `toBe(3)` e foi corrigido no mesmo commit que a
 constante — não em seguida.
+
+**Marcar item de checklist NÃO escreve no estoque (D-156, PREP-T11).** A regra e
+o porquê estão em `lib/checklist-inventory.ts`, com teste. **Cuidado com a
+história errada:** por um tempo isto foi descrito como "perda de dado — 20 L
+viram 4". **Não era.** Havia `Math.max` desde `f75a7c4` e o estoque nunca
+encolhia. Os defeitos reais eram outros dois: quantidade **planejada** virando
+quantidade **medida** (item de 20 gal marcado definia o estoque em 20), e água
+de **mochila** virando água de **casa** (a regra ignorava `kit_type`). Se
+alguém propuser "restaurar a sincronização com um Math.max seguro", é
+exatamente isso que foi removido — e o teste quebra.
 
 **Armadilha ainda aberta (PREP-T13):** os limiares da nota
 (`PreparednessPage.tsx:751`) são **absolutos por pessoa, não por dia** — 4 L

@@ -7,6 +7,7 @@ import { logError } from '@/lib/error-log'
 import { getHousehold } from '@/lib/household'
 import { evaluateGuard } from '@/lib/pilot-guard'
 import { getRelevantChunks } from '@/lib/knowledge'
+import { formatGallons, GALLON_SHORT } from '@/lib/units'
 import { buildPilotCircleRecord, buildPilotFamilyRecord, type CircleVisibleMemberRecord } from '@/lib/pilot-family-record'
 
 /**
@@ -386,8 +387,8 @@ function situationReport(ctx: Body['context']): string {
     const i = ctx.inventory
     lines.push(
       pt
-        ? `- Inventário: ${i.waterLiters} L de água, ${i.foodDays} dias de comida, ${i.fuelLiters} L de combustível, bateria ${i.batteryPercent}%, kit médico ${i.hasMedicalKit ? 'sim' : 'não'}, rádio ${i.hasCommsDevice ? 'sim' : 'não'}.`
-        : `- Inventory: ${i.waterLiters} L water, ${i.foodDays} days food, ${i.fuelLiters} L fuel, battery ${i.batteryPercent}%, medical kit ${i.hasMedicalKit ? 'yes' : 'no'}, radio ${i.hasCommsDevice ? 'yes' : 'no'}.`,
+        ? `- Inventário: ${formatGallons(i.waterLiters)} ${GALLON_SHORT} de água, ${i.foodDays} dias de comida, ${i.fuelLiters} L de combustível, bateria ${i.batteryPercent}%, kit médico ${i.hasMedicalKit ? 'sim' : 'não'}, rádio ${i.hasCommsDevice ? 'sim' : 'não'}.`
+        : `- Inventory: ${formatGallons(i.waterLiters)} ${GALLON_SHORT} water, ${i.foodDays} days food, ${i.fuelLiters} L fuel, battery ${i.batteryPercent}%, medical kit ${i.hasMedicalKit ? 'yes' : 'no'}, radio ${i.hasCommsDevice ? 'yes' : 'no'}.`,
     )
   }
   if (ctx.nearestShelter) {

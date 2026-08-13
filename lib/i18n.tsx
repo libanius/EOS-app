@@ -291,6 +291,8 @@ const messages = {
     'inventory.nextSteps': 'Próximos passos',
     'inventory.water': 'Água',
     'inventory.liters': 'litros',
+    // D-158: água em galão; combustível continua em litro.
+    'inventory.gallons': 'galões',
     'inventory.perPerson': 'por pessoa',
     'inventory.food': 'Comida',
     'inventory.supplyDays': 'Dias de suprimento',
@@ -620,6 +622,8 @@ const messages = {
     'inventory.nextSteps': 'Next steps',
     'inventory.water': 'Water',
     'inventory.liters': 'liters',
+    // D-158: water in gallons; fuel stays in litres.
+    'inventory.gallons': 'gallons',
     'inventory.perPerson': 'per person',
     'inventory.food': 'Food',
     'inventory.supplyDays': 'Days of supply',

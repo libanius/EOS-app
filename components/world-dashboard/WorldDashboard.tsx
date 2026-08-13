@@ -12,6 +12,8 @@ import Link from 'next/link'
 import { useLanguage } from '@/lib/i18n'
 import { useRisk } from '@/components/v2/RiskProvider'
 import WorldMap from './WorldMap'
+// Só a régua: estas telas mostram água em DIAS, não em volume.
+import { WATER_LITERS_PER_PERSON_DAY } from '@/lib/units'
 import type { WorldFamilyMember, WorldGuidance } from './WorldMap'
 import type { MapBaseMode } from '@/lib/world/providers'
 import type { ProfilePersonalization } from '@/lib/profile-personalization'
@@ -249,7 +251,7 @@ export default function WorldDashboard() {
 
   const cur = snapshot?.current
   const metric = language === 'pt'
-  const waterDays = inv ? inv.water_liters / (3 * people) : 0
+  const waterDays = inv ? inv.water_liters / (WATER_LITERS_PER_PERSON_DAY * people) : 0
   const foodDays = inv?.food_days ?? 0
   const powerDays = inv ? (inv.battery_percent / 100) * 3 : 0
   const fuelDays = inv ? inv.fuel_liters / 10 : 0

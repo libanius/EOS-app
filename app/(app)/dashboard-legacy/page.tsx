@@ -13,6 +13,8 @@ import Link from 'next/link'
 import { useLanguage } from '@/lib/i18n'
 import RiskProvider, { useRisk } from '@/components/v2/RiskProvider'
 import TacticalCard from '@/components/v2/TacticalCard'
+// Só a régua: estas telas mostram água em DIAS, não em volume.
+import { WATER_LITERS_PER_PERSON_DAY } from '@/lib/units'
 import ParticleField from '@/components/v2/ParticleField'
 import LivingTimeline from '@/components/v2/LivingTimeline'
 import InstrumentDial from '@/components/v2/InstrumentDial'
@@ -91,7 +93,7 @@ type ChecklistItem = { acquired: boolean }
 
 function readiness(inv: Inventory | null, members: Member[], items: ChecklistItem[]) {
   const people = Math.max(1, members.length)
-  const waterDays = inv ? inv.water_liters / (3 * people) : 0
+  const waterDays = inv ? inv.water_liters / (WATER_LITERS_PER_PERSON_DAY * people) : 0
   const foodDays = inv?.food_days ?? 0
   const pct = items.length ? items.filter(i => i.acquired).length / items.length : 0
   const score =

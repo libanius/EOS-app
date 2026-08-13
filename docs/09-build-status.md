@@ -10,8 +10,9 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Preparedness Engine (PREP/EDU/COMMS/ONB/PILOT) sobre Web/PWA |
-| **Current Task** | **PREP-T11 — checklist para de sobrescrever o estoque + água em galão FEMA.** PENDING e **desbloqueada**: todas as decisões que ela precisava estão tomadas (D-156, D-158, D-159). Roda ANTES de PREP-T04. **Primeira tarefa de código desta frente** — aguardando o dono liberar a execução. |
-| **Last Completed Task** | **D-159 / PREP-T12 — Régua da água é a da FEMA: 1 galão por pessoa por dia (2026-08-12)** |
+| **Current Task** | **PREP-T04 — Holdings + Location padrão.** PENDING, aguardando autorização do dono: é a primeira tarefa com **migração de banco**. PREP-T13 (rever limiares da nota de água) está PENDING em paralelo e não bloqueia. |
+| **Last Completed Task** | **PREP-T11 — Checklist para de escrever no estoque; água em galão FEMA (2026-08-12)** |
+| | **D-159 / PREP-T12 — Régua da água é a da FEMA: 1 galão por pessoa por dia (2026-08-12)** |
 | | **D-158 — Água em galão; unidade nunca contradiz o nome do campo (2026-08-12)** |
 | | **D-157 — Todo kit é Preparação; não existe classe "lazer" (2026-08-12)** |
 | | **D-156 — Autonomia da casa lê a água que está em CASA (2026-08-12)** |

@@ -26,9 +26,11 @@
  */
 
 import { useCallback, useEffect, useState } from 'react'
+import { WATER_LITERS_PER_PERSON_DAY } from '@/lib/units'
 
 /** As mesmas constantes do resto do app. Duplicá-las já produziu duas contas. */
-const LITROS_POR_PESSOA_DIA = 3
+/** D-159: régua da FEMA, uma cópia só (lib/units.ts). */
+const LITROS_POR_PESSOA_DIA = WATER_LITERS_PER_PERSON_DAY
 const DIAS_DE_BATERIA_CHEIA = 3
 const LITROS_POR_DIA_DE_COMBUSTIVEL = 10
 

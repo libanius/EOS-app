@@ -33,6 +33,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react'
+import { WATER_LITERS_PER_PERSON_DAY } from '@/lib/units'
 
 type FamilyMember = {
   age: number | null
@@ -101,7 +102,8 @@ export type WorldData = {
 }
 
 /** Litres per person per day, and the battery/fuel horizons the v1 model used. */
-const LITRES_PER_PERSON_DAY = 3
+/** D-159: régua da FEMA, uma cópia só (lib/units.ts). */
+const LITRES_PER_PERSON_DAY = WATER_LITERS_PER_PERSON_DAY
 const BATTERY_FULL_DAYS = 3
 const LITRES_PER_FUEL_DAY = 10
 

@@ -956,15 +956,26 @@ owner already feels for work the user never sees.
 
 Per the scope rule, discovered defects are documented, not repaired.
 
-**F1 — `getInventoryDelta()` overwrites instead of accumulating.**
-`components/world-v2/PreparednessPage.tsx:301` returns
-`{ water_liters: item.quantity }`, and `update()` assigns it. A household with
-20 L stored that ticks a 4 L checklist item has `water_liters` **set to 4**.
-Impact on this architecture: it is a live example of why Requirement and Holding
-must be distinct (S4).
-**Status: rule decided by D-156 (§15.2); scheduled as PREP-T11, which runs
-BEFORE PREP-T04** — it is user data being lost today, and it now has a
-criterion.
+**F1 — checklist items wrote into household inventory.** ✅ **FIXED in PREP-T11.**
+
+> **Correction (2026-08-12).** This finding originally claimed **data loss** —
+> "a household with 20 L that ticks a 4 L item is set to 4". **That was wrong.**
+> `PreparednessPage.tsx:533` applied
+> `Math.max(inv.water_liters, delta.water_liters)` since commit `f75a7c4`; stock
+> never shrank. The severity was overstated in the original write-up.
+
+The real defect, and why it still had to go:
+
+1. **Planned quantity became measured quantity.** A ticked "Water 20 gal" item
+   set household stock to 20, whether the family had 20 or 3. The checklist
+   states what is *needed*; it cannot know what *exists*.
+2. **Bag water became house water.** The rule ignored `kit_type` entirely, so a
+   jug listed in the Bug Out bag raised **household** stock — contradicting
+   §15.2, where household autonomy reads what is at HOME.
+
+Both are the Requirement/Holding conflation (S4). Removed in PREP-T11; the rule
+now lives in `lib/checklist-inventory.ts` with `checklist-inventory.test.ts` as
+its guard.
 
 **F2 — Four readiness calculations coexist** (S5). Consolidation belongs to
 PREP-T06, not to a silent edit.

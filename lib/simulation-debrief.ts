@@ -15,6 +15,7 @@ import type { ChecklistTier } from './checklist'
 import type { SimulationConfig } from './simulation'
 import { reserveFactor, simulationLabel } from './simulation'
 import { drillPlan, type PlanDrillInput } from './plan-drill'
+import { WATER_LITERS_PER_PERSON_DAY, formatGallons, GALLON_SHORT } from './units'
 
 export type GapSeverity = 'critical' | 'important' | 'advisory'
 export type PreparednessActionKind = 'resource' | 'task' | 'plan_review' | 'comms_setup'
@@ -73,7 +74,8 @@ export type DebriefInput = {
   pt: boolean
 }
 
-const LITRES_PER_PERSON_DAY = 3
+/** D-159: régua da FEMA, uma cópia só (lib/units.ts). */
+const LITRES_PER_PERSON_DAY = WATER_LITERS_PER_PERSON_DAY
 
 /**
  * How long the scenario demands the household stand alone.
@@ -199,10 +201,12 @@ export function buildDebrief(input: DebriefInput): Debrief {
     gaps.push({
       id: 'water',
       severity: waterDays < 1 ? 'critical' : 'important',
-      title: pt ? `Faltaram ${missing} L de água` : `${missing} L of water short`,
+      title: pt
+        ? `Faltaram ${formatGallons(missing)} ${GALLON_SHORT} de água`
+        : `${formatGallons(missing)} ${GALLON_SHORT} of water short`,
       detail: pt
-        ? `O cenário exigia ${required} dias. Com ${round(water)} L para ${people} pessoa(s), a água durava ${waterDays.toFixed(1)} dias.`
-        : `The scenario demanded ${required} days. With ${round(water)} L for ${people} person(s), water lasted ${waterDays.toFixed(1)} days.`,
+        ? `O cenário exigia ${required} dias. Com ${formatGallons(water)} ${GALLON_SHORT} para ${people} pessoa(s), a água durava ${waterDays.toFixed(1)} dias.`
+        : `The scenario demanded ${required} days. With ${formatGallons(water)} ${GALLON_SHORT} for ${people} person(s), water lasted ${waterDays.toFixed(1)} days.`,
       task: {
         name: pt ? 'Água potável armazenada' : 'Stored drinking water',
         quantity: missing,

@@ -33,6 +33,7 @@ import { PING_PRESETS, type PingPreset } from '@/lib/family-ping'
 import InviteShare from '@/components/InviteShare'
 import { Card, Pill, SectionLabel } from './primitives'
 import { haptic } from './motion'
+import { formatGallons, GALLON_SHORT } from '@/lib/units'
 import './world-v2.css'
 
 type RosterMember = {
@@ -663,7 +664,7 @@ export default function FamilyPage() {
                           <span className="ink-3"> · {r.circleName}</span>
                           {km !== null && <span className="ink-2"> · {formatDistance(km, pt)}</span>}
                           {r.sharedInventory && (
-                            <span className="ink-2"> · {r.sharedInventory.waterLiters} L</span>
+                            <span className="ink-2"> · {formatGallons(r.sharedInventory.waterLiters)} {GALLON_SHORT}</span>
                           )}
                           {r.lat !== null && r.lng !== null && (
                             <a

@@ -30,6 +30,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { podePerguntar, podeFecharConvite } from '@/lib/same-person'
 import { logError } from '@/lib/error-log'
+import { WATER_LITERS_PER_PERSON_DAY } from '@/lib/units'
 
 export type HouseholdPerson = {
   /** Conta EOS. `null` para dependente. */
@@ -167,7 +168,14 @@ const VAZIO: HouseholdInventory = {
  * `min(água, comida)`. As duas fórmulas eram defensáveis; o problema é que
  * existiam as duas.
  */
-export const WATER_PER_PERSON_DAY = 3
+/**
+ * D-159 / PREP-T11: a régua da água passou a ser a da FEMA — 1 galão por
+ * pessoa por dia (3,785 L), no lugar dos 3 L que o EOS usava. A constante mora
+ * em `lib/units.ts` e é importada; este arquivo deixou de ter uma cópia própria.
+ *
+ * O nome antigo (`WATER_PER_PERSON_DAY`) não dizia a unidade. O novo diz.
+ */
+export { WATER_LITERS_PER_PERSON_DAY }
 export const BATTERY_FULL_DAYS = 3
 export const LITRES_PER_FUEL_DAY = 10
 
@@ -194,7 +202,7 @@ export const LITRES_PER_FUEL_DAY = 10
  */
 export function autonomyDays(inv: HouseholdInventory, size: number): number {
   if (size <= 0) return 0
-  const water = inv.waterLiters / (WATER_PER_PERSON_DAY * size)
+  const water = inv.waterLiters / (WATER_LITERS_PER_PERSON_DAY * size)
   const food = inv.foodPersonDays / size
   return Math.max(0, Math.min(water, food))
 }

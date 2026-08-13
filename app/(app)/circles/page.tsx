@@ -10,6 +10,7 @@ import { MemberSheet, CircleSettingsSheet } from '@/components/world-v2/CircleSh
 import { haptic } from '@/components/world-v2/motion'
 import '@/components/world-v2/world-v2.css'
 import { parseScannedValue } from '@/lib/qr-parse'
+import { formatGallons, GALLON_SHORT } from '@/lib/units'
 
 type JoinRequest = { id: string; requester_id: string; name: string; location: string | null; message: string | null }
 type MyRequest = { id: string; circle_id: string; status: string; circle_name: string }
@@ -754,7 +755,7 @@ export default function CirclesPage() {
                         : 'Reachable, not available: this does not count toward your household autonomy.'}
                     </p>
                     <div className="nums">
-                      <span>{Number(c.pooled.water_liters).toFixed(0)} L</span>
+                      <span>{formatGallons(Number(c.pooled.water_liters))} {GALLON_SHORT}</span>
                       <span>{Number(c.pooled.food_days).toFixed(0)} {t('circles.days')}</span>
                       <span>{c.pooled.medical_kit_count} {t('circles.kits')}</span>
                       <span>{c.pooled.communication_device_count} {t('circles.comms')}</span>

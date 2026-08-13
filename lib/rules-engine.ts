@@ -1,4 +1,5 @@
 import { type RulesQuery, type RulesResult, ScenarioType, UrgencyLevel } from './types'
+import { formatGallons, GALLON_SHORT } from './units'
 
 // ─── Urgency Escalation Helpers ──────────────────────────────────────────────
 
@@ -46,7 +47,7 @@ const ruleWaterLow: RuleFn = (_query, { waterPerPerson }) => {
   if (waterPerPerson >= 2 && waterPerPerson < 4) {
     return {
       urgency: UrgencyLevel.HIGH,
-      message: `WATER_LOW: ${waterPerPerson.toFixed(2)} L/pessoa`,
+      message: `WATER_LOW: ${formatGallons(waterPerPerson)} ${GALLON_SHORT}/pessoa`,
     }
   }
   return null

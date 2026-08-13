@@ -8,6 +8,7 @@ import { getRelevantChunks } from '@/lib/knowledge'
 import { enforceRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
 import { fetchOpenMeteoForecast } from '@/lib/weather/providers/open-meteo'
 import { fetchWeather } from '@/lib/monitor'
+import { formatGallons, GALLON_SHORT } from '@/lib/units'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -131,7 +132,7 @@ class RulesEngine {
     const waterPerPerson = inventory.water_liters / memberCount
     if (waterPerPerson < 2) {
       result.priority = 'CRITICAL'
-      result.risks.push('Água abaixo de 2L/pessoa — risco imediato de desidratação')
+      result.risks.push(`Água abaixo de ${formatGallons(2)} ${GALLON_SHORT}/pessoa — risco imediato de desidratação`)
       result.actions.push('Localizar fonte de água potável imediatamente')
       result.rulesApplied.push('WATER_CRITICAL: < 2L/pessoa')
     } else if (waterPerPerson < 4) {

@@ -193,9 +193,26 @@ O dono respondeu: *"A água que deve ser lida é a que está estocada na CASA/HO
   granularidades, e quem os concilia é a **localização** — não uma expressão
   regular sobre o nome do item.
 - `getInventoryDelta()` deixa de ter razão de existir na forma atual. A correção
-  vira **PREP-T11**, com regra já decidida, e executa **antes** de PREP-T04:
-  é perda de dado do usuário acontecendo hoje, e agora tem critério.
+  vira **PREP-T11**, com regra já decidida, e executa **antes** de PREP-T04.
 - Nada em D-155 é retirado. Esta decisão fecha a lacuna que ele deixou aberta.
+
+> **CORREÇÃO — 2026-08-12, durante a execução de PREP-T11.**
+> Este bloco afirmava que havia **perda de dado** ("20 L viram 4 L ao marcar um
+> item de 4 L"). **Está errado, e a afirmação era minha, não do dono.**
+> `PreparednessPage.tsx:533` aplicava `Math.max(inv.water_liters, delta.water_liters)`
+> desde o commit `f75a7c4` — o estoque **nunca encolhia**.
+>
+> O defeito é real, mas é outro, e nenhuma das decisões acima muda por causa
+> disso:
+> 1. **Quantidade planejada virava quantidade medida.** Um item "Água 20 gal"
+>    marcado definia o estoque da casa em 20, tivesse a família 20 ou 3.
+> 2. **Água de mochila virava água de casa.** A regra ignorava o `kit_type`:
+>    um garrafão listado na Bug Out subia o estoque DA CASA.
+>
+> Os dois são a confusão `Requirement`/`Holding` (S4), e o remédio decidido aqui
+> — parar de escrever — vale igual. A urgência é que era menor: não havia perda
+> de dado a estancar. Registrado como correção e não como reescrita, porque a
+> decisão continua válida; só a justificativa estava exagerada.
 
 **Não autorizado por D-156**: migração, mudança de rota, reorganização de tela.
 

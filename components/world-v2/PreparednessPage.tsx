@@ -5,6 +5,7 @@ import { useRealtimeSync } from '@/hooks/useRealtimeSync'
 import { saveSnapshot, loadSnapshot } from '@/lib/sync'
 import NumericStepper from '@/components/NumericStepper'
 import { useLanguage } from '@/lib/i18n'
+import { formatGallons, gallonsToLiters, litersToGallons, GALLON_SHORT } from '@/lib/units'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -295,33 +296,9 @@ function ReadinessSummary({ score, level, memberCount, autonomyDays }: Readiness
   )
 }
 
-// ─── Checklist → Inventory sync ──────────────────────────────────────────────
-// When a checklist item is marked acquired, map it to the corresponding inventory field.
-
-function getInventoryDelta(item: ChecklistItem): Partial<Inventory> {
-  const k = item.canonical_key
-  const unit = (item.unit ?? '').toLowerCase()
-
-  if (/agua|water/.test(k) && /litro|liter|^l$/.test(unit)) {
-    return { water_liters: item.quantity }
-  }
-  if (/combustivel|gasolina|diesel|fuel/.test(k)) {
-    return { fuel_liters: item.quantity }
-  }
-  if (/comida|alimento|food/.test(k) && /dia|day/.test(unit)) {
-    return { food_days: item.quantity }
-  }
-  if (/kit.*auxilios|kit.*medic|primeiros.*socorro|kit.*first|kit.*pronto/.test(k)) {
-    return { has_medical_kit: true }
-  }
-  if (/radio|comunicac|walkie|handy.talkie/.test(k)) {
-    return { has_communication_device: true }
-  }
-  if (/dinero|dinheiro|efectivo|especie|cash/.test(k)) {
-    return { cash_amount: item.quantity }
-  }
-  return {}
-}
+// ─── Checklist × Inventário ──────────────────────────────────────────────────
+// `getInventoryDelta()` vivia aqui e foi retirado por D-156 / PREP-T11.
+// A regra que o substitui — e o porquê — estão em `lib/checklist-inventory.ts`.
 
 // ─── Toggle ───────────────────────────────────────────────────────────────────
 
@@ -365,6 +342,9 @@ function ToggleRow({ label, description, value, onChange, disabled = false }: To
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
+/** D-159: uma chave, um aviso, uma vez. */
+const RULER_NOTICE_KEY = 'eos-water-ruler-fema-seen'
+
 const DEFAULT_INVENTORY: Inventory = {
   water_liters: 0,
   food_days: 0,
@@ -395,6 +375,24 @@ export default function PreparednessPage() {
   const [aiLoading, setAiLoading] = useState(false)
   const [saved, setSaved] = useState(false)
   const [isPending, startTransition] = useTransition()
+
+  /**
+   * O aviso da régua nova (D-159). Nasce escondido e só aparece depois de
+   * montar: ler `localStorage` durante o render faria o servidor e o cliente
+   * discordarem, e um aviso que pisca é pior que nenhum.
+   */
+  const [showRulerNotice, setShowRulerNotice] = useState(false)
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(RULER_NOTICE_KEY) !== 'seen') setShowRulerNotice(true)
+    } catch {
+      /* Sem localStorage o aviso simplesmente não aparece. Ele é informativo. */
+    }
+  }, [])
+  const dismissRulerNotice = useCallback(() => {
+    setShowRulerNotice(false)
+    try { localStorage.setItem(RULER_NOTICE_KEY, 'seen') } catch { /* idem */ }
+  }, [])
 
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([])
   const [checklistGenerating, setChecklistGenerating] = useState(false)
@@ -523,23 +521,17 @@ export default function PreparednessPage() {
       prev.map((i) => i.canonical_key === canonicalKey ? { ...i, acquired: nextAcquired } : i)
     )
 
-    // Sync checklist → inventory when marking as acquired (never decrease)
-    if (nextAcquired) {
-      const item = checklistItems.find(i => i.canonical_key === canonicalKey)
-      if (item) {
-        const delta = getInventoryDelta(item)
-        if (Object.keys(delta).length > 0) {
-          const nextInv = { ...inv }
-          if (delta.water_liters !== undefined) nextInv.water_liters = Math.max(inv.water_liters, delta.water_liters)
-          if (delta.fuel_liters  !== undefined) nextInv.fuel_liters  = Math.max(inv.fuel_liters,  delta.fuel_liters)
-          if (delta.cash_amount  !== undefined) nextInv.cash_amount  = Math.max(inv.cash_amount,  delta.cash_amount)
-          if (delta.has_medical_kit)        nextInv.has_medical_kit        = true
-          if (delta.has_communication_device) nextInv.has_communication_device = true
-          setInv(nextInv)
-          save(nextInv)
-        }
-      }
-    }
+    /*
+     * D-156 / PREP-T11: marcar item NÃO escreve no estoque da casa.
+     *
+     * Aqui existia uma sincronização que casava o nome do item por regex e
+     * definia o escalar correspondente. Ela nunca reduzia o estoque (havia um
+     * `Math.max`), mas fazia duas coisas erradas assim mesmo: tratava a
+     * quantidade PLANEJADA como quantidade MEDIDA, e escrevia água de mochila
+     * no estoque DA CASA, ignorando o `kit_type` do item.
+     *
+     * A regra e o porquê estão em `lib/checklist-inventory.ts`, com teste.
+     */
 
     try {
       const res = await fetch('/api/checklist/toggle', {
@@ -553,7 +545,13 @@ export default function PreparednessPage() {
         prev.map((i) => i.canonical_key === canonicalKey ? { ...i, acquired: !nextAcquired } : i)
       )
     }
-  }, [checklistItems, inv, save])
+    /*
+     * Sem dependências: `checklistItems`, `inv` e `save` existiam aqui só para
+     * a sincronização removida acima. Marcar item agora é uma operação sobre o
+     * checklist e nada mais — e as duas atualizações de estado usam a forma
+     * funcional, que não precisa ler o valor atual pelo fecho.
+     */
+  }, [])
 
   const generateChecklist = useCallback(async () => {
     setChecklistGenerating(true)
@@ -669,6 +667,28 @@ export default function PreparednessPage() {
           <div style={S.errorBanner}>⚠ {saveError}</div>
         )}
 
+        {/*
+          D-159: a régua da água mudou de 3 L para 1 galão (FEMA) por pessoa por
+          dia, e a autonomia exibida caiu ~21% para todo mundo de uma vez.
+
+          Um número de segurança que piora sozinho, sem explicação, é lido como
+          perda de estoque ou como defeito — e a pessoa tira a conclusão errada
+          justamente sobre o número que mais precisa ser confiável. Por isso o
+          aviso existe, aparece uma vez e some para sempre.
+        */}
+        {showRulerNotice && (
+          <div style={S.rulerNotice}>
+            <p style={S.rulerNoticeText}>
+              {language === 'pt'
+                ? 'A régua da água passou a ser a da FEMA — 1 galão por pessoa por dia. Seu estoque não mudou; a conta ficou mais rigorosa.'
+                : 'The water ruler is now FEMA’s — 1 gallon per person per day. Your supplies did not change; the math got stricter.'}
+            </p>
+            <button type="button" onClick={dismissRulerNotice} style={S.rulerNoticeButton}>
+              {language === 'pt' ? 'Entendi' : 'Got it'}
+            </button>
+          </div>
+        )}
+
         {/* ── Resumo de Prontidão ─────────────────────────────────────────── */}
         <ReadinessSummary
           score={score}
@@ -743,7 +763,17 @@ export default function PreparednessPage() {
           )}
         </div>
 
-        {/* ── Água — threshold: 2 L/pessoa CRÍTICO, 4 L/pessoa BAIXO ──────── */}
+        {/*
+          ── Água ────────────────────────────────────────────────────────────
+          D-158/D-159: a pessoa vê GALÕES; o banco continua guardando LITROS.
+          A conversão acontece só aqui, na borda.
+
+          Os limiares seguem em litros e com os mesmos valores de antes (4/2 por
+          pessoa) de propósito: PREP-T11 troca a unidade e a régua da autonomia,
+          e NÃO mexe no rigor da nota. Rever "adequado = ~1 dia de água" contra
+          o mínimo de 3 dias da FEMA é PREP-T13 — duas mudanças de severidade
+          não viajam na mesma entrega.
+        */}
         <ResourceCard
           icon="💧"
           title={t('inventory.water')}
@@ -756,26 +786,26 @@ export default function PreparednessPage() {
           {/* Big display */}
           <div style={S.bigValueWrap}>
             <span style={S.bigValue}>
-              {inv.water_liters.toLocaleString(language === 'pt' ? 'pt-BR' : 'en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+              {litersToGallons(inv.water_liters).toLocaleString(language === 'pt' ? 'pt-BR' : 'en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
             </span>
-            <span style={S.bigValueUnit}>{t('inventory.liters')}</span>
+            <span style={S.bigValueUnit}>{t('inventory.gallons')}</span>
           </div>
           {memberCount > 0 && (
             <p style={S.perPersonHint}>
-              {(inv.water_liters / memberCount).toFixed(1)} L / {t('inventory.perPerson')}
+              {formatGallons(inv.water_liters / memberCount)} {GALLON_SHORT} / {t('inventory.perPerson')}
             </p>
           )}
           <div style={{ marginTop: 12 }}>
             <NumericStepper
-              value={inv.water_liters}
+              value={Number(litersToGallons(inv.water_liters).toFixed(1))}
               step={0.5}
               min={0}
               decimals={1}
               label={t('inventory.water')}
-              unit="L"
+              unit={GALLON_SHORT}
               accent
               disabled={isPending}
-              onChange={(v) => update('water_liters', v)}
+              onChange={(v) => update('water_liters', Number(gallonsToLiters(v).toFixed(2)))}
             />
           </div>
         </ResourceCard>
@@ -1248,6 +1278,25 @@ const S: Record<string, React.CSSProperties> = {
     background: 'rgba(255,107,107,0.1)', border: '1px solid rgba(255,107,107,0.3)',
     borderRadius: 10, padding: '10px 14px', fontSize: 13, color: 'var(--ac3)',
     marginBottom: 12, fontWeight: 600,
+  },
+  /*
+    Aviso da régua (D-159). Informativo, não alarme: usa a superfície neutra e
+    não o vermelho de erro nem o verde de acento. Nada quebrou e nada melhorou —
+    a conta ficou mais rigorosa, e a cor não deve dizer outra coisa.
+  */
+  rulerNotice: {
+    display: 'flex', alignItems: 'flex-start', gap: 12,
+    background: 'var(--sf)', border: '1px solid var(--bd)',
+    borderRadius: 12, padding: '12px 14px', marginBottom: 16,
+  },
+  rulerNoticeText: {
+    flex: 1, margin: 0, fontSize: 13, lineHeight: 1.5, color: 'var(--mu)',
+  },
+  rulerNoticeButton: {
+    flexShrink: 0, alignSelf: 'center',
+    background: 'transparent', border: '1px solid var(--bd)', borderRadius: 8,
+    padding: '6px 12px', fontSize: 12, fontWeight: 600, color: 'var(--tx)',
+    cursor: 'pointer',
   },
   aiCard: {
     background: 'rgba(0,229,160,0.05)',
