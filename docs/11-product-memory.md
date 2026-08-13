@@ -68,6 +68,29 @@ funcionando por adaptadores. Nenhum passo irreversível antes de um cutover
 explícito. Quem propuser reescrever inventário, plano, Pilot, EDU e simulação
 antes de mexer na UI está indo contra D-155.
 
+**Todo kit é Preparação (D-157, decisão do dono).** Pesca, Caça, Acampamento,
+Bug Out, Geral e qualquer kit criado pelo usuário. `Kit` **não tem**
+discriminador de propósito — nada de `is_preparedness`, nada de separar kit
+"sério" de kit "de lazer". O equipamento que sustenta um fim de semana de pesca
+é o mesmo que sustenta três dias sem energia; separá-los criaria duas prontidões
+para o mesmo cobertor.
+
+**Água é exibida em GALÃO (D-158, decisão do dono).** As fontes do EOS são todas
+americanas e a FEMA publica 1 galão/pessoa/dia. Duas regras que vêm junto:
+**nenhum número é gravado em campo cujo nome contradiga a unidade** — por isso
+`resource_inventory.water_liters` continua em litros até a migração do PREP-T04
+renomeá-lo, e PREP-T11 muda só a exibição; e **no modelo novo unidade é dado**
+(`Holding.quantity` + `unit`), com a conversão para unidade-base acontecendo uma
+vez só, na matemática de cobertura.
+
+**Armadilha conhecida: o EOS usa 3 L/pessoa/dia, a FEMA usa 1 gal = 3,785 L.**
+`WATER_PER_PERSON_DAY = 3` em `lib/household.ts:170`, com o literal `3`
+**duplicado** em `lib/simulation-debrief.ts:76` e
+`components/world-v2/useWorldData.ts:104`, travado por `household.test.ts:73`.
+Trocar o divisor **corta ~21% da autonomia exibida de todo usuário** — é decisão
+de produto (PREP-T12), nunca uma conversão feita de passagem. Enquanto não for
+decidida, converta só a exibição.
+
 **A autonomia da casa lê o que está EM CASA (D-156, decisão do dono).**
 Consumíveis cuja localização está sob CASA. Um item de checklist **nunca**
 sobrescreve o estoque — marcar registra aquisição; onde a coisa passa a existir

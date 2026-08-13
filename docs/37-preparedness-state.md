@@ -484,6 +484,31 @@ granularities, reconciled by Location — not by a regular expression over item
 names. This retires the rationale for `getInventoryDelta()` in its current form
 (§34 F1) and gives PREP-T11 its acceptance rule.
 
+### 15.3 Units are data, not convention — D-158
+
+Water is displayed in **gallons**. EOS's authoritative sources are all American
+(FEMA, NWS, NHC, National Shelter System) and FEMA publishes the standard as
+**1 gallon per person per day**.
+
+1. **Gallon is the product's display unit for water** — Preparedness, Pilot,
+   verdict, debrief, EDU.
+2. **No number is ever written to a field whose name contradicts its unit.**
+   `resource_inventory.water_liters` stays in litres until the PREP-T04
+   migration renames it. PREP-T11 changes display, never storage.
+3. **`Holding` carries `quantity` + `unit` explicitly.** A five-gallon jug is
+   `5 gal`. Conversion to the base unit happens once, in coverage math, in one
+   place.
+4. **One constant, one home.** `WATER_PER_PERSON_DAY` currently exists as three
+   copies of the literal `3` (`lib/household.ts:170`,
+   `lib/simulation-debrief.ts:76`, `components/world-v2/useWorldData.ts:104`).
+   Consolidated in PREP-T11.
+
+> ⚠️ **Open, deliberately undecided.** EOS uses **3 L**/person/day; FEMA uses
+> **1 gal = 3.785 L**. Adopting the FEMA figure cuts every user's displayed
+> autonomy by ~21% — a household showing 5 days would show 4. That is a product
+> decision needing its own entry. Until it is made, PREP-T11 converts the
+> display without touching the divisor: same autonomy, new unit.
+
 ---
 
 ## 16. Location / storage model
@@ -537,6 +562,21 @@ defect S3.
 A `Requirement` with no `kit_id` and no `scenario_id` is a **baseline household
 requirement** — which is exactly what today's seven `resource_inventory` scalars
 implicitly are.
+
+### 17.1 Every kit is Preparedness — D-157
+
+Fishing, Hunting, Camping, Bug Out, General — **and every kit the user creates**
+— are Preparedness. `Kit` therefore carries **no purpose discriminator**: no
+`is_preparedness` flag, no "serious kit" vs "leisure kit" split.
+
+Requirements of any kit count toward **that kit's** readiness. Household
+autonomy keeps reading consumables under HOME (§15.2), regardless of which kit
+claims them.
+
+This is coherent with the product thesis: the gear that sustains a fishing
+weekend is the gear that sustains three days without power. Calling one of them
+leisure would create two readinesses for the same blanket. One less entity
+attribute, decided by product rather than cut by engineering.
 
 ---
 

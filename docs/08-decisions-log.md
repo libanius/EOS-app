@@ -4,6 +4,99 @@
 
 ---
 
+## D-158 — Água é medida em GALÃO; unidade nunca contradiz o nome do campo
+
+**Date**: 2026-08-12
+**Status**: DECIDED
+**Roadmap**: PREP-T11 (exibição), PREP-T04 (canônico)
+**Spec**: `docs/37-preparedness-state.md` §15.3
+**Decisor**: dono do produto
+
+**Context**: O EOS exibe água em litros. Todas as fontes autoritativas do
+produto são americanas — FEMA, NWS, NHC, National Shelter System — e a FEMA
+publica o padrão em **1 galão por pessoa por dia**. A base de conhecimento do
+próprio EOS carrega `FEMA_Emergency_Supply_List.pdf`.
+
+O dono decidiu: **usar galão em vez de litro**.
+
+A auditoria do código encontrou dois problemas adjacentes que essa mudança
+expõe, e que não podem ser resolvidos por conversão:
+
+1. **A constante do EOS é 3 L/pessoa/dia** — `lib/household.ts:170`
+   (`WATER_PER_PERSON_DAY = 3`), duplicada literalmente em
+   `lib/simulation-debrief.ts:76` e `components/world-v2/useWorldData.ts:104`,
+   e travada por `household.test.ts:73`. **1 galão = 3,785 L.** O EOS opera
+   ~21% abaixo do padrão que ele distribui no EDU.
+2. **Os limiares da nota são absolutos por pessoa, não por dia**
+   (`PreparednessPage.tsx:751`, `threshold={4}` / `criticalThreshold={2}`) e não
+   conversam com a constante de 3 L/dia: 4 L/pessoa é 1,33 dia.
+
+**Decision**:
+
+1. **Galão é a unidade de exibição do produto para água.** Vale para a tela de
+   Preparação, o Pilot, o veredito, o debrief e o EDU.
+
+2. **Nenhum número é gravado em campo cujo nome contradiga a unidade.**
+   `resource_inventory.water_liters` continua em **litros** até que a migração
+   do PREP-T04 renomeie o campo. Gravar galão num campo chamado `_liters` seria
+   a próxima linha da seção "Critical Field Name Notes" de `06-data-model.md`.
+   → **PREP-T11 muda a exibição, não o armazenamento.**
+
+3. **No modelo novo, unidade é dado, não convenção.** `Holding` carrega
+   `quantity` + `unit` explícitos: um galão de 5 é gravado como `5 gal`. A
+   conversão para a unidade-base acontece na matemática de cobertura, uma vez,
+   num lugar só.
+
+4. **A constante de água por pessoa/dia passa a existir em UM lugar.** Hoje são
+   três cópias do literal `3`. Consolidação entra em PREP-T11.
+
+**Consequence**:
+
+- O produto fala a língua das suas fontes. "1 galão por pessoa por dia" é
+  citável direto da FEMA; "3 litros" não é citável de lugar nenhum.
+- **Pergunta aberta, deliberadamente não decidida aqui:** adotar 1 gal (3,785 L)
+  em vez de 3 L **reduz a autonomia exibida de todo usuário em ~21%**. Uma casa
+  que hoje mostra 5 dias passaria a mostrar 4. Isso é decisão de produto, não
+  refatoração, e precisa de entrada própria antes de PREP-T11 executar.
+- Enquanto a constante não for decidida, PREP-T11 converte a exibição sem mexer
+  no divisor: mesma autonomia, unidade nova.
+
+---
+
+## D-157 — Todo kit é Preparação; não existe classe "lazer"
+
+**Date**: 2026-08-12
+**Status**: DECIDED
+**Roadmap**: PREP-T05
+**Spec**: `docs/37-preparedness-state.md` §17
+**Decisor**: dono do produto
+
+**Context**: `lib/checklist.ts` define Pesca 🎣, Caça 🦌 e Acampamento 🏕 ao lado
+de Bug Out 🎒 e Geral 🏠. `docs/36` §10 perguntou se esses três são preparação ou
+lazer — se fossem lazer, `Kit` precisaria de um discriminador e a Preparação
+carregaria dois propósitos.
+
+**Decision**:
+
+1. **Todo kit é Preparação.** Pesca, Caça, Acampamento, Bug Out, Geral — e
+   **qualquer kit que o usuário venha a criar**.
+2. **`Kit` não recebe discriminador de propósito.** Nenhum atributo
+   `is_preparedness`, nenhuma separação entre kits "sérios" e kits "de lazer".
+3. Os requisitos de qualquer kit contam para a prontidão **daquele kit**. A
+   autonomia da casa continua lendo consumíveis sob CASA (D-156) —
+   independentemente de qual kit os reivindica.
+
+**Consequence**:
+
+- Uma entidade a menos e um atributo a menos. O modelo fica mais simples por uma
+  decisão de produto, não por corte técnico.
+- É coerente com a tese do EOS: o equipamento que sustenta um fim de semana de
+  pesca é o mesmo que sustenta três dias sem energia. Chamar um de lazer criaria
+  duas prontidões para o mesmo cobertor.
+- Kits criados pelo usuário são dados, nunca navegação global (D-155 item 12).
+
+---
+
 ## D-156 — A autonomia da casa lê a água que está EM CASA
 
 **Date**: 2026-08-12
