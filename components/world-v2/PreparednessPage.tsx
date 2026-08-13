@@ -230,7 +230,16 @@ function ReadinessSummary({ score, level, memberCount, autonomyDays }: Readiness
       {/* Top row */}
       <div style={S.summaryTop}>
         <div>
+          {/*
+            D-162: a nota mede CINCO recursos da casa (água, comida, bateria,
+            kit médico, comunicação). Ela não sabe nada sobre plano, mochilas,
+            treino ou cenário — e chamá-la de "prontidão" prometia um número que
+            ela não entrega. O rótulo passa a dizer o que ela mede, e a linha
+            abaixo diz o que ela NÃO mede: um número honesto sobre pouco vale
+            mais que um número vago sobre tudo.
+          */}
           <p style={S.summaryLabel}>{t('inventory.readiness')}</p>
+          <p style={S.summaryHint}>{t('inventory.readinessHint')}</p>
           <div style={S.summaryScoreRow}>
             <span
               style={{
@@ -1531,7 +1540,12 @@ const S: Record<string, React.CSSProperties> = {
   summaryLabel: {
     fontSize: 10, fontWeight: 700, letterSpacing: '1.2px',
     color: 'var(--mu)', textTransform: 'uppercase' as const,
-    fontFamily: "'DM Mono', monospace", marginBottom: 6,
+    fontFamily: "'DM Mono', monospace", marginBottom: 2,
+  },
+  /* O que a nota NÃO mede. Discreto: é ressalva, não manchete. */
+  summaryHint: {
+    fontSize: 11, lineHeight: 1.4, color: 'var(--mu)',
+    margin: '0 0 6px', opacity: 0.75,
   },
   summaryScoreRow: { display: 'flex', alignItems: 'baseline', gap: 3 },
   summaryScore: {

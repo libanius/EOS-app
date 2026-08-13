@@ -270,7 +270,10 @@ const messages = {
     'inventory.loading': 'Carregando inventário…',
     'inventory.eyebrow': 'EOS · Preparação',
     'inventory.title': 'Preparação',
-    'inventory.readiness': 'Resumo de prontidão',
+    // D-162: a nota é sobre CINCO recursos da casa, não sobre a preparação
+    // da família. O rótulo passa a dizer o que ela mede.
+    'inventory.readiness': 'Linha de base da casa',
+    'inventory.readinessHint': '5 recursos essenciais · não mede plano, kits nem treino',
     'inventory.autonomy': 'Autonomia estimada',
     'inventory.days': 'dias',
     'inventory.members': 'membros',
@@ -601,7 +604,10 @@ const messages = {
     'inventory.loading': 'Loading inventory…',
     'inventory.eyebrow': 'EOS · Preparedness',
     'inventory.title': 'Preparedness',
-    'inventory.readiness': 'Readiness summary',
+    // D-162: the score covers FIVE household resources, not the family's
+    // preparedness. The label now says what it measures.
+    'inventory.readiness': 'Household baseline',
+    'inventory.readinessHint': '5 essential resources · does not measure plan, kits or drills',
     'inventory.autonomy': 'Estimated autonomy',
     'inventory.days': 'days',
     'inventory.members': 'members',

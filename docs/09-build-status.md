@@ -10,10 +10,10 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Preparedness Engine (PREP/EDU/COMMS/ONB/PILOT) sobre Web/PWA |
-| **Current Task** | **PREP-T06 — Cobertura + Readiness v2.** PENDING, aguardando autorização. Depende de T04+T05 aplicadas. PREP-T13 (limiares da nota de água) segue PENDING em paralelo e não bloqueia. |
-| **⚠ Pendência operacional** | **Aplicar `supabase/migrations/20260813120000_preparedness_requirements_kits.sql` no SQL Editor.** `kits` e `requirements` ainda respondem 404. Nada quebra sem ela — o app não lê essas tabelas ainda —, mas PREP-T06 depende. |
-| **Migrações aplicadas** | `20260813000000_preparedness_holdings_locations.sql` **aplicada em 2026-08-13**, verificada por REST (`locations`, `holdings` → 200). |
-| **Last Completed Task** | **D-161 / PREP-T05 — Requirements + kits + procedência separada (2026-08-13)** |
+| **Current Task** | **PREP-T07 — IA da Preparação no eixo Requirement × Holding.** PENDING, aguardando autorização. É a primeira tarefa que MUDA a tela desde o começo desta frente. PREP-T13 (limiares da nota de água) segue PENDING e não bloqueia. |
+| **Migrações aplicadas** | As duas de Preparedness State **aplicadas em 2026-08-13** e verificadas por REST: `locations`, `holdings`, `kits`, `requirements` → 200. Nenhuma pendência operacional. |
+| **Last Completed Task** | **D-162 / PREP-T06 — Cobertura derivada; `unknown` nunca é `covered` (2026-08-13)** |
+| | **D-161 / PREP-T05 — Requirements + kits + procedência separada (2026-08-13)** |
 | | **D-160 / PREP-T04 — Holdings + Location padrão (2026-08-13)** |
 | | **PREP-T11 — Checklist para de escrever no estoque; água em galão FEMA (2026-08-12)** |
 | | **D-159 / PREP-T12 — Régua da água é a da FEMA: 1 galão por pessoa por dia (2026-08-12)** |

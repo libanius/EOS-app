@@ -68,6 +68,27 @@ funcionando por adaptadores. Nenhum passo irreversível antes de um cutover
 explícito. Quem propuser reescrever inventário, plano, Pilot, EDU e simulação
 antes de mexer na UI está indo contra D-155.
 
+**`unknown` NUNCA sobe para `covered`, e conjunto vazio é `unknown` (D-162).**
+Um kit sem requisitos não está pronto — ninguém disse o que ele precisa. "Nada
+foi olhado" e "nada falta" não podem ter a mesma cor, e esse é o jeito mais
+fácil de quebrar a regra de segurança sem perceber (por isso tem teste próprio
+em `lib/__tests__/coverage.test.ts`). Unidade não conversível também vira
+`unknown`, nunca zero: tratar o desconhecido como ausente inventa uma falta,
+tratá-lo como presente inventa água.
+
+**Ordem do pior-vence: `missing > partial > unknown > covered`.** `partial`
+acima de `unknown` porque falta MEDIDA é acionável; `unknown` acima de
+`covered` porque é o que garante a regra acima.
+
+**Assimetria conhecida:** `CONSUMABLE`/`DURABLE` é propriedade do RECURSO, mas
+mora no `Holding`. `resourceIsConsumable()` infere — do holding quando existe,
+da unidade quando não. Está isolado numa função só, com teste, para ter um
+lugar único quando virar coluna ou tabela de recursos.
+
+**A nota 0–100 mede CINCO recursos da casa** e não mede plano, kits nem treino.
+Foi rebaixada no rótulo (D-162), não removida: "Linha de base da casa". Não a
+promova de volta a "prontidão" — ela não sabe o que isso significa.
+
 **`GERAL` não é kit — é a linha de base da casa (D-161).** `lib/checklist.ts`
 sempre o descreveu como "estoque e suprimentos para emergências em casa": isso
 não é uma mochila que se pega. No modelo novo vira requisito **sem `kit_id`**.

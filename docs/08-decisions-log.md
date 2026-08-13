@@ -4,6 +4,73 @@
 
 ---
 
+## D-162 — Prontidão é cobertura derivada; `unknown` nunca é `covered`
+
+**Date**: 2026-08-13
+**Status**: DECIDED
+**Roadmap**: PREP-T06
+**Spec**: `docs/37-preparedness-state.md` §15.1, §24
+
+**Context**: Com `holdings` (D-160) e `requirements` (D-161) aplicadas, o par
+existe nos dois lados. Falta a leitura: quanto o que EXISTE satisfaz o que
+DEVERIA existir. E o EOS já tinha **quatro** cálculos de prontidão convivendo —
+um quinto seria defeito, não feature (`docs/37` §24.2).
+
+**Decision**:
+
+1. **Cobertura é derivada, nunca gravada.** Guardar prontidão criaria uma
+   segunda verdade que envelhece em silêncio.
+
+2. **Cinco estados**: `covered`, `partial`, `missing`, `unknown`,
+   `not_applicable`. Nenhuma nota numérica nova.
+
+3. **Consumível faz conta; durável é presença.** Consumível soma dentro do
+   escopo, com conversão de unidade, contado uma vez. Durável cobre qualquer
+   requisito alcançável daquele lugar — dois duráveis não cobrem "mais" que um,
+   porque contar dois como cobertura dupla é exatamente a dupla contagem física
+   que o modelo existe para impedir.
+
+4. **Pior-vence no rollup**, na ordem `missing > partial > unknown > covered`.
+   `partial` acima de `unknown` porque falta MEDIDA é acionável e merece gritar
+   mais alto que incerteza; `unknown` acima de `covered` porque é o que garante
+   a regra abaixo.
+
+5. **`unknown` NUNCA sobe para `covered`.** Um desconhecido dentro de um
+   conjunto coberto torna o conjunto `unknown`. Dado faltando que vira
+   tranquilização é o mesmo erro do Pilot dizer "pode ir" sem saber.
+
+6. **Conjunto VAZIO é `unknown`, não `covered`.** Um kit sem requisitos não
+   está pronto — ninguém disse o que ele precisa. "Nada foi olhado" e "nada
+   falta" não podem ter a mesma cor. É o jeito mais fácil de quebrar a regra 5
+   sem perceber, e por isso tem teste próprio.
+
+7. **Unidade não conversível vira `unknown`, nunca zero.** Tratar o
+   desconhecido como ausente inventa uma falta; tratá-lo como presente inventa
+   água. As duas mentem.
+
+8. **A nota 0–100 é rebaixada no rótulo, não removida.** Deixa de se chamar
+   "Resumo de prontidão" e passa a "Linha de base da casa", com a ressalva de
+   que mede cinco recursos e **não** mede plano, kits nem treino. Um número
+   honesto sobre pouco vale mais que um número vago sobre tudo.
+
+**Consequence**:
+
+- O EOS passa a poder responder "a Bug Out está pronta?" com um veredito
+  explicável — quantos requisitos cobertos, quantos faltando, quantos incertos
+  — em vez de uma nota que ninguém consegue defender.
+- **Assimetria registrada como acompanhamento**: `kind`
+  (`CONSUMABLE`/`DURABLE`) é propriedade do RECURSO, mas hoje mora no
+  `Holding`. Enquanto não houver tabela de recursos, `resourceIsConsumable()`
+  infere — do holding quando existe, da unidade quando não. Está isolado numa
+  função só, com teste, para ter um lugar único quando virar coluna.
+- Nada foi ligado a nenhuma tela além do rótulo. Consumir a cobertura na
+  interface é PREP-T07.
+
+**Não autorizado por D-162**: gravar cobertura, criar nota nova, mexer em
+autonomia, backfill, cutover.
+
+---
+
 ## D-161 — Kit e procedência viram colunas diferentes; `GERAL` é linha de base
 
 **Date**: 2026-08-13
