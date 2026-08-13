@@ -143,15 +143,20 @@ invoices.
 | Column | Type | Notes |
 |---|---|---|
 | id | uuid | PK |
-| profile_id | uuid | FK → profiles.id |
+| profile_id | uuid | FK → profiles.id — **`UNIQUE`: one row per profile** |
 | fuel_liters | numeric | |
 | water_liters | numeric | |
 | food_days | numeric | |
 | battery_percent | numeric | |
-| cash | numeric | |
+| cash | numeric | ⚠️ **contradiction flagged 2026-08-12 (PREP-T03):** `supabase/schema.sql:118` declares `cash_amount numeric(14,2)`, and the code reads `cash_amount`. This doc's `cash` appears to be wrong. Not corrected here — needs its own decision, per AGENTS.md Rule 6 |
 | has_medical_kit | boolean | |
 | has_communication_device | boolean | |
-| updated_at | timestamptz | |
+| updated_at | timestamptz | ⚠️ **contradiction flagged 2026-08-12 (PREP-T03):** not present in `supabase/schema.sql:109-119`. Same treatment as above |
+
+> **Aggregate, not items.** This table holds one row per profile with seven
+> scalars. It cannot represent an object, a quantity per object, or a place.
+> That limitation is the origin of the Preparedness State work — see
+> [`37-preparedness-state.md`](37-preparedness-state.md) §3.
 
 ### scenarios
 | Column | Type | Notes |
@@ -357,6 +362,22 @@ users and lets only app owner/admin emails create/update content. It does not
 write to `knowledge_base`; YouTube/API ingestion and embedding generation are
 future explicit tasks that must preserve `edu_content.id` and `version` as
 provenance.
+
+---
+
+## Proposed / NOT IMPLEMENTED
+
+This document describes the **current implemented model only**. Nothing below
+this line exists in the database.
+
+D-155 / PREP-T03 specifies a Preparedness State model with five proposed
+entities — `Holding`, `Requirement`, `Location`, `Kit`, `ReadinessAssessment`.
+**The detailed proposed model lives exclusively in
+[`37-preparedness-state.md`](37-preparedness-state.md)** and is deliberately not
+duplicated here, so that this file never reads as if those tables exist.
+
+When a proposed entity is implemented, its table moves *into* the sections above
+in the same commit as its migration, and the reference here is removed.
 
 ---
 

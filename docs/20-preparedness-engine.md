@@ -242,6 +242,13 @@ No database migration was needed. The checklist remains the v1 persistence
 contract for confirmed preparedness actions until a dedicated Preparedness Items
 table is decided.
 
+> **Superseded in part by D-155 (2026-08-12).** The anticipated "Preparedness
+> Items table" was analysed and **rejected as a single entity**: "preparedness
+> item" is two concepts — a `Requirement` (what should exist) and a `Holding`
+> (what does exist) — and merging them is the origin of the regex bridge in
+> `getInventoryDelta()`. See §15 and `docs/37-preparedness-state.md` §13.
+> `checklists` remains the v1 contract; nothing here is withdrawn.
+
 ---
 
 ## 12. PILOT-T08 Result
@@ -274,6 +281,46 @@ EDU-T05 closes the first loop from learning to action:
 - the user must explicitly confirm before anything is saved;
 - v1 uses `checklists.kit_type='EDU_CONTENT'` instead of adding a new table;
 - Preparação labels the source as EDU.
+
+---
+
+## 15. PREP-T03 Result — state model moved to a dedicated spec
+
+**Decision:** D-155
+**Date:** 2026-08-12
+**Spec:** [`37-preparedness-state.md`](37-preparedness-state.md)
+
+PREP-T03 realises the "minimum concepts that later tasks must model" listed in
+§3 of this document. Those concepts now have a canonical model, and it lives in
+`docs/37-preparedness-state.md`. **This document remains the high-level
+Preparedness Engine spec; 37 is the state spec.** Nothing in §1–§4 above is
+withdrawn — §4's eight business rules all survive intact.
+
+What PREP-T03 established, in one paragraph each:
+
+- **The loop already exists.** EDU→action (D-119), Simulation→action (D-092) and
+  Pilot→action (D-093) are implemented, each with confirmation before persistent
+  write. The missing fourth entry point is the **official alert**, which today
+  terminates in a notification card.
+- **The core object is the pair `Requirement ↔ Holding`**, joined by
+  `resource_key` (today's `canonical_key`). §3's "Preparedness item" was one
+  concept doing two jobs; splitting it is the central correction.
+- **Four independent dimensions**: Kit (purpose), Location (place), Category
+  (kind), Provenance (why it entered EOS). §3's `Source` becomes an attribute of
+  Requirement — never part of a key, and never a kit.
+- **`checklists.kit_type` currently mixes kit and provenance inside its unique
+  key**, which is why the same item from two sources cannot merge. Fixed
+  conceptually in 37 §18; **no data migrated in PREP-T03**.
+- **Alerts are triggers, not content**, with the deterministic layer owning event
+  truth, authority, severity and relevance. The LLM never establishes safety
+  truth.
+- **Readiness gains no new score.** Four calculations already coexist; 37 §24
+  consolidates rather than adds.
+- **Evolution is additive.** `resource_inventory` and `checklists` keep working
+  through adapters; no irreversible step before an explicit cutover.
+
+Scope held: no application code, no migration, no route, no UI, no BottomNav
+change.
 
 ---
 

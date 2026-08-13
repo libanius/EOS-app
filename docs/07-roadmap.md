@@ -282,6 +282,14 @@ product phase sequenced.
 | PREP-T00 | Spec + decisão do Preparedness Engine | ✅ COMPLETE | 2026-08-03 — D-085 / `docs/20-preparedness-engine.md`; no code/migration authorized |
 | PREP-T01 | Unificar Checklist + Recursos em Preparação | ✅ COMPLETE | 2026-08-03 — D-086; `/preparedness` is the single surface, `/inventory` and `/checklist` redirect |
 | PREP-T02 | Editar e excluir itens do checklist em Preparação | ✅ COMPLETE | 2026-08-04 — D-121; `/preparedness` edita/exclui itens com botões visíveis por linha; `PATCH /api/checklist/[id]` recalcula `canonical_key` no rename; exclusão é por linha |
+| PREP-T03 | Arquitetura do Preparedness State v2 (spec) | ✅ COMPLETE | 2026-08-12 — D-155 / `docs/37-preparedness-state.md`; laço fechado canônico, par `Requirement ↔ Holding`, 5 entidades, alertas como gatilho, 3 estados de aquisição, zero notas novas, evolução aditiva. **Sem código, sem migração** |
+| PREP-T04 | Holdings + Location padrão (fundação de inventário) | PENDING | Próxima tarefa de implementação. `holdings` + `locations`, "Casa" criada por padrão, adaptador lendo `resource_inventory` + itens `acquired`. Critérios binários entram na tarefa antes de código |
+| PREP-T05 | Requirements + separação kit/procedência | PENDING | Depende de PREP-T04 (`resource_key`). Conserta a mistura de `kit_type` |
+| PREP-T06 | Cobertura + Readiness v2 | PENDING | Depende de T04+T05. Regra pior-vence, `unknown` nunca vira `covered`, rebaixa a nota 0–100. **Proibido criar nota nova** |
+| PREP-T07 | IA da Preparação no eixo Requirement × Holding | PENDING | Depende de T04–T06. Reorganização em fases conforme `docs/36` + `docs/37` §29.2. **Não é a última tarefa, de propósito** |
+| PREP-T08 | Alerta oficial → reavaliação | PENDING | Depende de T04–T06. Liga o cron existente em gatilho → contexto → Rules → Pilot |
+| PREP-T09 | Persistência de assessment + amortecimento de dedup | PENDING | Depende de T08. `trigger_key`, orçamento de interrupção, damping do laço |
+| PREP-T10 | Estados de aquisição + cutover de escrita dupla | PENDING | Último. Estágios 3–5 de `docs/37` §28 |
 | COMMS-T01 | Criar aba Comms app-level | ✅ COMPLETE | 2026-08-03 — D-087 / `docs/21-comms.md`; `/comms` agora tem chat do círculo, guia de rádio e limite explícito de Mesh/LoRa |
 | COMMS-T02 | Inserir referência de frequências familiares | ✅ COMPLETE | 2026-08-03 — D-088; canais VHF/UHF, NOAA, nacionais/emergência, MURS/GMRS/FRS e guia Baofeng na aba Comms |
 | COMMS-T03 | Tornar referência de rádio editável por círculo | ✅ COMPLETE | 2026-08-03 — D-089; `circle_radio_profiles`, `/api/comms/radio`, leitura por membro e edição Admin/Editor |

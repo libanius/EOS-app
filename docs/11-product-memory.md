@@ -1,7 +1,72 @@
 # 11 — Product Memory
 
 > Non-obvious facts that don't belong in code comments but must survive across sessions.
-> Last updated: 2026-08-11
+> Last updated: 2026-08-12
+
+---
+
+## Preparedness State — o que um agente futuro não pode redescobrir errado (2026-08-12)
+
+D-155 / PREP-T03. Spec completa em `docs/37-preparedness-state.md`. Aqui só o
+que não é dedutível lendo o código.
+
+**O laço fechado não é novo.** EDU→ação, simulação→ação e Pilot→ação já rodam em
+produção com confirmação obrigatória (D-119, D-092, D-093). Quem propuser
+"construir o laço de preparação" está descrevendo mal o repositório: o que falta
+é a quarta entrada (alerta) e o estado. Não reconstrua as três que existem.
+
+**Alertas são gatilhos, não conteúdo.** O cron `weather-notifications` já faz a
+parte difícil — filtra severidade ≥ WATCH e deduplica via `sourceKeyFor()` +
+`circle_notifications.source_key`. Ele só para cedo demais, num cartão. Ao ligar
+a reavaliação, **reutilize esse dedup**; não invente outro.
+
+**Pilot contextualiza; o determinístico manda.** `lib/pilot-guard.ts` +
+`lib/rules-engine.ts` estabelecem verdade de evento, autoridade, severidade e
+relevância. A LLM nunca decide se existe aviso oficial nem amolece regra
+crítica. Isso é código testado, não intenção.
+
+**Fato estruturado não mora na memória do Pilot.** Se o Pilot "sabe" que a
+família tem um gerador, isso tem que ser linha consultável — não frase lembrada.
+`app/api/pilot/chat/route.ts` já relê a casa no servidor via `getHousehold()`
+mesmo recebendo `context` do cliente; esse precedente virou regra.
+
+**RAG diz o que é recomendado, nunca o que a família possui.** Um trecho dizendo
+"1 galão por pessoa por dia" é entrada de requisito, jamais prova de que existe
+água.
+
+**Localização e Kit são dimensões independentes** — e Categoria e Procedência
+também. Localização responde *onde está*; Kit responde *para qual capacidade*.
+Juntar duas quaisquer reproduz o defeito de `checklists.kit_type`, que hoje
+mistura propósito (`BUG_OUT`) com procedência (`PILOT_RECOMMENDATION`) **dentro
+da chave única** `(profile_id, canonical_key, kit_type)` — por isso o mesmo item
+vindo de duas fontes nunca funde.
+
+**Contagem física sem almoxarifado: `CONSUMABLE` × `DURABLE`.** Consumível conta
+quantidade dentro de uma localização e é consumido; durável é presença e atende
+qualquer número de requisitos alcançáveis dali. Um torniquete serve Primeiros
+Socorros, Bug Out e Furacão — e não serve o kit do Veículo, porque não está no
+veículo. **A localização faz o trabalho que uma reserva faria.** Não construa
+sistema de reserva/alocação.
+
+**`resource_inventory` é uma linha por perfil com 7 escalares** (`UNIQUE
+(profile_id)`). Não representa objeto, quantidade por objeto nem lugar. É a
+origem de toda a frente de Preparedness State — e a razão pela qual "onde está
+minha água de reserva?" é hoje uma pergunta sem resposta possível.
+
+**Prontidão já é calculada de quatro formas** (`calcReadiness()` 0–100,
+`/api/ai/readiness`, `autonomyDays()`, `restingVerdict()`). **Uma quinta é
+defeito, não feature.** E `unknown` nunca sobe para `covered`: dado faltando não
+pode virar tranquilização.
+
+**Localizações e kits são dados do usuário, nunca navegação global.** "Fazenda"
+e "Pesca" são linhas; podem virar filtros e visões; não viram abas. Isso também
+corrige `docs/36`, que colocava `Em casa` (localização) e `Mochilas` (kits) como
+irmãos no mesmo eixo — o eixo correto é `o que eu tenho` × `o que falta`.
+
+**A evolução é aditiva.** `resource_inventory` e `checklists` continuam
+funcionando por adaptadores. Nenhum passo irreversível antes de um cutover
+explícito. Quem propuser reescrever inventário, plano, Pilot, EDU e simulação
+antes de mexer na UI está indo contra D-155.
 
 ---
 

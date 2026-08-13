@@ -1,7 +1,7 @@
 # 09 — Build Status
 
 > The single most important file for resuming a session. Read this first after AGENTS.md.
-> Last updated: 2026-08-11
+> Last updated: 2026-08-12
 
 ---
 
@@ -10,8 +10,38 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Preparedness Engine (PREP/EDU/COMMS/ONB/PILOT) sobre Web/PWA |
-| **Current Task** | Roadmap sem tarefa `PENDING/IN PROGRESS` após WV2-T25; próxima frente precisa ser promovida explicitamente no Spine antes de código. |
-| **Last Completed Task** | **D-153 / WV2-T25 — Slider para setas fallback do vento (2026-08-11)** |
+| **Current Task** | **PREP-T04 — Holdings + Location padrão.** PENDING, aguardando revisão do dono sobre D-155 antes de qualquer código. Critérios binários entram na tarefa antes da execução. |
+| **Last Completed Task** | **D-155 / PREP-T03 — Preparedness State v2, arquitetura canônica (2026-08-12)** |
+
+### PREP-T03 em uma tela (leia `docs/37-preparedness-state.md` antes de tocar em Preparação)
+
+O laço fechado de preparação **já existe**: EDU→ação (D-119), simulação→ação
+(D-092) e Pilot→ação (D-093), todos com confirmação. Falta a quarta entrada
+(alerta oficial, que hoje morre num cartão de notificação) e, sobretudo, falta
+**estado** para o laço raciocinar.
+
+Modelo canônico: o objeto central é o par **`Requirement ↔ Holding`** unido por
+`resource_key`. Cinco entidades propostas — `Holding`, `Requirement`,
+`Location`, `Kit`, `ReadinessAssessment`. `PreparednessTrigger` foi
+explicitamente **rejeitado** como entidade.
+
+Sequência aprovada: **T04** (Holdings + Location) → **T05** (Requirements +
+separação kit/procedência) → **T06** (cobertura + Readiness v2) → **T07** (IA da
+Preparação) → **T08** (alerta→reavaliação) → **T09** (dedup/damping) → **T10**
+(cutover). A IA **não** ficou por último de propósito.
+
+Três defeitos ficaram documentados e **não corrigidos** (`docs/37` §34). O mais
+grave: `getInventoryDelta()` (`PreparednessPage.tsx:301`) **sobrescreve** o
+estoque em vez de somar — uma casa com 20 L que marca um item de 4 L fica com
+4 L. Precisa de tarefa e decisão próprias.
+
+Estado da árvore ao fim de PREP-T03: **nenhum código de aplicação, migração,
+rota ou UI foi alterado.**
+
+| | |
+|---|---|
+| | **D-154 / WV2-T26 — `Resolver` do card de risco navega para Preparação (2026-08-12)** |
+| | **D-153 / WV2-T25 — Slider para setas fallback do vento (2026-08-11)** |
 | | **D-152 / WV2-T24 — Painel de vento flutuante com transparência (2026-08-11)** |
 | | **D-151 / WV2-T23 — Controles de vento colapsáveis no mobile (2026-08-11)** |
 | | **D-150 / WV2-T22 — Sliders de densidade e rastro do vento (2026-08-11)** |

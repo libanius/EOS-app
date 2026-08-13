@@ -4,6 +4,128 @@
 
 ---
 
+## D-155 — Preparedness State: o laço fechado já existe; o que falta é o estado
+
+**Date**: 2026-08-12
+**Status**: DECIDED
+**Roadmap**: PREP-T03
+**Spec**: `docs/37-preparedness-state.md`
+
+**Context**: A proposta trazida ao Spine era construir um "sistema de preparação
+em laço fechado": EDU, simulação, alerta oficial, Pilot e mudanças de estado
+entrando todos no mesmo laço, produzindo ações confirmadas que melhoram o estado
+real da família.
+
+A auditoria do código (2026-08-12) mostrou que **o laço já existe e roda em
+produção — três das quatro entradas estão implementadas**: EDU→ação (D-119),
+debrief da simulação→ação (D-092) e Pilot→ação (D-093), todas com confirmação
+obrigatória antes de escrita persistente. Registrar PREP-T03 como "criar o laço"
+descreveria mal o repositório.
+
+O gargalo real é o **estado sobre o qual o laço raciocina**, e ele tem seis
+defeitos verificados:
+
+1. `resource_inventory` é **uma linha por perfil** com 7 escalares
+   (`UNIQUE (profile_id)`, `supabase/schema.sql:109`). Não existe objeto, nem
+   quantidade por objeto, nem lugar.
+2. Não existe modelo de localização — nem tabela, nem coluna, nem conceito.
+3. `checklists.kit_type` mistura propósito (`GERAL`, `BUG_OUT`, `PESCA`…) com
+   procedência (`EDU_CONTENT`, `PILOT_RECOMMENDATION`, `SIMULATION_DEBRIEF`) —
+   **dentro da chave única** `(profile_id, canonical_key, kit_type)`. O mesmo
+   item recomendado pelo Pilot e pertencente ao Bug Out vira duas linhas que
+   nunca se fundem, por desenho.
+4. "O que preciso" e "o que tenho" são ligados por expressão regular
+   (`getInventoryDelta()`, `PreparednessPage.tsx:301`).
+5. Prontidão é calculada de **quatro** formas incompatíveis: `calcReadiness()`
+   0–100, `/api/ai/readiness`, `autonomyDays()` e `restingVerdict()`.
+6. Alerta oficial termina em cartão de notificação. Validação de severidade e
+   deduplicação **já existem** (`sourceKeyFor()` + `circle_notifications.source_key`);
+   falta a reavaliação.
+
+**Decision**:
+
+1. **A tese é VÁLIDA COM MUDANÇAS.** O princípio de laço fechado vira canônico,
+   com a correção de que ele não é novo: PREP-T03 adiciona a quarta entrada
+   (alertas) e conserta o estado, não inventa o laço.
+
+2. **O objeto central da Preparação é o par `Requirement ↔ Holding`**, unido por
+   `resource_key` (hoje `canonical_key`). Não existe um objeto único
+   "PreparednessItem" — a ambiguidade entre precisar e ter é exatamente o
+   defeito 4, e promovê-la a entidade a gravaria no esquema.
+
+3. **Cinco entidades novas, nenhuma a mais**: `Holding`, `Requirement`,
+   `Location`, `Kit`, `ReadinessAssessment`. Kit, Localização, Categoria e
+   Procedência são **quatro dimensões independentes**; juntar quaisquer duas
+   reproduz o defeito 3.
+
+4. **`PreparednessTrigger` é REJEITADO como entidade.** Um gatilho é evento: não
+   tem ciclo de vida, dono nem identidade visível, e nada consulta "meus
+   gatilhos". O que precisa persistir é o **resultado** — `ReadinessAssessment`
+   com `trigger_type` + `trigger_key` —, reaproveitando o padrão de dedup já
+   provado em `circle_notifications.source_key`.
+
+5. **Alertas são gatilhos, não conteúdo.** Evento oficial → relevância
+   determinística → gatilho → montagem de contexto → Rules Engine → Pilot quando
+   útil → propostas com procedência → confirmação.
+
+6. **Autoridade determinística é inegociável.** A LLM não decide se existe aviso
+   oficial, não sobrepõe aviso oficial, não amolece resultado crítico do Rules
+   Engine e não decide relevância geográfica. Já implementado em
+   `lib/pilot-guard.ts`; D-155 estende a mesma autoridade ao caminho de alerta.
+
+7. **Nenhuma escrita silenciosa.** Pilot, EDU, simulação e alerta **propõem**;
+   o usuário confirma. Sem exceção.
+
+8. **Contagem física honesta sem sistema de almoxarifado.** Um atributo resolve:
+   `CONSUMABLE` conta quantidade dentro de uma localização e é consumido;
+   `DURABLE` é presença e atende qualquer número de requisitos alcançáveis
+   daquela localização. Um torniquete serve Primeiros Socorros, Bug Out e
+   Furacão — e **não** serve o kit do Veículo, porque não está no veículo. A
+   localização faz o trabalho que uma reserva faria.
+
+9. **Ciclo de aquisição de três estados**: `proposed → needed → met`, mais
+   `not_applicable`. Os oito estados propostos são software de compras; seis
+   deles são afordância de UI ou derivados. `met` é **derivado**, nunca marcado à
+   mão — não se marca prontidão, adquire-se coisas.
+
+10. **Zero notas novas.** Já existem quatro cálculos de prontidão. Prontidão
+    passa a ser cobertura derivada (`covered/partial/missing/unknown/
+    not_applicable`), com regra pior-vence e a invariante de que **`unknown`
+    nunca sobe para `covered`**. A nota 0–100 existente é mantida e rebaixada ao
+    que ela honestamente é: uma nota de linha de base sobre cinco recursos.
+
+11. **Evolução aditiva, nunca reescrita.** `resource_inventory` e `checklists`
+    continuam válidos e funcionando. Estágios: aditivo → adaptadores → escrita
+    dupla → backfill → cutover explícito → aposentadoria. Nenhum passo
+    irreversível antes do cutover. **Nenhuma migração roda em PREP-T03.**
+
+12. **Localizações e kits são dados do usuário, nunca navegação global.**
+    "Fazenda" e "Pesca" são linhas; podem virar filtros e visões; não viram abas.
+
+**Consequence**:
+
+- O Spine passa a ter um modelo de estado único que EDU, Simulação, Pilot,
+  Alertas e Plano leem e escrevem, em vez de cinco visões privadas.
+- `docs/37-preparedness-state.md` é a especificação canônica de estado;
+  `docs/20-preparedness-engine.md` continua sendo a especificação de alto nível.
+- **`docs/36` é superado apenas no eixo de subtópicos**: `Em casa` (localização)
+  e `Mochilas` (kits) colocavam duas dimensões independentes no mesmo eixo. O
+  eixo correto é `o que eu tenho` (Holdings, filtráveis por localização) × `o que
+  falta` (Requirements, agrupados por kit/cenário). O resto de `docs/36` segue
+  válido.
+- A sequência recomendada **não deixa a IA por último**: PREP-T07 (reorganização
+  da Preparação) entra em quarto, depois que Holdings/Requirements/cobertura
+  existirem — cedo o bastante para o dono sentir o ganho, tarde o bastante para
+  a interface não prometer o que o domínio não sustenta.
+- Três defeitos ficam **documentados e não corrigidos** nesta tarefa
+  (`docs/37` §34), sendo o mais grave `getInventoryDelta()` **sobrescrever** em
+  vez de somar: uma casa com 20 L que marca um item de 4 L fica com 4 L.
+
+**Não autorizado por D-155**: migração de banco, mudança de rota, componente,
+API, BottomNav, reorganização da tela de Preparação, e o início de PREP-T04.
+
+---
+
 ## D-154 — `Resolver` do card de risco deve navegar explicitamente para Preparação
 
 **Date**: 2026-08-12
