@@ -6,7 +6,7 @@ import { saveSnapshot, loadSnapshot } from '@/lib/sync'
 import PreparednessNav from './PreparednessNav'
 import { attentionItems, type AttentionItem } from '@/lib/attention'
 import { BRIEFING_KIT_TYPE, buildBriefingProposals, type BriefingProposal } from '@/lib/briefing-actions'
-import { reassess } from '@/lib/alert-reassessment'
+import { ALERT_KIT_TYPE, alertProposals, reassess } from '@/lib/alert-reassessment'
 import { useRisk } from '@/components/v2/RiskProvider'
 import { useLanguage } from '@/lib/i18n'
 import {
@@ -368,14 +368,17 @@ export default function PreparednessPage() {
    * —, com `kit_type` de recomendação do Pilot, e aparece em "O que falta" com
    * o selo "via Pilot". Fonte visível é obrigatória (D-085 regra 3).
    */
-  const confirmarProposta = useCallback(async (proposta: BriefingProposal) => {
+  const confirmarProposta = useCallback(async (
+    proposta: Pick<BriefingProposal, 'name' | 'tier' | 'quantity' | 'unit'>,
+    kitType: string = BRIEFING_KIT_TYPE,
+  ) => {
     setSalvos(prev => ({ ...prev, [proposta.name]: 'salvando' }))
     try {
       const res = await fetch('/api/checklist/save-items', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          kitType: BRIEFING_KIT_TYPE,
+          kitType,
           items: [{ name: proposta.name, tier: proposta.tier, quantity: proposta.quantity, unit: proposta.unit }],
         }),
       })
@@ -460,6 +463,16 @@ export default function PreparednessPage() {
    * talvez nunca abra o app.
    */
   const reavaliacao = reassess(snapshot?.alerts ?? [], atencao)
+
+  /*
+   * As lacunas do alerta viradas em tarefa, com números determinísticos —
+   * quanto falta, para quantas pessoas, para quantos dias (D-167). O aviso
+   * expira; a linha fica no checklist e será lida depois, sozinha.
+   */
+  const propostasDoAlerta = alertProposals(reavaliacao.gaps, {
+    pt: language === 'pt',
+    householdSize: house?.size ?? 0,
+  })
 
   const autonomyDays = house?.autonomyDays != null ? Math.floor(house.autonomyDays) : Math.floor(inv.food_days)
   const aiRiskColor: Record<AIRiskLevel, string> = {
@@ -683,6 +696,38 @@ export default function PreparednessPage() {
                 </a>
               ))}
             </div>
+
+            {/*
+              As lacunas viram tarefa — uma confirmação por vez, como em todas
+              as outras entradas do laço. Nada é gravado por causa do alerta;
+              gravado é o que o usuário confirmou durante ele.
+            */}
+            {propostasDoAlerta.length > 0 && (
+              <div style={S.propostas}>
+                {propostasDoAlerta.map(proposta => {
+                  const estado = salvos[proposta.name]
+                  return (
+                    <div key={proposta.name} style={S.proposta}>
+                      <span style={S.propostaTexto}>{proposta.name}</span>
+                      {estado === 'salvo' ? (
+                        <span style={S.propostaFeito}>{language === 'pt' ? '✓ na lista' : '✓ on the list'}</span>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={estado === 'salvando'}
+                          onClick={() => confirmarProposta(proposta, ALERT_KIT_TYPE)}
+                          style={S.propostaBotao}
+                        >
+                          {estado === 'salvando'
+                            ? (language === 'pt' ? 'Salvando…' : 'Saving…')
+                            : (language === 'pt' ? 'Adicionar' : 'Add')}
+                        </button>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         )}
 

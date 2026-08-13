@@ -4,6 +4,46 @@
 
 ---
 
+## D-169 — Lacuna de alerta vira tarefa com número, não com adjetivo
+
+**Date**: 2026-08-13
+**Status**: DECIDED
+**Roadmap**: PREP-T08 (fase 2)
+
+**Context**: A fase 1 (D-168) fez o alerta reordenar o que é urgente. Faltava a
+saída: as lacunas apareciam como texto e paravam ali — o mesmo defeito que o
+dono apontou no briefing (D-166/D-167), em outra superfície.
+
+**Decision**:
+
+1. **As lacunas do alerta viram propostas confirmáveis**, com `provenance =
+   OFFICIAL_ALERT`, uma confirmação por vez. Quarta entrada do laço com saída
+   completa.
+
+2. **Os números são determinísticos, não gerados.** "Comprar 9 gal de água — 3
+   dias para 3 pessoas" sai da régua da FEMA e do tamanho real da casa,
+   descontando o que já existe. **A lição do D-167 deixa de depender de o modelo
+   lembrar de ser específico**: aqui não há modelo.
+
+3. **Nem toda lacuna vira compra.** `household-unknown` não gera tarefa —
+   descobrir quem mora na casa é cadastro, e comprar nada resolve.
+   `checklist-essential` também não: ela **já é** a lista.
+
+**Consequence**:
+
+- O laço fechado do `docs/37` está completo nas quatro entradas, **com saída
+  acionável em todas**.
+- O caminho é o mesmo das outras três: propõe → usuário confirma → aparece em
+  "O que falta" com a origem visível. Nenhum código novo de exibição.
+- **Um teste meu estava errado e o código certo**: eu esperava 3,8 gal para uma
+  casa de tamanho desconhecido, quando o correto é 3,0 — três dias a um galão
+  por dia. Confundi a régua diária com o piso de três dias. Corrigido no teste.
+
+**Não autorizado por D-169**: escrever sem confirmação, chamar modelo no cron,
+migração, SIM-T12.
+
+---
+
 ## D-168 — Alerta oficial vira reavaliação; nenhuma IA decide relevância
 
 **Date**: 2026-08-13

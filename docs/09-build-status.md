@@ -10,9 +10,10 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Preparedness Engine (PREP/EDU/COMMS/ONB/PILOT) sobre Web/PWA |
-| **Current Task** | **PREP-T08 fase 2** — notificação do cron apontando para a reavaliação, e lacunas do alerta virando propostas confirmáveis. PENDING. Depois: T09 (dedup/damping) e T10 (cutover). |
+| **Current Task** | **PREP-T09 — persistência de assessment + amortecimento.** PENDING. O laço agora fecha em si mesmo (estado muda → gatilho → proposta → estado muda); sem damping ele oscila. Depois: T10 (cutover). **SIM-T12** (Simulador encenar eventos no mapa) está PENDING como ideia do dono e não bloqueia. |
 | **Migrações aplicadas** | As duas de Preparedness State **aplicadas em 2026-08-13** e verificadas por REST: `locations`, `holdings`, `kits`, `requirements` → 200. Nenhuma pendência operacional. |
-| **Last Completed Task** | **D-168 / PREP-T08 fase 1 — Alerta vira reavaliação determinística (2026-08-13)** |
+| **Last Completed Task** | **D-169 / PREP-T08 fase 2 — Lacuna de alerta vira tarefa com número (2026-08-13)** |
+| | **D-168 / PREP-T08 fase 1 — Alerta vira reavaliação determinística (2026-08-13)** |
 | | **D-167 / PREP-T14 — A tarefa carrega o próprio contexto (2026-08-13)** |
 | | **D-166 / PREP-T14 — Briefing termina em ação confirmável (2026-08-13)** |
 | | **D-165 / PREP-T07 fase 2 — A Visão decide; o estoque muda de tela (2026-08-13)** |

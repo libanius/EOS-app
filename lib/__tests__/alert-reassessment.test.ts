@@ -8,7 +8,7 @@
  *   "evento desconhecido não alarga"    — ignorância virando alarme geral é o
  *                                         oposto de informar
  */
-import { ALERT_KIT_TYPE, reassess, triggerKeyFor, type ReassessmentAlert } from '@/lib/alert-reassessment'
+import { ALERT_KIT_TYPE, alertProposals, reassess, triggerKeyFor, type ReassessmentAlert } from '@/lib/alert-reassessment'
 import type { AttentionItem } from '@/lib/attention'
 import { splitKitType } from '@/lib/requirements'
 
@@ -153,6 +153,72 @@ describe('chave do gatilho', () => {
 
   it('a chave acompanha a reavaliação, para deduplicar', () => {
     expect(reassess([alerta()], [gap('water')]).triggerKey).toBe(triggerKeyFor(alerta()))
+  })
+})
+
+describe('propostas do alerta carregam o próprio contexto (D-167 aplicado)', () => {
+  const comAgua = (perPersonLiters: number): AttentionItem =>
+    ({ kind: 'water', severity: 'critical', where: 'holdings', detail: { perPersonLiters } })
+
+  it('a proposta de água diz QUANTO falta, para quantos e para quantos dias', () => {
+    const [p] = alertProposals([comAgua(0)], { pt: true, householdSize: 3 })
+    // 3 dias × 3 pessoas = 9 galões, a régua da FEMA.
+    expect(p.name).toContain('9.0 gal')
+    expect(p.name).toContain('3 dias')
+    expect(p.name).toContain('3 pessoa(s)')
+  })
+
+  it('desconta o que a casa já tem', () => {
+    // Já há 1 dia por pessoa: faltam 2 dias × 2 pessoas = 4 galões.
+    const [p] = alertProposals([comAgua(3.785411784)], { pt: true, householdSize: 2 })
+    expect(p.name).toContain('4.0 gal')
+  })
+
+  it('a de comida diz quantos dias faltam e para quantos', () => {
+    const [p] = alertProposals(
+      [{ kind: 'food', severity: 'low', where: 'holdings', detail: { days: 1 } }],
+      { pt: true, householdSize: 4 },
+    )
+    expect(p.name).toContain('2 dia(s)')
+    expect(p.name).toContain('4 pessoa(s)')
+  })
+
+  it('a de bateria diz o percentual de hoje', () => {
+    const [p] = alertProposals(
+      [{ kind: 'battery', severity: 'low', where: 'holdings', detail: { percent: 18 } }],
+      { pt: true, householdSize: 1 },
+    )
+    expect(p.name).toContain('18%')
+  })
+
+  it('"não sabemos quem mora aqui" NÃO vira tarefa', () => {
+    // É cadastro, não compra. Comprar nada resolve.
+    const saida = alertProposals(
+      [{ kind: 'household-unknown', severity: 'unknown', where: 'household', detail: {} }],
+      { pt: true, householdSize: 0 },
+    )
+    expect(saida).toEqual([])
+  })
+
+  it('o checklist essencial também não — ele JÁ é a lista', () => {
+    const saida = alertProposals(
+      [{ kind: 'checklist-essential', severity: 'low', where: 'requirements', detail: { done: 1, total: 5 } }],
+      { pt: true, householdSize: 2 },
+    )
+    expect(saida).toEqual([])
+  })
+
+  it('funciona em inglês', () => {
+    const [p] = alertProposals([comAgua(0)], { pt: false, householdSize: 2 })
+    expect(p.name).toContain('Buy')
+    expect(p.name).toContain('person(s)')
+  })
+
+  it('casa de tamanho desconhecido não divide por zero', () => {
+    // Cai para uma pessoa: 3 dias × 1 galão/dia = 3 galões.
+    const [p] = alertProposals([comAgua(0)], { pt: true, householdSize: 0 })
+    expect(p.name).toContain('3.0 gal')
+    expect(p.name).toContain('1 pessoa(s)')
   })
 })
 

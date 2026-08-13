@@ -26,6 +26,12 @@
  */
 
 import type { AttentionItem, AttentionKind } from '@/lib/attention'
+import {
+  formatGallons,
+  GALLON_SHORT,
+  WATER_ADEQUATE_LITERS_PER_PERSON,
+  WATER_MIN_DAYS_FEMA,
+} from '@/lib/units'
 
 export type AlertSeverity = 'CRITICAL' | 'HIGH' | 'WATCH' | 'MODERATE' | 'CLEAR'
 
@@ -149,3 +155,93 @@ export function reassess(
  * apareça em "O que falta" com a origem certa em vez de virar um kit inventado.
  */
 export const ALERT_KIT_TYPE = 'OFFICIAL_ALERT'
+
+
+// ─── Propostas ────────────────────────────────────────────────────────────────
+
+export type AlertProposal = {
+  name: string
+  tier: 'ESSENTIAL'
+  quantity: number
+  unit: string | null
+  kind: AttentionKind
+}
+
+/**
+ * As lacunas do alerta viradas em tarefas confirmáveis.
+ *
+ * ── A lição do D-167 aplicada ─────────────────────────────────────────────
+ *
+ * Cada nome CARREGA O PRÓPRIO CONTEXTO: quanto falta, para quantas pessoas,
+ * para quantos dias. A tarefa sobrevive ao alerta — o aviso expira, a linha
+ * fica no checklist e será lida depois, sozinha. "Comprar água" não diz nada
+ * daqui a uma semana; "Comprar 9 gal de água — 3 dias para 3 pessoas" diz.
+ *
+ * Aqui os números são DETERMINÍSTICOS, calculados da régua da FEMA e do
+ * tamanho real da casa. Não dependem de o modelo lembrar de ser específico.
+ *
+ * ── O que não vira tarefa ─────────────────────────────────────────────────
+ *
+ * `household-unknown` não gera proposta: "descubra quem mora aqui" não é item
+ * de checklist, é cadastro — e a Visão já leva para lá. Comprar nada resolve.
+ */
+export function alertProposals(
+  gaps: AttentionItem[],
+  opts: { pt: boolean; householdSize: number },
+): AlertProposal[] {
+  const { pt, householdSize } = opts
+  const bocas = Math.max(householdSize, 1)
+  const propostas: AlertProposal[] = []
+
+  for (const gap of gaps) {
+    switch (gap.kind) {
+      case 'water': {
+        const faltaPorPessoa = Math.max(0, WATER_ADEQUATE_LITERS_PER_PERSON - (gap.detail.perPersonLiters ?? 0))
+        const faltaTotal = formatGallons(faltaPorPessoa * bocas)
+        propostas.push({
+          name: pt
+            ? `Comprar ${faltaTotal} ${GALLON_SHORT} de água — ${WATER_MIN_DAYS_FEMA} dias para ${bocas} pessoa(s)`
+            : `Buy ${faltaTotal} ${GALLON_SHORT} of water — ${WATER_MIN_DAYS_FEMA} days for ${bocas} person(s)`,
+          tier: 'ESSENTIAL', quantity: 1, unit: null, kind: gap.kind,
+        })
+        break
+      }
+      case 'food': {
+        const faltam = Math.max(0, WATER_MIN_DAYS_FEMA - (gap.detail.days ?? 0))
+        propostas.push({
+          name: pt
+            ? `Comprar ${Math.ceil(faltam)} dia(s) de comida não perecível para ${bocas} pessoa(s)`
+            : `Buy ${Math.ceil(faltam)} day(s) of non-perishable food for ${bocas} person(s)`,
+          tier: 'ESSENTIAL', quantity: 1, unit: null, kind: gap.kind,
+        })
+        break
+      }
+      case 'battery':
+        propostas.push({
+          name: pt
+            ? `Carregar baterias e power banks — hoje em ${Math.round(gap.detail.percent ?? 0)}%`
+            : `Charge batteries and power banks — currently at ${Math.round(gap.detail.percent ?? 0)}%`,
+          tier: 'ESSENTIAL', quantity: 1, unit: null, kind: gap.kind,
+        })
+        break
+      case 'medical-kit':
+        propostas.push({
+          name: pt ? 'Montar kit de primeiros socorros da casa' : 'Assemble the household first-aid kit',
+          tier: 'ESSENTIAL', quantity: 1, unit: null, kind: gap.kind,
+        })
+        break
+      case 'comms':
+        propostas.push({
+          name: pt ? 'Conseguir rádio a pilha ou meio de comunicação reserva' : 'Get a battery radio or backup comms',
+          tier: 'ESSENTIAL', quantity: 1, unit: null, kind: gap.kind,
+        })
+        break
+      // `checklist-essential` e `household-unknown` não viram tarefa: a
+      // primeira JÁ é a lista, e a segunda é cadastro, não compra.
+      default:
+        break
+    }
+  }
+
+  return propostas
+}
