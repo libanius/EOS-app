@@ -5,7 +5,15 @@ import { useRealtimeSync } from '@/hooks/useRealtimeSync'
 import { saveSnapshot, loadSnapshot } from '@/lib/sync'
 import NumericStepper from '@/components/NumericStepper'
 import { useLanguage } from '@/lib/i18n'
-import { formatGallons, gallonsToLiters, litersToGallons, GALLON_SHORT } from '@/lib/units'
+import {
+  formatGallons,
+  gallonsToLiters,
+  litersToGallons,
+  GALLON_SHORT,
+  WATER_ADEQUATE_LITERS_PER_PERSON,
+  WATER_CRITICAL_LITERS_PER_PERSON,
+  WATER_MIN_DAYS_FEMA,
+} from '@/lib/units'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -73,9 +81,11 @@ function calcReadiness(
   let score = 0
 
   // Water — 30 pts (most critical)
+  // D-163: a régua é a da FEMA — 3 dias por pessoa para adequado, menos de
+  // 1 dia para crítico. Antes eram 4 L e 2 L, ou seja ~1 dia e ~meio dia.
   const waterPP = inv.water_liters / mc
-  if (waterPP >= 4) score += 30
-  else if (waterPP >= 2) score += 15
+  if (waterPP >= WATER_ADEQUATE_LITERS_PER_PERSON) score += 30
+  else if (waterPP >= WATER_CRITICAL_LITERS_PER_PERSON) score += 15
 
   // Food — 25 pts
   if (inv.food_days >= 7) score += 25
@@ -351,8 +361,15 @@ function ToggleRow({ label, description, value, onChange, disabled = false }: To
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-/** D-159: uma chave, um aviso, uma vez. */
-const RULER_NOTICE_KEY = 'eos-water-ruler-fema-seen'
+/**
+ * D-159 + D-163: uma chave, um aviso, uma vez.
+ *
+ * A chave mudou junto com a régua. As duas mudanças — unidade e limiar —
+ * chegaram com um dia de diferença e são a MESMA ideia ("adotamos o padrão da
+ * FEMA"); mandar dois avisos seguidos seria transformar honestidade em
+ * insistência. Quem já dispensou o primeiro vê o novo uma vez, e acabou.
+ */
+const RULER_NOTICE_KEY = 'eos-water-fema-standard-seen'
 
 const DEFAULT_INVENTORY: Inventory = {
   water_liters: 0,
@@ -689,8 +706,8 @@ export default function PreparednessPage() {
           <div style={S.rulerNotice}>
             <p style={S.rulerNoticeText}>
               {language === 'pt'
-                ? 'A régua da água passou a ser a da FEMA — 1 galão por pessoa por dia. Seu estoque não mudou; a conta ficou mais rigorosa.'
-                : 'The water ruler is now FEMA’s — 1 gallon per person per day. Your supplies did not change; the math got stricter.'}
+                ? `A régua da água agora é a da FEMA: 1 galão por pessoa por dia, com mínimo de ${WATER_MIN_DAYS_FEMA} dias. Seu estoque não mudou — a conta ficou mais rigorosa, e o que antes aparecia como adequado cobria cerca de um dia.`
+                : `The water standard is now FEMA’s: 1 gallon per person per day, ${WATER_MIN_DAYS_FEMA}-day minimum. Your supplies did not change — the math got stricter, and what used to read as adequate covered about one day.`}
             </p>
             <button type="button" onClick={dismissRulerNotice} style={S.rulerNoticeButton}>
               {language === 'pt' ? 'Entendi' : 'Got it'}
@@ -787,8 +804,8 @@ export default function PreparednessPage() {
           icon="💧"
           title={t('inventory.water')}
           value={inv.water_liters}
-          threshold={4}
-          criticalThreshold={2}
+          threshold={WATER_ADEQUATE_LITERS_PER_PERSON}
+          criticalThreshold={WATER_CRITICAL_LITERS_PER_PERSON}
           membersCount={memberCount}
           perPerson
         >

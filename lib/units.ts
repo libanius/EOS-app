@@ -41,6 +41,28 @@ export const WATER_GALLONS_PER_PERSON_DAY = 1
  */
 export const WATER_LITERS_PER_PERSON_DAY = WATER_GALLONS_PER_PERSON_DAY * LITERS_PER_GALLON
 
+/**
+ * O mínimo da FEMA: **três dias**.
+ *
+ * `FEMA_Emergency_Supply_List.pdf`, que o EOS distribui no EDU: "at least a
+ * 3-day supply of water, 1 gallon per person per day".
+ *
+ * Antes de PREP-T13 o EOS chamava de "adequado" 4 L/pessoa — 1,06 galão, ou
+ * **um dia**. E o mesmo app já tratava três dias como o essencial no checklist
+ * (`TIER_DAYS.ESSENTIAL = 3`): a régua da tela de recursos discordava da régua
+ * das tarefas, dentro do mesmo produto.
+ */
+export const WATER_MIN_DAYS_FEMA = 3
+
+/** Abaixo de um dia de água é crítico. */
+export const WATER_CRITICAL_DAYS = 1
+
+/** Adequado: três dias por pessoa, em litros (o banco guarda litros). */
+export const WATER_ADEQUATE_LITERS_PER_PERSON = WATER_LITERS_PER_PERSON_DAY * WATER_MIN_DAYS_FEMA
+
+/** Crítico: menos de um dia por pessoa, em litros. */
+export const WATER_CRITICAL_LITERS_PER_PERSON = WATER_LITERS_PER_PERSON_DAY * WATER_CRITICAL_DAYS
+
 export function litersToGallons(liters: number): number {
   if (!Number.isFinite(liters)) return 0
   return liters / LITERS_PER_GALLON

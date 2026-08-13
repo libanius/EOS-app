@@ -140,8 +140,23 @@ renomeá-lo, e PREP-T11 muda só a exibição; e **no modelo novo unidade é dad
 (`Holding.quantity` + `unit`), com a conversão para unidade-base acontecendo uma
 vez só, na matemática de cobertura.
 
-**A régua da água é a da FEMA: 1 galão americano (3,785 L) por pessoa por dia
-(D-159).** Implementado em PREP-T11. A constante mora em **`lib/units.ts`** e em
+**A régua da água é a da FEMA, nos DOIS eixos: 1 galão por pessoa por dia
+(D-159) e mínimo de 3 dias (D-163).** Adequado = 3 dias/pessoa; crítico = menos
+de 1 dia; baixo entre os dois. Os limiares moram em `lib/units.ts`, derivados da
+régua — nenhum literal solto. **Racionamento é outro número:** "máximo 2 L por
+pessoa por dia" é piso de sobrevivência em emergência, não meta de estoque, e
+igualar os dois transformaria um mínimo de guerra em recomendação de despensa.
+
+**Literal em teste vira âncora do número errado — aconteceu DUAS vezes nesta
+frente.** Primeiro com `toBe(3)` na constante (D-159), depois com `6 L`/`20 L`
+nos casos do rules-engine (D-163). Pior: o fixture padrão do rules-engine tinha
+água abaixo do mínimo novo, e `WATER_LOW` passou a disparar em *todo* teste que
+usava o padrão, inclusive os que não eram sobre água — ruído silencioso capaz de
+mascarar regressão. **Teste sobre régua deriva da constante; fixture padrão fica
+confortavelmente acima do limiar.**
+
+**(histórico) A régua da água é a da FEMA: 1 galão americano (3,785 L) por
+pessoa por dia (D-159).** Implementado em PREP-T11. A constante mora em **`lib/units.ts`** e em
 lugar nenhum mais. Eram **cinco** cópias, não três: `lib/household.ts`,
 `lib/simulation-debrief.ts`, `components/world-v2/useWorldData.ts`,
 `components/world-v2/usePilotFacts.ts` e duas multiplicações inline `3 * people`

@@ -4,6 +4,65 @@
 
 ---
 
+## D-163 — O mínimo de água é o da FEMA: três dias por pessoa
+
+**Date**: 2026-08-13
+**Status**: DECIDED
+**Roadmap**: PREP-T13
+**Spec**: `docs/37-preparedness-state.md` §15.3
+**Decisor**: dono do produto
+
+**Context**: D-159 adotou a régua da FEMA (1 galão/pessoa/dia) mas deixou os
+**limiares** intactos de propósito, para não embutir duas mudanças de
+severidade na mesma entrega. Os limiares eram absolutos por pessoa e não por
+dia: `4 L` para adequado, `2 L` para crítico — ou seja, **"adequado" no EOS
+significava cerca de UM dia de água**, contra o mínimo de três dias que a FEMA
+publica.
+
+Achado da auditoria: **o próprio app já concordava com a FEMA num lugar e não
+no outro.** `TIER_DAYS.ESSENTIAL` vale `3` no checklist — a régua das tarefas
+dizia três dias enquanto a régua da tela de recursos dizia um. Duas verdades
+sobre água dentro do mesmo produto.
+
+O dono decidiu: **1 galão por dia, mínimo de 3 dias.**
+
+**Decision**:
+
+1. **Adequado = 3 dias por pessoa** (3 galões ≈ 11,36 L). É o piso da FEMA.
+2. **Crítico = menos de 1 dia por pessoa** (1 galão ≈ 3,79 L).
+3. **Baixo = entre 1 e 3 dias.**
+4. Os limiares moram em `lib/units.ts`, junto da régua, derivados dela —
+   nenhum literal solto.
+5. Vale para os três lugares que julgavam água: `rules-engine`, a nota da
+   Preparação e `/api/analyze`.
+6. **A orientação de racionamento NÃO muda.** "Racionar: máximo 2 L/pessoa/dia"
+   é um piso de sobrevivência em emergência, não a recomendação de estoque.
+   São dois números diferentes com dois propósitos diferentes, e igualá-los
+   seria transformar um mínimo de guerra em meta de despensa.
+7. **Um aviso só, não dois.** D-159 e D-163 chegaram com um dia de diferença e
+   são a mesma ideia ("adotamos o padrão da FEMA"). O aviso da tela foi
+   reescrito para cobrir as duas, com chave nova — quem já dispensou o primeiro
+   vê o novo uma vez, e acabou. Honestidade repetida vira insistência.
+
+**Consequence**:
+
+- **A nota de água cai de novo** para quem tem entre 1 e 3 dias: o que antes
+  pontuava 30 agora pontua 15. Ninguém ficou menos preparado; a régua é que
+  estava curta duas vezes — na unidade e no piso.
+- O EOS passa a ter **uma** verdade sobre água. `TIER_DAYS.ESSENTIAL = 3` e o
+  limiar de adequado agora dizem a mesma coisa.
+- **Dois testes quebraram e um fixture estava mascarando ruído.** Os testes
+  fixavam 6 L e 20 L; o fixture padrão (20 L / 2 pessoas = 2,6 dias) fazia
+  `WATER_LOW` disparar em *todo* teste que usasse os valores padrão, inclusive
+  os que não eram sobre água. Reescritos para derivar da constante, e o padrão
+  subiu para 4 dias. **Segunda vez nesta frente que um literal em teste vira
+  âncora do número errado** — a regra virou memória de produto.
+
+**Não autorizado por D-163**: mudar limiares de comida, bateria ou combustível;
+mudar a orientação de racionamento.
+
+---
+
 ## D-162 — Prontidão é cobertura derivada; `unknown` nunca é `covered`
 
 **Date**: 2026-08-13

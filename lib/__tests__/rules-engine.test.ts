@@ -1,6 +1,16 @@
 import { RulesEngine } from '../rules-engine'
 import { UrgencyLevel, ScenarioType } from '../types'
 import type { RulesQuery } from '../types'
+import { WATER_LITERS_PER_PERSON_DAY } from '../units'
+
+/**
+ * Litros para N dias de água de N pessoas, pela régua da FEMA (D-163).
+ *
+ * Os números deste arquivo eram literais (6 L, 20 L) e quebraram quando a
+ * régua mudou — pela segunda vez nesta frente. Derivar da constante é o que
+ * impede um teste de virar âncora do número errado.
+ */
+const litrosPara = (dias: number, pessoas: number) => WATER_LITERS_PER_PERSON_DAY * dias * pessoas
 
 // ─── Fixture helpers ──────────────────────────────────────────────────────────
 
@@ -8,7 +18,9 @@ import type { RulesQuery } from '../types'
 function makeQuery(overrides: Partial<RulesQuery> = {}): RulesQuery {
   return {
     people_count: 2,
-    water_liters: 20,
+    // 4 dias por pessoa: acima do mínimo FEMA, para que nenhum teste que não
+    // seja sobre água tenha uma regra de água disparando por acidente (D-163).
+    water_liters: WATER_LITERS_PER_PERSON_DAY * 4 * 2,
     food_days: 7,
     has_infants: false,
     has_medical_conditions: false,
@@ -38,9 +50,9 @@ describe('RulesEngine', () => {
 
   // ── Caso 2 ────────────────────────────────────────────────────────────────
   describe('Caso 2 — água baixa', () => {
-    it('dado 6 L total e 2 membros (3 L/pessoa), quando avaliar, então urgência é HIGH por água', () => {
-      // Dado
-      const query = makeQuery({ water_liters: 6, people_count: 2 })
+    it('dado 2 dias de água por pessoa, quando avaliar, então urgência é HIGH por água', () => {
+      // Dado — dois dias: acima do crítico (1 dia), abaixo do mínimo FEMA (3 dias)
+      const query = makeQuery({ water_liters: litrosPara(2, 2), people_count: 2 })
 
       // Quando
       const result = RulesEngine.evaluate(query)
@@ -53,16 +65,26 @@ describe('RulesEngine', () => {
 
   // ── Caso 3 ────────────────────────────────────────────────────────────────
   describe('Caso 3 — água suficiente', () => {
-    it('dado 20 L total e 2 membros (10 L/pessoa), quando avaliar, então urgência NÃO é CRITICAL por água', () => {
-      // Dado
-      const query = makeQuery({ water_liters: 20, people_count: 2 })
+    it('dado água acima do mínimo FEMA, quando avaliar, então nenhuma regra de água dispara', () => {
+      // Dado — 4 dias por pessoa, acima do piso de 3 dias
+      const query = makeQuery({ water_liters: litrosPara(4, 2), people_count: 2 })
 
       // Quando
       const result = RulesEngine.evaluate(query)
 
       // Então
       expect(result.urgency).not.toBe(UrgencyLevel.CRITICAL)
-      expect(result.rulesApplied.every((r) => !r.includes('WATER_CRITICAL'))).toBe(true)
+      expect(result.rulesApplied.some((r) => r.includes('WATER'))).toBe(false)
+    })
+
+    it('exatamente no mínimo FEMA já é suficiente — o piso não é uma falta', () => {
+      const query = makeQuery({ water_liters: litrosPara(3, 2), people_count: 2 })
+      expect(RulesEngine.evaluate(query).rulesApplied.some((r) => r.includes('WATER'))).toBe(false)
+    })
+
+    it('um fio abaixo do mínimo já é água baixa', () => {
+      const query = makeQuery({ water_liters: litrosPara(3, 2) - 0.01, people_count: 2 })
+      expect(RulesEngine.evaluate(query).rulesApplied.some((r) => r.includes('WATER_LOW'))).toBe(true)
     })
   })
 
@@ -155,8 +177,8 @@ describe('RulesEngine', () => {
   // ── Caso 9 ────────────────────────────────────────────────────────────────
   describe('Caso 9 — múltiplas regras disparam', () => {
     it('dado água baixa (HIGH) e comida crítica (HIGH), quando avaliar, então urgência é o máximo das regras individuais', () => {
-      // Dado — água 6 L / 2 pessoas = 3 L/pessoa → HIGH; food_days 0.5 → HIGH
-      const query = makeQuery({ water_liters: 6, people_count: 2, food_days: 0.5 })
+      // Dado — 2 dias de água/pessoa → HIGH; food_days 0.5 → HIGH
+      const query = makeQuery({ water_liters: litrosPara(2, 2), people_count: 2, food_days: 0.5 })
 
       // Quando
       const result = RulesEngine.evaluate(query)
