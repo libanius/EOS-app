@@ -68,6 +68,20 @@ funcionando por adaptadores. Nenhum passo irreversível antes de um cutover
 explícito. Quem propuser reescrever inventário, plano, Pilot, EDU e simulação
 antes de mexer na UI está indo contra D-155.
 
+**Extrair tela pode remover feature em silêncio — quase aconteceu (D-164).**
+Ao tirar o checklist da Visão, os diálogos de **editar item** e de
+**confirmação antes de excluir** (ambos de D-121) teriam ficado para trás sem
+que nada quebrasse: nenhum teste falharia, o build passaria, e duas
+funcionalidades entregues sumiriam. Ao mover um bloco, mover também o que ele
+abre. `components/world-v2/ChecklistDialogs.tsx` existe por isso.
+
+**A navegação local da Preparação usa `<nav>` + `aria-current`, não
+`role="tab"`.** Cada subtópico é rota real; sem painéis em memória, um
+`tablist` anunciaria ao leitor de tela uma troca de aba que é navegação.
+`npm run test:prep-nav` prova isso e — mais importante — prova que a BottomNav
+não se mexe em sub-rota: 7 destinos, PREPARAÇÃO acesa. Sub-rota de domínio não
+pode custar nada à navegação global.
+
 **`unknown` NUNCA sobe para `covered`, e conjunto vazio é `unknown` (D-162).**
 Um kit sem requisitos não está pronto — ninguém disse o que ele precisa. "Nada
 foi olhado" e "nada falta" não podem ter a mesma cor, e esse é o jeito mais

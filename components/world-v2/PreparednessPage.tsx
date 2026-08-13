@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
 import { useRealtimeSync } from '@/hooks/useRealtimeSync'
 import { saveSnapshot, loadSnapshot } from '@/lib/sync'
 import NumericStepper from '@/components/NumericStepper'
+import PreparednessNav from './PreparednessNav'
 import { useLanguage } from '@/lib/i18n'
 import {
   formatGallons,
@@ -30,24 +31,7 @@ interface ChecklistItem {
   acquired: boolean
 }
 
-const CHECKLIST_TIERS: ChecklistTier[] = ['ESSENTIAL', 'MODERATE', 'EXCELLENT']
-const TIER_DAYS: Record<ChecklistTier, number> = { ESSENTIAL: 3, MODERATE: 7, EXCELLENT: 30 }
-const TIER_COLOR: Record<ChecklistTier, string> = {
-  ESSENTIAL: '#ef4444',
-  MODERATE:  '#f59e0b',
-  EXCELLENT: '#22c55e',
-}
 
-const KIT_LABEL: Record<string, { pt: string; en: string }> = {
-  GERAL: { pt: 'Geral', en: 'General' },
-  EDU_CONTENT: { pt: 'EDU', en: 'EDU' },
-  SIMULATION_DEBRIEF: { pt: 'Debrief da simulação', en: 'Simulation debrief' },
-  PILOT_RECOMMENDATION: { pt: 'Recomendação do Pilot', en: 'Pilot recommendation' },
-  BUG_OUT: { pt: 'Bug Out', en: 'Bug Out' },
-  ACAMPAMENTO: { pt: 'Acampamento', en: 'Camping' },
-  PESCA: { pt: 'Pesca', en: 'Fishing' },
-  CACA: { pt: 'Caça', en: 'Hunting' },
-}
 
 type Inventory = {
   water_liters: number
@@ -421,9 +405,6 @@ export default function PreparednessPage() {
   }, [])
 
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([])
-  const [checklistGenerating, setChecklistGenerating] = useState(false)
-  const [editingItem, setEditingItem] = useState<ChecklistItem | null>(null)
-  const [deleteItem, setDeleteItem] = useState<ChecklistItem | null>(null)
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -541,98 +522,9 @@ export default function PreparednessPage() {
     }, 600)
   }, [t])
 
-  const toggleChecklistItem = useCallback(async (canonicalKey: string, nextAcquired: boolean) => {
-    // Optimistic UI update
-    setChecklistItems((prev) =>
-      prev.map((i) => i.canonical_key === canonicalKey ? { ...i, acquired: nextAcquired } : i)
-    )
 
-    /*
-     * D-156 / PREP-T11: marcar item NÃO escreve no estoque da casa.
-     *
-     * Aqui existia uma sincronização que casava o nome do item por regex e
-     * definia o escalar correspondente. Ela nunca reduzia o estoque (havia um
-     * `Math.max`), mas fazia duas coisas erradas assim mesmo: tratava a
-     * quantidade PLANEJADA como quantidade MEDIDA, e escrevia água de mochila
-     * no estoque DA CASA, ignorando o `kit_type` do item.
-     *
-     * A regra e o porquê estão em `lib/checklist-inventory.ts`, com teste.
-     */
 
-    try {
-      const res = await fetch('/api/checklist/toggle', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ canonicalKey, acquired: nextAcquired }),
-      })
-      if (!res.ok) throw new Error('toggle failed')
-    } catch {
-      setChecklistItems((prev) =>
-        prev.map((i) => i.canonical_key === canonicalKey ? { ...i, acquired: !nextAcquired } : i)
-      )
-    }
-    /*
-     * Sem dependências: `checklistItems`, `inv` e `save` existiam aqui só para
-     * a sincronização removida acima. Marcar item agora é uma operação sobre o
-     * checklist e nada mais — e as duas atualizações de estado usam a forma
-     * funcional, que não precisa ler o valor atual pelo fecho.
-     */
-  }, [])
 
-  const generateChecklist = useCallback(async () => {
-    setChecklistGenerating(true)
-    try {
-      const res = await fetch('/api/checklist/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scenarioType: 'GENERAL' }),
-      })
-      if (res.ok) {
-        const clRes = await fetch('/api/checklist', { cache: 'no-store' })
-        if (clRes.ok) {
-          const { items } = await clRes.json()
-          setChecklistItems(Array.isArray(items) ? items : [])
-        }
-      }
-    } finally {
-      setChecklistGenerating(false)
-    }
-  }, [])
-
-  const removeChecklistItem = useCallback(async (item: ChecklistItem) => {
-    setChecklistItems(prev => prev.filter(i => i.id !== item.id))
-    setDeleteItem(null)
-    try {
-      const res = await fetch(`/api/checklist/${item.id}`, { method: 'DELETE' })
-      if (!res.ok) await loadData()
-    } catch {
-      await loadData()
-    }
-  }, [loadData])
-
-  const saveChecklistEdit = useCallback(async (
-    item: ChecklistItem,
-    patch: Pick<ChecklistItem, 'item_name' | 'quantity' | 'unit' | 'tier'>,
-  ) => {
-    setChecklistItems(prev => prev.map(i => i.id === item.id ? { ...i, ...patch } : i))
-    setEditingItem(null)
-    try {
-      const res = await fetch(`/api/checklist/${item.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(patch),
-      })
-      if (!res.ok) await loadData()
-      else {
-        const data = await res.json().catch(() => ({}))
-        if (data.item) {
-          setChecklistItems(prev => prev.map(i => i.id === item.id ? { ...i, ...data.item } : i))
-        }
-      }
-    } catch {
-      await loadData()
-    }
-  }, [loadData])
 
   function update<K extends keyof Inventory>(key: K, value: Inventory[K]) {
     const next = { ...inv, [key]: value }
@@ -676,6 +568,7 @@ export default function PreparednessPage() {
   return (
     <div style={S.page}>
       <div style={S.pageWidth}>
+        <PreparednessNav />
 
         {/* Header */}
         <div style={S.header}>
@@ -970,274 +863,29 @@ export default function PreparednessPage() {
         </div>
 
 
-        {/* ── Checklist de Preparação ──────────────────────────────────────── */}
-        <div style={{ marginTop: 32, marginBottom: 8 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-            <div>
-              <p style={{ fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' as const, color: 'var(--mu)', margin: 0 }}>{t('inventory.preparedness')}</p>
-              <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--tx)', margin: '4px 0 0' }}>Checklist</h2>
-            </div>
-            {checklistItems.length === 0 && (
-              <button
-                onClick={generateChecklist}
-                disabled={checklistGenerating}
-                style={{
-                  padding: '8px 16px',
-                  background: checklistGenerating ? 'var(--sf2)' : 'var(--ac)',
-                  color: checklistGenerating ? 'var(--mu)' : '#0a0a0f',
-                  border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 13,
-                  cursor: checklistGenerating ? 'default' : 'pointer',
-                }}
-              >
-                {checklistGenerating ? t('checklist.generating') : t('inventory.generateChecklist')}
-              </button>
-            )}
-          </div>
+        {/*
+          ── Porta para "O que falta" ────────────────────────────────────────
+          O checklist saiu daqui (PREP-T07 / D-164). Ele ocupava o fim de uma
+          rolagem longa e tinha cadência própria — uma sessão de compra, não uma
+          consulta. O que fica é a porta, com o estado dela, porque a Visão
+          precisa dizer PARA ONDE IR e não fazer tudo.
 
-          {checklistItems.length === 0 ? (
-            <div style={{ padding: '32px 0', textAlign: 'center' as const, color: 'var(--mu)', fontSize: 14 }}>
-              {t('inventory.emptyChecklist')}
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 12 }}>
-              {CHECKLIST_TIERS.map((tier) => {
-                const tierItems = checklistItems.filter((i) => i.tier === tier)
-                if (tierItems.length === 0) return null
-                const done = tierItems.filter((i) => i.acquired).length
-                const pct = Math.round((done / tierItems.length) * 100)
-                const autonomy = Math.round((done / tierItems.length) * TIER_DAYS[tier])
-                return (
-                  <div
-                    key={tier}
-                    style={{ border: '1px solid var(--bd)', borderRadius: 12, overflow: 'hidden', background: 'var(--sf)' }}
-                  >
-                    {/* Tier header */}
-                    <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, borderBottom: '1px solid var(--bd)' }}>
-                      <span style={{ width: 10, height: 10, borderRadius: '50%', background: TIER_COLOR[tier], flexShrink: 0 }} />
-                      <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase' as const, color: TIER_COLOR[tier] }}>
-                        {tier === 'ESSENTIAL' ? t('checklist.essential') : tier === 'MODERATE' ? t('checklist.moderate') : t('checklist.excellent')}
-                      </span>
-                      <div style={{ flex: 1, height: 4, background: 'var(--sf2)', borderRadius: 2, overflow: 'hidden', marginLeft: 4 }}>
-                        <div style={{ width: `${pct}%`, height: '100%', background: TIER_COLOR[tier], transition: 'width .3s' }} />
-                      </div>
-                      <span style={{ fontSize: 12, color: 'var(--mu)', fontFamily: 'ui-monospace,Menlo,monospace', flexShrink: 0 }}>
-                        {done}/{tierItems.length} · ~{autonomy}d
-                      </span>
-                    </div>
-                    {/* Items */}
-                    {tierItems.map((item) => {
-                      const kit = KIT_LABEL[item.kit_type] ?? { pt: item.kit_type, en: item.kit_type }
-                      const showSource = item.kit_type !== 'GERAL'
-                      return (
-                        <div
-                          key={item.id}
-                          style={{
-                            width: '100%', textAlign: 'left' as const,
-                            padding: '11px 16px', background: 'transparent',
-                            border: 'none', borderBottom: '1px solid var(--bd)',
-                            color: 'var(--tx)',
-                            display: 'grid', gridTemplateColumns: '20px minmax(0, 1fr)',
-                            alignItems: 'flex-start', gap: 12,
-                          }}
-                        >
-                          <button
-                            type="button"
-                            role="checkbox"
-                            aria-checked={item.acquired}
-                            aria-label={item.item_name}
-                            onClick={() => toggleChecklistItem(item.canonical_key, !item.acquired)}
-                            style={{
-                            width: 18, height: 18, borderRadius: 4, flexShrink: 0,
-                            border: `1.5px solid ${item.acquired ? TIER_COLOR[item.tier] : 'var(--bd)'}`,
-                            background: item.acquired ? TIER_COLOR[item.tier] : 'transparent',
-                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                            cursor: 'pointer',
-                            padding: 0,
-                          }}>
-                            {item.acquired && (
-                              <svg viewBox="0 0 10 10" width="11" height="11" aria-hidden>
-                                <polyline points="1.5,5 4,7.5 8.5,2.5" fill="none" stroke="#0a0a0f" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                              </svg>
-                            )}
-                          </button>
-                          <span style={{ display: 'flex', flexDirection: 'column' as const, gap: 4, minWidth: 0 }}>
-                            <span style={{ fontSize: 14, color: item.acquired ? 'var(--mu)' : 'var(--tx)', textDecoration: item.acquired ? 'line-through' : 'none' }}>
-                              {item.item_name}
-                            </span>
-                            {showSource && (
-                              <span style={{ fontSize: 11, color: 'var(--mu)' }}>
-                                {language === 'pt' ? 'Fonte: ' : 'Source: '}{language === 'pt' ? kit.pt : kit.en}
-                              </span>
-                            )}
-                            <span style={S.itemActionRow}>
-                              <span style={{ fontSize: 12, color: 'var(--mu)', fontFamily: 'ui-monospace,Menlo,monospace', flexShrink: 0 }}>
-                                {item.quantity}{item.unit ? ` ${item.unit}` : ''}
-                              </span>
-                              <button
-                                type="button"
-                                aria-label={`${language === 'pt' ? 'Editar' : 'Edit'} ${item.item_name}`}
-                                onClick={() => setEditingItem(item)}
-                                style={S.actionButton}
-                              >
-                                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" aria-hidden>
-                                  <path d="M4 20h4.8L19 9.8 14.2 5 4 15.2V20Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
-                                  <path d="m13 6 5 5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-                                </svg>
-                                {language === 'pt' ? 'Editar' : 'Edit'}
-                              </button>
-                              <button
-                                type="button"
-                                aria-label={`${language === 'pt' ? 'Excluir' : 'Delete'} ${item.item_name}`}
-                                onClick={() => setDeleteItem(item)}
-                                style={{ ...S.actionButton, color: 'var(--ac3)', borderColor: 'rgba(255,107,107,0.28)', background: 'rgba(255,107,107,0.06)' }}
-                              >
-                                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" aria-hidden>
-                                  <path d="M6 6l12 12M18 6 6 18" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
-                                </svg>
-                                {language === 'pt' ? 'Excluir' : 'Delete'}
-                              </button>
-                            </span>
-                          </span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
+          Este cartão está dentro da rolagem e ao alcance do polegar; os chips
+          do topo são o caminho de repetição.
+        */}
+        <a href="/preparedness/o-que-falta" style={S.porta}>
+          <span style={S.portaTexto}>
+            <span style={S.portaTitulo}>{language === 'pt' ? 'O que falta' : 'What’s missing'}</span>
+            <span style={S.portaEstado}>
+              {checklistItems.length === 0
+                ? (language === 'pt' ? 'Nenhuma lista ainda' : 'No list yet')
+                : `${checklistItems.filter(i => !i.acquired).length} ${language === 'pt' ? 'itens em aberto' : 'open items'}`}
+            </span>
+          </span>
+          <span style={S.portaSeta} aria-hidden>›</span>
+        </a>
 
         <div style={{ height: 24 }} />
-      </div>
-      {editingItem ? (
-        <ChecklistEditDialog
-          item={editingItem}
-          language={language}
-          onCancel={() => setEditingItem(null)}
-          onSave={patch => saveChecklistEdit(editingItem, patch)}
-        />
-      ) : null}
-      {deleteItem ? (
-        <ConfirmDialog
-          title={language === 'pt' ? 'Excluir item?' : 'Delete item?'}
-          body={deleteItem.item_name}
-          confirm={language === 'pt' ? 'Excluir' : 'Delete'}
-          cancel={language === 'pt' ? 'Cancelar' : 'Cancel'}
-          destructive
-          onCancel={() => setDeleteItem(null)}
-          onConfirm={() => removeChecklistItem(deleteItem)}
-        />
-      ) : null}
-    </div>
-  )
-}
-
-function ChecklistEditDialog({
-  item,
-  language,
-  onCancel,
-  onSave,
-}: {
-  item: ChecklistItem
-  language: 'pt' | 'en'
-  onCancel: () => void
-  onSave: (patch: Pick<ChecklistItem, 'item_name' | 'quantity' | 'unit' | 'tier'>) => void
-}) {
-  const [name, setName] = useState(item.item_name)
-  const [quantity, setQuantity] = useState(String(item.quantity))
-  const [unit, setUnit] = useState(item.unit ?? '')
-  const [tier, setTier] = useState<ChecklistTier>(item.tier)
-  const canSave = name.trim().length > 0
-
-  return (
-    <div style={S.modalBackdrop} role="dialog" aria-modal="true" aria-label={language === 'pt' ? 'Editar item' : 'Edit item'}>
-      <div style={S.modal}>
-        <h3 style={S.modalTitle}>{language === 'pt' ? 'Editar item' : 'Edit item'}</h3>
-        <label style={S.fieldLabel}>
-          {language === 'pt' ? 'Nome' : 'Name'}
-          <input value={name} onChange={event => setName(event.target.value)} style={S.textInput} autoFocus />
-        </label>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <label style={S.fieldLabel}>
-            {language === 'pt' ? 'Quantidade' : 'Quantity'}
-            <input value={quantity} inputMode="decimal" onChange={event => setQuantity(event.target.value)} style={S.textInput} />
-          </label>
-          <label style={S.fieldLabel}>
-            {language === 'pt' ? 'Unidade' : 'Unit'}
-            <input value={unit} onChange={event => setUnit(event.target.value)} style={S.textInput} />
-          </label>
-        </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {CHECKLIST_TIERS.map(value => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => setTier(value)}
-              style={{
-                ...S.tierButton,
-                color: tier === value ? '#0a0a0f' : TIER_COLOR[value],
-                background: tier === value ? TIER_COLOR[value] : 'transparent',
-                borderColor: TIER_COLOR[value],
-              }}
-            >
-              {value}
-            </button>
-          ))}
-        </div>
-        <div style={S.modalActions}>
-          <button type="button" onClick={onCancel} style={S.secondaryButton}>{language === 'pt' ? 'Cancelar' : 'Cancel'}</button>
-          <button
-            type="button"
-            disabled={!canSave}
-            onClick={() => onSave({
-              item_name: name.trim(),
-              quantity: Math.max(0, Number(quantity) || 0),
-              unit: unit.trim() || null,
-              tier,
-            })}
-            style={{ ...S.primaryButton, opacity: canSave ? 1 : 0.5 }}
-          >
-            {language === 'pt' ? 'Salvar' : 'Save'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function ConfirmDialog({
-  title,
-  body,
-  confirm,
-  cancel,
-  destructive = false,
-  onCancel,
-  onConfirm,
-}: {
-  title: string
-  body: string
-  confirm: string
-  cancel: string
-  destructive?: boolean
-  onCancel: () => void
-  onConfirm: () => void
-}) {
-  return (
-    <div style={S.modalBackdrop} role="dialog" aria-modal="true" aria-label={title}>
-      <div style={S.modal}>
-        <h3 style={S.modalTitle}>{title}</h3>
-        <p style={S.modalBody}>{body}</p>
-        <div style={S.modalActions}>
-          <button type="button" onClick={onCancel} style={S.secondaryButton}>{cancel}</button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            style={{ ...S.primaryButton, background: destructive ? 'var(--ac3)' : 'var(--ac)' }}
-          >
-            {confirm}
-          </button>
-        </div>
       </div>
     </div>
   )
@@ -1559,6 +1207,15 @@ const S: Record<string, React.CSSProperties> = {
     color: 'var(--mu)', textTransform: 'uppercase' as const,
     fontFamily: "'DM Mono', monospace", marginBottom: 2,
   },
+  porta: {
+    display: 'flex', alignItems: 'center', gap: 12, marginTop: 24,
+    padding: '16px', borderRadius: 12, border: '1px solid var(--bd)',
+    background: 'var(--sf)', textDecoration: 'none', minHeight: 44,
+  },
+  portaTexto: { flex: 1, display: 'flex', flexDirection: 'column' as const, gap: 3, minWidth: 0 },
+  portaTitulo: { fontSize: 16, fontWeight: 700, color: 'var(--tx)' },
+  portaEstado: { fontSize: 13, color: 'var(--mu)' },
+  portaSeta: { fontSize: 22, color: 'var(--mu)', lineHeight: 1 },
   /* O que a nota NÃO mede. Discreto: é ressalva, não manchete. */
   summaryHint: {
     fontSize: 11, lineHeight: 1.4, color: 'var(--mu)',

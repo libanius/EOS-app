@@ -10,9 +10,10 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Preparedness Engine (PREP/EDU/COMMS/ONB/PILOT) sobre Web/PWA |
-| **Current Task** | **PREP-T07 — IA da Preparação no eixo Requirement × Holding.** PENDING, aguardando autorização. É a primeira tarefa que MUDA a tela desde o começo desta frente. PREP-T13 concluída (D-163). |
+| **Current Task** | **PREP-T07 fase 2 — extrair "O que eu tenho"** (os 6 editores de recurso), com localização como filtro. PENDING. Fase 1 entregue em 2026-08-13. |
 | **Migrações aplicadas** | As duas de Preparedness State **aplicadas em 2026-08-13** e verificadas por REST: `locations`, `holdings`, `kits`, `requirements` → 200. Nenhuma pendência operacional. |
-| **Last Completed Task** | **D-163 / PREP-T13 — Mínimo de água é o da FEMA: 3 dias por pessoa (2026-08-13)** |
+| **Last Completed Task** | **D-164 / PREP-T07 fase 1 — Navegação local; kit vira filtro (2026-08-13)** |
+| | **D-163 / PREP-T13 — Mínimo de água é o da FEMA: 3 dias por pessoa (2026-08-13)** |
 | | **D-162 / PREP-T06 — Cobertura derivada; `unknown` nunca é `covered` (2026-08-13)** |
 | | **D-161 / PREP-T05 — Requirements + kits + procedência separada (2026-08-13)** |
 | | **D-160 / PREP-T04 — Holdings + Location padrão (2026-08-13)** |

@@ -4,6 +4,68 @@
 
 ---
 
+## D-164 — Preparação ganha navegação local; kit vira filtro, procedência vira selo
+
+**Date**: 2026-08-13
+**Status**: DECIDED
+**Roadmap**: PREP-T07 (fase 1)
+**Spec**: `docs/37-preparedness-state.md` §29.2, `docs/36-preparacao-arquitetura-interna.md`
+
+**Context**: A Preparação empilhava três tempos de uso na mesma rolagem —
+diagnóstico (leitura), estoque (manutenção mensal) e checklist (sessão de
+compra). A tarefa mais lenta ficava fisicamente entre a pessoa e a mais
+urgente. E o kit, que sempre existiu no banco, aparecia como texto
+("Fonte: Bug Out") numa lista plana por tier: dois itens com o mesmo nome, um
+embaixo do outro, e nada dizia qual mochila estava sendo editada.
+
+**Decision**:
+
+1. **Faixa de chips com ROTA REAL**, fixa no topo, `<nav>` + `aria-current`.
+   **Não `role="tab"`**: sem painéis em memória, um `tablist` anunciaria ao
+   leitor de tela uma troca de aba que é, na verdade, uma navegação.
+
+2. **O eixo é `o que eu tenho` × `o que falta`** — Holding × Requirement. **Não
+   é "Em casa × Mochilas"**, como `docs/36` chegou a propor: aquilo punha
+   localização e kit, dimensões independentes, no mesmo eixo — o defeito de
+   `kit_type` reproduzido na navegação. Localização e kit viram **filtros**.
+
+3. **Fase 1 extrai "O que falta"** para `/preparedness/o-que-falta`.
+   `/preparedness` continua sendo a porta, sem redirecionamento, e ganha uma
+   porta com estado ("N itens em aberto") dentro da rolagem — ao alcance do
+   polegar, enquanto os chips do topo são o caminho de repetição.
+
+4. **Kit vira filtro; procedência vira selo.** `splitKitType()` (D-161) separa
+   as duas dimensões na interface. Os filtros mostram só os kits que a família
+   **realmente usa**, não a lista teórica.
+
+5. **Sem fusão de linhas na UI.** `projectLegacyChecklist()` sabe fundir, mas a
+   API opera linha a linha e uma linha fundida não tem id para editar. Fundir é
+   trabalho do backfill (estágio 4), não da interface. Uma tela que mostra menos
+   linhas do que consegue editar perde toques.
+
+6. **`/checklist` volta a ter destino exato**, em vez de largar a pessoa no topo
+   de uma página longa.
+
+**Consequence**:
+
+- **Duas regressões foram evitadas por pouco.** Extrair a lista e deixar os
+  diálogos para trás teria removido em silêncio a **edição de item** e a
+  **confirmação antes de excluir** — as duas entregues em D-121. Foram movidas
+  junto, para `components/world-v2/ChecklistDialogs.tsx`. Mudança de
+  arquitetura não pode custar funcionalidade sem que alguém tenha decidido isso.
+- A Visão caiu de ~1600 para 1348 linhas. A fase 2 (extrair os editores de
+  recurso) encolhe mais.
+- **Novo teste de navegador**: `npm run test:prep-nav`, 9 checagens. A que mais
+  importa não é que a página abre — é que **a BottomNav não se mexeu**: 7
+  destinos e PREPARAÇÃO acesa na sub-rota. A promessa de `docs/35` era que
+  sub-rota de domínio não custa nada à navegação global, e promessa assim só
+  vale medida. `npm run test:nav` também segue verde (7/7).
+
+**Não autorizado por D-164**: extrair os editores de recurso (fase 2), mover
+`/plan` ou `/edu`, mexer na BottomNav, backfill.
+
+---
+
 ## D-163 — O mínimo de água é o da FEMA: três dias por pessoa
 
 **Date**: 2026-08-13

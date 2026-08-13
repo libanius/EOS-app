@@ -35,6 +35,7 @@
     "test:circles": "node scripts/circles-page-test.mjs",
     "test:address": "npx tsx scripts/address-flow-test.mjs",
     "test:nav": "node scripts/bottom-nav-test.mjs",
+    "test:prep-nav": "node scripts/preparedness-nav-test.mjs",
     "bench:rag": "node scripts/rag-bench.mjs"
   },
   "dependencies": {
