@@ -10,9 +10,11 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Preparedness Engine (PREP/EDU/COMMS/ONB/PILOT) sobre Web/PWA |
-| **Current Task** | **PREP-T10 — estados de aquisição + cutover.** PENDING, última da frente. **SIM-T12** (Simulador encenar eventos no mapa) segue PENDING como ideia do dono e não bloqueia. |
+| **Current Task** | **PILOT-T12 — Pilot diz "zero" quando não sabe.** PENDING, **defeito de segurança**: causa localizada em `usePilotFacts.ts:110`. Recomendo antes de PREP-T10b. Depois: T10b (escrita dupla), T10c (backfill com dry-run), T10d (cutover). **SIM-T12** segue PENDING. |
+| **⚠ Pendência operacional** | **Aplicar `supabase/migrations/20260813180000_checklist_status.sql`.** Aditiva e reversível — a tela deriva o estado de `acquired` enquanto a coluna não existir, então nada quebra sem ela. |
 | **Migrações aplicadas** | As duas de Preparedness State **aplicadas em 2026-08-13** e verificadas por REST: `locations`, `holdings`, `kits`, `requirements` → 200. Nenhuma pendência operacional. |
-| **Last Completed Task** | **D-170 / PREP-T09 — Amortecimento do laço, sem tabela que ninguém leria (2026-08-13)** |
+| **Last Completed Task** | **D-171 / PREP-T10 fase 1 — Estados de aquisição; "não se aplica" (2026-08-13)** |
+| | **D-170 / PREP-T09 — Amortecimento do laço, sem tabela que ninguém leria (2026-08-13)** |
 | | **D-169 / PREP-T08 fase 2 — Lacuna de alerta vira tarefa com número (2026-08-13)** |
 | | **D-168 / PREP-T08 fase 1 — Alerta vira reavaliação determinística (2026-08-13)** |
 | | **D-167 / PREP-T14 — A tarefa carrega o próprio contexto (2026-08-13)** |

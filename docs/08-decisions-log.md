@@ -4,6 +4,64 @@
 
 ---
 
+## D-171 — Ciclo de vida do requisito; "não se aplica" é decisão que o app lembra
+
+**Date**: 2026-08-13
+**Status**: DECIDED
+**Roadmap**: PREP-T10 (fase 1 de 4)
+**Spec**: `docs/37-preparedness-state.md` §19, §28
+
+**Context**: O roadmap juntava "estados de aquisição + cutover" numa tarefa só.
+A spec diz o contrário — `docs/37` §28: *"every stage independently shippable"*
+e o cutover é *"explicit, decided, one task"*. Juntar os três significaria fazer
+o primeiro passo irreversível da frente junto de trabalho aditivo, sem ponto de
+retorno separado.
+
+**Decision**:
+
+1. **T10 vira quatro tarefas**: estados (esta), escrita dupla, backfill com
+   simulação a seco, e cutover. Cada uma entregável sozinha; só a última é
+   irreversível.
+
+2. **Quatro estados**, como `docs/37` §19: `proposed → needed → met`, mais
+   `not_applicable`.
+
+3. **O sistema não promove a própria sugestão.** Pilot, EDU, simulação e alerta
+   criam em `proposed` e nada mais. Sem essa trava, qualquer fonte automática
+   passaria a criar dívida na casa de alguém sozinha — a escrita silenciosa que
+   a arquitetura proíbe.
+
+4. **`met` continua vindo do usuário nesta fase.** O destino é derivá-lo da
+   cobertura — *"não se marca prontidão, adquire-se coisas"* —, mas `holdings`
+   ainda está vazia: derivar agora faria a caixinha de marcar parar de
+   funcionar, porque nada cobriria nada. **A interface não pode prometer o que o
+   domínio ainda não sustenta** (§33). Vira PREP-T10c, depois do backfill.
+
+5. **`acquired` continua sendo mantida em paralelo.** Uma coluna nova que deixa
+   a antiga divergir é pior que nenhuma coluna nova: todo código que ainda lê o
+   booleano passaria a mentir.
+
+6. **O descartado sai da conta.** Não conta como falta, e sai também do
+   denominador do progresso. Um checklist de 10 onde 3 não se aplicam é um
+   checklist de 7 — mostrar 7/10 para sempre ensinaria que a barra nunca fecha.
+
+**Consequence — o que esta fase entrega**:
+
+**"Não se aplica a esta casa".** Hoje, quem não precisa de um item só pode
+**apagá-lo** — e a próxima geração de checklist o traz de volta. Apagar diz
+"some da tela"; descartar diz "esta família não precisa disto". É uma decisão
+sobre a própria casa, e o app tem obrigação de lembrar dela. Reversível a
+qualquer momento: uma decisão sobre a casa pode mudar quando a casa muda.
+
+Migração `20260813180000_checklist_status.sql` **pendente de aplicação pelo
+dono**. Nada nela é irreversível — a coluna pode ser derrubada sem perda,
+porque `acquired` continua sendo a fonte. E a tela deriva o estado do booleano
+enquanto a coluna não existir, então o deploy pode chegar antes da migração.
+
+**Não autorizado por D-171**: escrita dupla, backfill, cutover, derivar `met`.
+
+---
+
 ## D-170 — Amortecimento do laço, sem tabela que ninguém leria
 
 **Date**: 2026-08-13

@@ -10,7 +10,7 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from('checklists')
-    .select('id, scenario_id, kit_type, canonical_key, item_name, tier, quantity, unit, acquired, acquired_at')
+    .select('id, scenario_id, kit_type, canonical_key, item_name, tier, quantity, unit, acquired, acquired_at, status')
     .eq('profile_id', user.id)
     .order('kit_type', { ascending: true })
     .order('tier', { ascending: true })
@@ -29,6 +29,9 @@ export async function GET() {
   const items = (data ?? []).map((row) => ({
     ...row,
     kit_type: row.kit_type ?? 'GERAL',
+    // Coluna nova (D-171). Enquanto a migração não roda, deriva do booleano —
+    // a tela nunca fica sem estado.
+    status: row.status ?? (row.acquired ? 'met' : 'needed'),
     shared: (counts.get(row.canonical_key) ?? 0) > 1,
   }))
 

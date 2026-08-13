@@ -26,6 +26,8 @@ export interface ChecklistItem {
   quantity: number
   unit: string | null
   acquired: boolean
+  /** D-171. Derivado de `acquired` quando a migração ainda não rodou. */
+  status?: 'proposed' | 'needed' | 'met' | 'not_applicable'
 }
 
 const CHECKLIST_TIERS: ChecklistTier[] = ['ESSENTIAL', 'MODERATE', 'EXCELLENT']

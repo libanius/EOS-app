@@ -34,6 +34,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRealtimeSync } from '@/hooks/useRealtimeSync'
 import { useLanguage } from '@/lib/i18n'
 import { splitKitType, type Provenance } from '@/lib/requirements'
+import { countsInProgress, statusFromLegacy, type AcquisitionStatus } from '@/lib/acquisition'
 import PreparednessNav from './PreparednessNav'
 import { ChecklistEditDialog, ConfirmDialog, type ChecklistItem, type ChecklistTier } from './ChecklistDialogs'
 
@@ -94,9 +95,15 @@ export default function RequirementsPage() {
   useEffect(() => { void load() }, [load])
   useRealtimeSync(['checklists'], () => { void load() })
 
-  /** Cada item com suas duas dimensões já separadas (D-161). */
+  /** Cada item com suas duas dimensões separadas (D-161) e o estado (D-171). */
   const separados = useMemo(
-    () => items.map(item => ({ item, ...splitKitType(item.kit_type) })),
+    () => items.map(item => ({
+      item,
+      ...splitKitType(item.kit_type),
+      // Deriva do booleano enquanto a coluna nova não existir no banco: a tela
+      // nunca fica sem estado, e a migração pode chegar depois do deploy.
+      status: (item.status ?? statusFromLegacy(item.acquired)) as AcquisitionStatus,
+    })),
     [items],
   )
 
@@ -154,6 +161,28 @@ export default function RequirementsPage() {
     setExcluindo(null)
     try {
       const res = await fetch(`/api/checklist/${item.id}`, { method: 'DELETE' })
+      if (!res.ok) await load()
+    } catch {
+      await load()
+    }
+  }, [load])
+
+  /**
+   * "Não se aplica a esta casa" (D-171).
+   *
+   * Antes, quem não precisava de um item só podia APAGÁ-LO — e a próxima
+   * geração de checklist o trazia de volta. Apagar diz "some da tela";
+   * descartar diz "esta família não precisa disto", e o app tem obrigação de
+   * lembrar de uma decisão sobre a própria casa.
+   */
+  const mudarStatus = useCallback(async (item: ChecklistItem, status: AcquisitionStatus) => {
+    setItems(prev => prev.map(i => i.id === item.id ? { ...i, status, acquired: status === 'met' } : i))
+    try {
+      const res = await fetch(`/api/checklist/${item.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      })
       if (!res.ok) await load()
     } catch {
       await load()
@@ -237,9 +266,16 @@ export default function RequirementsPage() {
             {TIERS.map(tier => {
               const doTier = visiveis.filter(s => s.item.tier === tier)
               if (!doTier.length) return null
-              const feitos = doTier.filter(s => s.item.acquired).length
-              const pct = Math.round((feitos / doTier.length) * 100)
-              const dias = Math.round((feitos / doTier.length) * TIER_DAYS[tier])
+              /*
+               * O denominador ignora o descartado (D-171). Um checklist de 10
+               * onde 3 não se aplicam é um checklist de 7 — mostrar 7/10 para
+               * sempre ensinaria que a barra nunca fecha.
+               */
+              const naConta = doTier.filter(s => countsInProgress(s.status))
+              const feitos = naConta.filter(s => s.item.acquired).length
+              const base = naConta.length || 1
+              const pct = Math.round((feitos / base) * 100)
+              const dias = Math.round((feitos / base) * TIER_DAYS[tier])
 
               return (
                 <div key={tier} style={S.grupo}>
@@ -251,11 +287,11 @@ export default function RequirementsPage() {
                     <div style={S.barraTrilho}>
                       <div style={{ width: `${pct}%`, height: '100%', background: TIER_COLOR[tier], transition: 'width .3s' }} />
                     </div>
-                    <span style={S.contagem}>{feitos}/{doTier.length} · ~{dias}d</span>
+                    <span style={S.contagem}>{feitos}/{naConta.length} · ~{dias}d</span>
                   </div>
 
-                  {doTier.map(({ item, kitSlug, provenance }) => (
-                    <div key={item.id} style={S.linha}>
+                  {doTier.map(({ item, kitSlug, provenance, status }) => (
+                    <div key={item.id} style={{ ...S.linha, opacity: status === 'not_applicable' ? 0.45 : 1 }}>
                       <button
                         type="button"
                         role="checkbox"
@@ -282,6 +318,11 @@ export default function RequirementsPage() {
 
                         <span style={S.selos}>
                           <span style={S.qtd}>{item.quantity}{item.unit ? ` ${item.unit}` : ''}</span>
+                          {status === 'not_applicable' && (
+                            <button type="button" onClick={() => mudarStatus(item, 'needed')} style={{ ...S.selo, cursor: 'pointer' }}>
+                              {pt ? 'não se aplica · desfazer' : 'not applicable · undo'}
+                            </button>
+                          )}
                           {/* Kit só quando o filtro não o torna óbvio. */}
                           {kitSlug && filtro === null && <span style={S.selo}>{nomeDoKit(kitSlug)}</span>}
                           {/* Procedência: de onde veio a sugestão, não um kit. */}
@@ -293,6 +334,21 @@ export default function RequirementsPage() {
                         </span>
                       </span>
 
+                      <span style={S.acoes}>
+                      {status !== 'not_applicable' && (
+                        <button
+                          type="button"
+                          aria-label={`${pt ? 'Não se aplica' : 'Not applicable'}: ${item.item_name}`}
+                          title={pt ? 'Não se aplica a esta casa' : 'Not applicable to this household'}
+                          onClick={() => mudarStatus(item, 'not_applicable')}
+                          style={S.acao}
+                        >
+                          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" aria-hidden>
+                            <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.7" />
+                            <path d="M6 18 18 6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+                          </svg>
+                        </button>
+                      )}
                       <button
                         type="button"
                         aria-label={`${pt ? 'Editar' : 'Edit'} ${item.item_name}`}
@@ -314,6 +370,7 @@ export default function RequirementsPage() {
                           <path d="M6 6l12 12M18 6 6 18" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
                         </svg>
                       </button>
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -380,7 +437,7 @@ const S: Record<string, React.CSSProperties> = {
   barraTrilho: { flex: 1, height: 4, background: 'var(--sf2)', borderRadius: 2, overflow: 'hidden', marginLeft: 4 },
   contagem: { fontSize: 12, color: 'var(--mu)', fontFamily: 'ui-monospace,Menlo,monospace', flexShrink: 0 },
   linha: {
-    display: 'grid', gridTemplateColumns: '20px minmax(0,1fr) 36px 36px', alignItems: 'flex-start', gap: 12,
+    display: 'grid', gridTemplateColumns: '20px minmax(0,1fr) auto', alignItems: 'flex-start', gap: 12,
     padding: '11px 16px', borderBottom: '1px solid var(--bd)',
   },
   caixa: {
@@ -396,6 +453,7 @@ const S: Record<string, React.CSSProperties> = {
     border: '1px solid var(--bd)', color: 'var(--mu)', whiteSpace: 'nowrap',
   },
   seloOrigem: { borderColor: 'rgba(0,229,160,0.28)', color: 'rgba(0,229,160,0.85)' },
+  acoes: { display: 'flex', alignItems: 'flex-start', gap: 2, flexShrink: 0 },
   acao: {
     width: 36, height: 36, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
     background: 'transparent', border: 'none', color: 'var(--mu)', cursor: 'pointer', padding: 0,
