@@ -4,6 +4,65 @@
 
 ---
 
+## D-170 — Amortecimento do laço, sem tabela que ninguém leria
+
+**Date**: 2026-08-13
+**Status**: DECIDED
+**Roadmap**: PREP-T09
+**Spec**: `docs/37-preparedness-state.md` §26
+
+**Context**: Com as quatro entradas fechadas, o laço passa a fechar em si
+mesmo: estado muda → gatilho → proposta → o usuário confirma → estado muda →
+gatilho de novo. Sem amortecimento ele oscila — e num app de emergência isso
+vira insistência sobre a mesma coisa, que é a forma mais rápida de ensinar
+alguém a ignorar o app.
+
+Dois vazamentos concretos existiam:
+
+1. **A proposta se reoferecia depois de recarregar.** O "✓ na lista" vivia em
+   estado de componente. O banco não duplicava (`ignoreDuplicates`), mas a tela
+   pedia o mesmo toque duas vezes — e um app que pede duas vezes a mesma coisa
+   parece quebrado mesmo quando não está.
+2. **A faixa do alerta voltava sozinha**, sem como dizer "já vi".
+
+**Decision**:
+
+1. **"Já está na lista" é DERIVADO do checklist real**, comparando por
+   `canonical_key` — a mesma chave que o servidor calcula ao gravar. Comparar
+   texto exibido erraria em acento, maiúscula e pontuação, e erraria **para
+   mais**, reoferecendo o que já existe.
+
+2. **Dispensa é durável e por GATILHO.** Outro evento, outra severidade ou
+   outra validade produzem chave diferente e o aviso volta. *"Já vi este aviso"*
+   não pode significar *"não me avise mais"* — silenciar para sempre
+   transformaria preferência de exibição em risco de segurança.
+
+3. **Dispensa mora no aparelho.** É preferência de exibição, não fato sobre a
+   casa. Sincronizá-la traria a pergunta difícil de o que fazer quando um membro
+   dispensa e outro não — e o "não me mostre" de uma pessoa não pode calar o
+   aviso para a família inteira.
+
+4. **`ReadinessAssessment` NÃO foi criada**, apesar de prevista em `docs/37`
+   §13. Hoje **nada a leria**: o cron manda notificação por conta própria, e o
+   amortecimento que importa acontece na tela, com o usuário presente. Tabela
+   sem consumidor é exatamente o que o §35 manda evitar. Ela entra quando
+   existir quem consulte — provavelmente junto do orçamento de interrupção por
+   push.
+
+**Consequence**:
+
+- O item 4 é uma decisão de **não construir** algo que a própria spec previa. A
+  spec continua certa sobre o destino; errado seria chegar lá antes de haver
+  motivo.
+- Os itens 1 e 2 do §26 (identidade de gatilho e de requisito) já estavam
+  prontos desde D-161/D-168. O item 5 (orçamento de interrupção) fica para
+  quando o push consumir assessments.
+
+**Não autorizado por D-170**: criar `readiness_assessments`, silenciar alerta
+entre gatilhos diferentes, sincronizar dispensa entre membros.
+
+---
+
 ## D-169 — Lacuna de alerta vira tarefa com número, não com adjetivo
 
 **Date**: 2026-08-13

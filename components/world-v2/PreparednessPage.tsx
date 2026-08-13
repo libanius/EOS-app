@@ -7,6 +7,7 @@ import PreparednessNav from './PreparednessNav'
 import { attentionItems, type AttentionItem } from '@/lib/attention'
 import { BRIEFING_KIT_TYPE, buildBriefingProposals, type BriefingProposal } from '@/lib/briefing-actions'
 import { ALERT_KIT_TYPE, alertProposals, reassess } from '@/lib/alert-reassessment'
+import { alreadyOnList, dismissalKey, shouldShowReassessment } from '@/lib/proposal-dedup'
 import { useRisk } from '@/components/v2/RiskProvider'
 import { useLanguage } from '@/lib/i18n'
 import {
@@ -279,6 +280,24 @@ export default function PreparednessPage() {
   const [briefingAberto, setBriefingAberto] = useState(false)
   /** Uma proposta por vez: `salvando` enquanto grava, `salvo` depois. */
   const [salvos, setSalvos] = useState<Record<string, 'salvando' | 'salvo'>>({})
+  /*
+   * Gatilhos já dispensados NESTE aparelho. Dispensa é preferência de
+   * exibição, não fato sobre a casa — e "não me mostre" de uma pessoa não pode
+   * calar o aviso para a família inteira (D-170).
+   */
+  const [dispensados, setDispensados] = useState<string[]>([])
+  useEffect(() => {
+    try {
+      setDispensados(Object.keys(localStorage).filter(k => k.startsWith('eos-reassessment-dismissed:')))
+    } catch {
+      /* Sem localStorage a faixa simplesmente sempre aparece. */
+    }
+  }, [])
+  const dispensar = useCallback((triggerKey: string) => {
+    const chave = dismissalKey(triggerKey)
+    try { localStorage.setItem(chave, '1') } catch { /* idem */ }
+    setDispensados(prev => (prev.includes(chave) ? prev : [...prev, chave]))
+  }, [])
   const [showRulerNotice, setShowRulerNotice] = useState(false)
   useEffect(() => {
     try {
@@ -630,7 +649,8 @@ export default function PreparednessPage() {
                 <div style={S.propostas}>
                   <p style={S.summaryLabel}>{t('inventory.nextSteps')}</p>
                   {propostas.map(proposta => {
-                    const estado = salvos[proposta.name]
+                    const naLista = alreadyOnList(proposta.name, checklistItems)
+                    const estado = naLista ? 'salvo' : salvos[proposta.name]
                     return (
                       <div key={proposta.name} style={S.proposta}>
                         <span style={S.propostaTexto}>{proposta.name}</span>
@@ -675,12 +695,20 @@ export default function PreparednessPage() {
           está pronta para este evento, e dizer "atenção" assim mesmo gasta a
           atenção que o próximo evento vai precisar.
         */}
-        {reavaliacao.warranted && reavaliacao.alert && (
+        {reavaliacao.warranted && reavaliacao.alert && shouldShowReassessment(reavaliacao.triggerKey, dispensados) && (
           <div style={S.alertaBloco}>
             <div style={S.alertaTopo}>
               <span style={S.alertaMarca} aria-hidden>⚠</span>
               <span style={S.alertaFonte}>{reavaliacao.alert.source.toUpperCase()}</span>
               <span style={S.alertaSeveridade}>{reavaliacao.alert.severity}</span>
+              <button
+                type="button"
+                onClick={() => reavaliacao.triggerKey && dispensar(reavaliacao.triggerKey)}
+                aria-label={language === 'pt' ? 'Dispensar este aviso' : 'Dismiss this notice'}
+                style={S.alertaDispensar}
+              >
+                ✕
+              </button>
             </div>
             <p style={S.alertaTitulo}>{reavaliacao.alert.headline}</p>
             <p style={S.alertaTexto}>
@@ -1198,6 +1226,12 @@ const S: Record<string, React.CSSProperties> = {
   alertaSeveridade: {
     fontSize: 10, fontWeight: 700, letterSpacing: 1, color: 'var(--mu)',
     fontFamily: "'DM Mono', monospace", marginLeft: 'auto',
+  },
+  alertaDispensar: {
+    flexShrink: 0, width: 32, height: 32, marginLeft: 4,
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    background: 'transparent', border: 'none', color: 'var(--mu)',
+    fontSize: 14, cursor: 'pointer', padding: 0,
   },
   alertaTitulo: { margin: '0 0 6px', fontSize: 14, fontWeight: 700, color: 'var(--tx)', lineHeight: 1.4 },
   alertaTexto: { margin: '0 0 4px', fontSize: 13, color: 'var(--mu)', lineHeight: 1.45 },

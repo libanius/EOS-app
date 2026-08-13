@@ -68,6 +68,23 @@ funcionando por adaptadores. Nenhum passo irreversível antes de um cutover
 explícito. Quem propuser reescrever inventário, plano, Pilot, EDU e simulação
 antes de mexer na UI está indo contra D-155.
 
+**Tabela sem consumidor não se cria (D-170).** `ReadinessAssessment` está
+prevista em `docs/37` §13 e **não** foi criada: hoje nada a leria. A spec
+continua certa sobre o destino; errado seria chegar lá antes de haver motivo.
+Ela entra junto do orçamento de interrupção por push, que é quem vai consultá-la.
+
+**"Já vi este aviso" ≠ "não me avise mais" (D-170).** A dispensa vale por
+GATILHO: outro evento, outra severidade ou outra validade têm chave diferente e
+o aviso volta. Silenciar para sempre transformaria preferência de exibição em
+risco de segurança. E dispensa mora no aparelho — o "não me mostre" de uma
+pessoa não pode calar o aviso para a família inteira.
+
+**Estado de "já fiz" nunca mora só no componente.** O `✓ na lista` vivia em
+`useState` e sumia ao recarregar, reoferecendo o que o banco já tinha. Agora é
+derivado do checklist real, comparado por `canonical_key` — a MESMA chave que o
+servidor grava. Comparar texto exibido erra em acento e maiúscula, e erra para
+mais.
+
 **Alerta reordena; não cria (D-168).** Um aviso de furacão não inventa que
 falta água — torna urgente a que já faltava. A reavaliação lê os MESMOS itens de
 `lib/attention` que a Visão mostra em repouso, para não existir uma segunda
