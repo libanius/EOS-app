@@ -459,6 +459,31 @@ Hurricane, because all three are executed from home. It is genuinely *not*
 available for the Vehicle kit, because it is not in the vehicle. Location does
 the work that a reservation system would otherwise have to do.
 
+### 15.2 Household autonomy reads what is AT HOME — D-156
+
+Decided by the product owner on 2026-08-12, answering the open question D-155
+left behind.
+
+> **Household autonomy = CONSUMABLE Holdings whose Location is under HOME.**
+
+1. A checklist item **never overwrites** household stock. Ticking an item records
+   that it was acquired; *where it now exists* is a Location question.
+2. Water inside the evacuation bag, with the bag stored at home, **counts**
+   toward household autonomy. It is physically there and would be drunk in an
+   emergency; excluding it would understate real autonomy.
+3. The same consumable is **counted once**. Opening the Bug Out kit shows that
+   those litres are already counted by the house — the contention is made
+   visible, never hidden and never duplicated (§15.1).
+4. Moving a Holding out from under HOME (bag moved to the car) removes it from
+   household autonomy automatically. **Location is the discriminator**; there is
+   no manual "reserved" flag.
+
+Consequence for the model: the seven `resource_inventory` scalars and the
+checklist items are **not the same object**. They are the same reality at two
+granularities, reconciled by Location — not by a regular expression over item
+names. This retires the rationale for `getInventoryDelta()` in its current form
+(§34 F1) and gives PREP-T11 its acceptance rule.
+
 ---
 
 ## 16. Location / storage model
@@ -884,7 +909,10 @@ Per the scope rule, discovered defects are documented, not repaired.
 `{ water_liters: item.quantity }`, and `update()` assigns it. A household with
 20 L stored that ticks a 4 L checklist item has `water_liters` **set to 4**.
 Impact on this architecture: it is a live example of why Requirement and Holding
-must be distinct (S4). Needs its own task and decision.
+must be distinct (S4).
+**Status: rule decided by D-156 (§15.2); scheduled as PREP-T11, which runs
+BEFORE PREP-T04** — it is user data being lost today, and it now has a
+criterion.
 
 **F2 — Four readiness calculations coexist** (S5). Consolidation belongs to
 PREP-T06, not to a silent edit.

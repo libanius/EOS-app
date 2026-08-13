@@ -10,8 +10,9 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Preparedness Engine (PREP/EDU/COMMS/ONB/PILOT) sobre Web/PWA |
-| **Current Task** | **PREP-T04 — Holdings + Location padrão.** PENDING, aguardando revisão do dono sobre D-155 antes de qualquer código. Critérios binários entram na tarefa antes da execução. |
-| **Last Completed Task** | **D-155 / PREP-T03 — Preparedness State v2, arquitetura canônica (2026-08-12)** |
+| **Current Task** | **PREP-T11 — Checklist para de sobrescrever o estoque da casa.** PENDING, regra decidida por D-156, aguardando o dono liberar a execução. Roda ANTES de PREP-T04: é perda de dado acontecendo hoje. |
+| **Last Completed Task** | **D-156 — Autonomia da casa lê a água que está em CASA (2026-08-12)** |
+| | **D-155 / PREP-T03 — Preparedness State v2, arquitetura canônica (2026-08-12)** |
 
 ### PREP-T03 em uma tela (leia `docs/37-preparedness-state.md` antes de tocar em Preparação)
 

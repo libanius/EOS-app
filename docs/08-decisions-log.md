@@ -4,6 +4,60 @@
 
 ---
 
+## D-156 — A autonomia da casa lê a água que está EM CASA
+
+**Date**: 2026-08-12
+**Status**: DECIDED
+**Roadmap**: PREP-T11 (correção), PREP-T04/T06 (modelo)
+**Spec**: `docs/37-preparedness-state.md` §15.2
+**Decisor**: dono do produto, resposta direta à pergunta aberta de D-155
+
+**Context**: A pergunta que travava PREP-T04 era se os sete escalares de
+`resource_inventory` e os itens de checklist são o mesmo objeto. Hoje eles são
+ligados por `getInventoryDelta()` (`components/world-v2/PreparednessPage.tsx:301`),
+que **sobrescreve** o escalar com a quantidade do item marcado. Uma casa com
+20 L que marca um item de "Água 4 L" da mochila Bug Out fica com **4 L** — o
+número que alimenta a autonomia, o veredito em repouso e o Pilot.
+
+O dono respondeu: *"A água que deve ser lida é a que está estocada na CASA/HOME."*
+
+**Decision**:
+
+1. **A autonomia da casa lê os holdings consumíveis cuja localização está sob
+   CASA.** Não lê "o último item de checklist marcado".
+
+2. **Um item de checklist nunca sobrescreve o estoque da casa.** Marcar um item
+   registra que ele foi adquirido; onde ele passa a existir é uma questão de
+   localização, não de sobrescrita.
+
+3. **Água guardada na mochila de evacuação, com a mochila em casa, CONTA na
+   autonomia da casa.** Ela está fisicamente lá e numa emergência seria bebida;
+   não contá-la subestimaria a autonomia real.
+
+4. **O mesmo consumível é contado uma vez só.** Quando a Bug Out for aberta, o
+   EOS mostra que aqueles litros já estão sendo contados pela casa. O conflito
+   fica **visível**, nunca escondido, e nunca duplicado — é a regra de
+   `CONSUMABLE` de `docs/37` §15.1.
+
+5. **Sair de casa muda a conta.** Um holding cuja localização deixa de estar sob
+   CASA (mochila movida para o carro) sai da autonomia da casa automaticamente.
+   A localização é o discriminador; não existe marcação manual de "reservado".
+
+**Consequence**:
+
+- A pergunta aberta de D-155 está respondida: os sete escalares e os itens de
+  checklist **não são o mesmo objeto**. São a mesma coisa vista em duas
+  granularidades, e quem os concilia é a **localização** — não uma expressão
+  regular sobre o nome do item.
+- `getInventoryDelta()` deixa de ter razão de existir na forma atual. A correção
+  vira **PREP-T11**, com regra já decidida, e executa **antes** de PREP-T04:
+  é perda de dado do usuário acontecendo hoje, e agora tem critério.
+- Nada em D-155 é retirado. Esta decisão fecha a lacuna que ele deixou aberta.
+
+**Não autorizado por D-156**: migração, mudança de rota, reorganização de tela.
+
+---
+
 ## D-155 — Preparedness State: o laço fechado já existe; o que falta é o estado
 
 **Date**: 2026-08-12

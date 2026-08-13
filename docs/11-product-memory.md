@@ -68,6 +68,16 @@ funcionando por adaptadores. Nenhum passo irreversível antes de um cutover
 explícito. Quem propuser reescrever inventário, plano, Pilot, EDU e simulação
 antes de mexer na UI está indo contra D-155.
 
+**A autonomia da casa lê o que está EM CASA (D-156, decisão do dono).**
+Consumíveis cuja localização está sob CASA. Um item de checklist **nunca**
+sobrescreve o estoque — marcar registra aquisição; onde a coisa passa a existir
+é questão de localização. Água na mochila guardada em casa **conta** (está lá, e
+seria bebida numa emergência), contada **uma vez só**, com o conflito visível ao
+abrir o kit. Mochila movida para o carro sai da conta sozinha. **A localização é
+o discriminador — não existe marcação manual de "reservado".** Isso responde a
+pergunta que D-155 deixou aberta: os sete escalares e os itens de checklist não
+são o mesmo objeto, são a mesma realidade em duas granularidades.
+
 ---
 
 ## Camada de vento animado mora no WorldMap existente (2026-08-09)
