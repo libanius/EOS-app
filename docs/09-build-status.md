@@ -10,8 +10,9 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Preparedness Engine (PREP/EDU/COMMS/ONB/PILOT) sobre Web/PWA |
-| **Current Task** | **PREP-T12 — decidir a constante de água (3 L ou 1 galão FEMA).** Bloqueia PREP-T11 e é decisão do dono, não de engenharia: adotar a FEMA corta ~21% da autonomia exibida de todo usuário. Em seguida, **PREP-T11** (não sobrescrever estoque + água em galão), que roda ANTES de PREP-T04. |
-| **Last Completed Task** | **D-158 — Água em galão; unidade nunca contradiz o nome do campo (2026-08-12)** |
+| **Current Task** | **PREP-T11 — checklist para de sobrescrever o estoque + água em galão FEMA.** PENDING e **desbloqueada**: todas as decisões que ela precisava estão tomadas (D-156, D-158, D-159). Roda ANTES de PREP-T04. **Primeira tarefa de código desta frente** — aguardando o dono liberar a execução. |
+| **Last Completed Task** | **D-159 / PREP-T12 — Régua da água é a da FEMA: 1 galão por pessoa por dia (2026-08-12)** |
+| | **D-158 — Água em galão; unidade nunca contradiz o nome do campo (2026-08-12)** |
 | | **D-157 — Todo kit é Preparação; não existe classe "lazer" (2026-08-12)** |
 | | **D-156 — Autonomia da casa lê a água que está em CASA (2026-08-12)** |
 | | **D-155 / PREP-T03 — Preparedness State v2, arquitetura canônica (2026-08-12)** |

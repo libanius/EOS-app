@@ -503,11 +503,23 @@ Water is displayed in **gallons**. EOS's authoritative sources are all American
    `lib/simulation-debrief.ts:76`, `components/world-v2/useWorldData.ts:104`).
    Consolidated in PREP-T11.
 
-> ⚠️ **Open, deliberately undecided.** EOS uses **3 L**/person/day; FEMA uses
-> **1 gal = 3.785 L**. Adopting the FEMA figure cuts every user's displayed
-> autonomy by ~21% — a household showing 5 days would show 4. That is a product
-> decision needing its own entry. Until it is made, PREP-T11 converts the
-> display without touching the divisor: same autonomy, new unit.
+5. **The ruler is FEMA's: 1 US gallon = 3.785 L per person per day** — D-159.
+   EOS used 3 L. Displayed autonomy drops ~21% for every user; a household
+   showing 5 days shows 4. **Nobody became less prepared — the ruler was short.**
+
+   Because of that, the change is **announced once, explicitly**. A safety number
+   that worsens on its own, unexplained, is read as lost supplies or as a bug —
+   the user draws the wrong conclusion about precisely the number that most needs
+   to be trusted. `household.test.ts:73` asserts the old value and is corrected in
+   the same commit: a test pinning a wrong number is part of the error.
+
+> ⚠️ **Open sub-question → PREP-T13.** The score thresholds
+> (`PreparednessPage.tsx:751`, `threshold={4}` / `criticalThreshold={2}` litres
+> per person, **absolute, not per-day**) equal ~1.06 gal and ~0.53 gal — meaning
+> "adequate" currently signifies **one day of water**, while FEMA's minimum is
+> **three days**. PREP-T11 converts 1:1 and preserves current strictness;
+> whether "adequate = 1 day" is too weak is its own decision, so that two
+> severity changes never ship in one release.
 
 ---
 

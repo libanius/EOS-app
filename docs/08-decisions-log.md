@@ -4,6 +4,56 @@
 
 ---
 
+## D-159 — A régua da água é a da FEMA: 1 galão por pessoa por dia
+
+**Date**: 2026-08-12
+**Status**: DECIDED
+**Roadmap**: PREP-T12 (esta decisão), PREP-T11 (execução), PREP-T13 (limiares)
+**Spec**: `docs/37-preparedness-state.md` §15.3
+**Decisor**: dono do produto
+
+**Context**: D-158 deixou aberto qual divisor usar. O EOS usa **3 L**/pessoa/dia
+(`lib/household.ts:170`, `WATER_PER_PERSON_DAY = 3`), com o literal duplicado em
+`lib/simulation-debrief.ts:76` e `components/world-v2/useWorldData.ts:104`, e
+travado por `household.test.ts:73`. A FEMA — cujo `FEMA_Emergency_Supply_List.pdf`
+o próprio EOS distribui no EDU — publica **1 galão por pessoa por dia**.
+
+**Decision**:
+
+1. **A constante passa a ser 1 galão americano = 3,785 L por pessoa por dia.**
+2. **Ela existe em UM lugar.** As três cópias do literal `3` são consolidadas
+   numa constante só, importada pelos três consumidores.
+3. **A mudança é comunicada ao usuário, uma vez, explicitamente.** Ver abaixo.
+
+**Consequence**:
+
+- A autonomia exibida cai **~21%** para todo usuário. Uma casa que mostra 5 dias
+  passa a mostrar 4. Um veredito que estava `watch` pode virar `warning`.
+- **Ninguém ficou menos preparado — a régua é que estava curta.** E é por isso
+  que a queda **não pode ser silenciosa**: num app de emergência, um número de
+  segurança que piora sozinho, sem explicação, é lido como perda de estoque ou
+  como defeito. O usuário conclui a coisa errada exatamente sobre o número que
+  mais precisa ser confiável.
+  → PREP-T11 exibe, uma vez, uma nota curta: *"A régua da água passou a ser a da
+  FEMA — 1 galão por pessoa por dia. Seu estoque não mudou; a conta ficou mais
+  rigorosa."*
+- O número passa a ser **citável na fonte**. "1 galão por pessoa por dia, FEMA"
+  é verificável; "3 litros" não vinha de lugar nenhum.
+- `household.test.ts:73` (`expect(WATER_PER_PERSON_DAY).toBe(3)`) deixa de valer
+  e é atualizado junto, no mesmo commit. Um teste que trava um número errado é
+  parte do erro.
+- **Sub-questão levantada e NÃO decidida aqui** → PREP-T13: os limiares da nota
+  (`PreparednessPage.tsx:751`, `threshold={4}` / `criticalThreshold={2}` litros
+  por pessoa, **absolutos, não por dia**) equivalem a ~1,06 gal e ~0,53 gal — ou
+  seja, "adequado" hoje significa **1 dia de água**, enquanto o mínimo da FEMA é
+  **3 dias**. PREP-T11 converte 1:1 e preserva o rigor atual; se "adequado = 1
+  dia" é fraco demais é decisão própria, para não embutir duas mudanças de
+  severidade na mesma entrega.
+
+**Não autorizado por D-159**: mudar limiares da nota, migração, mudança de rota.
+
+---
+
 ## D-158 — Água é medida em GALÃO; unidade nunca contradiz o nome do campo
 
 **Date**: 2026-08-12

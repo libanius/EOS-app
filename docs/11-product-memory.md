@@ -83,13 +83,28 @@ renomeá-lo, e PREP-T11 muda só a exibição; e **no modelo novo unidade é dad
 (`Holding.quantity` + `unit`), com a conversão para unidade-base acontecendo uma
 vez só, na matemática de cobertura.
 
-**Armadilha conhecida: o EOS usa 3 L/pessoa/dia, a FEMA usa 1 gal = 3,785 L.**
-`WATER_PER_PERSON_DAY = 3` em `lib/household.ts:170`, com o literal `3`
-**duplicado** em `lib/simulation-debrief.ts:76` e
-`components/world-v2/useWorldData.ts:104`, travado por `household.test.ts:73`.
-Trocar o divisor **corta ~21% da autonomia exibida de todo usuário** — é decisão
-de produto (PREP-T12), nunca uma conversão feita de passagem. Enquanto não for
-decidida, converta só a exibição.
+**A régua da água é a da FEMA: 1 galão americano (3,785 L) por pessoa por dia
+(D-159, decisão do dono).** O EOS usava 3 L — `WATER_PER_PERSON_DAY = 3` em
+`lib/household.ts:170`, com o literal **duplicado** em
+`lib/simulation-debrief.ts:76` e `components/world-v2/useWorldData.ts:104`, e
+travado por `household.test.ts:73`. A constante passa a existir num lugar só.
+
+**A autonomia exibida cai ~21% e isso NÃO pode ser silencioso.** Ninguém ficou
+menos preparado — a régua é que estava curta. Mas num app de emergência um
+número de segurança que piora sozinho, sem explicação, é lido como perda de
+estoque ou como defeito, e o usuário conclui a coisa errada justamente sobre o
+número que mais precisa ser confiável. PREP-T11 mostra uma nota única
+explicando. **Lição geral: mudança de régua exige aviso; mudança de dado não.**
+
+**Um teste que trava um número errado é parte do erro.**
+`household.test.ts:73` afirmava `toBe(3)` e é corrigido no mesmo commit que a
+constante — não em seguida.
+
+**Armadilha ainda aberta (PREP-T13):** os limiares da nota
+(`PreparednessPage.tsx:751`) são **absolutos por pessoa, não por dia** — 4 L
+equivale a ~1 dia de água, enquanto o mínimo FEMA é 3 dias. "Adequado" no EOS
+hoje significa um dia. Não corrija de passagem junto com a régua: são duas
+mudanças de severidade e elas não podem viajar na mesma entrega.
 
 **A autonomia da casa lê o que está EM CASA (D-156, decisão do dono).**
 Consumíveis cuja localização está sob CASA. Um item de checklist **nunca**
