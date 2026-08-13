@@ -14,6 +14,7 @@
 
 import { useEffect, useCallback, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { restingVerdict } from './resting-verdict'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useLanguage } from '@/lib/i18n'
@@ -217,6 +218,7 @@ const STATE_LABEL = {
 } as const
 
 export default function WorldV2() {
+  const router = useRouter()
   const { language } = useLanguage()
   const c = COPY[language]
   const metric = language === 'pt'
@@ -406,6 +408,11 @@ export default function WorldV2() {
     setFocus({ lat: alert.lat, lng: alert.lng, label: alert.title, nonce: Date.now(), kind: 'alert' })
   }
 
+  const resolveHouseholdVerdict = () => {
+    haptic.impact()
+    router.push('/preparedness')
+  }
+
   const [tappedMember, setTappedMember] = useState<string | null>(null)
   const familyRaw = useCircleFamily(language === 'pt', coords, avatarUrl)
   // A failed instrument must actually be blind, not quietly still working.
@@ -578,6 +585,7 @@ export default function WorldV2() {
       shelters={shelterSnapshot}
       conditionLine={conditionLine}
       veredito={veredito}
+      onResolveHousehold={resolveHouseholdVerdict}
     />
   )
 
@@ -892,6 +900,8 @@ type SectionProps = {
   conditionLine: string
   /** O pior entre clima e casa (D-128). Vale para os dois layouts. */
   veredito: ReturnType<typeof restingVerdict>
+  /** Ação do veredito doméstico: entrar em Preparação para corrigir estoque/checklist. */
+  onResolveHousehold: () => void
 }
 
 function WorldSections({
@@ -912,6 +922,7 @@ function WorldSections({
   shelters,
   conditionLine,
   veredito,
+  onResolveHousehold,
 }: SectionProps) {
   return (
     <>
@@ -956,10 +967,12 @@ function WorldSections({
         {/* Quando a casa é o problema, o cartão diz qual é — e leva até lá.
             Antes o número ficava sozinho, um veredito sem saída. */}
         {veredito.source === 'household' && (
-          <p className="wv2-worse t-sub" data-severity={veredito.severity}>
+          <div className="wv2-worse t-sub" data-severity={veredito.severity}>
             {veredito.lead}{veredito.line}
-            <Link href={veredito.href} className="wv2-worse-handle">{c.fix} →</Link>
-          </p>
+            <button type="button" className="wv2-worse-handle" onClick={onResolveHousehold}>
+              {c.fix} →
+            </button>
+          </div>
         )}
         <p className="t-sub ink-2" style={{ marginTop: '0.75rem' }}>
           {hasCoords ? c.yourArea : c.locating} · {conditionLine}

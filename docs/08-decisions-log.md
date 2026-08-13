@@ -4,6 +4,30 @@
 
 ---
 
+## D-154 — `Resolver` do card de risco deve navegar explicitamente para Preparação
+
+**Date**: 2026-08-12
+**Status**: DECIDED
+**Roadmap**: WV2-T26
+
+**Context**: O card de risco da World v2 mostra quando a casa está abaixo do
+mínimo e oferece a ação `Resolver`, mas o clique não produzia navegação
+perceptível. Em emergência, um veredito acionável não pode parecer texto
+decorativo nem depender de um link silencioso dentro do painel.
+
+**Decision**:
+
+1. `Resolver` no veredito doméstico navega explicitamente para `/preparedness`.
+2. A ação usa botão real com `router.push`, mantendo feedback tátil e destino
+   único.
+3. A faixa mobile mantém a mesma rota para não criar dois destinos para o mesmo
+   problema.
+
+**Consequence**: tocar em `Resolver` leva diretamente para Preparação, onde o
+usuário consegue corrigir água/comida/checklist.
+
+---
+
 ## D-142 — Vento animado precisa ser um layer engine, não um efeito dentro do React
 
 **Date**: 2026-08-10

@@ -4160,10 +4160,15 @@
   align-items: center;
   min-height: 44px;
   padding: 0 var(--s2);
+  border: 0;
+  background: transparent;
   color: inherit;
+  font: inherit;
   font-weight: 650;
   text-decoration: none;
   white-space: nowrap;
+  cursor: pointer;
+  touch-action: manipulation;
 }
 .wv2 .wv2-worse-handle:active { opacity: 0.6; }
 
