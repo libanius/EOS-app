@@ -158,6 +158,38 @@ invoices.
 > That limitation is the origin of the Preparedness State work — see
 > [`37-preparedness-state.md`](37-preparedness-state.md) §3.
 
+### locations
+> Aplicada em produção em 2026-08-13 (PREP-T04 / D-160). Verificada por REST.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid | PK |
+| profile_id | uuid | FK → profiles.id |
+| parent_id | uuid | FK → locations.id (auto-referente, `ON DELETE CASCADE`). Árvore: Casa → Garagem → Armário |
+| name | text | não vazio |
+| kind | text | `HOME`, `FARM`, `WAREHOUSE`, `OFFICE`, `VEHICLE`, `RV`, `BOAT`, `STORAGE_UNIT`, `SECOND_RESIDENCE`, `CUSTOM`. **`HOME` é o único com efeito de cálculo** — a autonomia da casa lê consumíveis sob ele (D-156) |
+| is_default | boolean | A casa criada pelo sistema. Índice parcial único garante **uma** por perfil |
+| lat, lng | double precision | opcionais |
+| created_at | timestamptz | |
+
+### holdings
+> Aplicada em produção em 2026-08-13 (PREP-T04 / D-160). Nasce vazia: enquanto
+> estiver assim, `lib/holdings-store.ts` projeta `resource_inventory`.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid | PK |
+| profile_id | uuid | FK → profiles.id |
+| location_id | uuid | FK → locations.id (`ON DELETE CASCADE`) — coisa sem lugar não existe neste modelo |
+| resource_key | text | **Mesma identidade de `checklists.canonical_key`** — é a chave que liga precisar a ter |
+| label | text | como o usuário chama |
+| kind | text | `CONSUMABLE` (quantidade, contada uma vez por lugar) ou `DURABLE` (presença; cobre vários kits alcançáveis dali) |
+| quantity | numeric(12,3) | ≥ 0 |
+| unit | text | **Unidade é dado, não convenção** (D-158): `5` + `gal` |
+| created_at, updated_at | timestamptz | `updated_at` por trigger |
+
+Único: `(profile_id, location_id, resource_key)` — um recurso, um lugar, uma linha.
+
 ### scenarios
 | Column | Type | Notes |
 |---|---|---|
@@ -367,26 +399,21 @@ provenance.
 
 ## Migration written, NOT YET APPLIED
 
-> ⚠️ **`locations` and `holdings` do not exist in the production database yet.**
-> The migration `supabase/migrations/20260813000000_preparedness_holdings_locations.sql`
-> (PREP-T04 / D-160) is written and committed; **the owner applies it in the
-> Supabase SQL Editor** — the agent environment has no database credentials
-> (same pattern as D-038 and Stripe).
->
-> Until it is applied, the app reads the legacy projection through
-> `lib/holdings-store.ts` and nothing changes on screen.
->
-> **When applied, move both tables into "Core Tables" above and delete this
-> block** — a data model that keeps a permanent "coming soon" section stops
-> being a data model.
+> ⚠️ **`kits` e `requirements` ainda não existem no banco de produção.**
+> `supabase/migrations/20260813120000_preparedness_requirements_kits.sql`
+> (PREP-T05 / D-161) está escrita e commitada; **o dono aplica no SQL Editor**.
+> Verificado em 2026-08-13: as duas respondem 404.
+> Nada quebra sem ela — nenhum código lê essas tabelas ainda.
+> **Ao aplicar, mova as duas para "Core Tables" e apague este bloco.**
 
 | Table | Shape | Purpose |
 |---|---|---|
-| `locations` | `id · profile_id · parent_id (self) · name · kind · is_default · lat · lng` | Where things physically are. Tree. `HOME` is the only kind with calculation meaning (D-156) |
-| `holdings` | `id · profile_id · location_id · resource_key · label · kind · quantity · unit` | What the family actually has. `kind ∈ CONSUMABLE\|DURABLE`. Unique on `(profile_id, location_id, resource_key)` |
+| `kits` | `id · profile_id · slug · name · icon` | Conjunto nomeado de requisitos. Sem discriminador de propósito (D-157). Único por `(profile_id, slug)` |
+| `requirements` | `id · profile_id · resource_key · label · quantity · unit · kit_id · scenario_id · location_scope_id · tier · status · provenance · provenance_ref` | O que DEVERIA existir. Chave natural `(profile_id, resource_key, kit_id, scenario_id)` com `COALESCE` — **`provenance` fica FORA dela** (D-161) |
 
-`holdings.resource_key` is deliberately the same identity as
-`checklists.canonical_key`: it is the key that joins *needing* to *having*.
+`kit_id` NULO = requisito de **linha de base da casa**. É para lá que o
+`kit_type='GERAL'` do legado é projetado: "Preparação Geral" nunca foi uma
+mochila.
 
 ## Proposed / NOT IMPLEMENTED
 

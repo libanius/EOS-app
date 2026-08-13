@@ -68,6 +68,22 @@ funcionando por adaptadores. Nenhum passo irreversível antes de um cutover
 explícito. Quem propuser reescrever inventário, plano, Pilot, EDU e simulação
 antes de mexer na UI está indo contra D-155.
 
+**`GERAL` não é kit — é a linha de base da casa (D-161).** `lib/checklist.ts`
+sempre o descreveu como "estoque e suprimentos para emergências em casa": isso
+não é uma mochila que se pega. No modelo novo vira requisito **sem `kit_id`**.
+Descoberto escrevendo o adaptador, e não é detalhe: com `GERAL` mapeado para um
+kit, um item vindo do Pilot (sem kit) e o mesmo item em `GERAL` teriam chaves
+naturais diferentes, e **a deduplicação prometida nunca dispararia sobre o dado
+real mais comum**. Kits de verdade são quatro: Bug Out, Acampamento, Pesca, Caça.
+
+**Procedência fica FORA da chave natural do requisito (D-155 §26.2 / D-161).**
+Chave = `(profile_id, resource_key, kit_id, scenario_id)`. Duas fontes achando
+a mesma lacuna **atualizam** a procedência; não criam segunda linha. Colocar
+procedência na chave recriaria, numa tabela nova, exatamente a duplicação de
+`checklists.kit_type`. E `NULL` na chave precisa de `COALESCE` com sentinela —
+no Postgres, `NULL` é distinto de `NULL` num índice único, e sem isso dois
+requisitos de linha de base do mesmo recurso passariam como linhas diferentes.
+
 **Holdings e Locations existem no código antes de existirem no banco
 (D-160, PREP-T04).** A migração
 `20260813000000_preparedness_holdings_locations.sql` está escrita e **o dono a

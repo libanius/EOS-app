@@ -4,6 +4,71 @@
 
 ---
 
+## D-161 — Kit e procedência viram colunas diferentes; `GERAL` é linha de base
+
+**Date**: 2026-08-13
+**Status**: DECIDED
+**Roadmap**: PREP-T05
+**Spec**: `docs/37-preparedness-state.md` §17, §18
+
+**Context**: `checklists.kit_type` guarda duas dimensões incompatíveis na mesma
+coluna — propósito (`GERAL`, `BUG_OUT`, `ACAMPAMENTO`, `PESCA`, `CACA`) e
+procedência (`EDU_CONTENT`, `PILOT_RECOMMENDATION`, `SIMULATION_DEBRIEF`) — e
+essa coluna faz parte da chave única `(profile_id, canonical_key, kit_type)`.
+
+Consequência, por desenho: o **mesmo** item recomendado pelo Pilot e pertencente
+à Bug Out vira duas linhas que nunca se fundem. É o defeito S3 do `docs/37`.
+
+**Decision**:
+
+1. **`requirements` e `kits`, aditivas.** `checklists` continua intocada e
+   continua sendo a verdade em produção; um adaptador projeta as linhas antigas.
+
+2. **`provenance` é coluna própria e fica FORA da chave natural.** A chave é
+   `(profile_id, resource_key, kit_id, scenario_id)`. O mesmo item achado por
+   duas fontes **atualiza** a procedência; não cria segunda linha. Incluir
+   procedência na chave recriaria, numa tabela nova, exatamente a duplicação
+   que viemos desfazer.
+
+3. **`NULL` na chave natural é tratado como valor**, via `COALESCE` com
+   sentinela. Sem isso o Postgres aceitaria dois requisitos de linha de base do
+   mesmo recurso como linhas distintas — duplicata de novo, por um detalhe de
+   índice.
+
+4. **`GERAL` deixa de ser kit e passa a ser LINHA DE BASE** (requisito sem
+   `kit_id`). `lib/checklist.ts` sempre o descreveu como *"estoque e suprimentos
+   para emergências em casa"* — isso não é uma mochila que se pega, é a casa.
+   Descoberto ao escrever o adaptador: com `GERAL` mapeado para um kit, um item
+   vindo do Pilot (sem kit) e o mesmo item em `GERAL` teriam chaves diferentes,
+   e **a deduplicação prometida jamais dispararia sobre o dado real mais
+   comum**. Kits de verdade passam a ser quatro: Bug Out, Acampamento, Pesca,
+   Caça.
+
+5. **`Kit` não tem discriminador de propósito** (D-157). Slug desconhecido é kit
+   do usuário, não erro a descartar.
+
+6. **A fusão preserva o melhor de cada linha**: o kit sobrevive (procedência não
+   apaga pertencimento), a procedência mais informativa vence `MANUAL`, `met`
+   vence `needed`, e a maior quantidade prevalece como leitura conservadora.
+
+7. **Nada nasce como `proposed`.** Tudo que está em `checklists` hoje já passou
+   por confirmação do usuário (D-092 / D-093 / D-119); marcar como proposto
+   reabriria decisões que a família já tomou.
+
+**Consequence**:
+
+- O EOS passa a conseguir representar o que o modelo antigo não sabia: um item
+  da Bug Out **sugerido pelo Pilot** — uma linha, com kit e procedência.
+- `met` herdado do legado significa "a família marcou". No modelo novo `met` é
+  **derivado** da cobertura por holdings; conciliar os dois é PREP-T06.
+- Migração `20260813120000_preparedness_requirements_kits.sql` escrita e
+  **pendente de aplicação pelo dono** no SQL Editor.
+
+**Não autorizado por D-161**: backfill, cutover, motor de cobertura, mudança de
+tela.
+
+---
+
 ## D-160 — Holdings e Locations nascem ao lado do legado, não no lugar dele
 
 **Date**: 2026-08-13

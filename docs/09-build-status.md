@@ -10,9 +10,11 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Preparedness Engine (PREP/EDU/COMMS/ONB/PILOT) sobre Web/PWA |
-| **Current Task** | **PREP-T05 — Requirements + separação kit/procedência.** PENDING, aguardando autorização do dono (traz migração própria). PREP-T13 (limiares da nota de água) segue PENDING em paralelo e não bloqueia. |
-| **⚠ Pendência operacional** | **Aplicar `supabase/migrations/20260813000000_preparedness_holdings_locations.sql` no Supabase SQL Editor.** Sem isso as tabelas `locations`/`holdings` não existem — o app funciona normalmente (projeta o legado), mas PREP-T05 não pode começar. O ambiente do agente não tem credencial de banco (padrão D-038). |
-| **Last Completed Task** | **D-160 / PREP-T04 — Holdings + Location padrão (2026-08-13)** |
+| **Current Task** | **PREP-T06 — Cobertura + Readiness v2.** PENDING, aguardando autorização. Depende de T04+T05 aplicadas. PREP-T13 (limiares da nota de água) segue PENDING em paralelo e não bloqueia. |
+| **⚠ Pendência operacional** | **Aplicar `supabase/migrations/20260813120000_preparedness_requirements_kits.sql` no SQL Editor.** `kits` e `requirements` ainda respondem 404. Nada quebra sem ela — o app não lê essas tabelas ainda —, mas PREP-T06 depende. |
+| **Migrações aplicadas** | `20260813000000_preparedness_holdings_locations.sql` **aplicada em 2026-08-13**, verificada por REST (`locations`, `holdings` → 200). |
+| **Last Completed Task** | **D-161 / PREP-T05 — Requirements + kits + procedência separada (2026-08-13)** |
+| | **D-160 / PREP-T04 — Holdings + Location padrão (2026-08-13)** |
 | | **PREP-T11 — Checklist para de escrever no estoque; água em galão FEMA (2026-08-12)** |
 | | **D-159 / PREP-T12 — Régua da água é a da FEMA: 1 galão por pessoa por dia (2026-08-12)** |
 | | **D-158 — Água em galão; unidade nunca contradiz o nome do campo (2026-08-12)** |
