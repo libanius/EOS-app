@@ -68,6 +68,19 @@ funcionando por adaptadores. Nenhum passo irreversível antes de um cutover
 explícito. Quem propuser reescrever inventário, plano, Pilot, EDU e simulação
 antes de mexer na UI está indo contra D-155.
 
+**A tarefa sobrevive ao briefing (D-167).** O cartão some; a linha fica no
+checklist e será lida semanas depois, sozinha. Item que depende do contexto que
+já não está na tela é pior que nenhum — ocupa espaço prometendo memória que não
+tem. Por isso `next_steps` precisa citar O QUÊ, QUANTO e PARA QUEM, e o prompt
+diz isso ao modelo explicitamente.
+
+**A lista de verbos de ação precisa aceitar INFINITIVO.** Ela nasceu só com
+imperativos ("compre", "revise") e o modelo escreve "Garantir", "Comprar",
+"Separar" — forma dominante em lista de tarefa em pt-BR. O efeito era silencioso
+e perverso: `looksActionable` devolvia `false` para TODA prioridade real,
+descartando as específicas e deixando passar as genéricas. Vale para EDU e
+briefing, que compartilham a lista.
+
 **Diagnóstico não é ação (D-166).** "Água abaixo do mínimo" descreve estado;
 não há o que executar nem o que marcar como feito. Ao transformar saída de IA
 em tarefa, só entra o que começa com verbo de ação (`looksActionable`, exportado

@@ -4,6 +4,69 @@
 
 ---
 
+## D-167 — A tarefa precisa carregar o próprio contexto
+
+**Date**: 2026-08-13
+**Status**: DECIDED
+**Roadmap**: PREP-T14 (correção)
+**Achado**: dono do produto, sobre a saída real do modelo
+
+**Context**: No primeiro briefing com propostas ativas, o modelo leu a ficha
+médica corretamente e escreveu, em **prioridades**:
+
+> "Garantir medicamentos de uso contínuo (ex: Loratadine) para estoque mínimo
+> de 7 dias"
+
+Nome do remédio, quantidade, prazo. E em **próximos passos**, sobre a mesma
+coisa:
+
+> "Separar e armazenar medicamentos essenciais para todos da casa"
+
+A informação existia e se perdeu no caminho para a tarefa. Nas palavras do
+dono: *"atrapalha ter que criar um lembrete e depois lembrar do que o lembrete
+me lembrou."*
+
+**O princípio, que vale além deste caso**: a tarefa **sobrevive ao briefing**.
+O cartão some; a linha fica no checklist e será lida semanas depois, sozinha,
+sem o texto que a originou. Um item que depende do contexto que já não está na
+tela é pior que nenhum item, porque ocupa espaço prometendo memória que não tem.
+
+**Decision**:
+
+1. **O prompt passa a dizer ao modelo qual é o destino.** `next_steps` vira
+   tarefa independente e precisa citar O QUÊ, QUANTO e PARA QUEM quando o dado
+   já está disponível, com exemplos de ruim × bom. O modelo degradava porque
+   nada dizia que aquilo viraria uma linha isolada.
+
+2. **Filtro de auto-suficiência como rede** (`carregaProprioContexto`).
+   Categoria vaga ("essenciais", "necessários", "adequados") só passa com
+   âncora concreta: um número, um parêntese de exemplo, ou um nome próprio no
+   meio da frase. Palavras que qualificam a condição e não o objeto —
+   "críticos", "acessível" — ficam fora da lista, para não derrubar item
+   executável.
+
+3. **`looksActionable` passa a aceitar INFINITIVO.**
+
+**Defeito que eu mesmo introduzi, e que o achado do dono revelou**: a lista de
+verbos era **só imperativa** ("compre", "revise", "adquira"), e o modelo escreve
+no infinitivo — que é a forma dominante de lista de tarefa em português. O
+resultado: `looksActionable` devolvia `false` para **todas** as prioridades
+reais, inclusive a da Loratadine. **O filtro descartava exatamente a específica
+e deixava passar a genérica.** Não era o modelo; era o meu filtro.
+
+**Consequence**:
+
+- Com a correção, a saída real do dono produz o resultado certo: a prioridade
+  que nomeia a Loratadine **entra**, o passo genérico sobre medicamentos **sai**.
+  Registrado como teste com as strings reais.
+- O EDU herda os infinitivos: ele usava a mesma lista e sofria o mesmo
+  descarte silencioso desde D-119.
+- Correção de raiz é o prompt; o filtro é a rede. Os dois juntos, porque
+  depender só de instrução a modelo não é garantia, e depender só de filtro
+  descarta em vez de melhorar.
+
+---
+
 ## D-166 — O briefing termina em ação confirmável, não em prosa
 
 **Date**: 2026-08-13

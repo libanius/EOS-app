@@ -10,7 +10,61 @@ export type EduPreparednessProposal = {
 
 const MAX_ACTION_LENGTH = 96
 
+/*
+ * D-167: o INFINITIVO estava faltando, e é a forma dominante de lista de tarefa
+ * em português. A lista original só tinha imperativos ("compre", "revise"),
+ * então "Garantir 7 dias de Loratadine" — específica, acionável, exatamente o
+ * tipo de item que queremos — era rejeitada como não-acionável.
+ *
+ * Descoberto quando o dono apontou que o briefing propunha o passo genérico e
+ * descartava o específico. Não era o modelo: era este filtro.
+ */
 const ACTION_VERBS = [
+  // infinitivos (pt-BR)
+  'adquirir',
+  'adicionar',
+  'armazenar',
+  'comprar',
+  'confirmar',
+  'definir',
+  'estabelecer',
+  'garantir',
+  'guardar',
+  'incluir',
+  'manter',
+  'montar',
+  'organizar',
+  'preparar',
+  'programar',
+  'repor',
+  'reservar',
+  'revisar',
+  'salvar',
+  'separar',
+  'testar',
+  'trocar',
+  'verificar',
+  // imperativos que faltavam
+  'garanta',
+  'guarde',
+  'mantenha',
+  'monte',
+  'organize',
+  'reponha',
+  'reserve',
+  'separe',
+  'teste',
+  'troque',
+  // infinitives (en)
+  'ensure',
+  'keep',
+  'organize',
+  'pack',
+  'replace',
+  'restock',
+  'separate',
+  'store',
+  'test',
   'adquira',
   'adicione',
   'armazene',

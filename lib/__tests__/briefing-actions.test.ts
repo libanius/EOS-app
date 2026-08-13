@@ -65,6 +65,63 @@ describe('forças nunca viram tarefa', () => {
   })
 })
 
+describe('o item precisa carregar o próprio contexto (D-167)', () => {
+  /*
+   * Achado do dono, com a saída REAL do modelo. O item sobrevive ao briefing:
+   * o cartão some, a linha fica. "Atrapalha ter que criar um lembrete e depois
+   * lembrar do que o lembrete me lembrou."
+   */
+  const realDoModelo = {
+    priorities: [
+      'Repor alimentos para garantir ao menos 7 dias de suprimento',
+      'Garantir medicamentos de uso contínuo (ex: Loratadine) para estoque mínimo de 7 dias',
+      'Reservar dinheiro em espécie para emergências',
+    ],
+    next_steps: [
+      'Comprar mais alimentos não perecíveis, suficientes para 3 dias extras',
+      'Separar e armazenar medicamentos essenciais para todos da casa',
+      'Montar envelope com dinheiro em espécie acessível',
+      'Revisar cargas de energia e opções de recarga se houver eletrônicos críticos',
+    ],
+  }
+
+  it('descarta o passo genérico sobre medicamentos', () => {
+    expect(nomes(realDoModelo)).not.toContain('Separar e armazenar medicamentos essenciais para todos da casa')
+  })
+
+  it('e mantém a prioridade que NOMEIA o medicamento', () => {
+    expect(nomes(realDoModelo)).toContain(
+      'Garantir medicamentos de uso contínuo (ex: Loratadine) para estoque mínimo de 7 dias',
+    )
+  })
+
+  it('categoria vaga COM número passa — o número é a âncora', () => {
+    expect(nomes({ next_steps: ['Comprar 3 dias de alimentos essenciais'] })).toHaveLength(1)
+  })
+
+  it('categoria vaga SEM âncora nenhuma não passa', () => {
+    expect(nomes({ next_steps: ['Comprar alimentos essenciais'] })).toEqual([])
+  })
+
+  it('frase sem categoria vaga passa mesmo sem número', () => {
+    // "Montar envelope com dinheiro em espécie" é executável como está.
+    expect(nomes({ next_steps: ['Montar envelope com dinheiro em espécie acessível'] })).toHaveLength(1)
+  })
+})
+
+describe('infinitivo é ação (D-167)', () => {
+  it('a forma dominante de tarefa em português é aceita', () => {
+    // A lista de verbos só tinha imperativos, então TODA prioridade escrita no
+    // infinitivo era descartada — inclusive as específicas.
+    const saida = nomes({ priorities: ['Garantir 7 dias de Loratadine para a Maria'] })
+    expect(saida).toHaveLength(1)
+  })
+
+  it('diagnóstico continua fora', () => {
+    expect(nomes({ priorities: ['Água abaixo do mínimo recomendado', 'Kit médico disponível'] })).toEqual([])
+  })
+})
+
 describe('duplicata', () => {
   it('a mesma ideia em prioridades e próximos passos vira UMA proposta', () => {
     // O modelo repete entre os dois campos com frequência; duas linhas iguais

@@ -43,6 +43,50 @@ export type BriefingSource = {
 }
 
 const MAX_LENGTH = 96
+
+/*
+ * Palavras que substituem a COISA por uma categoria. Sozinhas não condenam;
+ * condenam quando não há nenhuma âncora concreta na frase.
+ *
+ * "críticos", "acessível" e afins ficam DE FORA: qualificam a condição, não o
+ * objeto, e incluí-los derrubaria itens executáveis.
+ */
+const CATEGORIA_VAGA = /\b(essenciais?|important(es)?|necess[áa]ri[oa]s?|adequad[oa]s?|apropriad[oa]s?|divers[oa]s|v[áa]ri[oa]s|b[áa]sic[oa]s|gerais?)\b/i
+
+/**
+ * A frase se sustenta sozinha?
+ *
+ * Uma âncora concreta é: um número ("7 dias", "3 galões"), um parêntese de
+ * exemplo ("(ex: Loratadine)") ou um nome próprio no meio da frase — as três
+ * formas em que o modelo cita a coisa específica.
+ */
+function temAncoraConcreta(texto: string): boolean {
+  if (/\d/.test(texto)) return true
+  if (/\([^)]{2,}\)/.test(texto)) return true
+  // Maiúscula que não é a primeira palavra: nome de remédio, marca, lugar.
+  return /\s[A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÀ-ÿ]{2,}/.test(texto)
+}
+
+/**
+ * O item precisa carregar o próprio contexto (D-167).
+ *
+ * Achado do dono: o briefing propôs "separar e armazenar medicamentos
+ * essenciais para todos da casa" enquanto a PRIORIDADE, logo acima, dizia
+ * "(ex: Loratadine) para estoque mínimo de 7 dias". A informação existia e se
+ * perdeu no caminho para a tarefa.
+ *
+ * Isso importa porque **o item sobrevive ao briefing**: o cartão some, a linha
+ * fica no checklist. Nas palavras do dono — "atrapalha ter que criar um
+ * lembrete e depois lembrar do que o lembrete me lembrou". Um lembrete que
+ * exige lembrar do que ele lembrava é pior que nenhum.
+ *
+ * A correção de raiz é o prompt (`/api/ai/readiness`), que agora diz ao modelo
+ * que estes passos viram tarefas independentes. Isto aqui é a rede.
+ */
+export function carregaProprioContexto(texto: string): boolean {
+  if (!CATEGORIA_VAGA.test(texto)) return true
+  return temAncoraConcreta(texto)
+}
 const MAX_PROPOSTAS = 5
 
 function normalizar(valor: string): string {
@@ -66,12 +110,14 @@ export function buildBriefingProposals(source: BriefingSource): BriefingProposal
 
   for (const linha of source.next_steps ?? []) {
     const nome = normalizar(String(linha ?? ''))
-    if (nome.length >= 8) candidatos.push({ name: nome, from: 'next_steps' })
+    if (nome.length >= 8 && carregaProprioContexto(nome)) candidatos.push({ name: nome, from: 'next_steps' })
   }
 
   for (const linha of source.priorities ?? []) {
     const nome = normalizar(String(linha ?? ''))
-    if (nome.length >= 8 && looksActionable(nome)) candidatos.push({ name: nome, from: 'priorities' })
+    if (nome.length >= 8 && looksActionable(nome) && carregaProprioContexto(nome)) {
+      candidatos.push({ name: nome, from: 'priorities' })
+    }
   }
 
   /*

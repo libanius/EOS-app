@@ -110,6 +110,21 @@ Regras:
 - Se houver bebês, mobilidade reduzida ou condições médicas, priorize isso.
 - Seja específico e acionável.
 - Não invente dados ausentes.
+
+REGRA CRÍTICA sobre "next_steps" (D-167):
+  Cada próximo passo vira uma TAREFA INDEPENDENTE na lista da família e
+  SOBREVIVE a este briefing. A pessoa vai lê-la semanas depois, sozinha, sem
+  este texto na tela.
+  Por isso cada passo precisa se sustentar sozinho: cite o QUE (nome do
+  remédio, do item), QUANTO (quantidade, dias) e PARA QUEM, quando isso já
+  estiver nos dados acima.
+  Nunca use categoria no lugar da coisa.
+    RUIM:  "Separar e armazenar medicamentos essenciais para todos da casa"
+    BOM:   "Garantir 7 dias de Loratadine para a Maria"
+    RUIM:  "Repor alimentos"
+    BOM:   "Comprar 4 dias de alimentos não perecíveis para 3 pessoas"
+  Se uma prioridade cita um detalhe concreto, o passo correspondente precisa
+  repetir esse detalhe — não resumi-lo.
 - Se needs_unknown_for for maior que zero, trate como necessidade possível e diga isso: há gente na casa cuja ficha não pode ser lida.
 - Português do Brasil.
 
