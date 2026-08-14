@@ -4,6 +4,70 @@
 
 ---
 
+## D-175 — Um perfil sem conta não tem significado
+
+**Date**: 2026-08-13
+**Status**: DECIDED
+**Roadmap**: PREP-T15
+
+**Context**: `profiles.id` era `uuid PRIMARY KEY DEFAULT auth.uid()` — **sem
+chave estrangeira**. Apagar a conta em `auth.users` deixava o perfil e tudo
+pendurado nele: checklists, inventário, família, requisitos, holdings.
+
+Em 2026-08-13 o banco tinha **19 perfis para 9 contas**. Descoberto de lado,
+quando o backfill de PREP-T10c contou 16 requisitos para 15 itens de checklist.
+
+Não era só lixo: depois do cutover, um perfil órfão vira **linha fantasma numa
+tabela que passou a ser a verdade**.
+
+**Investigação**:
+
+Os 9 órfãos restantes estão **completamente vazios** — 0 checklists,
+0 inventário, 0 família, 0 círculos, 0 requisitos — e foram criados entre 8 e 10
+de agosto, a janela dos testes. Chamam-se "Clima", "Nav Test" e "Ana", que são
+os nomes que `weather-layers-test`, `bottom-nav-test` e `pilot-orb-test`
+escrevem. Nenhum é pessoa real.
+
+**Descoberta desconfortável**: o helper `scripts/lib/test-cleanup.mjs` **já
+apagava o perfil desde 2026-08-04** (commit `8654bd3`), com um comentário
+descrevendo exatamente este problema. E mesmo assim sobraram 9 órfãos nos seis
+dias seguintes — porque a chamada terminava em `.catch(() => {})`. **Limpeza que
+não reclama é limpeza que não se sabe se aconteceu.**
+
+**Decision**:
+
+1. **Chave estrangeira `profiles.id → auth.users.id` com `ON DELETE CASCADE`.**
+   Fecha o laço: apagar a conta passa a apagar o perfil, que já cascateia para as
+   sete tabelas. Vale inclusive para scripts que não usem o helper.
+
+2. **A limpeza dos órfãos vai DENTRO da migração**, não num script meu. O dono
+   revê o SQL antes de rodar e vê exatamente o que será apagado — melhor que eu
+   apagar por REST e contar depois.
+
+3. **A limpeza é conservadora por construção**: só apaga perfil sem conta **e**
+   sem nenhum dado em nenhuma das sete tabelas. Se sobrar órfão **com** dado, a
+   migração **para com erro** e não cria a FK. Apagar dado de alguém porque a
+   conta sumiu é decisão de produto, não de migração.
+
+4. **O `.catch(() => {})` do helper sai.** Falha de limpeza passa a ser
+   impressa, com o id. É a terceira vez hoje que um `catch` mudo escondeu um
+   problema — as outras duas foram no meu `dual-write-test` e no
+   `usePilotFacts`.
+
+**Consequence**:
+
+- Verificado depois da mudança: uma execução completa de `test:prep-nav` não
+  deixou órfão novo e a limpeza não reportou falha. **A causa histórica não está
+  provada** — o que está provado é que não falha hoje, que uma falha futura será
+  visível, e que a FK remove a possibilidade.
+- Migração **pendente de aplicação pelo dono**. Reversível: `DROP CONSTRAINT`
+  devolve o estado anterior. Os perfis vazios apagados não voltam — mas eles não
+  continham nada.
+
+**Não autorizado por D-175**: apagar perfil órfão que tenha qualquer dado.
+
+---
+
 ## D-174 — "Não sabemos" e "você não tem nada" são afirmações opostas
 
 **Date**: 2026-08-13

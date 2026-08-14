@@ -92,7 +92,12 @@ da Bug Out sugerido pelo Pilot torna a volta lossy para sempre.** Portanto o
 cutover move os 18 leitores de uma vez, e `checklists` vira retrato para
 rollback. `npm run test:cutover-gate` é o portão e mede as duas coisas.
 
-**`profiles` NÃO tem FK para `auth.users` (PREP-T15).** `profiles.id` é
+**`catch` mudo esconde problema por dias — três vezes hoje.** No helper de
+limpeza (escondeu 9 perfis órfãos por seis dias), no meu `dual-write-test`
+(sujou produção) e no `usePilotFacts` (fatos vazios virando zero). Falha de
+limpeza e falha de leitura precisam RECLAMAR.
+
+**(resolvido em D-175) `profiles` NÃO tinha FK para `auth.users`.** `profiles.id` é
 `uuid PRIMARY KEY DEFAULT auth.uid()`, sem referência. Apagar a conta deixa o
 perfil e TUDO pendurado nele. Em 2026-08-13 havia 19 perfis para 9 contas.
 Qualquer script de teste que crie usuário precisa apagar o PERFIL, não só a

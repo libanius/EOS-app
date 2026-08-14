@@ -49,10 +49,31 @@ async function purge() {
     await adminFetch(`/rest/v1/family_members?profile_id=eq.${id}`, { method: 'DELETE' }).catch(() => {})
     await adminFetch(`/auth/v1/admin/users/${id}`, { method: 'DELETE' }).catch(() => {})
   }
-  // O perfil é apagado DEPOIS da conta e sempre: a cascata de `auth.users` nem
-  // sempre alcança `profiles`, e é exatamente daí que vinham os órfãos.
+  /*
+   * O perfil é apagado DEPOIS da conta e sempre: `profiles` não tinha chave
+   * estrangeira para `auth.users`, então apagar a conta deixava o perfil.
+   *
+   * PREP-T15 / D-175 adiciona a FK com CASCADE, e a partir dela isto vira
+   * cinto e suspensório. Mas o `.catch(() => {})` que havia aqui saiu:
+   *
+   * esta linha existe desde 2026-08-04 e MESMO ASSIM sobraram 9 perfis órfãos
+   * entre 8 e 10 de agosto. Ou seja, ela estava falhando — e o `catch` mudo
+   * escondeu a falha por seis dias. Limpeza que não reclama é limpeza que não
+   * se sabe se aconteceu.
+   */
+  const falhas = []
   for (const id of created.profiles) {
-    await adminFetch(`/rest/v1/profiles?id=eq.${id}`, { method: 'DELETE' }).catch(() => {})
+    try {
+      const res = await adminFetch(`/rest/v1/profiles?id=eq.${id}`, { method: 'DELETE' })
+      if (!res.ok) falhas.push(`${id}: HTTP ${res.status}`)
+    } catch (erro) {
+      falhas.push(`${id}: ${erro.message}`)
+    }
+  }
+
+  if (falhas.length) {
+    console.log(`   ⚠ [limpeza] ${falhas.length} perfil(is) NÃO removido(s) — há lixo em produção:`)
+    for (const f of falhas) console.log(`     ${f}`)
   }
 
   console.log(`   [limpeza] ${created.users.size} conta(s) e ${created.circles.size} círculo(s) removidos`)
