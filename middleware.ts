@@ -24,6 +24,19 @@ const PROTECTED_ROUTES = [
   '/circles',
   '/settings',
   '/weather',
+  /*
+   * `/mais` (NAV-T06 / D-183).
+   *
+   * Esta lista é ALLOW-LIST: rota que não está aqui é pública, em silêncio.
+   * Quando `/settings` virou `/mais` em D-180 eu movi a página e esqueci a
+   * lista — e `/mais` guarda conta, plano e cobrança, links de admin e a zona
+   * de perigo com a exclusão de conta.
+   *
+   * Ninguém viu porque não havia nada para ver: sem sessão a tela renderiza
+   * vazia e toda ação falha na RLS. O furo não era vazamento de dado, era a
+   * pessoa deslogada cair numa tela de configurações em vez do login.
+   */
+  '/mais',
 ]
 
 // Protected only as an EXACT path. `/ficha` is the private Master Card editor,

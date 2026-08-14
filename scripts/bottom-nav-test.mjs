@@ -183,6 +183,29 @@ try {
       : no(`${rota} virou 404`, String(status))
   }
 
+  /*
+   * TODO destino da barra global está atrás do login (D-183).
+   *
+   * `PROTECTED_ROUTES` no middleware é uma ALLOW-LIST: rota que não está lá é
+   * pública em silêncio. `/mais` nasceu fora dela em D-180 e ninguém viu — não
+   * havia nada para ver, porque sem sessão a tela renderiza vazia.
+   *
+   * Esta checagem usa um contexto SEM cookie de sessão, porque a página logada
+   * do teste responderia 200 de qualquer jeito.
+   */
+  const anon = await browser.newContext({ viewport: { width: 390, height: 844 } })
+  try {
+    const anonPage = await anon.newPage()
+    for (const rota of ['/mais', '/dashboard', '/dashboard/alertas', '/family', '/preparedness', '/comms']) {
+      await anonPage.goto(`${B}${rota}`, { waitUntil: 'domcontentloaded' })
+      anonPage.url().includes('/auth/login')
+        ? ok(`${rota} exige login`)
+        : no(`${rota} está PÚBLICA`, anonPage.url())
+    }
+  } finally {
+    await anon.close().catch(() => {})
+  }
+
   // ── NAV-T07 / D-182: Alertas desceu para dentro do MUNDO ──────────────────
   await page.goto(`${B}/weather`, { waitUntil: 'networkidle' })
   page.url().includes('/dashboard/alertas')

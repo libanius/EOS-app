@@ -4,6 +4,59 @@
 
 ---
 
+## D-183 — A lista de rotas protegidas é allow-list, e eu esqueci de entrar nela
+
+**Date**: 2026-08-14
+**Status**: DECIDED
+**Roadmap**: NAV-T06 (correção)
+**Achado**: verificação em produção depois de o dono perguntar por logs
+
+**Context**: `/settings` virou `/mais` em D-180. Eu movi a página, o
+redirecionamento, os links internos e os testes — e **não** a entrada em
+`PROTECTED_ROUTES` do `middleware.ts`.
+
+```
+curl -I /settings          → 307 /auth/login?redirectTo=%2Fsettings
+curl -I /mais              → 200                       ← sem login
+```
+
+`/mais` guarda conta, plano e cobrança, links de admin e a zona de perigo com
+a exclusão de conta.
+
+**Por que ninguém viu**: não havia nada para ver. A página é cliente, todo dado
+vem de `fetch` com sessão, e a RLS recusa tudo sem ela. Uma pessoa deslogada via
+uma tela de configurações **vazia**. O furo não era vazamento — era a pessoa
+cair numa tela em vez do login, e a rota deixar de obedecer à regra do app.
+
+**Causa estrutural**: `PROTECTED_ROUTES` é uma **allow-list**. Rota que não está
+nela é pública **em silêncio** — não há erro, não há aviso, e o comportamento
+errado é indistinguível do certo até alguém medir sem cookie.
+
+**Decision**:
+
+1. **`/mais` entra na lista.**
+
+2. **`bottom-nav-test` passa a medir isso com um contexto SEM sessão.** A página
+   logada responde 200 de qualquer jeito; só um contexto anônimo distingue
+   "protegida" de "pública". A checagem cobre os cinco destinos da barra mais
+   `/dashboard/alertas`.
+
+**Consequence**:
+
+- **Quarta vez nesta sessão que um teste passa com o comportamento errado**, e
+  a causa é sempre a mesma forma: o teste roda no caminho **com** dado / **com**
+  sessão / **com** alerta, e o defeito mora no caminho sem.
+- Uma allow-list de segurança sem teste que a exercite é uma lista que só está
+  certa enquanto ninguém mexe nas rotas — e esta frente mexeu em nove rotas em
+  três dias.
+- O `error_log` **não pegaria isto nunca**: não houve exceção. Foi encontrado
+  medindo produção com `curl`, não lendo log.
+
+**Não autorizado por D-183**: transformar a allow-list em deny-list (inverter o
+padrão é decisão própria, com risco próprio — uma rota pública esquecida do
+outro lado quebra `/ficha/[id]`, que é o QR dos socorristas).
+
+
 ## D-182 — Alertas desce para dentro do MUNDO
 
 **Date**: 2026-08-14
