@@ -40,20 +40,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'No valid items' }, { status: 400 })
   }
 
-  const { error, count } = await supabase
-    .from('checklists')
-    .upsert(rows, {
-      onConflict: 'profile_id,canonical_key,kit_type',
-      ignoreDuplicates: true,
-    }, )
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
-
-  // Escrita dupla (D-172). Nunca derruba a escrita legada: `syncRequirements`
-  // engole a própria falha e registra.
+  /*
+   * Cutover (D-176): grava só em `requirements`. `checklists` está congelada.
+   *
+   * `syncRequirement` continua sendo a porta — ela já lê-então-escreve, já
+   * resolve o kit sob demanda e já está provada contra o banco
+   * (`npm run test:dual-write`). O que muda é o papel: era espelho, virou a
+   * escrita.
+   */
   await syncRequirements(supabase, user.id, rows)
 
-  return NextResponse.json({ ok: true, saved: count ?? rows.length })
+  return NextResponse.json({ ok: true, saved: rows.length })
 }

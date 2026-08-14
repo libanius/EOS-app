@@ -4,6 +4,61 @@
 
 ---
 
+## D-176 — Cutover: `requirements` é a verdade; `checklists` vira retrato
+
+**Date**: 2026-08-13
+**Status**: DECIDED
+**Roadmap**: PREP-T10d — **último estágio da frente Preparedness State**
+**Spec**: `docs/37-preparedness-state.md` §28 (estágio 5)
+
+**Context**: Quatro estágios prontos — aditivo, adaptadores, escrita dupla,
+backfill. O portão (`npm run test:cutover-gate`) confirmou que os 3 perfis com
+dado batem entre as duas formas.
+
+**Decision**:
+
+1. **`requirements` passa a ser a verdade.** `GET /api/checklist` serve de lá;
+   `toggle`, `PATCH`, `DELETE`, `save-items` e `generate` escrevem lá.
+
+2. **`checklists` é CONGELADA**, não sincronizada. Vira retrato do momento do
+   cutover, para rollback.
+
+   O motivo é estrutural e foi medido antes: `kit_type` guarda **uma** dimensão,
+   e um requisito com kit **e** procedência não cabe nele. Sincronizar exigiria
+   **escolher qual informação destruir a cada escrita** — que é exatamente o
+   defeito que D-161 desfez. Está provado em teste:
+   `legacyKitType('BUG_OUT', 'PILOT')` devolve `BUG_OUT`, e a volta perde o
+   `PILOT`.
+
+3. **A forma da resposta não muda.** Nenhuma tela precisou mudar junto com o
+   banco. Ela **ganha** dois campos autoritativos — `kit_slug` e `provenance` —
+   e mantém `kit_type` sintetizado para as telas legadas, assumido como projeção
+   lossy.
+
+4. **`splitKitType` fica como retaguarda na tela**, para resposta antiga servida
+   do cache do service worker nos minutos seguintes ao deploy.
+
+**Consequence**:
+
+- A frente inteira está fechada: **T03 → T04 → T05 → T06 → T07 → T08 → T09 →
+  T10 → T10b → T10c → T10d**, mais T11..T15 e PILOT-T12.
+- **Reverter**: trocar `readRequirements` pela leitura de `checklists` e
+  devolver as escritas. O retrato é do momento do cutover — o que mudar depois
+  dele não volta. É o custo normal de um cutover, e é por isso que ele foi o
+  último passo e não o primeiro.
+- **Estágio 6 (aposentadoria) NÃO foi feito**: `acquired`, `acquired_at` e a
+  própria `checklists` continuam existindo. Removê-los só depois do cutover
+  provar-se em uso — que é o que a spec manda e o que o retrato exige.
+
+**Verificação**: 399 testes unitários, `test:dual-write` 8/8 contra o banco,
+`test:cutover-gate` verde, `test:prep-nav` 15/15, lint, typecheck e build
+limpos.
+
+**Não autorizado por D-176**: remover `acquired`, apagar `checklists`, mexer nas
+telas legadas que ainda leem o retrato.
+
+---
+
 ## D-175 — Um perfil sem conta não tem significado
 
 **Date**: 2026-08-13

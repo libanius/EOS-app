@@ -84,7 +84,12 @@ digitando.
 CLIENTE importou de lá, o build quebrou. Cálculo compartilhado entre servidor e
 cliente vai para módulo puro — foi assim que nasceu `lib/household-days.ts`.
 
-**O cutover CONGELA `checklists`; não a mantém em sincronia (D-173).** O
+**CUTOVER FEITO (D-176): `requirements` é a verdade; `checklists` está
+CONGELADA.** Não é mais escrita. As telas legadas que ainda a leem estão lendo
+um retrato do momento do cutover. Estágio 6 (remover `acquired`, aposentar a
+tabela) **não** foi feito — só depois do cutover provar-se em uso.
+
+**O cutover CONGELOU `checklists`; não a manteve em sincronia (D-173/D-176).** O
 espelho invertido é impossível por construção: `kit_type` guarda UMA dimensão, e
 um requisito com kit E procedência não cabe nele — é exatamente o defeito que
 D-161 desfez. Hoje há 0 casos, mas isso é sorte do dado atual: **o primeiro item

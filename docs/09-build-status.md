@@ -10,11 +10,12 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Preparedness Engine (PREP/EDU/COMMS/ONB/PILOT) sobre Web/PWA |
-| **Current Task** | **PREP-T10d — cutover.** Forma definida e portão verde (`npm run test:cutover-gate`); execução **não iniciada** — move 18 leitores de uma vez e congela `checklists`. É o primeiro passo irreversível: fazer em sessão própria, com verificação de navegador. PILOT-T12 e PREP-T15 concluídas (D-174, D-175). |
+| **Current Task** | **Nenhuma.** A frente Preparedness State está fechada (T03→T10d). Próximas frentes candidatas, todas PENDING e sem bloqueio: **PREP-T10e** (aposentadoria: remover `acquired` e `checklists` depois do cutover provar-se), **SIM-T12** (Simulador encenar eventos no mapa) e **PREP-T13** já concluída. Promover uma explicitamente no Spine antes de código. |
 | **⚠ Pendência operacional** | **Aplicar `supabase/migrations/20260813210000_profiles_auth_fk.sql`** (D-175). Limpa 9 perfis de teste vazios e cria a FK que impede a recorrência. Para com erro se encontrar órfão com dado. |
 | **Migrações aplicadas** | `locations`, `holdings`, `kits`, `requirements`, `checklists.status` — todas verificadas por REST. |
 | **Migrações aplicadas** | As duas de Preparedness State **aplicadas em 2026-08-13** e verificadas por REST: `locations`, `holdings`, `kits`, `requirements` → 200. Nenhuma pendência operacional. |
-| **Last Completed Task** | **D-175 / PREP-T15 — Um perfil sem conta não tem significado (2026-08-13)** |
+| **Last Completed Task** | **D-176 / PREP-T10d — Cutover: `requirements` é a verdade (2026-08-13)** |
+| | **D-175 / PREP-T15 — Um perfil sem conta não tem significado (2026-08-13)** |
 | | **D-174 / PILOT-T12 — "Não sabemos" ≠ "você não tem nada" (2026-08-13)** |
 | | **D-173 / PREP-T10c — Backfill aplicado; forma do cutover definida (2026-08-13)** |
 | | **D-172 / PREP-T10b — Escrita dupla validada contra o banco (2026-08-13)** |

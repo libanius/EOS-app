@@ -1,5 +1,17 @@
+/**
+ * GET /api/checklist — servido por `requirements` (PREP-T10d / D-176).
+ *
+ * Cutover: `requirements` é a verdade; `checklists` virou retrato congelado
+ * para rollback. Nenhuma tela precisou mudar junto — a forma da resposta é a
+ * mesma, com dois campos novos e autoritativos (`kit_slug`, `provenance`) ao
+ * lado do `kit_type` sintetizado para as telas legadas.
+ *
+ * Reverter: trocar `readRequirements` pela leitura de `checklists`. O retrato
+ * congelado é do momento do cutover; o que mudou depois dele não volta.
+ */
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { readRequirements } from '@/lib/requirements-read'
 
 export async function GET() {
   const supabase = await createClient()
@@ -8,32 +20,8 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { data, error } = await supabase
-    .from('checklists')
-    .select('id, scenario_id, kit_type, canonical_key, item_name, tier, quantity, unit, acquired, acquired_at, status')
-    .eq('profile_id', user.id)
-    .order('kit_type', { ascending: true })
-    .order('tier', { ascending: true })
-    .order('item_name', { ascending: true })
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
-
-  // Count canonical_key appearances across all kits (shared flag)
-  const counts = new Map<string, number>()
-  for (const row of data ?? []) {
-    counts.set(row.canonical_key, (counts.get(row.canonical_key) ?? 0) + 1)
-  }
-
-  const items = (data ?? []).map((row) => ({
-    ...row,
-    kit_type: row.kit_type ?? 'GERAL',
-    // Coluna nova (D-171). Enquanto a migração não roda, deriva do booleano —
-    // a tela nunca fica sem estado.
-    status: row.status ?? (row.acquired ? 'met' : 'needed'),
-    shared: (counts.get(row.canonical_key) ?? 0) > 1,
-  }))
+  const { items, error } = await readRequirements(supabase, user.id)
+  if (error) return NextResponse.json({ error }, { status: 500 })
 
   return NextResponse.json({ items })
 }

@@ -1,7 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { statusFromLegacy } from '@/lib/acquisition'
-import { syncRequirements, type ChecklistWrite } from '@/lib/requirements-sync'
 
 interface ToggleBody {
   canonicalKey: string
@@ -37,36 +36,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid body' }, { status: 400 })
   }
 
+  /*
+   * Cutover (D-176): opera em `requirements`. `checklists` está congelada.
+   *
+   * Continua atingindo TODAS as linhas do mesmo `resource_key` — inclusive em
+   * kits diferentes —, que é o comportamento que a tela sempre teve: marcar
+   * "água" na Bug Out marca "água" na casa.
+   */
   const { error, count } = await supabase
-    .from('checklists')
-    .update(
-      {
-        acquired: body.acquired,
-        acquired_at: body.acquired ? new Date().toISOString() : null,
-        // A coluna nova acompanha o booleano (D-171). Deixá-las divergir faria
-        // a tela mostrar um estado e o modelo novo guardar outro.
-        status: statusFromLegacy(body.acquired),
-      },
-      { count: 'exact' },
-    )
+    .from('requirements')
+    .update({ status: statusFromLegacy(body.acquired) }, { count: 'exact' })
     .eq('profile_id', user.id)
-    .eq('canonical_key', body.canonicalKey)
+    .eq('resource_key', body.canonicalKey)
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
-
-  /*
-   * Escrita dupla (D-172). O toggle atinge TODAS as linhas com a mesma
-   * `canonical_key` — inclusive em kits diferentes —, então o espelho precisa
-   * reler quais foram, e não supor uma.
-   */
-  const { data: afetadas } = await supabase
-    .from('checklists')
-    .select('canonical_key, item_name, tier, quantity, unit, acquired, kit_type, status')
-    .eq('profile_id', user.id)
-    .eq('canonical_key', body.canonicalKey)
-  await syncRequirements(supabase, user.id, (afetadas ?? []) as ChecklistWrite[])
 
   return NextResponse.json({ ok: true, updated: count ?? 0 })
 }

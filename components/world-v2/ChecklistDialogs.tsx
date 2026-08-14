@@ -28,6 +28,13 @@ export interface ChecklistItem {
   acquired: boolean
   /** D-171. Derivado de `acquired` quando a migração ainda não rodou. */
   status?: 'proposed' | 'needed' | 'met' | 'not_applicable'
+  /**
+   * Campos AUTORITATIVOS do modelo novo (D-176). Vêm separados porque
+   * `kit_type` só cabe uma dimensão — e adivinhar qual delas é o que o cutover
+   * veio encerrar.
+   */
+  kit_slug?: string | null
+  provenance?: 'MANUAL' | 'PILOT' | 'EDU' | 'SIMULATION' | 'OFFICIAL_ALERT' | 'PLAN_GAP'
 }
 
 const CHECKLIST_TIERS: ChecklistTier[] = ['ESSENTIAL', 'MODERATE', 'EXCELLENT']

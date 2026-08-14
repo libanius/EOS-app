@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { syncRequirements } from '@/lib/requirements-sync'
 import { ensureProfile } from '@/lib/ensure-profile'
 import { getOpenAIClient, getOpenAIModel } from '@/lib/openai'
 import { enforceRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
@@ -160,16 +161,11 @@ export async function POST(req: NextRequest) {
     unit: i.unit ?? null,
   }))
 
-  const { error: insertError } = await supabase
-    .from('checklists')
-    .upsert(rows, {
-      onConflict: 'profile_id,canonical_key,kit_type',
-      ignoreDuplicates: true,
-    })
-
-  if (insertError) {
-    return NextResponse.json({ error: insertError.message }, { status: 500 })
-  }
+  /*
+   * Cutover (D-176): a geração passa a criar requisitos. `checklists` está
+   * congelada como retrato para rollback.
+   */
+  await syncRequirements(supabase, user.id, rows.map(r => ({ ...r, acquired: false })))
 
   return NextResponse.json({ ok: true, count: rows.length })
 }

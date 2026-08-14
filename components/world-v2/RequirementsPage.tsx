@@ -95,11 +95,19 @@ export default function RequirementsPage() {
   useEffect(() => { void load() }, [load])
   useRealtimeSync(['checklists'], () => { void load() })
 
-  /** Cada item com suas duas dimensões separadas (D-161) e o estado (D-171). */
+  /**
+   * Cada item com suas duas dimensões e o estado.
+   *
+   * Depois do cutover (D-176) a API manda `kit_slug` e `provenance` SEPARADOS e
+   * exatos. `splitKitType` fica como retaguarda para resposta antiga em cache —
+   * o service worker pode servir a forma de ontem por alguns minutos.
+   */
   const separados = useMemo(
     () => items.map(item => ({
       item,
-      ...splitKitType(item.kit_type),
+      ...(item.provenance
+        ? { kitSlug: item.kit_slug ?? null, provenance: item.provenance }
+        : splitKitType(item.kit_type)),
       // Deriva do booleano enquanto a coluna nova não existir no banco: a tela
       // nunca fica sem estado, e a migração pode chegar depois do deploy.
       status: (item.status ?? statusFromLegacy(item.acquired)) as AcquisitionStatus,
