@@ -4,6 +4,63 @@
 
 ---
 
+## D-173 — Backfill aplicado; e o cutover não pode manter o legado em sincronia
+
+**Date**: 2026-08-13
+**Status**: DECIDED
+**Roadmap**: PREP-T10c ✅ · PREP-T10d define a forma
+**Spec**: `docs/37-preparedness-state.md` §28 (estágios 4 e 5)
+
+**Context**: Estágio 4 — projetar o legado no modelo novo.
+
+**Decision e resultado**:
+
+1. **Simulação a seco é o padrão, não uma opção.** `npm run backfill:prep` não
+   escreve; só `--apply` escreve. Um backfill cujo modo perigoso é o padrão é um
+   acidente esperando o dedo errado, e este roda contra produção com Stripe ao
+   vivo.
+
+2. **Aplicado**: 4 perfis com dado, 15 itens de checklist, 3 inventários,
+   17 holdings, 4 localizações padrão, **0 erros**.
+
+3. **Re-executável provado**: a segunda execução criou 0 localizações e manteve
+   as contagens. Requisitos reusam `syncRequirement` (D-172); holdings usam
+   `upsert` no índice de colunas simples.
+
+**Descoberta 1 — perfis órfãos, pré-existente** → **PREP-T15**
+
+A conferência pós-backfill deu **16 requisitos para 15 itens**. A causa: o banco
+tem **19 perfis para 9 contas de autenticação**. `profiles.id` é
+`uuid PRIMARY KEY DEFAULT auth.uid()` e **não tem chave estrangeira para
+`auth.users`** — apagar a conta deixa o perfil, e tudo pendurado nele, para
+sempre. Sobraram 10 perfis de meses de teste ("Clima", "Nav Test", "Ana").
+
+Um deles era **meu**, criado hoje: o `dual-write-test` engolia a falha da
+limpeza com `.catch(() => {})`. Corrigido — a limpeza agora falha alto e apaga o
+PERFIL, não só a conta. Removi apenas o meu; os outros nove são dado que eu não
+criei e um deles tem nome de pessoa, então a remoção é decisão do dono.
+
+**Descoberta 2 — a forma do cutover** → **PREP-T10d**
+
+`npm run test:cutover-gate` compara, por perfil, o legado e o modelo novo: **os
+3 perfis com dado batem**. E mede a direção inversa, que é o que decide a forma:
+
+> `checklists.kit_type` guarda UMA dimensão. Um requisito com kit **e**
+> procedência não-manual ao mesmo tempo não cabe nele. Hoje esse número é
+> **zero** — mas é sorte do dado atual, não garantia do modelo. **O primeiro
+> item da Bug Out sugerido pelo Pilot torna a volta lossy para sempre.**
+
+Portanto: **o cutover não pode manter `checklists` em sincronia — ele precisa
+congelá-la.** Espelho invertido é impossível por construção, e é exatamente o
+defeito que D-161 desfez. Isso muda o que T10d é: não é "virar a leitura e
+manter os dois", é **mover todos os 18 leitores de uma vez e parar de escrever
+no legado**, com `checklists` virando retrato para rollback.
+
+**Não autorizado por D-173**: executar o cutover, apagar perfis órfãos que não
+são meus, remover `acquired`.
+
+---
+
 ## D-172 — Escrita dupla que nunca derruba a escrita real
 
 **Date**: 2026-08-13

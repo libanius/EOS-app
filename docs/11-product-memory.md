@@ -68,6 +68,24 @@ funcionando por adaptadores. Nenhum passo irreversível antes de um cutover
 explícito. Quem propuser reescrever inventário, plano, Pilot, EDU e simulação
 antes de mexer na UI está indo contra D-155.
 
+**O cutover CONGELA `checklists`; não a mantém em sincronia (D-173).** O
+espelho invertido é impossível por construção: `kit_type` guarda UMA dimensão, e
+um requisito com kit E procedência não cabe nele — é exatamente o defeito que
+D-161 desfez. Hoje há 0 casos, mas isso é sorte do dado atual: **o primeiro item
+da Bug Out sugerido pelo Pilot torna a volta lossy para sempre.** Portanto o
+cutover move os 18 leitores de uma vez, e `checklists` vira retrato para
+rollback. `npm run test:cutover-gate` é o portão e mede as duas coisas.
+
+**`profiles` NÃO tem FK para `auth.users` (PREP-T15).** `profiles.id` é
+`uuid PRIMARY KEY DEFAULT auth.uid()`, sem referência. Apagar a conta deixa o
+perfil e TUDO pendurado nele. Em 2026-08-13 havia 19 perfis para 9 contas.
+Qualquer script de teste que crie usuário precisa apagar o PERFIL, não só a
+conta — e não pode engolir a falha da limpeza, que foi como um perfil de teste
+meu chegou à produção e só apareceu na conferência do backfill.
+
+**Backfill roda a seco por padrão.** Modo perigoso como padrão é acidente
+esperando o dedo errado, e este roda contra produção com Stripe ao vivo.
+
 **Escrita nova nunca derruba escrita real (D-172).** Enquanto o legado for a
 verdade, o espelho falha em silêncio e vira linha no `error_log`. O contrário
 transformaria uma tabela que ninguém ainda lê num ponto único de falha para uma

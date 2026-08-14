@@ -113,8 +113,25 @@ async function main() {
   } catch (error) {
     no('erro inesperado', error instanceof Error ? error.message : String(error))
   } finally {
-    await admin.auth.admin.deleteUser(uid).catch(() => {})
-    console.log('   [limpeza] usuário temporário removido')
+    /*
+     * A limpeza NÃO pode engolir a própria falha.
+     *
+     * Ela engolia — com `.catch(() => {})` — e deixou um perfil de teste em
+     * produção, que só apareceu quando o backfill contou 16 requisitos para 15
+     * itens de checklist. Um teste que suja o banco em silêncio é pior que um
+     * teste que não roda.
+     *
+     * E apaga o PERFIL, não só a conta: `profiles.id` não tem chave estrangeira
+     * para `auth.users` (ver PREP-T15), então remover a conta deixa o perfil e
+     * tudo pendurado nele.
+     */
+    const { error: erroPerfil } = await admin.from('profiles').delete().eq('id', uid)
+    const { error: erroConta } = await admin.auth.admin.deleteUser(uid)
+    if (erroPerfil || erroConta) {
+      no('LIMPEZA FALHOU — há lixo em produção', `${erroPerfil?.message ?? ''} ${erroConta?.message ?? ''}`.trim())
+    } else {
+      console.log('   [limpeza] perfil e conta temporários removidos')
+    }
   }
 
   console.log(`\n${pass} passou · ${fail} falhou`)

@@ -10,10 +10,11 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Preparedness Engine (PREP/EDU/COMMS/ONB/PILOT) sobre Web/PWA |
-| **Current Task** | **PILOT-T12 — Pilot diz "zero" quando não sabe.** PENDING, **defeito de segurança**: causa localizada em `usePilotFacts.ts:110`. Recomendo antes de PREP-T10b. Depois: T10b (escrita dupla), T10c (backfill com dry-run), T10d (cutover). **SIM-T12** segue PENDING. |
+| **Current Task** | **PREP-T10d — cutover.** Forma definida e portão verde (`npm run test:cutover-gate`); execução **não iniciada** — move 18 leitores de uma vez e congela `checklists`. É o primeiro passo irreversível: fazer em sessão própria, com verificação de navegador. Também PENDING: **PILOT-T12** (defeito de segurança) e **PREP-T15** (perfis órfãos). |
 | **Migrações aplicadas** | Todas as quatro da frente aplicadas e verificadas por REST: `locations`, `holdings`, `kits`, `requirements`, `checklists.status`. Nenhuma pendência. |
 | **Migrações aplicadas** | As duas de Preparedness State **aplicadas em 2026-08-13** e verificadas por REST: `locations`, `holdings`, `kits`, `requirements` → 200. Nenhuma pendência operacional. |
-| **Last Completed Task** | **D-172 / PREP-T10b — Escrita dupla validada contra o banco (2026-08-13)** |
+| **Last Completed Task** | **D-173 / PREP-T10c — Backfill aplicado; forma do cutover definida (2026-08-13)** |
+| | **D-172 / PREP-T10b — Escrita dupla validada contra o banco (2026-08-13)** |
 | | **D-171 / PREP-T10 fase 1 — Estados de aquisição; "não se aplica" (2026-08-13)** |
 | | **D-170 / PREP-T09 — Amortecimento do laço, sem tabela que ninguém leria (2026-08-13)** |
 | | **D-169 / PREP-T08 fase 2 — Lacuna de alerta vira tarefa com número (2026-08-13)** |
