@@ -6,6 +6,7 @@ import { useLanguage, type Language, type MessageKey } from '@/lib/i18n'
 import { canAccess, type Plan } from '@/lib/feature-gates'
 import { createClient } from '@/lib/supabase/client'
 import { AFFILIATE_STORAGE_KEY, normalizeAffiliateCode } from '@/lib/affiliate'
+import MaisNav from '@/components/world-v2/MaisNav'
 
 // ─── Language selector ────────────────────────────────────────────────────────
 
@@ -268,12 +269,13 @@ export default function SettingsPage() {
   return (
     <main style={styles.page}>
       <section style={styles.container}>
+        <MaisNav />
         <p style={styles.eyebrow}>{t('settings.eyebrow')}</p>
         <h1 style={styles.title}>{t('settings.title')}</h1>
         <p style={styles.description}>{t('settings.description')}</p>
 
         {/*
-          Treino (NAV-T06 / D-180).
+          Treino (NAV-T06 / D-180; endereço próprio em NAV-T08 / D-184).
 
           `docs/35` põe o Treino em MAIS, e ele chegou aqui vindo de um slot da
           barra global. Ocupar destino permanente sempre foi erro de categoria:
@@ -287,7 +289,7 @@ export default function SettingsPage() {
         <div style={styles.card}>
           <h2 style={styles.sectionTitle}>{t('mais.drill')}</h2>
           <p style={styles.help}>{t('mais.drillHelp')}</p>
-          <Link href="/scenario" style={{ ...styles.accountBtn, textDecoration: 'none', marginTop: 12 }}>
+          <Link href="/mais/treino" style={{ ...styles.accountBtn, textDecoration: 'none', marginTop: 12 }}>
             <span>{t('mais.drillOpen')}</span>
             <span aria-hidden="true">→</span>
           </Link>

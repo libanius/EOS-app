@@ -29,6 +29,7 @@ import {
   type ThreatType,
 } from '@/lib/simulation'
 import { Card, Pill, SectionLabel } from './primitives'
+import MaisNav from './MaisNav'
 import { SPRING, haptic } from './motion'
 import './world-v2.css'
 
@@ -254,6 +255,7 @@ export default function SimulatorPage() {
 
   return (
     <div className="wv2 wv2-sim-page" data-risk="watch" data-ready="true">
+      <MaisNav />
       <div className="sim-scroll">
         <header className="sim-header">
           <p className="t-caps ink-3">{c.eyebrow}</p>

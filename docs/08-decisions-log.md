@@ -4,6 +4,61 @@
 
 ---
 
+## D-184 — Cenário vira modo: o endereço estava errado, a forma não
+
+**Date**: 2026-08-14
+**Status**: DECIDED
+**Roadmap**: NAV-T08 (fase 5 de 5 do Modelo C)
+
+**Context**: Último achado estrutural do `docs/35` (**A6**). Cenário ocupava
+slot de destino de primeiro nível, e destino é LUGAR. O Simulador não é lugar:
+`SimulationProvider` é global e faz o app inteiro se comportar como se a
+situação fosse verdade — índice de risco, Pilot, autonomia, mapa. Isso é MODO.
+
+D-180 já tinha tirado o ícone da barra. Faltava o endereço e as portas.
+
+**Decision**:
+
+1. **`/scenario` vira `/mais/treino`.** O endereço para de reivindicar status
+   de domínio. Redireciona — convites chegam por `/sim/[token]` e o dashboard
+   legado ainda aponta para lá.
+
+2. **MAIS ganha faixa de domínio** (`Mais · Treino`). Ela não existia em D-180
+   porque não havia sub-rota, e faixa de um chip só é enfeite.
+
+3. **A Preparação ganha a porta que o documento sempre listou e que nunca
+   existiu.** Treinar é preparação: o debrief do treino já grava requisitos com
+   procedência `SIMULATION_DEBRIEF` (D-092) — o Simulador **já alimentava** a
+   tela de Preparação, e só a navegação não admitia.
+
+**A divergência deliberada**:
+
+`docs/35` propôs que a configuração virasse **overlay**. Não virou. São 568
+linhas de briefing com campo de texto livre, interpretação por IA e cinco
+painéis de revisão — isso é uma página, e espremer num overlay pioraria o
+celular sem tornar nada mais "modo".
+
+**O que faz o Simulador ser modo já existe e é outra coisa**: a faixa global,
+deliberadamente barulhenta (doc 19 §5.2), que aparece em qualquer tela e
+carrega a saída. *"Um simulador de voo não sussurra que é um simulador."* O
+erro nunca foi a forma da cabine — era o endereço dela.
+
+**Consequence**:
+
+- **Modelo C está completo**: as cinco fases entregues em três dias
+  (D-177, D-178, D-180, D-182, D-184), mais três correções nascidas delas
+  (D-179, D-181, D-183).
+- A barra global tem cinco destinos fixos e **quatro dos cinco domínios têm
+  faixa própria** — falta só COMMS, que já usava chips com `?view=` antes de
+  tudo isso e continua sendo o único lugar com estado de navegação em memória.
+- `test:nav` 30/30 (era 24).
+
+**Não autorizado por D-184**: transformar a cabine em overlay, mexer no
+`SimulationProvider` ou na faixa de simulação, encenar eventos falsos no mapa
+(isso é SIM-T12, ideia do dono, ainda sem decisão sobre como o evento falso
+entra sem contaminar o snapshot verdadeiro).
+
+
 ## D-183 — A lista de rotas protegidas é allow-list, e eu esqueci de entrar nela
 
 **Date**: 2026-08-14

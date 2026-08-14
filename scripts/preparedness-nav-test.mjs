@@ -284,8 +284,8 @@ try {
     : no('/settings não redirecionou', page.url())
 
   // O Treino chegou aqui vindo de um slot da barra; ele não pode ter sumido no
-  // caminho.
-  const treino = await page.locator('a[href="/scenario"]').count()
+  // caminho. Em NAV-T08 ele ganhou endereço próprio, `/mais/treino`.
+  const treino = await page.locator('a[href="/mais/treino"]').count()
   treino >= 1
     ? ok('o Treino tem porta em /mais')
     : no('o Treino sumiu de /mais', String(treino))

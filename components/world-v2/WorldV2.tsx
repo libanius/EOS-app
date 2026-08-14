@@ -990,7 +990,7 @@ function WorldSections({
 
       {/* ── Actions ── */}
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-        <PillLink href="/scenario" primary>
+        <PillLink href="/mais/treino" primary>
           {c.scenario}
         </PillLink>
         <PillLink href="/preparedness">{c.checklist}</PillLink>

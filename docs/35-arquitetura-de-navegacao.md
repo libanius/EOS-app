@@ -549,7 +549,13 @@ elas que **liberam os slots**.
 | 2 | Círculos e Ficha entram em Família | ✅ NAV-T05 · D-178 |
 | 3 | **Barra encolhe para 5; `/mais` absorve o ☰** | ✅ **NAV-T06 · D-180** |
 | 4 | `/weather` desce para dentro do MUNDO | ◧ NAV-T07 · D-182 — fase 1 de 2 (falta Abrigos e Camadas) |
-| 5 | Cenário vira MODO | ⬜ NAV-T08 |
+| 5 | Cenário vira MODO | ✅ NAV-T08 · D-184 |
+
+**Modelo C completo em 2026-08-14.** Cinco fases em três dias, mais três
+correções nascidas delas: D-179 (duas telas, a mesma palavra), D-181 (a porta
+do Clima era condicional) e D-183 (`/mais` fora da allow-list de rotas
+protegidas). As três seguem o mesmo padrão — o teste cobria o caminho **com**
+dado, e o defeito morava no caminho **sem**.
 
 Divergências assumidas em relação ao que este documento propôs:
 

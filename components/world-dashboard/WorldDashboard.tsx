@@ -755,7 +755,7 @@ function MobileWorldSheet({
 
       <div className="sheet-scroll" onScroll={onScroll}>
         <div className="sheet-actions">
-          <Link href="/scenario" className="w-chip solid">{c.openScenario}</Link>
+          <Link href="/mais/treino" className="w-chip solid">{c.openScenario}</Link>
           <Link href="/checklist" className="w-chip">{c.openChecklist}</Link>
           <button className="w-chip" disabled={!guidance} onClick={onFocusRoute}>{c.focusRoute}</button>
           {!hasCoords && <button className="w-chip" onClick={requestGps}>{c.useGps}</button>}
@@ -925,7 +925,7 @@ function PilotCapsule({
           {recommendation.factors.slice(0, 3).map(f => <span key={f}>{f}</span>)}
         </div>
         <div className="cap-actions">
-          <Link href="/scenario" className="w-chip solid">{override ? (pt ? 'Abrir resposta' : 'Open response') : c.openScenario}</Link>
+          <Link href="/mais/treino" className="w-chip solid">{override ? (pt ? 'Abrir resposta' : 'Open response') : c.openScenario}</Link>
           <Link href="/checklist" className="w-chip">{c.openChecklist}</Link>
           <button className="w-chip" disabled={!canFocusRoute} onClick={onFocusRoute}>{c.focusRoute}</button>
           <button className="w-chip" disabled={notifyState === 'sending'} onClick={notifyFamily}>

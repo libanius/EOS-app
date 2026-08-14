@@ -229,7 +229,7 @@ function DashboardContent() {
                   size={Math.min(360, typeof window !== 'undefined' ? window.innerWidth - 48 : 340)}
                   openLabel={language === 'pt' ? 'tocar p/ abrir' : 'tap to open'}
                   items={[
-                    { label: language === 'pt' ? 'Cenário' : 'Scenario', href: '/scenario' },
+                    { label: language === 'pt' ? 'Cenário' : 'Scenario', href: '/mais/treino' },
                     { label: language === 'pt' ? 'Clima' : 'Weather', href: '/dashboard/alertas' },
                     { label: language === 'pt' ? 'Recursos' : 'Inventory', href: '/inventory' },
                     { label: 'Checklist', href: '/checklist' },

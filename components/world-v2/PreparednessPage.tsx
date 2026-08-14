@@ -842,6 +842,30 @@ export default function PreparednessPage() {
           <span style={S.portaSeta} aria-hidden>›</span>
         </a>
 
+        {/*
+          A porta do Treino (NAV-T08 / D-184).
+
+          `docs/35` sempre listou "Card em Preparação" como entrada secundária
+          do Simulador, e ela nunca existiu — o Cenário vivia de um slot na barra
+          global, e ninguém sentiu falta enquanto ele estava lá. Ao virar
+          sub-rota de MAIS, a ausência ficou cara.
+
+          Treinar é preparação: o debrief do treino já grava requisitos com
+          procedência `SIMULATION_DEBRIEF` (D-092), ou seja o Simulador JÁ
+          alimenta esta tela. A porta só passou a admitir o que o dado já dizia.
+        */}
+        <a href="/mais/treino" style={S.porta}>
+          <span style={S.portaTexto}>
+            <span style={S.portaTitulo}>{language === 'pt' ? 'Treinar' : 'Run a drill'}</span>
+            <span style={S.portaEstado}>
+              {language === 'pt'
+                ? 'Ensaiar uma situação com a família, antes do dia real'
+                : 'Rehearse a situation with your family, before the real day'}
+            </span>
+          </span>
+          <span style={S.portaSeta} aria-hidden>›</span>
+        </a>
+
         <a href="/preparedness/o-que-falta" style={S.porta}>
           <span style={S.portaTexto}>
             <span style={S.portaTitulo}>{language === 'pt' ? 'O que falta' : 'What’s missing'}</span>

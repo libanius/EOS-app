@@ -169,10 +169,10 @@ try {
     ? ok('o MUNDO tem porta para os Alertas mesmo SEM alerta ativo')
     : no('os Alertas ficaram órfãos: nenhuma porta no MUNDO', String(portaClima))
 
-  const portaCenario = await page.locator('a[href="/scenario"]').count()
+  const portaCenario = await page.locator('a[href="/mais/treino"]').count()
   portaCenario >= 1
-    ? ok('o MUNDO tem porta para o Cenário')
-    : no('o Cenário ficou órfão no MUNDO', String(portaCenario))
+    ? ok('o MUNDO tem porta para o Treino')
+    : no('o Treino ficou órfão no MUNDO', String(portaCenario))
 
   // Clima e Cenário perderam o ícone, não o endereço.
   for (const rota of ['/weather', '/scenario']) {
@@ -196,7 +196,7 @@ try {
   const anon = await browser.newContext({ viewport: { width: 390, height: 844 } })
   try {
     const anonPage = await anon.newPage()
-    for (const rota of ['/mais', '/dashboard', '/dashboard/alertas', '/family', '/preparedness', '/comms']) {
+    for (const rota of ['/mais', '/mais/treino', '/dashboard', '/dashboard/alertas', '/family', '/preparedness', '/comms']) {
       await anonPage.goto(`${B}${rota}`, { waitUntil: 'domcontentloaded' })
       anonPage.url().includes('/auth/login')
         ? ok(`${rota} exige login`)
@@ -244,6 +244,40 @@ try {
   new URL(page.url()).pathname === '/dashboard'
     ? ok('o chip Mapa devolve ao mapa')
     : no('o chip Mapa não devolveu', page.url())
+
+  // ── NAV-T08 / D-184: Cenário deixa de ser destino de primeiro nível ───────
+  await page.goto(`${B}/scenario`, { waitUntil: 'networkidle' })
+  page.url().includes('/mais/treino')
+    ? ok('/scenario redireciona para /mais/treino')
+    : no('/scenario não redirecionou', page.url())
+
+  const faixaMais = page.locator('nav[aria-label="Seções de Mais"]')
+  await faixaMais.waitFor({ timeout: 20000 }).catch(() => {})
+  const chipsMais = await faixaMais.locator('a').count()
+  chipsMais === 2
+    ? ok('a faixa de Mais tem os 2 destinos')
+    : no('faixa de Mais ausente ou com contagem errada', String(chipsMais))
+
+  const acesoMais = await faixaMais.locator('[aria-current="page"]').innerText().catch(() => '')
+  acesoMais.trim() === 'Treino'
+    ? ok('Treino acende o próprio chip')
+    : no('Treino não acendeu', acesoMais)
+
+  const maisAceso = await page.locator('nav.nav a[aria-current="page"]').innerText().catch(() => '')
+  maisAceso.trim() === 'Mais'
+    ? ok('MAIS segue aceso na sub-rota do Treino')
+    : no('MAIS apagou na sub-rota', maisAceso)
+
+  /*
+   * A porta do Treino na Preparação (`docs/35` sempre a listou e ela nunca
+   * existiu). Treinar é preparação: o debrief já grava requisitos com
+   * procedência SIMULATION_DEBRIEF, então o Simulador já alimenta esta tela.
+   */
+  await page.goto(`${B}/preparedness`, { waitUntil: 'networkidle' })
+  const portaTreino = await page.locator('a[href="/mais/treino"]').count()
+  portaTreino >= 1
+    ? ok('a Preparação tem porta para o Treino')
+    : no('a Preparação não tem porta para o Treino', String(portaTreino))
 } finally {
   await browser.close().catch(() => {})
   stopServer()
