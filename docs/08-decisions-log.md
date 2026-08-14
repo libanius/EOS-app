@@ -4,6 +4,57 @@
 
 ---
 
+## D-172 — Escrita dupla que nunca derruba a escrita real
+
+**Date**: 2026-08-13
+**Status**: DECIDED
+**Roadmap**: PREP-T10b
+**Spec**: `docs/37-preparedness-state.md` §28 (estágio 3)
+
+**Context**: Com `requirements` e `kits` no ar e os estados de aquisição
+definidos, toda escrita nova passa a existir nas duas formas. O legado continua
+sendo a verdade até o cutover.
+
+**Decision**:
+
+1. **A escrita nova NUNCA derruba a legada.** Se espelhar falhar, o item já foi
+   gravado e a pessoa vê o que esperava; a falha vira linha no `error_log` e
+   nada mais. O contrário transformaria uma tabela que ninguém ainda lê num
+   ponto único de falha para uma tabela de que o app inteiro depende.
+
+2. **Ler-então-escrever, e não `upsert`.** A chave natural usa
+   `COALESCE(kit_id, sentinela)` porque `NULL` é distinto de `NULL` em índice
+   único (D-161) — e índice de EXPRESSÃO não pode ser alvo de `on_conflict` pelo
+   PostgREST, que só aceita nomes de coluna. A corrida resolve no banco, com o
+   índice único recusando a segunda inserção; nesse caso relemos em vez de
+   estourar.
+
+3. **Renomear remove o espelho antigo.** `canonical_key` é recalculada no rename
+   (D-121); sem isso o requisito da chave velha viraria órfão, e órfão faz a
+   prontidão contar uma falta que já não existe. A ordem importa: grava a chave
+   nova **antes** de apagar a velha, senão há uma janela sem nenhuma das duas.
+
+4. **`holdings` fica FORA da escrita dupla.** É integralmente derivável de
+   `resource_inventory` pelo adaptador de PREP-T04; espelhar o que já se projeta
+   adicionaria risco de divergência sem adicionar informação. Entra de uma vez
+   no backfill.
+
+**Consequence**:
+
+- **Validado contra o banco de produção**, não só por teste unitário:
+  `npm run test:dual-write`, 8 checagens com perfil temporário e limpeza. Teste
+  unitário prova a tradução; só o banco prova a escrita — o kit criado sob
+  demanda sem duplicar, a chave natural tratando `NULL` como valor, a segunda
+  gravação atualizando, e a exclusão levando o espelho.
+- A checagem que mais importa: **outra fonte atualiza a procedência em vez de
+  criar segunda linha** (D-155 §26.2). É a regra que o `kit_type` violava por
+  desenho, agora provada no banco novo.
+
+**Não autorizado por D-172**: backfill, cutover, espelhar `holdings`, remover
+`acquired`.
+
+---
+
 ## D-171 — Ciclo de vida do requisito; "não se aplica" é decisão que o app lembra
 
 **Date**: 2026-08-13

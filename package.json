@@ -36,6 +36,7 @@
     "test:address": "npx tsx scripts/address-flow-test.mjs",
     "test:nav": "node scripts/bottom-nav-test.mjs",
     "test:prep-nav": "node scripts/preparedness-nav-test.mjs",
+    "test:dual-write": "tsx scripts/dual-write-test.ts",
     "bench:rag": "node scripts/rag-bench.mjs"
   },
   "dependencies": {

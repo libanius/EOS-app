@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { canonicalKey, type ChecklistTier } from '@/lib/checklist'
 import { ACQUISITION_STATUSES, legacyFromStatus, type AcquisitionStatus } from '@/lib/acquisition'
+import { removeRequirement, syncRequirement, type ChecklistWrite } from '@/lib/requirements-sync'
 
 interface Params { params: Promise<{ id: string }> }
 
@@ -13,6 +14,18 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  /*
+   * Lê antes de apagar: sem a linha não há como saber qual requisito espelhado
+   * remover, e um requisito órfão faria a prontidão contar uma falta que o
+   * usuário já resolveu removendo o item (D-172).
+   */
+  const { data: antes } = await supabase
+    .from('checklists')
+    .select('canonical_key, kit_type')
+    .eq('id', id)
+    .eq('profile_id', user.id)
+    .maybeSingle()
+
   const { error } = await supabase
     .from('checklists')
     .delete()
@@ -20,6 +33,9 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
     .eq('profile_id', user.id)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  if (antes) await removeRequirement(supabase, user.id, antes.canonical_key, antes.kit_type)
+
   return NextResponse.json({ ok: true })
 }
 
@@ -80,6 +96,18 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'No valid fields' }, { status: 400 })
   }
 
+  /*
+   * Renomear recalcula `canonical_key` (D-121). Guardamos a chave ANTERIOR
+   * porque o espelho da chave velha viraria órfão — e um requisito órfão faz a
+   * prontidão contar uma falta que não existe mais (D-172).
+   */
+  const { data: antes } = await supabase
+    .from('checklists')
+    .select('canonical_key, kit_type')
+    .eq('id', id)
+    .eq('profile_id', user.id)
+    .maybeSingle()
+
   const { error, data } = await supabase
     .from('checklists')
     .update(patch)
@@ -92,5 +120,18 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     const status = error.code === '23505' ? 409 : 500
     return NextResponse.json({ error: error.message }, { status })
   }
+
+  /*
+   * Escrita dupla (D-172), na ordem que importa: primeiro grava a chave NOVA,
+   * depois remove a antiga se ela mudou. O inverso deixaria uma janela em que
+   * o requisito não existe em nenhuma das duas chaves.
+   */
+  if (data) {
+    await syncRequirement(supabase, user.id, data as ChecklistWrite)
+    if (antes && antes.canonical_key !== data.canonical_key) {
+      await removeRequirement(supabase, user.id, antes.canonical_key, antes.kit_type)
+    }
+  }
+
   return NextResponse.json({ ok: true, item: data })
 }

@@ -68,6 +68,21 @@ funcionando por adaptadores. Nenhum passo irreversível antes de um cutover
 explícito. Quem propuser reescrever inventário, plano, Pilot, EDU e simulação
 antes de mexer na UI está indo contra D-155.
 
+**Escrita nova nunca derruba escrita real (D-172).** Enquanto o legado for a
+verdade, o espelho falha em silêncio e vira linha no `error_log`. O contrário
+transformaria uma tabela que ninguém ainda lê num ponto único de falha para uma
+de que o app inteiro depende.
+
+**`on_conflict` do PostgREST não alcança índice de EXPRESSÃO.** A chave natural
+de `requirements` usa `COALESCE(kit_id, sentinela)`, então a conciliação é
+ler-então-escrever, com o índice único como rede e releitura na corrida. Não é
+preguiça: é a única forma que funciona com a chave que precisamos.
+
+**Teste unitário prova tradução; só o banco prova escrita.**
+`npm run test:dual-write` roda contra o Supabase real com perfil temporário e
+limpeza. Foi ele que provou o kit não duplicando, `NULL` tratado como valor na
+chave natural, e a procedência ATUALIZANDO em vez de duplicar.
+
 **Tabela sem consumidor não se cria (D-170).** `ReadinessAssessment` está
 prevista em `docs/37` §13 e **não** foi criada: hoje nada a leria. A spec
 continua certa sobre o destino; errado seria chegar lá antes de haver motivo.
