@@ -164,10 +164,10 @@ try {
   await page.goto(`${B}/dashboard`, { waitUntil: 'networkidle' })
   await page.waitForSelector('nav.nav a', { timeout: 10000 })
   await page.waitForTimeout(1500)
-  const portaClima = await page.locator('a[href="/weather"]').count()
+  const portaClima = await page.locator('a[href="/dashboard/alertas"]').count()
   portaClima >= 1
-    ? ok('o MUNDO tem porta para o Clima mesmo SEM alerta ativo')
-    : no('o Clima ficou órfão: nenhuma porta no MUNDO', String(portaClima))
+    ? ok('o MUNDO tem porta para os Alertas mesmo SEM alerta ativo')
+    : no('os Alertas ficaram órfãos: nenhuma porta no MUNDO', String(portaClima))
 
   const portaCenario = await page.locator('a[href="/scenario"]').count()
   portaCenario >= 1
@@ -182,6 +182,45 @@ try {
       ? ok(`${rota} continua alcançável por endereço`)
       : no(`${rota} virou 404`, String(status))
   }
+
+  // ── NAV-T07 / D-182: Alertas desceu para dentro do MUNDO ──────────────────
+  await page.goto(`${B}/weather`, { waitUntil: 'networkidle' })
+  page.url().includes('/dashboard/alertas')
+    ? ok('/weather redireciona para /dashboard/alertas')
+    : no('/weather não redirecionou', page.url())
+
+  /*
+   * A faixa do MUNDO tem que existir AQUI, no ramo sem localização.
+   *
+   * O navegador de teste não concede GPS, então esta página cai no retorno
+   * antecipado — o mesmo tipo de ramo que em NAV-T04 ficou sem navegação e
+   * virou beco sem saída para quem tinha MENOS dado.
+   */
+  const faixaMundo = page.locator('nav[aria-label="Seções do Mundo"]')
+  await faixaMundo.waitFor({ timeout: 20000 }).catch(() => {})
+  const chipsMundo = await faixaMundo.locator('a').count()
+  chipsMundo === 2
+    ? ok('a faixa do Mundo aparece mesmo sem localização')
+    : no('faixa do Mundo ausente ou com contagem errada', String(chipsMundo))
+
+  const acesoMundo = await faixaMundo.locator('[aria-current="page"]').innerText().catch(() => '')
+  acesoMundo.trim() === 'Alertas'
+    ? ok('Alertas acende o próprio chip')
+    : no('Alertas não acendeu', acesoMundo)
+
+  // MUNDO segue aceso na barra global: sub-rota de domínio não custa nada à
+  // navegação global.
+  const globalAceso = await page.locator('nav.nav a[aria-current="page"]').innerText().catch(() => '')
+  globalAceso.trim() === 'Mundo'
+    ? ok('MUNDO segue aceso na sub-rota')
+    : no('MUNDO apagou na sub-rota', globalAceso)
+
+  // O chip "Mapa" devolve ao mapa — a volta tem nome, não é só o botão do SO.
+  await faixaMundo.locator('a', { hasText: 'Mapa' }).click()
+  await page.waitForURL(/\/dashboard$/, { timeout: 10000 }).catch(() => {})
+  new URL(page.url()).pathname === '/dashboard'
+    ? ok('o chip Mapa devolve ao mapa')
+    : no('o chip Mapa não devolveu', page.url())
 } finally {
   await browser.close().catch(() => {})
   stopServer()

@@ -349,7 +349,7 @@ export default function WorldDashboard() {
         />
 
         {/* ── Alert Counter (tappable → weather/alerts) ── */}
-        <Link href="/weather" className="w-glass w-alerts tappable" aria-label={`${alertCount} ${c.alerts} — ${language === 'pt' ? 'ver detalhes' : 'view details'}`}>
+        <Link href="/dashboard/alertas" className="w-glass w-alerts tappable" aria-label={`${alertCount} ${c.alerts} — ${language === 'pt' ? 'ver detalhes' : 'view details'}`}>
           <div className="w-eyebrow" style={{ marginBottom: 4 }}>{c.alerts}</div>
           <div className="n">{alertCount}</div>
         </Link>

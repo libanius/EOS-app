@@ -230,7 +230,7 @@ function DashboardContent() {
                   openLabel={language === 'pt' ? 'tocar p/ abrir' : 'tap to open'}
                   items={[
                     { label: language === 'pt' ? 'Cenário' : 'Scenario', href: '/scenario' },
-                    { label: language === 'pt' ? 'Clima' : 'Weather', href: '/weather' },
+                    { label: language === 'pt' ? 'Clima' : 'Weather', href: '/dashboard/alertas' },
                     { label: language === 'pt' ? 'Recursos' : 'Inventory', href: '/inventory' },
                     { label: 'Checklist', href: '/checklist' },
                     { label: language === 'pt' ? 'Família' : 'Family', href: '/family' },

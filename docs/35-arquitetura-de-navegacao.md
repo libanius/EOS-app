@@ -548,7 +548,7 @@ elas que **liberam os slots**.
 | 1 | Plano e Aprender entram na Preparação | ✅ NAV-T04 · D-177 |
 | 2 | Círculos e Ficha entram em Família | ✅ NAV-T05 · D-178 |
 | 3 | **Barra encolhe para 5; `/mais` absorve o ☰** | ✅ **NAV-T06 · D-180** |
-| 4 | `/weather` desce para dentro do MUNDO | ⬜ NAV-T07 |
+| 4 | `/weather` desce para dentro do MUNDO | ◧ NAV-T07 · D-182 — fase 1 de 2 (falta Abrigos e Camadas) |
 | 5 | Cenário vira MODO | ⬜ NAV-T08 |
 
 Divergências assumidas em relação ao que este documento propôs:

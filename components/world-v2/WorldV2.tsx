@@ -1093,7 +1093,7 @@ function WorldSections({
           recomendação de atividade — e essas existem sempre.
         */}
         <div style={{ marginTop: '0.75rem' }}>
-          <PillLink href="/weather">{alertCount ? c.seeAlerts : c.seeConditions}</PillLink>
+          <PillLink href="/dashboard/alertas">{alertCount ? c.seeAlerts : c.seeConditions}</PillLink>
         </div>
       </Card>
 

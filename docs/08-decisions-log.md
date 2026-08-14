@@ -4,6 +4,59 @@
 
 ---
 
+## D-182 — Alertas desce para dentro do MUNDO
+
+**Date**: 2026-08-14
+**Status**: DECIDED
+**Roadmap**: NAV-T07 (fase 1 de 2 · fase 4 de 5 do Modelo C)
+
+**Context**: Achado **A3** do `docs/35`: alertas e condições viviam em **duas
+telas** — o cartão "Alertas ativos" na folha do MUNDO e a tela `/weather`
+inteira, 790 linhas com a própria linguagem visual. Nenhuma das duas era dona
+do assunto, e nenhuma podia ser corrigida sem a outra divergir.
+
+D-181 acabou de mostrar o preço disso na prática: a porta entre as duas era
+condicional, e ninguém tinha percebido em meses.
+
+**Decision**:
+
+1. **`/dashboard/alertas` é o dono.** O conteúdo de `/weather` virou
+   `components/world-v2/AlertsPage.tsx` e passou a ser sub-rota do MUNDO —
+   mesmo movimento que Plano e Ficha fizeram em NAV-T04 e T05.
+
+2. **`/weather` redireciona.** Está em histórico, em links internos e é o
+   caminho de quem quer saber se pode sair de casa.
+
+3. **O MUNDO ganha faixa de domínio**, como Preparação e Família já têm:
+   `Mapa · Alertas`. O chip **Mapa** dá nome à volta — antes ela dependia do
+   botão do sistema operacional.
+
+4. **Só DOIS chips, e não os quatro do documento.** `Abrigos` é cartão dentro
+   da folha e `Camadas` é folha sobre o mapa; dar endereço aos dois é a fase 2.
+   Uma faixa de dois é honesta — uma faixa com dois chips mortos não seria.
+
+5. **A faixa entra nos DOIS ramos de retorno de `AlertsPage`.** Quem não deu
+   permissão de localização cai no retorno antecipado, e é justamente quem mais
+   precisa de saída com nome. Este é o mesmo descuido que em NAV-T04 deixou
+   `PlanPage` sem navegação para quem não tinha círculo — o teste agora roda
+   nesse ramo, porque o navegador de teste não concede GPS.
+
+**Consequence**:
+
+- **O cartão da folha e a tela viram resumo → detalhe**, que é a relação certa
+  entre duas superfícies do mesmo assunto. Antes eram duas telas irmãs.
+- **Dívida assumida e registrada**: o corpo de `AlertsPage` é inteiramente em
+  inglês, escrito antes do i18n existir ("Weather Intelligence", "Allow location
+  access"). Traduzir 790 linhas não cabia aqui, e traduzir só o cabeçalho
+  produziria uma tela meio portuguesa — pior que a de agora, porque prometeria o
+  que não cumpre. A faixa é bilíngue; o resto é pendência própria.
+- `test:nav` 18/18 (era 13).
+
+**Não autorizado por D-182**: traduzir `AlertsPage`, transformar Abrigos e
+Camadas em rotas (fase 2), mexer no cartão de alertas da folha além do link,
+antecipar NAV-T08.
+
+
 ## D-181 — A porta do Clima era condicional, e a condição era "estar em perigo"
 
 **Date**: 2026-08-14
