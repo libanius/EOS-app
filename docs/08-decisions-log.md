@@ -4,6 +4,71 @@
 
 ---
 
+## D-185 — O estoque não salvava havia um dia, e o erro não tinha como ser visto
+
+**Date**: 2026-08-14
+**Status**: DECIDED
+**Roadmap**: PREP-T16
+**Achado**: dono do produto, com a barra vermelha na tela
+
+**Context**: `/preparedness/o-que-tenho` mostrava **"Erro ao salvar."** a cada
+mudança. Nada disso aparecia no `error_log`.
+
+**Causa**: `/api/inventory` exporta **GET e POST**, e o POST já é upsert
+(`ON CONFLICT (profile_id) DO UPDATE`). O cliente mandava **PUT**. Sem handler
+PUT, o Next devolve **405**.
+
+O método era `POST` até `5d3ca51` — o commit que extraiu os editores de
+`PreparednessPage` para `HoldingsPage` (PREP-T07 fase 2 / D-165). **A extração
+trocou o verbo.** O estoque parou de gravar em 2026-08-13 e ninguém viu por um
+dia.
+
+**Por que nada pegou**:
+
+1. **Nenhum teste jamais ESCREVEU nesta tela.** `test:prep-nav` provava que ela
+   abre, que o chip acende e que a Visão não tem editor — tudo sobre navegação.
+   Gravar, nunca.
+2. **O cliente engolia o erro.** `if (!res.ok) setSaveError(...)` descartava
+   `status` e corpo, e não reportava a `/api/client-error`. A única evidência no
+   mundo era uma barra vermelha sem número. Um 405 ficava indistinguível de um
+   500, de um 422 ou de uma queda de rede.
+
+**Decision**:
+
+1. **O cliente passa a falar POST**, a língua que a rota já fala. Criar um
+   handler PUT resolveria o sintoma e deixaria **duas portas para a mesma
+   escrita** — a classe de defeito que esta frente inteira veio fechar.
+
+2. **A falha de gravação vira registro.** Status e corpo vão para
+   `/api/client-error`, e portanto para o `error_log`. O 405 não foi o defeito
+   caro; o silêncio foi.
+
+3. **`test:prep-nav` passa a ESCREVER**: toca o "+" da água, espera o debounce,
+   **recarrega** e confere que o número voltou diferente. Recarregar é o ponto —
+   sem isso o teste mediria estado em memória, que muda mesmo quando a gravação
+   falha.
+
+4. **Verificado ao contrário**: com `PUT` de volta, o teste falha nos dois
+   critérios (`0 → 0`). Um teste de regressão que não fica vermelho no defeito
+   não é guarda, é decoração.
+
+**Consequence**:
+
+- **Auditei todos os 60 pares (rota, método) do app** contra os handlers
+  exportados. `PUT /api/inventory` era o único sem par. Os outros sete
+  apontados eram falso positivo do resolvedor com segmento dinâmico, conferidos
+  um a um.
+- **Quinta vez nesta sessão que um teste passava com o comportamento errado**, e
+  a quinta com a mesma forma: o teste mede o caminho de LEITURA, e o defeito
+  mora na ESCRITA. As anteriores foram D-179, D-181, D-183 e a régua de água.
+- Extração de componente merece a mesma desconfiança que refatoração de lógica.
+  Aqui ela mudou um verbo HTTP e nenhum sinal de tipo, lint ou build acusou —
+  `fetch` aceita qualquer string como método.
+
+**Não autorizado por D-185**: criar handler PUT em `/api/inventory`, mexer no
+contrato da rota, alterar o debounce.
+
+
 ## D-184 — Cenário vira modo: o endereço estava errado, a forma não
 
 **Date**: 2026-08-14

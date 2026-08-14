@@ -239,13 +239,47 @@ export default function HoldingsPage() {
         setSaveError(null)
         setSaved(false)
         try {
+          /*
+           * POST, não PUT (PREP-T16 / D-185).
+           *
+           * `/api/inventory` sempre exportou GET e POST, e o POST já é upsert
+           * (`ON CONFLICT (profile_id) DO UPDATE`). Quando este editor saiu de
+           * `PreparednessPage` em D-165, o método virou PUT na extração — e sem
+           * handler PUT o Next devolve **405**, que a tela mostrava como um
+           * genérico "Erro ao salvar".
+           *
+           * A correção é o cliente falar a língua que a rota já fala. Criar um
+           * handler PUT resolveria o sintoma e deixaria DUAS portas para a mesma
+           * escrita, que é exatamente a classe de defeito que esta frente
+           * inteira veio fechar.
+           */
           const res = await fetch('/api/inventory', {
-            method: 'PUT',
+            method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data),
           })
-          if (!res.ok) setSaveError(t('common.saveError'))
-          else {
+          if (!res.ok) {
+            setSaveError(t('common.saveError'))
+            /*
+             * E o erro para de morrer na tela.
+             *
+             * O motivo de isto sobreviver um dia inteiro não foi o 405: foi que
+             * ninguém do lado de cá conseguia vê-lo. O cliente descartava
+             * `status` e corpo, e nada chegava ao `error_log` — a única
+             * evidência era uma barra vermelha sem informação nenhuma.
+             */
+            const detalhe = await res.text().catch(() => '')
+            void fetch('/api/client-error', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              keepalive: true,
+              body: JSON.stringify({
+                message: `PUT/POST /api/inventory falhou: ${res.status} ${detalhe.slice(0, 300)}`,
+                kind: 'inventory-save',
+                url: window.location.href,
+              }),
+            }).catch(() => { /* falhar ao reportar não pode virar reporte */ })
+          } else {
             setSaved(true)
             setTimeout(() => setSaved(false), 2000)
           }

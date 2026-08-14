@@ -290,6 +290,49 @@ try {
     ? ok('o Treino tem porta em /mais')
     : no('o Treino sumiu de /mais', String(treino))
 
+  /*
+   * ── 5i. O ESTOQUE SALVA DE VERDADE (PREP-T16 / D-185) ────────────────────
+   *
+   * A checagem que faltava e custou um dia inteiro: nenhum teste jamais
+   * ESCREVEU nesta tela. `test:prep-nav` provava que ela abre, que o chip
+   * acende e que a Visão não tem editor — tudo sobre navegação, nada sobre
+   * gravar.
+   *
+   * De 2026-08-13 até aqui, o editor mandava PUT para uma rota que só tem GET
+   * e POST. O Next devolvia 405 e a tela dizia "Erro ao salvar", sem número,
+   * sem log, sem nada do outro lado.
+   *
+   * Este teste toca o "+" da água, espera o debounce, RECARREGA e confere que
+   * o número voltou diferente. Recarregar é o ponto: sem isso ele mediria só o
+   * estado em memória, que muda mesmo quando a gravação falha.
+   */
+  // O `NumericStepper` só vira `<input>` quando a pessoa toca no número; em
+  // repouso o valor é um `<span>` arrastável. Ler o span é o que o olho lê.
+  const valorAgua = async () => {
+    await page.locator('button[aria-label="Aumentar"]').first().waitFor({ timeout: 20000 })
+    const txt = await page.locator('button[aria-label="Diminuir"]').first()
+      .evaluate(el => el.parentElement?.querySelector('span')?.textContent ?? '')
+    return Number(String(txt).replace(',', '.'))
+  }
+
+  await page.goto(`${B}/preparedness/o-que-tenho`, { waitUntil: 'networkidle' })
+  const antes = await valorAgua()
+
+  await page.locator('button[aria-label="Aumentar"]').first().click()
+  // 600ms de debounce + a ida ao servidor.
+  await page.waitForTimeout(2500)
+
+  const erroVisivel = await page.getByText(/Erro ao salvar/i).count()
+  erroVisivel === 0
+    ? ok('o estoque não mostra erro ao salvar')
+    : no('o estoque mostrou "Erro ao salvar"')
+
+  await page.reload({ waitUntil: 'networkidle' })
+  const depois = await valorAgua()
+  depois > antes
+    ? ok(`a água PERSISTE depois de recarregar: ${antes} → ${depois}`)
+    : no('a água não persistiu — a gravação falhou', `${antes} → ${depois}`)
+
   // ── 6. O endereço antigo não vira 404 ─────────────────────────────────────
   await page.goto(`${B}/checklist`, { waitUntil: 'networkidle' })
   const redirecionou = page.url().includes('/preparedness/o-que-falta')
