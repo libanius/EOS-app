@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { generationParams, getOpenAIClient, getOpenAIModel } from '@/lib/openai'
 import { enforceAiBudget, rateLimitHeaders } from '@/lib/rate-limit'
 import { logError } from '@/lib/error-log'
-import { getHousehold } from '@/lib/household'
+import { getHousehold, householdDays } from '@/lib/household'
 import { evaluateGuard } from '@/lib/pilot-guard'
 import { getRelevantChunks } from '@/lib/knowledge'
 import { formatGallons, GALLON_SHORT } from '@/lib/units'
@@ -760,9 +760,36 @@ export async function POST(request: NextRequest) {
         ? 'Pessoas: não foi possível confirmar quem mora nesta casa agora. Não afirme um número.'
         : 'People: could not confirm who lives in this household right now. Do not state a number.')
 
-  const reserves = pt
-    ? `Autonomia ${context.autonomyDays.toFixed(1)} dias (água ${context.waterDays.toFixed(1)}d, comida ${context.foodDays.toFixed(1)}d, energia ${context.powerDays.toFixed(1)}d, combustível ${context.fuelDays.toFixed(1)}d). Checklist ${context.checklistPct}%.`
-    : `Autonomy ${context.autonomyDays.toFixed(1)} days (water ${context.waterDays.toFixed(1)}d, food ${context.foodDays.toFixed(1)}d, power ${context.powerDays.toFixed(1)}d, fuel ${context.fuelDays.toFixed(1)}d). Checklist ${context.checklistPct}%.`
+  /*
+   * ── As reservas são lidas NO SERVIDOR (PILOT-T12 / D-174) ───────────────
+   *
+   * Aqui estava o defeito que o dono encontrou: esta linha imprimia
+   * `context.autonomyDays` — um número vindo do CLIENTE — e mandava ao modelo
+   * `Autonomia 0.0 dias (água 0.0d, comida 0.0d…)` sempre que os fatos do
+   * cliente ainda não tinham carregado. O modelo então escrevia, corretamente
+   * do ponto de vista dele, "sua autonomia está em zero, o que significa que
+   * sua família não tem reservas". Enquanto isso o painel mostrava 2,7 dias.
+   *
+   * Duas causas cabiam no mesmo sintoma: `usePilotFacts` só busca quando o orbe
+   * ABRE (corrida com quem digita rápido), e casa desconhecida virava
+   * `FATOS_VAZIOS`, que tem todos os dias em ZERO. Zero não é ausência de
+   * informação — é um fato, e o pior possível.
+   *
+   * A correção é a invariante que `docs/37` §7 já exigia: **estado estruturado
+   * se lê no servidor**. O cliente pode enriquecer; não pode SER o fato. Assim a
+   * corrida deixa de existir, e casa desconhecida vira uma frase honesta em vez
+   * de um número inventado para baixo.
+   */
+  const dias = householdDays(casa.known ? casa.inventory : null, casa.size, casa.known)
+  const d = (v: number | null) => (v === null ? '?' : v.toFixed(1))
+
+  const reserves = dias.autonomy === null
+    ? (pt
+      ? 'Reservas: NÃO SABEMOS. A composição da casa não pôde ser confirmada agora — não afirme autonomia, nem em dias nem como "zero". Peça para completar o cadastro da casa.'
+      : 'Reserves: UNKNOWN. Household composition could not be confirmed right now — do not state autonomy, neither in days nor as "zero". Ask them to complete the household record.')
+    : (pt
+      ? `Autonomia ${d(dias.autonomy)} dias (água ${d(dias.water)}d, comida ${d(dias.food)}d, energia ${d(dias.power)}d, combustível ${d(dias.fuel)}d). Checklist ${context.checklistPct}%.`
+      : `Autonomy ${d(dias.autonomy)} days (water ${d(dias.water)}d, food ${d(dias.food)}d, power ${d(dias.power)}d, fuel ${d(dias.fuel)}d). Checklist ${context.checklistPct}%.`)
 
   // Real places matching what was asked, with real coordinates.
   const places = await findPlaces(question, context.selfCoords)
@@ -861,7 +888,7 @@ export async function POST(request: NextRequest) {
       : 'ACTIVITY vs RESERVES: the verdict on an activity depends on the conditions affecting THAT activity — gusts, rain, lightning, UV, visibility, official alerts. Household stock (water, food, checklist) does NOT belong in that verdict: nobody skips roof work because their water store is low. Never veto an activity without a number that justifies it; low gusts and clear sky mean "go".',
     pt
       ? 'REGRAS INEGOCIÁVEIS: 1) Nunca invente abrigo, rota ou ordem de evacuação — evacuação só existe se houver ordem oficial. 2) Use os números reais da família acima; nada de conselho genérico. 3) Se faltar dado, diga que falta. 4) Nunca suavize um risco crítico. 5) NUNCA calcule distância, rumo ou coordenada por conta própria — use apenas os números já fornecidos acima. Ao mencionar direção ou distância, **copie o valor exato** que foi dado (ex.: "34.0 km a NO"); nunca parafraseie para outra direção nem arredonde o rumo. 6) Só cite posição de quem aparece na lista de posições consentidas.'
-      : 'NON-NEGOTIABLE RULES: 1) Never invent a shelter, route or evacuation order — evacuation exists only under an official order. 2) Use the real household numbers above; no generic advice. 3) If data is missing, say so. 4) Never soften a critical risk. 5) NEVER compute a distance, bearing or coordinate yourself — use only the numbers given above. When mentioning a direction or distance, **copy the exact value** you were given (e.g. "34.0 km NW"); never paraphrase it into a different direction or round the bearing. 6) Only cite the position of people who appear in the consented positions list.',
+      : 'NON-NEGOTIABLE RULES: 1) Never invent a shelter, route or evacuation order — evacuation exists only under an official order. 2) Use the real household numbers above; no generic advice. 3) If data is missing, say so — and NEVER express missing data as a number, especially not as zero: UNKNOWN and NONE are opposite statements. 4) Never soften a critical risk. 5) NEVER compute a distance, bearing or coordinate yourself — use only the numbers given above. When mentioning a direction or distance, **copy the exact value** you were given (e.g. "34.0 km NW"); never paraphrase it into a different direction or round the bearing. 6) Only cite the position of people who appear in the consented positions list.',
     pt
       ? 'Responda no mesmo idioma em que o usuário escreveu. RESPONDA SOMENTE com JSON, e o campo "reply" TEM QUE VIR PRIMEIRO no objeto — a interface mostra a resposta enquanto ela chega, e um campo antes dele atrasa a primeira palavra na tela: {"reply":"sua resposta","tasks":[{"name":"ação curta e executável","why":"por que","kind":"resource|task|plan_review|comms_setup","tier":"ESSENTIAL|MODERATE|EXCELLENT","quantity":1,"unit":null}],"memory":[{"title":"memória curta","reason":"por que isso ajuda no futuro","proposal_md":"- Preferência/regra/necessidade em Markdown"}],"destinations":[{"label":"nome do lugar","lat":0,"lng":0}]}. Inclua em tasks TODA ação concreta que você recomendar. Use memory somente para preferências/necessidades duráveis. Inclua em destinations TODO lugar para onde valha a pena ir — copiando as coordenadas exatas da lista acima, nunca inventando. Se não houver, use [].'
       : 'Reply in the language the user wrote in. ANSWER ONLY with JSON, and the "reply" field MUST COME FIRST in the object — the interface renders the answer as it streams, and any field before it delays the first word on screen: {"reply":"your answer","tasks":[{"name":"short executable action","why":"why","kind":"resource|task|plan_review|comms_setup","tier":"ESSENTIAL|MODERATE|EXCELLENT","quantity":1,"unit":null}],"memory":[{"title":"short memory","reason":"why this helps later","proposal_md":"- Preference/rule/need in Markdown"}],"destinations":[{"label":"place name","lat":0,"lng":0}]}. Put EVERY concrete action into tasks. Use memory only for durable preferences/needs. Put in destinations EVERY place worth travelling to — copying exact coordinates from the list above, never inventing them. Use [] when there are none.',

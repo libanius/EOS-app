@@ -68,6 +68,22 @@ funcionando por adaptadores. Nenhum passo irreversível antes de um cutover
 explícito. Quem propuser reescrever inventário, plano, Pilot, EDU e simulação
 antes de mexer na UI está indo contra D-155.
 
+**"Não sabemos" e "você não tem nada" são afirmações OPOSTAS (D-174).** O Pilot
+disse que a autonomia estava em zero enquanto o painel mostrava 2,7 dias, porque
+o prompt recebia `Autonomia 0.0 dias` do CLIENTE quando os fatos ainda não
+tinham carregado. Zero não é ausência de informação — é um fato, e o pior
+possível. `householdDays()` devolve `null` para desconhecido, e o prompt tem
+regra explícita proibindo expressar dado faltante como número.
+
+**Estado estruturado se lê NO SERVIDOR** (`docs/37` §7). O cliente enriquece;
+não É o fato. Foi o que matou a corrida entre o orbe abrindo e a pessoa
+digitando.
+
+**Cálculo puro não mora ao lado de acesso a banco.** `lib/household.ts` importa
+`createAdminClient` e `error-log` (→ `node:crypto`); quando um componente
+CLIENTE importou de lá, o build quebrou. Cálculo compartilhado entre servidor e
+cliente vai para módulo puro — foi assim que nasceu `lib/household-days.ts`.
+
 **O cutover CONGELA `checklists`; não a mantém em sincronia (D-173).** O
 espelho invertido é impossível por construção: `kit_type` guarda UMA dimensão, e
 um requisito com kit E procedência não cabe nele — é exatamente o defeito que

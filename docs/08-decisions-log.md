@@ -4,6 +4,69 @@
 
 ---
 
+## D-174 — "Não sabemos" e "você não tem nada" são afirmações opostas
+
+**Date**: 2026-08-13
+**Status**: DECIDED
+**Roadmap**: PILOT-T12
+**Achado**: dono do produto
+**Spec**: `docs/37-preparedness-state.md` §7
+
+**Context**: O Pilot escreveu, para o dono:
+
+> *"Também notei que sua autonomia de água, comida, energia e combustível está
+> em zero, o que significa que sua família não tem reservas para emergências."*
+
+No mesmo minuto, o painel mostrava **2,7 dias**. E a Preparação mostrava
+"3 membros" — a casa era conhecida.
+
+**Causa, localizada em `app/api/pilot/chat/route.ts:764`**: a linha das reservas
+imprimia `context.autonomyDays` — um número vindo do **cliente** — e mandava ao
+modelo `Autonomia 0.0 dias (água 0.0d, comida 0.0d…)`. O modelo obedeceu: ele
+disse exatamente o que lhe foi dito.
+
+Duas causas cabiam no mesmo sintoma:
+
+1. **Corrida.** `PilotDock` chama `usePilotFacts(open)` — os fatos só começam a
+   carregar quando o orbe ABRE. Quem digita rápido envia contexto vazio.
+2. **Casa desconhecida** virava `FATOS_VAZIOS`, que tem todos os dias em ZERO.
+
+O comentário do próprio `usePilotFacts` dizia que a intenção era *"o honesto é
+dizer que não sabe"*. A intenção estava certa; a expressão, não.
+
+**Decision**:
+
+1. **As reservas são lidas NO SERVIDOR.** É a invariante que `docs/37` §7 já
+   exigia e que ninguém tinha aplicado a este caminho: *"structured state is
+   read server-side on every assembly; client-supplied context may enrich but
+   may never BE the factual state."* Isso mata a corrida por construção.
+
+2. **`null` para desconhecido, nunca `0`.** `householdDays()` devolve `null`
+   quando a casa não é conhecida, e o prompt passa a dizer:
+   *"Reservas: NÃO SABEMOS — não afirme autonomia, nem em dias nem como zero."*
+
+3. **Regra explícita no prompt**: *"NUNCA expresse dado faltante como número,
+   muito menos como zero: NÃO SABEMOS e NÃO TEM NADA são afirmações opostas."*
+
+4. **As fórmulas passam a existir num lugar só.** Era a **quinta** duplicação
+   desta frente — e a que produziu o defeito mais grave.
+
+**Consequence**:
+
+- **Uma fronteira apareceu e foi respeitada.** Pôr `householdDays` em
+  `lib/household.ts` quebrou o build: aquele arquivo importa `createAdminClient`
+  e `error-log`, que puxam `node:crypto`, e `usePilotFacts` roda no CLIENTE. A
+  função foi para `lib/household-days.ts`, puro. **Cálculo puro não mora ao lado
+  de acesso a banco** — o build disse isso antes de qualquer usuário dizer.
+- O teste que fica: *"zero legítimo e desconhecido nunca são a mesma coisa"*.
+  Uma casa que de fato não tem nada devolve **0** e deve alarmar; uma casa que
+  não conhecemos devolve **null** e não deve virar frase nenhuma sobre reservas.
+
+**Não autorizado por D-174**: mudar o comportamento do orbe, segurar o envio da
+mensagem, mexer no `pilot-guard`.
+
+---
+
 ## D-173 — Backfill aplicado; e o cutover não pode manter o legado em sincronia
 
 **Date**: 2026-08-13

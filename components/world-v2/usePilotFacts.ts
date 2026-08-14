@@ -26,13 +26,9 @@
  */
 
 import { useCallback, useEffect, useState } from 'react'
-import { WATER_LITERS_PER_PERSON_DAY } from '@/lib/units'
+import { householdDays } from '@/lib/household-days'
 
 /** As mesmas constantes do resto do app. Duplicá-las já produziu duas contas. */
-/** D-159: régua da FEMA, uma cópia só (lib/units.ts). */
-const LITROS_POR_PESSOA_DIA = WATER_LITERS_PER_PERSON_DAY
-const DIAS_DE_BATERIA_CHEIA = 3
-const LITROS_POR_DIA_DE_COMBUSTIVEL = 10
 
 export type PilotFacts = {
   household: {
@@ -126,10 +122,16 @@ export function usePilotFacts(enabled: boolean): Omit<PilotFacts, 'refresh'> & {
      * `autonomyDays = food_days` da própria conta, sem dividir por ninguém e
      * sem olhar a água.
      */
-    const waterDays = inv.waterLiters / (LITROS_POR_PESSOA_DIA * bocas)
-    const foodDays = inv.foodPersonDays / bocas
-    const powerDays = (inv.batteryPercent / 100) * DIAS_DE_BATERIA_CHEIA
-    const fuelDays = inv.fuelLiters / LITROS_POR_DIA_DE_COMBUSTIVEL
+    /*
+     * D-174: as fórmulas moram em `lib/household`, num lugar só. Esta era a
+     * quinta cópia, e foi a que produziu o defeito mais grave — o Pilot
+     * afirmando zero enquanto o painel mostrava 2,7 dias.
+     */
+    const dias = householdDays(inv, bocas, true)
+    const waterDays = dias.water ?? 0
+    const foodDays = dias.food ?? 0
+    const powerDays = dias.power ?? 0
+    const fuelDays = dias.fuel ?? 0
 
     setFatos({
       household: {

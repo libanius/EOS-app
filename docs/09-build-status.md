@@ -10,10 +10,11 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Preparedness Engine (PREP/EDU/COMMS/ONB/PILOT) sobre Web/PWA |
-| **Current Task** | **PREP-T10d — cutover.** Forma definida e portão verde (`npm run test:cutover-gate`); execução **não iniciada** — move 18 leitores de uma vez e congela `checklists`. É o primeiro passo irreversível: fazer em sessão própria, com verificação de navegador. Também PENDING: **PILOT-T12** (defeito de segurança) e **PREP-T15** (perfis órfãos). |
+| **Current Task** | **PREP-T10d — cutover.** Forma definida e portão verde (`npm run test:cutover-gate`); execução **não iniciada** — move 18 leitores de uma vez e congela `checklists`. É o primeiro passo irreversível: fazer em sessão própria, com verificação de navegador. Também PENDING: **PREP-T15** (perfis órfãos). PILOT-T12 concluída (D-174). |
 | **Migrações aplicadas** | Todas as quatro da frente aplicadas e verificadas por REST: `locations`, `holdings`, `kits`, `requirements`, `checklists.status`. Nenhuma pendência. |
 | **Migrações aplicadas** | As duas de Preparedness State **aplicadas em 2026-08-13** e verificadas por REST: `locations`, `holdings`, `kits`, `requirements` → 200. Nenhuma pendência operacional. |
-| **Last Completed Task** | **D-173 / PREP-T10c — Backfill aplicado; forma do cutover definida (2026-08-13)** |
+| **Last Completed Task** | **D-174 / PILOT-T12 — "Não sabemos" ≠ "você não tem nada" (2026-08-13)** |
+| | **D-173 / PREP-T10c — Backfill aplicado; forma do cutover definida (2026-08-13)** |
 | | **D-172 / PREP-T10b — Escrita dupla validada contra o banco (2026-08-13)** |
 | | **D-171 / PREP-T10 fase 1 — Estados de aquisição; "não se aplica" (2026-08-13)** |
 | | **D-170 / PREP-T09 — Amortecimento do laço, sem tabela que ninguém leria (2026-08-13)** |

@@ -176,6 +176,16 @@ const VAZIO: HouseholdInventory = {
  * O nome antigo (`WATER_PER_PERSON_DAY`) não dizia a unidade. O novo diz.
  */
 export { WATER_LITERS_PER_PERSON_DAY }
+/*
+ * `householdDays` mora em `lib/household-days.ts`, PURO, e é reexportado aqui
+ * por conveniência do servidor.
+ *
+ * O motivo é uma fronteira real: este arquivo importa `createAdminClient` e
+ * `error-log`, que puxam `node:crypto`. Quando `usePilotFacts` — que é CLIENTE —
+ * passou a importar daqui, o build quebrou. A regra de sempre: cálculo puro não
+ * mora ao lado de acesso a banco.
+ */
+export { householdDays, type HouseholdDays } from '@/lib/household-days'
 export const BATTERY_FULL_DAYS = 3
 export const LITRES_PER_FUEL_DAY = 10
 
