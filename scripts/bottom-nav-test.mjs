@@ -103,23 +103,61 @@ try {
     ? ok('dashboard não entra em loop de renderização')
     : no('dashboard entrou em loop de renderização', `${loopErrors.length} warnings`)
 
+  /*
+   * Os cinco destinos de NAV-T06 (D-180). Eram seis abas mais o orbe; Clima,
+   * Círculos e Cenário perderam o slot e MAIS ganhou o dele.
+   */
   const cases = [
-    ['Clima', /\/weather/],
     ['Família', /\/family/],
     ['Preparação', /\/preparedness/],
+    ['Mundo', /\/dashboard/],
     ['Comms', /\/comms/],
-    ['Círculos', /\/circles/],
-    ['Cenário', /\/scenario/],
+    ['Mais', /\/mais/],
   ]
 
   for (const [label, expected] of cases) {
-    await page.goto(`${B}/dashboard`, { waitUntil: 'networkidle' })
+    /*
+     * O MUNDO parte de /dashboard, então "navegar" para ele passaria de graça.
+     * Ele é medido de outro lugar — e o que importa nele é estar ACESO.
+     */
+    const partida = label === 'Mundo' ? '/preparedness' : '/dashboard'
+    await page.goto(`${B}${partida}`, { waitUntil: 'networkidle' })
     await page.waitForSelector('nav.nav a', { timeout: 10000 })
     await page.locator('nav.nav a', { hasText: label }).first().click({ timeout: 5000 })
     await page.waitForURL(expected, { timeout: 7000 }).catch(() => {})
     expected.test(page.url())
       ? ok(`BottomNav navega para ${label}`)
       : no(`BottomNav não navegou para ${label}`, page.url())
+  }
+
+  // A barra tem CINCO destinos, e nem um a mais (NAV-T06 / D-180).
+  await page.goto(`${B}/dashboard`, { waitUntil: 'networkidle' })
+  await page.waitForSelector('nav.nav a', { timeout: 10000 })
+  const destinos = await page.locator('nav.nav a').count()
+  destinos === 5
+    ? ok('BottomNav tem 5 destinos')
+    : no('BottomNav com contagem errada', String(destinos))
+
+  // O ☰ não existe mais: era a segunda navegação, e invisível.
+  const menuMorto = await page.locator('.app-actions-trigger').count()
+  menuMorto === 0
+    ? ok('o ☰ deixou de existir')
+    : no('o ☰ ainda está na tela', String(menuMorto))
+
+  // O endereço antigo de Configurações não pode virar 404 — é o caminho do
+  // pagamento.
+  await page.goto(`${B}/settings`, { waitUntil: 'networkidle' })
+  page.url().includes('/mais')
+    ? ok('/settings redireciona para /mais')
+    : no('/settings não redirecionou', page.url())
+
+  // Clima e Cenário perderam o ícone, não o endereço.
+  for (const rota of ['/weather', '/scenario']) {
+    const resposta = await page.goto(`${B}${rota}`, { waitUntil: 'domcontentloaded' })
+    const status = resposta?.status() ?? 0
+    status !== 404
+      ? ok(`${rota} continua alcançável por endereço`)
+      : no(`${rota} virou 404`, String(status))
   }
 } finally {
   await browser.close().catch(() => {})

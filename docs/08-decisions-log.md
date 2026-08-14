@@ -4,6 +4,74 @@
 
 ---
 
+## D-180 — A barra encolhe para cinco, e o menu invisível morre
+
+**Date**: 2026-08-14
+**Status**: DECIDED
+**Roadmap**: NAV-T06 (fase 3 de 5 do Modelo C)
+
+**Context**: A barra global tinha **sete** destinos e, ao lado deles, um ☰ sem
+rótulo no canto superior direito com uma oitava porta dentro. Duas navegações
+concorrentes — e a segunda invisível.
+
+Três dos sete não eram domínios:
+
+| Destino | O que ele é de verdade |
+| --- | --- |
+| Círculos | assunto de **Família** — já absorvido em D-178 |
+| Clima | detalhe do **MUNDO** — alertas em duas telas e duas linguagens visuais |
+| Cenário | **MODO**, não lugar: `SimulationProvider` é global e reconfigura o app inteiro |
+
+NAV-T04 e T05 tiraram Plano, Aprender, Ficha e Círculos dos lugares errados.
+Foi isso que liberou os slots — a barra só pôde encolher porque o conteúdo já
+tinha ido para onde pertencia.
+
+**Decision**:
+
+1. **Cinco slots, sempre os mesmos**:
+   `[ FAMÍLIA ] [ PREPARAÇÃO ] (( MUNDO )) [ COMMS ] [ MAIS ]`.
+   A barra é a única coisa da tela que a pessoa pode aprender **uma vez**.
+
+2. **`/settings` vira `/mais`**, e o ☰ deixa de existir. O conteúdo não mudou
+   de lugar dentro da página; mudou de **endereço e de nome**, e ganhou rótulo
+   escrito na barra. `/settings` **redireciona** — é o caminho do pagamento, e
+   um 404 ali custa caro.
+
+3. **O título da tela repete o rótulo da barra.** "Mais", não "Configurações":
+   quando os dois discordam, a pessoa duvida que chegou onde queria.
+
+4. **O Treino ganha porta em `/mais`**, como `docs/35` já previa. É a ponte até
+   NAV-T08 transformá-lo em modo de verdade.
+
+5. **Clima e Cenário perdem o ícone, não o endereço.** Os dois continuam a um
+   toque no MUNDO (`PillLink` "Ver alertas" e "Abrir cenário"), que é onde a
+   pessoa já está quando pergunta por eles.
+
+6. **Os badges órfãos são reancorados, não descartados.** `weather` vai para o
+   orbe do MUNDO e `scenario` para MAIS — exatamente a tabela de propriedade do
+   `docs/35`. Uma notificação sem ícone onde pousar é uma notificação que
+   ninguém vê, e essa era a falha silenciosa mais provável desta mudança.
+
+**Consequence**:
+
+- **O canto superior direito ficou vazio pela primeira vez.** D-127 achou três
+  círculos sem rótulo ali; D-131 destilou os três num ☰; agora sobrou zero. A
+  PilotBar recuperou a largura que reservava para ele — **~98px num telefone de
+  390px**, porque a reserva era de 88px e estava errada desde D-131, que
+  encolheu o chrome para 40px e só atualizou a barra de busca logo acima.
+- **`selo()` virou função única.** Com o orbe do MUNDO passando a exibir badge, a
+  alternativa era copiar o selo para a forma elevada — a sexta duplicação desta
+  frente (a régua da água chegou a existir em cinco lugares antes de D-174).
+- **É a fase que o usuário SENTE.** Memória espacial é a primeira coisa que
+  estranha: quem ia em Clima pelo terceiro ícone vai errar. É o custo aceito de
+  trocar sete slots memorizados por cinco slots aprendíveis.
+- `test:nav` 11/11 (era 7), `test:prep-nav` 30/30 (era 27).
+
+**Não autorizado por D-180**: mover `/weather` para dentro de `/dashboard`
+(NAV-T07), transformar Cenário em modo (NAV-T08), dividir `/mais` em sub-rotas
+(`/mais/conta`, `/mais/plano`…) — a faixa de domínio de MAIS ainda não existe.
+
+
 ## D-179 — Duas telas, a mesma palavra, conjuntos diferentes
 
 **Date**: 2026-08-14

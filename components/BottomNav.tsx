@@ -10,13 +10,42 @@ import { createClient } from '@/lib/supabase/client'
 type NavItem = { href: string; labelKey: MessageKey; surface?: NotificationSurface; icon: React.ReactNode }
 
 /**
+ * A barra global, em cinco destinos (NAV-T06 / D-180).
+ *
+ * ```
+ * [ FAMÍLIA ] [ PREPARAÇÃO ] (( MUNDO )) [ COMMS ] [ MAIS ]
+ * ```
+ *
+ * Eram sete. Sete competiam pelo mesmo pedaço de tela, e três deles não eram
+ * domínios: Círculos é assunto de Família (D-178), Clima é detalhe do MUNDO
+ * (NAV-T07) e Cenário é MODO, não lugar (NAV-T08). Um menu sem rótulo no canto
+ * superior direito guardava o resto — duas navegações concorrentes, e a
+ * segunda invisível.
+ *
+ * `docs/35` §RECOMMENDED: cinco slots, sempre os mesmos, e todo o resto abaixo
+ * deles em faixa de domínio com rota real. **A barra nunca muda.** É a única
+ * coisa da tela que a pessoa pode aprender uma vez.
+ *
+ * ── O que NÃO some junto ──────────────────────────────────────────────────
+ *
+ * Clima e Cenário perderam o ícone, não o endereço: os dois continuam a um
+ * toque no MUNDO (`PillLink` "Ver alertas" e "Abrir cenário"), que é onde a
+ * pessoa já está quando pergunta por eles. NAV-T07 e T08 terminam a mudança.
+ */
+
+/**
  * The World dashboard is the app's home, so it does not compete as one tab
- * among seven — it sits raised at the centre, always the largest target and
+ * among five — it sits raised at the centre, always the largest target and
  * always in the same place. The remaining destinations split evenly around it.
+ *
+ * Ele herda o badge de `weather` (D-180): alerta é assunto do MUNDO na tabela
+ * de propriedade do `docs/35`, e uma notificação sem ícone onde pousar é uma
+ * notificação que ninguém vê.
  */
 const HOME: NavItem = {
   href: '/dashboard',
   labelKey: 'nav.world',
+  surface: 'weather',
   icon: (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="9" />
@@ -27,18 +56,6 @@ const HOME: NavItem = {
 }
 
 const NAV_LEFT: NavItem[] = [
-  {
-    href: '/weather',
-    labelKey: 'nav.weather',
-    surface: 'weather',
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="8" r="4" />
-        <path d="M5.2 14.8A5 5 0 0 1 9 10h8a3 3 0 0 1 0 6H9a5 5 0 0 1-3.8-1.2z" />
-        <path d="M3 13h1M20 13h1M12 3V2M12 16v5M5.6 5.6l-.7-.7M19.1 19.1l-.7-.7M19.1 5.6l.7-.7M5.6 19.1l.7-.7" />
-      </svg>
-    ),
-  },
   {
     href: '/family',
     labelKey: 'nav.family',
@@ -82,25 +99,20 @@ const NAV_RIGHT: NavItem[] = [
     ),
   },
   {
-    href: '/circles',
-    labelKey: 'nav.circles',
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="18" cy="5" r="3" />
-        <circle cx="6" cy="12" r="3" />
-        <circle cx="18" cy="19" r="3" />
-        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
-        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
-      </svg>
-    ),
-  },
-  {
-    href: '/scenario',
-    labelKey: 'nav.scenario',
+    /*
+     * MAIS herda o badge de `scenario` porque o Treino mora aqui até NAV-T08
+     * (`docs/35`, tabela de propriedade). Convite de treino chega por overlay
+     * bloqueante (D-071), mas o resumo pós-treino não — e sem este badge ele
+     * não teria onde aparecer.
+     */
+    href: '/mais',
+    labelKey: 'nav.more',
     surface: 'scenario',
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+        <circle cx="5" cy="12" r="1.6" />
+        <circle cx="12" cy="12" r="1.6" />
+        <circle cx="19" cy="12" r="1.6" />
       </svg>
     ),
   },
@@ -173,16 +185,41 @@ export default function BottomNav() {
     }
   }, [loadNotificationBadges])
 
-  const tab = ({ href, labelKey, surface, icon }: NavItem) => {
-    const active = isActive(hrefPath(href))
-    const label = t(labelKey)
+  /**
+   * O selo de não lidas, num lugar só.
+   *
+   * Com cinco slots, o MUNDO passou a carregar o badge de `weather` — e o orbe
+   * elevado desenha diferente das abas comuns. Copiar o selo para lá criaria a
+   * sexta duplicação desta frente (a régua da água chegou a existir em cinco
+   * lugares antes de D-174); então ele virou função, e as duas formas a chamam.
+   */
+  const selo = (surface: NotificationSurface | undefined, label: string) => {
     const unreadCount = surface ? unreadBySurface[surface] ?? 0 : 0
-    const openInboxFromBadge = (event: React.MouseEvent | React.KeyboardEvent) => {
-      if (!surface) return
+    if (!surface || unreadCount <= 0) return null
+    const abrirCaixa = (event: React.MouseEvent | React.KeyboardEvent) => {
       event.preventDefault()
       event.stopPropagation()
       window.dispatchEvent(new CustomEvent('eos-open-inbox', { detail: { surface } }))
     }
+    return (
+      <span
+        className="nb-badge"
+        role="button"
+        tabIndex={0}
+        aria-label={`${unreadCount} notificações não lidas em ${label}`}
+        onClick={abrirCaixa}
+        onKeyDown={event => {
+          if (event.key === 'Enter' || event.key === ' ') abrirCaixa(event)
+        }}
+      >
+        {unreadCount > 99 ? '99+' : unreadCount}
+      </span>
+    )
+  }
+
+  const tab = ({ href, labelKey, surface, icon }: NavItem) => {
+    const active = isActive(hrefPath(href))
+    const label = t(labelKey)
 
     return (
       <Link
@@ -194,20 +231,7 @@ export default function BottomNav() {
       >
         <span className="nb-icon">
           {icon}
-          {unreadCount > 0 && (
-            <span
-              className="nb-badge"
-              role="button"
-              tabIndex={0}
-              aria-label={`${unreadCount} notificações não lidas em ${label}`}
-              onClick={openInboxFromBadge}
-              onKeyDown={event => {
-                if (event.key === 'Enter' || event.key === ' ') openInboxFromBadge(event)
-              }}
-            >
-              {unreadCount > 99 ? '99+' : unreadCount}
-            </span>
-          )}
+          {selo(surface, label)}
         </span>
         <span>{label}</span>
       </Link>
@@ -228,7 +252,10 @@ export default function BottomNav() {
           aria-label={homeLabel}
           aria-current={homeActive ? 'page' : undefined}
         >
-          <span className="nb-home-orb">{HOME.icon}</span>
+          <span className="nb-home-orb">
+            {HOME.icon}
+            {selo(HOME.surface, homeLabel)}
+          </span>
           <span>{homeLabel}</span>
         </Link>
 

@@ -286,7 +286,7 @@ export default function WorldV2() {
         try { localStorage.setItem('eos-map-layers', JSON.stringify(next)) } catch { /* private mode */ }
         return next
       })
-      window.location.href = '/settings'
+      window.location.href = '/mais'
       return
     }
     setLayers(current => {
@@ -331,7 +331,7 @@ export default function WorldV2() {
         try { localStorage.setItem('eos-map-layers', JSON.stringify(cleaned)) } catch { /* private mode */ }
         return cleaned
       })
-      window.location.href = '/settings'
+      window.location.href = '/mais'
       return
     }
     setLayers(current => {

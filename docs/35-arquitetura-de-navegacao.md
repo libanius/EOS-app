@@ -38,6 +38,9 @@
 
 ### 1.2 A barra inferior de hoje — 7 destinos
 
+> **Superado por NAV-T06 / D-180 (2026-08-14).** A barra tem cinco destinos
+> desde então; o que segue é o retrato do diagnóstico. Ver §11.
+
 ```text
 [ CLIMA ]  [ FAMÍLIA ]  [ PREPARAÇÃO ]  (( MUNDO ))  [ COMMS ]  [ CÍRCULOS ]  [ CENÁRIO ]
 ```
@@ -530,3 +533,31 @@ Ordem sugerida — cada passo entrega valor sozinho e é reversível:
    `docs/34` (15.6) e registrar decisão em `docs/08-decisions-log.md`.
 
 **Nada disso começa sem decisão registrada** — Regra 6 e Regra 7 do `AGENTS.md`.
+
+---
+
+## 11. Execução — o que já aconteceu
+
+A ordem sugerida acima foi **invertida na prática**, e por um motivo que só
+apareceu ao executar: encolher a barra primeiro deixaria Círculos, Plano, Ficha
+e EDU sem casa por um release inteiro. As absorções vieram antes porque são
+elas que **liberam os slots**.
+
+| Fase | Tarefa | Estado |
+| --- | --- | --- |
+| 1 | Plano e Aprender entram na Preparação | ✅ NAV-T04 · D-177 |
+| 2 | Círculos e Ficha entram em Família | ✅ NAV-T05 · D-178 |
+| 3 | **Barra encolhe para 5; `/mais` absorve o ☰** | ✅ **NAV-T06 · D-180** |
+| 4 | `/weather` desce para dentro do MUNDO | ⬜ NAV-T07 |
+| 5 | Cenário vira MODO | ⬜ NAV-T08 |
+
+Divergências assumidas em relação ao que este documento propôs:
+
+- **`/family/casa` ficou `/family/cadastro`.** O endereço já existia e já estava
+  em links; renomear custaria mais do que informa.
+- **`/mais` ainda não tem faixa de domínio.** Conta, plano, notificações e
+  idioma continuam seções de uma página só. Dividir em `/mais/conta`,
+  `/mais/plano`… é trabalho próprio, e a barra não dependia dele.
+- **O eixo da Preparação não é "Em casa × Mochilas"**, como §36 chegou a propor
+  — é **Requirement × Holding** (`docs/37` §29.2). Localização e kit são
+  dimensões independentes e viraram FILTROS, não subtópicos.

@@ -14,7 +14,7 @@
 | **⚠ Pendência operacional** | **Aplicar `supabase/migrations/20260813210000_profiles_auth_fk.sql`** (D-175). Limpa 9 perfis de teste vazios e cria a FK que impede a recorrência. Para com erro se encontrar órfão com dado. |
 | **Migrações aplicadas** | `locations`, `holdings`, `kits`, `requirements`, `checklists.status` — todas verificadas por REST. |
 | **Migrações aplicadas** | As duas de Preparedness State **aplicadas em 2026-08-13** e verificadas por REST: `locations`, `holdings`, `kits`, `requirements` → 200. Nenhuma pendência operacional. |
-| **Last Completed Task** | **D-178 / NAV-T05 — Círculos e Ficha entram em Família (2026-08-13)** |
+| **Last Completed Task** | **D-180 / NAV-T06 — barra global encolhe para 5 e o ☰ deixa de existir (2026-08-14)** |
 | | **D-177 / NAV-T04 — Plano e Aprender entram na Preparação (2026-08-13)** |
 | | **D-176 / PREP-T10d — Cutover: `requirements` é a verdade (2026-08-13)** |
 | | **D-175 / PREP-T15 — Um perfil sem conta não tem significado (2026-08-13)** |

@@ -1268,8 +1268,9 @@
   z-index: 4;
   top: calc(max(16px, env(safe-area-inset-top, 0px) + 8px));
   left: var(--edge);
-  /* Reserva a largura do botão de menu, que agora divide esta fileira. */
-  right: calc(16px + 40px + 10px);
+  /* NAV-T06/D-180: o ☰ deixou de existir, e a fileira voltou a ser só desta
+     barra. A largura reservada para ele volta para a busca. */
+  right: 16px;
   max-width: 520px;
 }
 
@@ -2181,7 +2182,11 @@
   z-index: 4;
   top: calc(max(16px, env(safe-area-inset-top, 0px) + 8px));
   left: var(--edge);
-  right: calc(16px + 88px + 10px);
+  /* NAV-T06/D-180: `right` reservava 88px para o chrome do canto — e reservava
+     errado desde D-131, que encolheu o chrome para 40px e só atualizou a busca
+     logo acima. Com o ☰ removido a reserva inteira caiu, e a barra do Pilot
+     ganhou ~98px de largura num telefone de 390px. */
+  right: 16px;
   max-width: 560px;
   display: flex;
   align-items: center;

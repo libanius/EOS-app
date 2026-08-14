@@ -622,7 +622,7 @@ export default function CirclesPage() {
                   ? 'Criar um círculo faz parte do plano Família. Entrar num círculo por convite é grátis.'
                   : 'Creating a circle is part of the Family plan. Joining by invite is free.'}
               </p>
-              <a className="cir-btn" href="/settings">{pt ? 'Ver planos' : 'See plans'}</a>
+              <a className="cir-btn" href="/mais">{pt ? 'Ver planos' : 'See plans'}</a>
             </>
           )}
         </div>

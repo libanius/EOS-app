@@ -156,8 +156,8 @@ try {
   // propriedade que `docs/35` pediu para preservar: sub-rota de domínio não
   // custa nada à navegação global.
   const itensGlobais = await page.locator('nav.nav a').count()
-  itensGlobais === 7
-    ? ok('BottomNav continua com 7 destinos na sub-rota')
+  itensGlobais === 5
+    ? ok('BottomNav continua com 5 destinos na sub-rota')
     : no('BottomNav mudou de tamanho na sub-rota', String(itensGlobais))
 
   const prepAceso = await page.locator('nav.nav a[aria-current="page"]').innerText().catch(() => '')
@@ -219,15 +219,14 @@ try {
       : no(`${chip} não acendeu`, aceso)
   }
 
-  // ── 5e. O ☰ perdeu o Plano ────────────────────────────────────────────────
+  // ── 5e. O Plano está na faixa, e não escondido ────────────────────────────
+  // Era um item de menu sem rótulo (NAV-T04); o menu inteiro morreu em NAV-T06,
+  // e o que a checagem mede agora é o destino que ficou no lugar dele.
   await page.goto(`${B}/preparedness`, { waitUntil: 'networkidle' })
-  await page.locator('.app-actions-trigger').click()
-  await page.waitForTimeout(300)
-  const itensMenu = await page.locator('.app-actions-menu a').allInnerTexts()
-  !itensMenu.some(x => /plano/i.test(x))
-    ? ok('o ☰ não tem mais o Plano')
-    : no('o Plano continua escondido no ☰', itensMenu.join(', '))
-  await page.keyboard.press('Escape')
+  const chipsPlano = await page.locator('nav[aria-label="Seções da Preparação"] a', { hasText: 'Plano' }).count()
+  chipsPlano === 1
+    ? ok('o Plano é chip da Preparação, não item de menu')
+    : no('o Plano não está na faixa', String(chipsPlano))
 
   // ── 5f. Família ganhou seções (NAV-T05) ───────────────────────────────────
   await page.goto(`${B}/family`, { waitUntil: 'networkidle' })
@@ -264,15 +263,32 @@ try {
     ? ok('o QR público /ficha/[id] continua no mesmo endereço')
     : no('o QR público mudou ou sumiu', `${qrStatus} · ${page.url()}`)
 
-  // ── 5h. O ☰ ficou só com Configurações ────────────────────────────────────
+  // ── 5h. O ☰ deixou de existir (NAV-T06 / D-180) ───────────────────────────
+  // Configurações era a última coisa dentro dele e virou o destino MAIS na
+  // barra global. Duas navegações concorrentes, com a segunda invisível, eram
+  // uma a mais.
   await page.goto(`${B}/preparedness`, { waitUntil: 'networkidle' })
-  await page.locator('.app-actions-trigger').click()
-  await page.waitForTimeout(300)
-  const menu = await page.locator('.app-actions-menu a').allInnerTexts()
-  menu.length === 1 && !menu.some(x => /ficha/i.test(x))
-    ? ok('o ☰ ficou só com Configurações')
-    : no('o ☰ ainda esconde coisa', menu.join(', '))
-  await page.keyboard.press('Escape')
+  const menuMorto = await page.locator('.app-actions-trigger').count()
+  menuMorto === 0
+    ? ok('o ☰ deixou de existir')
+    : no('o ☰ continua na tela', String(menuMorto))
+
+  const chipMais = await page.locator('nav.nav a', { hasText: 'Mais' }).count()
+  chipMais === 1
+    ? ok('MAIS é destino da barra global')
+    : no('MAIS não está na barra', String(chipMais))
+
+  await page.goto(`${B}/settings`, { waitUntil: 'networkidle' })
+  page.url().includes('/mais')
+    ? ok('/settings redireciona para /mais')
+    : no('/settings não redirecionou', page.url())
+
+  // O Treino chegou aqui vindo de um slot da barra; ele não pode ter sumido no
+  // caminho.
+  const treino = await page.locator('a[href="/scenario"]').count()
+  treino >= 1
+    ? ok('o Treino tem porta em /mais')
+    : no('o Treino sumiu de /mais', String(treino))
 
   // ── 6. O endereço antigo não vira 404 ─────────────────────────────────────
   await page.goto(`${B}/checklist`, { waitUntil: 'networkidle' })

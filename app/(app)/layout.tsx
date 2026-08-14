@@ -1,5 +1,4 @@
 import BottomNav from '@/components/BottomNav'
-import AppActions from '@/components/AppActions'
 import SyncStatus from '@/components/SyncStatus'
 import FichaFirstRun from '@/components/FichaFirstRun'
 import LocationReporter from '@/components/LocationReporter'
@@ -46,7 +45,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <FichaFirstRun />
       {/* D-064: silent unless the user consented AND already granted GPS. */}
       <LocationReporter />
-      <AppActions />
+      {/*
+        NAV-T06 / D-180: `AppActions` foi removido.
+
+        Era um ☰ sem rótulo no canto superior direito, e a última coisa dentro
+        dele — Configurações — virou o destino MAIS na barra global. Manter as
+        duas seria manter duas navegações concorrentes, com a segunda invisível.
+
+        O canto ficou livre: a PilotBar recuperou a largura que reservava para
+        ele (`world-v2.css`).
+      */}
       {children}
       <SyncStatus />
       <NotificationInbox />
