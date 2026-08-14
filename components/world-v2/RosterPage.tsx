@@ -266,6 +266,19 @@ export default function RosterPage() {
   const c = COPY[language]
 
   const [members, setMembers] = useState<Member[]>([])
+  /*
+   * As CONTAS que confirmaram morar aqui (D-179).
+   *
+   * Esta tela listava só dependentes — gente sem conta. Numa casa de três
+   * contas e zero dependentes, ela dizia "Ninguém cadastrado ainda" enquanto
+   * Círculos dizia "SUA CASA (3)". Duas telas, a mesma palavra, conjuntos
+   * diferentes.
+   *
+   * `docs/34` §3.10 já prometia a lista única — contas, dependentes e
+   * convidados juntos, provada por `one-door-test`. Ela existia no teste e não
+   * na tela.
+   */
+  const [contas, setContas] = useState<Array<{ userId: string; name: string; isMe: boolean }>>([])
   const [candidates, setCandidates] = useState<Record<string, CircleCandidate>>({})
   const [loading, setLoading] = useState(true)
   const [loadFailed, setLoadFailed] = useState(false)
@@ -299,14 +312,24 @@ export default function RosterPage() {
        * As três formas de morar na casa passam a caber na mesma tela: quem tem
        * conta, quem está sob cuidados, e quem foi convidada e ainda não entrou.
        */
-      const [fam, circles, convites] = await Promise.all([
+      const [fam, circles, convites, casa] = await Promise.all([
         fetch('/api/family-members').then(r => (r.ok ? r.json() : null)),
         fetch('/api/circles').then(r => (r.ok ? r.json() : null)).catch(() => null),
         fetch('/api/household/address').then(r => (r.ok ? r.json() : null)).catch(() => null),
+        // A MESMA fonte que o motor e que Círculos usam (D-129). Ler outra
+        // coisa aqui recriaria a divergência que esta correção veio fechar.
+        fetch('/api/household').then(r => (r.ok ? r.json() : null)).catch(() => null),
       ])
       setInvites(Array.isArray(convites?.pending) ? convites.pending : [])
       if (!fam) throw new Error('family-members indisponível')
       setMembers(Array.isArray(fam.members) ? fam.members : [])
+      setContas(
+        casa?.known && Array.isArray(casa.people)
+          ? casa.people
+              .filter((x: { userId: string | null }) => x.userId !== null)
+              .map((x: { userId: string; name: string; isMe: boolean }) => ({ userId: x.userId, name: x.name, isMe: x.isMe }))
+          : [],
+      )
 
       const found: Record<string, CircleCandidate> = {}
       for (const circ of circles?.circles ?? []) {
@@ -593,7 +616,7 @@ export default function RosterPage() {
             <p className="t-body">{c.loadError}</p>
             <Pill onClick={load}>{c.retry}</Pill>
           </Card>
-        ) : members.length === 0 ? (
+        ) : members.length === 0 && contas.length === 0 && invites.length === 0 ? (
           <Card accented>
             <strong className="t-title2">{c.empty}</strong>
             <p className="t-body ink-2">{c.emptyWhy}</p>
@@ -605,6 +628,31 @@ export default function RosterPage() {
         ) : (
           <>
             <SectionLabel>{c.listLabel}</SectionLabel>
+
+            {/*
+              As CONTAS vêm primeiro, e sem botão de editar.
+              Não se edita a ficha de outra conta a partir daqui: aquilo é dado
+              da pessoa, protegido por consentimento próprio (D-123). O que esta
+              tela mostra é que ela CONTA na casa — que era exatamente a
+              informação que faltava.
+            */}
+            {contas.map(a => (
+              <Card key={a.userId} className="roster-person">
+                <div className="row">
+                  <div className="id">
+                    <strong className="t-title2">
+                      {a.name}
+                      {a.isMe && <span className="ink-3"> · {language === 'pt' ? 'você' : 'you'}</span>}
+                    </strong>
+                    <em className="t-foot ink-2">
+                      {language === 'pt' ? 'Conta própria · confirmou morar aqui' : 'Own account · confirmed living here'}
+                    </em>
+                  </div>
+                  <Link className="wv2-pill" href="/family/circulos">{language === 'pt' ? 'No círculo' : 'In circle'}</Link>
+                </div>
+              </Card>
+            ))}
+
             {members.map(m => {
               const gaps = faltando(m, c)
               const linked = m.linked_user_id ? candidates[m.linked_user_id] : null

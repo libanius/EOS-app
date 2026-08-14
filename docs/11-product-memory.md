@@ -5,6 +5,17 @@
 
 ---
 
+**"Casa" tem UMA definição: contas confirmadas + dependentes delas
+(D-129/D-179).** Círculos mostrava "SUA CASA (3)" e o cadastro dizia "ninguém
+cadastrado", porque um lia contas e o outro só dependentes. `/family/cadastro`
+lê `/api/household` — a mesma fonte do motor. Qualquer tela que responda "quem
+mora aqui" lendo outra coisa recria a divergência.
+
+**Juntar telas relacionadas revela contradição que a distância escondia.**
+Aconteceu duas vezes em 13–14/08: o Pilot dizendo zero contra o painel dizendo
+2,7 dias, e Círculos contra Cadastro. Aproximar é método de achado, não só
+arrumação.
+
 ## Navegação: Model C é canônico (D-177, 2026-08-13)
 
 `docs/35` saiu do papel. A barra global terá **cinco slots e nunca muda** —

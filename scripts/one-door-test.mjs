@@ -172,6 +172,24 @@ casa?.size === 2 && esperados.every(n => (casa.pendingNames ?? []).some(p => p.i
   ? ok('a casa conta as bocas e sabe de quem falta', `size=${casa.size} · esperando: ${casa.pendingNames.join(', ')}`)
   : no('a casa não bate com a tela', JSON.stringify({ size: casa?.size, pend: casa?.pendingNames }))
 
+/*
+ * A CONTA aparece na lista de "quem mora aqui" (D-179).
+ *
+ * Este teste cobria dependente e convidada, e nunca uma conta confirmada — foi
+ * por isso que a falha sobreviveu a ele. Numa casa de três contas e zero
+ * dependentes, a tela dizia "Ninguém cadastrado ainda" enquanto Círculos dizia
+ * "SUA CASA (3)": duas telas, a mesma palavra, conjuntos diferentes.
+ */
+await page.goto(`${B}/family/cadastro`, { waitUntil: 'networkidle' })
+await page.waitForTimeout(1200)
+const textoRoster = await page.locator('body').innerText()
+const mostraConta = /Conta própria/i.test(textoRoster)
+const dizVazio = /Ningu[ée]m cadastrado/i.test(textoRoster)
+
+mostraConta && !dizVazio
+  ? ok('a lista de "quem mora aqui" inclui a CONTA, não só dependentes')
+  : no('a conta não aparece em "quem mora aqui"', `conta=${mostraConta} vazio=${dizVazio}`)
+
 await browser.close()
 stopServer()
 await admin(`/rest/v1/household_invites?owner_id=eq.${u.id}`, { method: 'DELETE' }).catch(() => {})

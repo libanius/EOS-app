@@ -4,6 +4,69 @@
 
 ---
 
+## D-179 — Duas telas, a mesma palavra, conjuntos diferentes
+
+**Date**: 2026-08-14
+**Status**: DECIDED
+**Roadmap**: NAV-T05 (correção)
+**Achado**: dono do produto, comparando as duas telas lado a lado
+
+**Context**: Com Círculos e Ficha dentro de Família (D-178), ficou visível o que
+antes estava em telas distantes:
+
+```
+/family/circulos  →  "SUA CASA (3)"   Paulo, Daniela, paola
+/family/cadastro  →  "Ninguém cadastrado ainda"
+```
+
+Uma diz que três pessoas moram aqui; a outra, que ninguém mora.
+
+**Causa**: as duas usam a palavra "casa" para conjuntos diferentes.
+
+- **Círculos** lista as **contas** com `household_status = 'confirmed'` — a
+  definição do motor, que D-129 já tinha unificado.
+- **Cadastro** listava só `/api/family-members`, ou seja **dependentes** —
+  gente sem conta.
+
+Numa casa de três contas e zero dependentes, as duas estavam "certas" nos
+próprios termos e diziam coisas opostas para a mesma pessoa.
+
+`docs/34` §3.10 já prometia a correção — *"lista única 'quem mora aqui':
+contas, dependentes e convidados juntos"*, provada por `one-door-test`. **Ela
+existia no teste e não na tela**: o teste cobria dependente e convidada, e nunca
+uma conta confirmada. Foi por isso que a falha sobreviveu a ele.
+
+**Decision**:
+
+1. **"Quem mora aqui" lista contas, dependentes e convidados.** As contas vêm
+   de `/api/household` — a **mesma** fonte do motor e de Círculos. Ler outra
+   coisa aqui recriaria a divergência que a correção veio fechar.
+
+2. **Conta não tem botão de editar.** Não se edita a ficha de outra conta a
+   partir do próprio cadastro: aquilo é dado da pessoa, protegido por
+   consentimento próprio (D-123). A linha existe para mostrar que ela **conta na
+   casa** — que era a informação que faltava — e leva a Círculos.
+
+3. **O estado vazio só aparece quando TUDO está vazio.** Antes ele disparava com
+   `members.length === 0`, escondendo a lista inteira mesmo com três contas.
+
+4. **`one-door-test` ganha o caso da conta.** Sem isso a correção não teria
+   guarda, e o teste continuaria passando com a tela errada.
+
+**Consequence**:
+
+- É a segunda vez nesta sessão que **juntar telas revelou uma contradição que a
+  distância escondia**. A primeira foi o Pilot dizendo zero enquanto o painel
+  dizia 2,7 dias. Aproximar coisas relacionadas é, por si, um método de achar
+  defeito.
+- Reforça a lição de D-129: *"duas definições da mesma palavra na mesma versão
+  do app"* é uma classe de defeito recorrente aqui, não um acidente isolado.
+
+**Não autorizado por D-179**: editar ficha de outra conta pelo cadastro, mudar
+a definição de casa do motor.
+
+---
+
 ## D-178 — Círculos e Ficha eram Família o tempo todo
 
 **Date**: 2026-08-13
