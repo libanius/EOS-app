@@ -4,6 +4,72 @@
 
 ---
 
+## D-186 — O ping era só push, e push é o canal mais frágil da pilha
+
+**Date**: 2026-08-14
+**Status**: DECIDED
+**Roadmap**: FAM-T09
+**Achado**: dono do produto — tocou "Onde você está?" e leu **"Não entregou"**
+
+**Context**: O ping da família (D-073) mandava uma mensagem predefinida para
+uma pessoa do círculo. Ele era **exclusivamente push**:
+
+```
+POST /api/family/ping → webpush.sendNotification → fim
+```
+
+Se o push não saía, a mensagem **não existia em lugar nenhum** — nem na caixa
+de entrada, nem na linha do tempo, nem quando a pessoa abrisse o app. Sumia.
+
+Isso inverte a promessa da tela. "Onde você está?" numa emergência é
+justamente a mensagem que não pode depender do canal mais frágil da pilha:
+permissão revogada, assinatura expirada, iPhone fora da PWA instalada, chave
+VAPID trocada — qualquer um desses apaga a mensagem.
+
+**Diagnóstico do caso concreto**: Daniela **tem** assinatura (Apple, 04/08) e o
+`/api/health` autenticado em produção diz `push: ok`. Ou seja, nem `no_device`
+nem `push_unconfigured` — era `push_failed`, e **a rota não registrava qual**.
+Cinco causas diferentes chegavam à tela como a mesma frase.
+
+**Decision**:
+
+1. **Grava primeiro, empurra depois.** O ping vira `circle_notifications` com
+   `kind = 'family_ping'` na superfície **Família**, e só então tenta o push. O
+   push passa a ser **reforço** — o que faz o telefone vibrar —, não o meio de
+   transporte.
+
+2. **`ok` passa a significar "a mensagem existe".** Um campo novo, `push`, diz
+   se ela também vibrou. A tela tem três frases em vez de uma, e **todas as de
+   sucesso começam com "Enviado"**.
+
+3. **"Ela ainda não ativou os alertas" era verdade e mentia por omissão.** Quem
+   lia entendia que ninguém foi avisado. Virou *"Enviado · sem alertas no
+   aparelho dela, verá ao abrir o EOS"* — a informação continua lá, depois do
+   fato principal.
+
+4. **Assinatura morta é apagada.** `404`/`410` significam que o navegador
+   desfez a assinatura; guardá-la só garante que a próxima tentativa também
+   falhe. E o status HTTP de cada falha vai para o `error_log`.
+
+**Consequence**:
+
+- **A pior consequência do defeito não era o diagnóstico difícil — era o
+  remetente achar que não avisou ninguém.** Numa emergência isso faz a pessoa
+  parar de tentar, ou sair procurando alguém que já tinha respondido.
+- `family-page-test` ganhou o caso: o navegador de teste **não tem assinatura de
+  push**, então ele roda exatamente no caminho em que a mensagem sumia.
+- **Achado de lado**: a checagem nº 5 daquele teste exigia um link para
+  `/family-legacy` que **D-122 removeu de propósito há dez dias**. Ela estava
+  vermelha esse tempo todo medindo uma promessa revogada. Agora mede o que
+  importa — que o cadastro não fique inalcançável.
+- Terceiro defeito seguido (D-185, D-183, este) cuja causa raiz é a mesma:
+  **a falha não tinha como ser vista**. As três correções incluem tornar a
+  falha visível, não só corrigi-la.
+
+**Não autorizado por D-186**: mandar push para quem não pediu, criar canal novo
+de entrega (SMS, e-mail), mexer nos presets de D-073.
+
+
 ## D-185 — O estoque não salvava havia um dia, e o erro não tinha como ser visto
 
 **Date**: 2026-08-14

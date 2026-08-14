@@ -19,3 +19,11 @@ describe('notificationSurface', () => {
     })).toBe('preparedness')
   })
 })
+
+describe('ping da família (D-186)', () => {
+  it('cai em Família, não em Comms', () => {
+    // Ping é sobre GENTE — "onde você está", "estou bem". Comms é a conversa.
+    // A superfície decide em qual ícone da barra o badge aparece.
+    expect(notificationSurface({ scope: 'circle', kind: 'family_ping' })).toBe('family')
+  })
+})

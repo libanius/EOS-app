@@ -16,6 +16,14 @@ export type CommsNotificationKind =
   | 'weather_alert'
   // D-119: aviso ao dono de que apareceu erro novo em produção.
   | 'error_alert'
+  /*
+   * D-186: a mensagem predefinida de uma pessoa para outra do círculo.
+   *
+   * Ela existia SÓ como push. Quando a notificação não saía, a mensagem não
+   * existia em lugar nenhum — nem na caixa, nem na linha do tempo, nem ao
+   * abrir o app. Agora ela é registro, e o push é reforço.
+   */
+  | 'family_ping'
 
 export type CommsNotificationScope = 'circle' | 'weather' | 'edu' | 'simulation' | 'system'
 

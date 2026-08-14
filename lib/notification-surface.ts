@@ -25,7 +25,10 @@ export function notificationSurface(input: SurfaceInput): NotificationSurface {
     input.kind === 'member_joined' ||
     input.kind === 'family_invite' ||
     input.kind === 'family_invite_accepted' ||
-    input.kind === 'family_invite_denied'
+    input.kind === 'family_invite_denied' ||
+    // D-186: ping predefinido entre pessoas do círculo. É sobre gente, não
+    // sobre conversa — por isso Família, e não Comms.
+    input.kind === 'family_ping'
   ) {
     return 'family'
   }

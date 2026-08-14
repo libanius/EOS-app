@@ -115,8 +115,19 @@ const COPY = {
     route: 'Rota até',
     message: 'Mensagem',
     sent: 'Enviado',
-    failed: 'Não entregou',
-    noDevice: 'Ela ainda não ativou os alertas no aparelho.',
+    failed: 'Não saiu daqui. Tente de novo.',
+    /*
+     * D-186: a mensagem chegou ao app; só não vibrou o telefone. Dizer "não
+     * entregou" era mentira — e a mentira empurra para o pior lugar possível:
+     * a pessoa acha que não avisou ninguém e para de tentar.
+     */
+    inAppOnly: 'Enviado · vai aparecer quando ela abrir o EOS',
+    /*
+     * "Ela ainda não ativou os alertas" era verdade e mentia por omissão: quem
+     * lia entendia que ninguém tinha sido avisado. Todo desfecho de sucesso
+     * começa com **Enviado**, e só depois explica o que não vai acontecer.
+     */
+    noDevice: 'Enviado · sem alertas no aparelho dela, verá ao abrir o EOS',
     manage: 'Editar cadastro',
     editPerson: 'Editar ou excluir',
     empty: 'Ninguém cadastrado ainda.',
@@ -165,8 +176,9 @@ const COPY = {
     route: 'Route to',
     message: 'Message',
     sent: 'Sent',
-    failed: 'Not delivered',
-    noDevice: 'They have not enabled alerts on their device yet.',
+    failed: 'It did not leave your phone. Try again.',
+    inAppOnly: 'Sent · they will see it when they open EOS',
+    noDevice: 'Sent · no alerts on their device, they will see it in EOS',
     manage: 'Edit records',
     editPerson: 'Edit or delete',
     empty: 'Nobody recorded yet.',
@@ -400,16 +412,46 @@ export default function FamilyPage() {
   const ping = async (person: Person, preset: PingPreset) => {
     if (!person.userId) return
     haptic.impact()
-    const response = await fetch('/api/family/ping', {
+    const resposta = await fetch('/api/family/ping', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ toUserId: person.userId, preset, pt }),
-    }).then(r => r.json()).catch(() => null)
+    })
+    const corpo = await resposta.json().catch(() => null)
 
-    setSent(current => ({
-      ...current,
-      [person.key]: response?.ok ? c.sent : response?.reason === 'no_device' ? c.noDevice : c.failed,
-    }))
+    /*
+     * Três desfechos, três frases (D-186).
+     *
+     * Antes eram cinco causas — VAPID ausente, sem dispositivo, assinatura
+     * expirada, chave trocada, rede — colapsadas em "Não entregou". A pior
+     * consequência não era o diagnóstico difícil: era o remetente achar que
+     * ninguém foi avisado quando a mensagem tinha chegado.
+     *
+     * `ok` agora significa QUE A MENSAGEM EXISTE. `push` diz se ela vibrou.
+     */
+    const rotulo = !corpo?.ok
+      ? c.failed
+      : corpo.push === 'delivered'
+        ? c.sent
+        : corpo.push === 'no_device'
+          ? c.noDevice
+          : c.inAppOnly
+
+    setSent(current => ({ ...current, [person.key]: rotulo }))
+
+    // Falha de envio para de morrer na tela (mesma lição de D-185).
+    if (!corpo?.ok) {
+      void fetch('/api/client-error', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        keepalive: true,
+        body: JSON.stringify({
+          message: `ping falhou: ${resposta.status} ${String(corpo?.error ?? '').slice(0, 200)}`,
+          kind: 'family-ping',
+          url: window.location.href,
+        }),
+      }).catch(() => { /* falhar ao reportar não pode virar reporte */ })
+    }
   }
 
   return (

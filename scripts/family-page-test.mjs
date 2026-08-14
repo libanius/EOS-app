@@ -154,15 +154,63 @@ temNecessidade
   ? ok('necessidades que mudam a decisão estão na tela', 'medicação e condição médica')
   : no('necessidades ausentes', texto.slice(0, 160).replace(/\n+/g, ' '))
 
-// ── 5. o cadastro antigo continua alcançável ────────────────────────────────
-const legado = await page.locator('a[href="/family-legacy"]').count()
-const legadoAbre = await fetch(`${B}/family-legacy`).then(r => r.status < 400).catch(() => false)
-legado > 0 && legadoAbre
-  ? ok('o cadastro antigo continua alcançável', '/family-legacy')
-  : no('cadastro antigo perdido', `link=${legado} rota=${legadoAbre}`)
+/*
+ * ── 5. O PING CHEGA MESMO SEM PUSH (FAM-T09 / D-186) ───────────────────────
+ *
+ * Achado do dono: tocar "Onde você está?" respondia **"Não entregou"**.
+ *
+ * O ping era só push. Sem push — permissão revogada, assinatura expirada,
+ * iPhone fora da PWA instalada — a mensagem não existia em lugar nenhum: nem
+ * na caixa, nem na linha do tempo, nem ao abrir o app.
+ *
+ * O navegador de teste NÃO tem assinatura de push, então este teste roda
+ * exatamente no caminho em que a mensagem sumia. O que ele exige é que ela
+ * exista no banco de qualquer jeito.
+ */
+await cartao('Daniela').locator('button', { hasText: 'Onde você está?' }).click()
+await page.waitForTimeout(2500)
+
+const notificacoes = await admin(
+  `/rest/v1/circle_notifications?recipient_id=eq.${esposa.id}&kind=eq.family_ping&select=title,body,metadata`,
+).then(r => r.json()).catch(() => [])
+
+Array.isArray(notificacoes) && notificacoes.length > 0
+  ? ok('o ping VIRA REGISTRO mesmo sem push', notificacoes[0]?.body ?? '')
+  : no('o ping sumiu: sem push, a mensagem não existe', JSON.stringify(notificacoes).slice(0, 140))
+
+// E a tela não pode dizer que falhou quando a mensagem chegou.
+const retorno = await cartao('Daniela').innerText().catch(() => '')
+!/Não entregou/i.test(retorno) && /Enviado/i.test(retorno)
+  ? ok('a tela diz a verdade sobre o que aconteceu', retorno.split('\n').find(l => /Enviado/i.test(l)) ?? '')
+  : no('a tela mentiu sobre a entrega', retorno.slice(0, 160).replace(/\n+/g, ' '))
+
+// A superfície importa: ping é sobre GENTE, então cai em Família — é onde o
+// badge da barra aparece.
+const superficie = notificacoes[0]?.metadata?.surface
+superficie === 'family'
+  ? ok('o ping cai na superfície Família')
+  : no('superfície errada para o ping', String(superficie))
+
+/*
+ * ── 6. O cadastro continua alcançável ──────────────────────────────────────
+ *
+ * Esta checagem exigia um link para `/family-legacy` — e **D-122 removeu esse
+ * link de propósito**, em 2026-08-04: a ação principal da aba levava a uma tela
+ * de outro app. O cadastro virou `/family/cadastro`, e em NAV-T05 ganhou chip
+ * próprio na faixa de Família.
+ *
+ * A checagem ficou vermelha por dez dias medindo uma promessa revogada. O que
+ * importa continua sendo o mesmo: **o cadastro não pode ficar inalcançável.**
+ */
+const chipCadastro = await page.locator('nav[aria-label="Seções da Família"] a[href="/family/cadastro"]').count()
+const rotaAntiga = await fetch(`${B}/family-legacy`).then(r => r.status < 400).catch(() => false)
+chipCadastro > 0 && rotaAntiga
+  ? ok('o cadastro é chip da Família e o endereço antigo não virou 404', '/family/cadastro')
+  : no('cadastro inalcançável', `chip=${chipCadastro} rotaAntiga=${rotaAntiga}`)
 
 await browser.close()
 stopServer()
+await admin(`/rest/v1/circle_notifications?recipient_id=eq.${esposa.id}`, { method: 'DELETE' })
 await admin(`/rest/v1/family_members?profile_id=eq.${eu.id}`, { method: 'DELETE' })
 for (const u of [eu, esposa]) {
   await admin(`/auth/v1/admin/users/${u.id}`, { method: 'DELETE' })
