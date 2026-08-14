@@ -35,6 +35,7 @@ import { Card, Pill, SectionLabel } from './primitives'
 import { haptic } from './motion'
 import { formatGallons, GALLON_SHORT } from '@/lib/units'
 import './world-v2.css'
+import FamilyNav from './FamilyNav'
 
 type RosterMember = {
   id: string
@@ -445,6 +446,9 @@ export default function FamilyPage() {
           </div>
         </header>
 
+        {/* NAV-T05: Círculos e Ficha viraram seções de Família. */}
+        <FamilyNav />
+
         {loading ? (
           <Card><p className="t-body ink-2">…</p></Card>
         ) : failed ? (
@@ -694,7 +698,7 @@ export default function FamilyPage() {
                 />
               )}
               <Link className="wv2-pill" href="/family/cadastro">{c.manage}</Link>
-              <Link className="wv2-pill" href="/circles">{c.inviteCircle}</Link>
+              <Link className="wv2-pill" href="/family/circulos">{c.inviteCircle}</Link>
             </div>
           </>
         )}

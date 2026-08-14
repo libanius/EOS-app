@@ -4,6 +4,62 @@
 
 ---
 
+## D-178 — Círculos e Ficha eram Família o tempo todo
+
+**Date**: 2026-08-13
+**Status**: DECIDED
+**Roadmap**: NAV-T05 (fase 2 de 5 do Model C)
+**Spec**: `docs/35-arquitetura-de-navegacao.md` §5
+
+**Context**: Círculos ocupava um **slot da barra global**; a Ficha vivia atrás
+do ☰ sem rótulo. Os dois são o mesmo assunto que Família para quem usa:
+
+```
+Status    quem está onde, agora
+A casa    quem mora aqui — pessoas, dependentes, endereço
+Ficha     a ficha médica e o QR para socorristas
+Círculos  com quem eu compartilho, e o quê
+```
+
+O código já sabia disso antes da navegação: `useCircleFamily.ts` funde círculo
+e família para desenhar as pessoas no mapa.
+
+**Decision**:
+
+1. **`/ficha` → `/family/ficha`** e **`/circles` → `/family/circulos`**, com
+   redirecionamento nos endereços antigos.
+
+2. **`/ficha/[id]` — o QR PÚBLICO — não muda.** Está impresso, colado em
+   geladeira e compartilhado; mexer nele quebraria o papel de quem já imprimiu.
+   Tem checagem de navegador própria.
+
+3. **A faixa de seções virou componente compartilhado** (`DomainNav`). Ao criar
+   a segunda faixa a escolha era copiar ou generalizar — e copiar já custou caro
+   cinco vezes nesta frente. A régua da água chegou a existir em cinco lugares,
+   e a divergência entre duas cópias produziu o defeito em que o Pilot afirmava
+   autonomia zero.
+
+4. **O ☰ ficou só com Configurações.** Perdeu o Plano em NAV-T04 e a Ficha
+   agora. Em NAV-T06 ele deixa de existir.
+
+5. **Links internos apontam para o endereço novo** — 6 arquivos, 8 links. O
+   redirecionamento funcionaria, mas um salto a menos é um salto a menos.
+
+**Consequence**:
+
+- **Dois slots da barra liberados.** É o que permite NAV-T06 encolhê-la para
+  cinco. A ordem "absorções primeiro" existe por isso.
+- `test:prep-nav` vai de 20 para **27** checagens.
+- **Um teste meu estava errado e o código certo**: assertei que
+  `/ficha/[id]` não podia dar 404, usando um uuid inventado. `notFound()` para
+  id inexistente é o comportamento correto da página. Corrigido para usar o id
+  real do usuário temporário — testar com dado falso mede a coisa errada.
+
+**Não autorizado por D-178**: mexer na BottomNav (é NAV-T06), mudar
+`/ficha/[id]`, alterar o manifesto.
+
+---
+
 ## D-177 — Model C adotado: a navegação do EOS ganha dono
 
 **Date**: 2026-08-13

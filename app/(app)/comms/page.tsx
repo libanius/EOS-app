@@ -559,7 +559,7 @@ function CommsContent() {
             <SectionLabel>{c.noCircle}</SectionLabel>
             <p className="t-body ink-2" style={{ margin: '0.75rem 0 1rem' }}>{c.noCircleBody}</p>
             <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-              <PillLink href="/circles" primary>{c.openCircles}</PillLink>
+              <PillLink href="/family/circulos" primary>{c.openCircles}</PillLink>
               <PillLink href="/family">{c.openFamily}</PillLink>
             </div>
           </Card>

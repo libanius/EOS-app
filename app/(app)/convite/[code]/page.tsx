@@ -110,7 +110,7 @@ export default function ConvitePage() {
                   : 'The Intimate Family part could not be recorded yet; whoever invited you can send it later.'}
               </p>
             )}
-            <Link className="wv2-pill primary" href="/circles">{pt ? 'Ver meus círculos' : 'See my circles'}</Link>
+            <Link className="wv2-pill primary" href="/family/circulos">{pt ? 'Ver meus círculos' : 'See my circles'}</Link>
           </>
         )}
 
@@ -121,7 +121,7 @@ export default function ConvitePage() {
             <p className="t-body ink-2">
               {pt ? `Nada a fazer: você já é membro de ${outcome.circle}.` : `Nothing to do: you are already a member of ${outcome.circle}.`}
             </p>
-            <Link className="wv2-pill primary" href="/circles">{pt ? 'Ver meus círculos' : 'See my circles'}</Link>
+            <Link className="wv2-pill primary" href="/family/circulos">{pt ? 'Ver meus círculos' : 'See my circles'}</Link>
           </>
         )}
 
@@ -130,7 +130,7 @@ export default function ConvitePage() {
             <p className="t-caps ink-3">{pt ? 'Convite' : 'Invite'}</p>
             <h1 className="t-title1">{pt ? 'Não deu para entrar' : 'Could not join'}</h1>
             <p className="t-body ink-2">{outcome.message}</p>
-            <Link className="wv2-pill" href="/circles">{pt ? 'Ir para Círculos' : 'Go to Circles'}</Link>
+            <Link className="wv2-pill" href="/family/circulos">{pt ? 'Ir para Círculos' : 'Go to Circles'}</Link>
           </>
         )}
       </div>

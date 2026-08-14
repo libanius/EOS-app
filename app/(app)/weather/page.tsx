@@ -380,7 +380,7 @@ export default function WeatherPage() {
       <p style={{ color: '#a1a1aa', fontSize: 14, marginBottom: 12 }}>
         Allow location access or set your location in your Emergency Profile.
       </p>
-      <a href="/ficha" style={{ color: AC, fontSize: 13, fontWeight: 700 }}>Set Location →</a>
+      <a href="/family/ficha" style={{ color: AC, fontSize: 13, fontWeight: 700 }}>Set Location →</a>
     </div>
   )
 

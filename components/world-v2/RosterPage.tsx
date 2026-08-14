@@ -35,6 +35,7 @@ import { useLanguage } from '@/lib/i18n'
 import { Card, Pill, SectionLabel } from './primitives'
 import { haptic } from './motion'
 import './world-v2.css'
+import FamilyNav from './FamilyNav'
 
 type Member = {
   id: string
@@ -568,6 +569,9 @@ export default function RosterPage() {
             </p>
           )}
         </header>
+
+        {/* NAV-T05: Círculos e Ficha viraram seções de Família. */}
+        <FamilyNav />
 
         {/* As ações ficam AQUI quando já existe gente, e dentro do cartão vazio
             quando não existe. A primeira versão mostrava as duas coisas ao mesmo

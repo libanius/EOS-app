@@ -603,7 +603,7 @@ export default function PlanPage() {
         <PreparednessNav />
 
         <Card>
-          <a className="wv2-pill primary" href="/circles">{c.goCircles}</a>
+          <a className="wv2-pill primary" href="/family/circulos">{c.goCircles}</a>
         </Card>
         </div>
       </main>

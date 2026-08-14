@@ -466,7 +466,7 @@ export default function SettingsPage() {
             </div>
           )}
 
-          <Link href="/ficha" style={{ ...styles.accountBtn, textDecoration: 'none', display: 'flex' }}>
+          <Link href="/family/ficha" style={{ ...styles.accountBtn, textDecoration: 'none', display: 'flex' }}>
             <span>{en ? 'Edit my data (Master Card)' : 'Editar meus dados (Ficha Master)'}</span>
             <span aria-hidden>→</span>
           </Link>

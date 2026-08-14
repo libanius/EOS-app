@@ -44,13 +44,6 @@ const GearIcon = () => (
   </svg>
 )
 
-const PersonIcon = () => (
-  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-    <circle cx="12" cy="7" r="4" />
-  </svg>
-)
-
 export default function AppActions() {
   const { t } = useLanguage()
   const caminho = usePathname()
@@ -127,8 +120,15 @@ export default function AppActions() {
    * Ficha e Configurações saem em NAV-T05 e NAV-T06, e aí este menu deixa de
    * existir: duas navegações concorrentes é uma a mais.
    */
+  /*
+   * NAV-T05 / D-178: a Ficha saiu daqui — virou seção de Família, onde ela
+   * sempre pertenceu: é a ficha DE UMA PESSOA da casa.
+   *
+   * Sobrou Configurações. Em NAV-T06 ela vai para `/mais` na barra, e este menu
+   * deixa de existir: duas navegações concorrentes é uma a mais, e um ícone sem
+   * rótulo no canto sempre foi uma aposta do usuário sobre o que tem lá dentro.
+   */
   const portas = [
-    { href: '/ficha', rotulo: t('actions.emergencyCard'), icone: <PersonIcon /> },
     { href: '/settings', rotulo: t('actions.settings'), icone: <GearIcon /> },
   ]
 

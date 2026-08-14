@@ -229,6 +229,51 @@ try {
     : no('o Plano continua escondido no ☰', itensMenu.join(', '))
   await page.keyboard.press('Escape')
 
+  // ── 5f. Família ganhou seções (NAV-T05) ───────────────────────────────────
+  await page.goto(`${B}/family`, { waitUntil: 'networkidle' })
+  const navFamilia = page.locator('nav[aria-label="Seções da Família"]')
+  await navFamilia.waitFor({ timeout: 20000 })
+  const chipsFam = await navFamilia.locator('a').count()
+  chipsFam === 4
+    ? ok('a faixa de Família tem os 4 destinos')
+    : no('faixa de Família com contagem errada', String(chipsFam))
+
+  for (const [rota, destino, chip] of [
+    ['/ficha', '/family/ficha', 'Ficha'],
+    ['/circles', '/family/circulos', 'Círculos'],
+  ]) {
+    await page.goto(`${B}${rota}`, { waitUntil: 'networkidle' })
+    page.url().includes(destino)
+      ? ok(`${rota} redireciona para ${destino}`)
+      : no(`${rota} não redirecionou`, page.url())
+
+    const aceso = await page.locator('nav[aria-label="Seções da Família"] [aria-current="page"]').innerText().catch(() => '')
+    aceso.trim() === chip ? ok(`${chip} acende o próprio chip`) : no(`${chip} não acendeu`, aceso)
+  }
+
+  // ── 5g. O QR PÚBLICO não pode ter mudado de endereço ──────────────────────
+  // Ele está impresso, colado em geladeira e compartilhado. Mexer nele
+  // quebraria o papel de quem já imprimiu.
+  // Com o id REAL do usuário temporário: `notFound()` para id inexistente é
+  // comportamento correto da página, e testar com uuid falso mediria a coisa
+  // errada — foi o que eu fiz na primeira versão desta checagem.
+  const qr = await page.goto(`${B}/ficha/${created.id}`, { waitUntil: 'domcontentloaded' })
+  const qrStatus = qr?.status() ?? 0
+  const qrRedirecionou = page.url().includes('/family/')
+  qrStatus !== 404 && !qrRedirecionou
+    ? ok('o QR público /ficha/[id] continua no mesmo endereço')
+    : no('o QR público mudou ou sumiu', `${qrStatus} · ${page.url()}`)
+
+  // ── 5h. O ☰ ficou só com Configurações ────────────────────────────────────
+  await page.goto(`${B}/preparedness`, { waitUntil: 'networkidle' })
+  await page.locator('.app-actions-trigger').click()
+  await page.waitForTimeout(300)
+  const menu = await page.locator('.app-actions-menu a').allInnerTexts()
+  menu.length === 1 && !menu.some(x => /ficha/i.test(x))
+    ? ok('o ☰ ficou só com Configurações')
+    : no('o ☰ ainda esconde coisa', menu.join(', '))
+  await page.keyboard.press('Escape')
+
   // ── 6. O endereço antigo não vira 404 ─────────────────────────────────────
   await page.goto(`${B}/checklist`, { waitUntil: 'networkidle' })
   const redirecionou = page.url().includes('/preparedness/o-que-falta')
