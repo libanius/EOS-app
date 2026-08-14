@@ -198,7 +198,13 @@ export default function MemberSheet({
         <>
           <motion.button
             type="button"
-            className="wv2-pilot-scrim"
+            /*
+             * Scrim PRÓPRIO, não o do Pilot (D-187). O do Pilot está em z-899
+             * porque ele é montado no layout e precisa passar por cima da
+             * barra; aqui dentro de `.wv2` — que é `position: fixed` e portanto
+             * cria contexto de empilhamento — 899 cobria esta própria folha.
+             */
+            className="wv2-member-scrim"
             aria-label={pt ? 'Fechar' : 'Close'}
             onClick={onClose}
             initial={{ opacity: 0 }}

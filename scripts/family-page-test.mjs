@@ -208,6 +208,48 @@ chipCadastro > 0 && rotaAntiga
   ? ok('o cadastro é chip da Família e o endereço antigo não virou 404', '/family/cadastro')
   : no('cadastro inalcançável', `chip=${chipCadastro} rotaAntiga=${rotaAntiga}`)
 
+/*
+ * ── 7. A FOLHA DA PESSOA NO MAPA RESPONDE AO TOQUE (D-187) ─────────────────
+ *
+ * Achado do dono: "por que está tudo embaçado? não consigo mais clicar."
+ *
+ * A folha reusava `.wv2-pilot-scrim`. Em 09/08 aquele scrim subiu para z-899
+ * para passar por cima da barra de navegação — correto para o Pilot, que é
+ * montado no layout. Errado aqui: esta folha vive dentro de `.wv2`, que é
+ * `position: fixed` e cria contexto de empilhamento próprio. Ali dentro, 899
+ * não competia com a barra e sim com a folha (7) — e a cobria.
+ *
+ * O `click` do Playwright é o teste exato: ele RECUSA clicar num elemento que
+ * outro intercepta, e diz qual. Um teste que só medisse visibilidade passaria,
+ * porque a folha estava visível — embaçada, mas visível.
+ */
+await page.goto(`${B}/dashboard`, { waitUntil: 'networkidle' })
+await page.waitForTimeout(4000)
+
+const marcador = page.locator('.w-mapmarker.real').first()
+const temMarcador = await marcador.count()
+if (!temMarcador) {
+  no('o rosto da pessoa não apareceu no mapa')
+} else {
+  await marcador.click()
+  const folha = page.locator('.wv2-member')
+  await folha.waitFor({ timeout: 10000 }).catch(() => {})
+
+  const botao = folha.locator('button', { hasText: 'Onde você está?' }).first()
+  const clicou = await botao.click({ timeout: 5000 }).then(() => true).catch(e => String(e.message || e))
+  clicou === true
+    ? ok('os botões da folha da pessoa respondem ao toque')
+    : no('algo cobre a folha e intercepta o toque', String(clicou).split('\n')[0].slice(0, 120))
+
+  // E o scrim tem que ser o DELA, não o do Pilot — a classe compartilhada é a
+  // origem do defeito, e voltar a compartilhá-la o traz de volta.
+  const scrimProprio = await page.locator('.wv2-member-scrim').count()
+  const scrimDoPilot = await page.locator('.wv2-pilot-scrim').count()
+  scrimProprio === 1 && scrimDoPilot === 0
+    ? ok('a folha usa o próprio scrim, não o do Pilot')
+    : no('scrim compartilhado de volta', `proprio=${scrimProprio} pilot=${scrimDoPilot}`)
+}
+
 await browser.close()
 stopServer()
 await admin(`/rest/v1/circle_notifications?recipient_id=eq.${esposa.id}`, { method: 'DELETE' })

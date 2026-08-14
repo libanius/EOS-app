@@ -2378,8 +2378,51 @@
    Tap a face, act on that person. A marker that only says where someone is
    answers half the question. */
 
+/*
+ * ── O scrim da folha da PESSOA (D-187) ──────────────────────────────────────
+ *
+ * Ela reusava `.wv2-pilot-scrim`, e isso funcionou de 29/07 até 09/08. Nessa
+ * data, `fix(pilot): close chat when tapping outside` subiu aquele scrim para
+ * **z-index 899**, para ele passar por cima da barra de navegação (100) e do
+ * AppActions (200).
+ *
+ * Correto para o Pilot — que é montado no LAYOUT, no contexto de empilhamento
+ * da raiz, onde 899 realmente o coloca acima da barra.
+ *
+ * Errado para esta folha, que vive dentro de `.wv2`. E `.wv2` é
+ * `position: fixed`, o que **cria um contexto de empilhamento próprio**: ali
+ * dentro, 899 não é comparado com a barra — é comparado com a folha, que é 7.
+ * O scrim passou a cobrir exatamente o que ele deveria destacar. A tela ficava
+ * embaçada inteira e nenhum botão respondia: o toque parava no scrim.
+ *
+ * A armadilha não foi o número. Foi **uma classe servindo dois pontos de
+ * montagem em contextos diferentes** — mudar um deles não tem como avisar o
+ * outro. Agora são duas classes, e cada uma vive na régua do próprio contexto.
+ *
+ * Régua de `.wv2`: mapa 0 · painéis e folha 3 · busca/PilotBar 4 · orbe 6.
+ */
+.wv2-member-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 6;
+  border: 0;
+  padding: 0;
+  background: rgba(0, 0, 0, 0.32);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  cursor: pointer;
+}
+@media (prefers-reduced-transparency: reduce) {
+  .wv2-member-scrim {
+    background: rgba(0, 0, 0, 0.62);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
 .wv2-member {
   position: absolute;
+  /* Acima do próprio scrim (6), que por sua vez cobre painéis e folha (3). */
   z-index: 7;
   left: 0;
   right: 0;

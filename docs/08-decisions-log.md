@@ -4,6 +4,78 @@
 
 ---
 
+## D-187 — Uma classe, dois contextos de empilhamento, e a folha sumiu embaixo do próprio scrim
+
+**Date**: 2026-08-14
+**Status**: DECIDED
+**Roadmap**: FAM-T10
+**Achado**: dono do produto — *"por que está tudo embaçado? não consigo mais clicar"*
+
+**Context**: Tocar no rosto de alguém no mapa abre a `MemberSheet` — rota,
+distância e os pings. A tela inteira ficava **embaçada** e **nenhum botão
+respondia**: o toque parava antes de chegar na folha.
+
+**Causa**:
+
+```
+.wv2               position: fixed        → CRIA contexto de empilhamento
+├── .wv2-map                    z-index: 0
+├── .wv2-sheet / .wv2-panel     z-index: 3
+├── .wv2-search / .wv2-pilotbar z-index: 4
+├── .wv2-pilot-scrim            z-index: 899   ← reusado pela MemberSheet
+└── .wv2-member                 z-index: 7
+```
+
+A folha usava `.wv2-pilot-scrim`, e funcionou de 29/07 a 09/08. Nessa data,
+`fix(pilot): close chat when tapping outside` subiu aquele scrim para **899**
+para ele passar por cima da barra de navegação (100) e do AppActions (200).
+
+**Correto para o Pilot** — ele é montado no `layout`, no contexto de
+empilhamento da raiz, onde 899 de fato o coloca acima da barra.
+
+**Errado para esta folha**, que vive dentro de `.wv2`. Como `.wv2` é
+`position: fixed`, ele **cria contexto próprio**: ali dentro, 899 nunca é
+comparado com a barra — é comparado com a folha, que é 7. O scrim passou a
+cobrir exatamente o que existia para destacar, e a virar um `<button>` de tela
+cheia engolindo todo toque.
+
+**A armadilha não foi o número.** Foi **uma classe servindo dois pontos de
+montagem em contextos diferentes**. Ajustar um deles não tem como avisar o
+outro — e o commit que subiu para 899 estava certo sobre o problema que ele
+resolvia.
+
+**Decision**:
+
+1. **Cada folha tem o próprio scrim.** `.wv2-member-scrim` em `z-index: 6` —
+   acima dos painéis (3) e abaixo da folha (7), na régua do contexto onde ela
+   realmente vive. O scrim do Pilot fica intocado em 899, onde está certo.
+
+2. **A régua de `.wv2` fica escrita no CSS**, ao lado da regra: mapa 0 ·
+   painéis e folha 3 · busca/PilotBar 4 · orbe 6 · folha da pessoa 7.
+
+3. **`family-page-test` passa a TOCAR o botão.** `page.click()` do Playwright
+   recusa clicar em elemento interceptado e diz qual — é o teste exato para
+   esta classe de defeito. Um teste de visibilidade passaria: a folha **estava
+   visível**, só embaçada e inerte.
+
+4. **Verificado ao contrário**: com o scrim de volta em 899, o teste falha em
+   `locator.click: Timeout`.
+
+**Consequence**:
+
+- **Cinco dias no ar.** Não apareceu no `error_log` porque não houve exceção
+  nenhuma: CSS não lança. É a segunda classe de defeito desta sessão que
+  nenhum log pegaria — a primeira foi `/mais` fora da allow-list (D-183).
+- **Nenhum teste tinha jamais tocado nesta folha.** Quarto caso seguido em que
+  a cobertura media abertura e leitura, e o defeito morava na interação.
+- Reusar classe de outra superfície é barato até o dia em que as duas deixam de
+  compartilhar o contexto. `z-index` só é comparável **dentro** do mesmo
+  contexto de empilhamento, e `position: fixed` cria um.
+
+**Não autorizado por D-187**: mexer no scrim ou no z-index do Pilot, mudar a
+régua de camadas de `.wv2`.
+
+
 ## D-186 — O ping era só push, e push é o canal mais frágil da pilha
 
 **Date**: 2026-08-14
