@@ -619,7 +619,7 @@ export default function FamilyPage() {
               <Card className="wv2-plan-note gaps">
                 <strong className="t-sub">{c.noRole}</strong>
                 <p className="t-foot ink-2">{c.noRoleWhy}</p>
-                <Link className="wv2-pill" href="/plan">{c.openPlan}</Link>
+                <Link className="wv2-pill" href="/preparedness/plano">{c.openPlan}</Link>
               </Card>
             )}
 

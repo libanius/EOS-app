@@ -5,6 +5,31 @@
 
 ---
 
+## Navegação: Model C é canônico (D-177, 2026-08-13)
+
+`docs/35` saiu do papel. A barra global terá **cinco slots e nunca muda** —
+subdivisão acontece dentro do domínio, como PREP-T07 provou. `MUNDO` é
+invariante de produto: mesma posição, mesma função, em qualquer tela e modo.
+
+**Ordem das fases: absorções primeiro.** São elas que liberam os slots — mexer
+na barra antes seria mudar o visível sem ter para onde mover o resto.
+
+**Tela com retorno antecipado precisa da navegação nos DOIS caminhos.** Um teste
+pegou: sem círculo, o Plano renderiza um ramo curto, e a faixa estava só no
+principal — a pessoa sem círculo chegaria numa tela sem saída. Justamente quem
+mais precisa de um caminho de volta.
+
+**O teste de navegador roda contra `.next`.** Editar componente e rodar o teste
+sem `npm run build` testa o build anterior. Perdi uma rodada com isso.
+
+**Preparedness State está em PAUSA CONSCIENTE, não abandonado (NAV-T00).**
+`holdings`, `lib/coverage.ts` e `lib/holdings-store.ts` são corretos, testados e
+sem consumidor **de propósito**: "onde está minha água de reserva?" só tem
+sentido para quem tem dois lugares. Enquanto todos tiverem um, `holdings` é
+redundante com os sete escalares. Não "termine" isso sem uma demanda real.
+
+---
+
 ## Preparedness State — o que um agente futuro não pode redescobrir errado (2026-08-12)
 
 D-155 / PREP-T03. Spec completa em `docs/37-preparedness-state.md`. Aqui só o

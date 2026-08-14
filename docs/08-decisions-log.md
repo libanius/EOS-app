@@ -4,6 +4,78 @@
 
 ---
 
+## D-177 — Model C adotado: a navegação do EOS ganha dono
+
+**Date**: 2026-08-13
+**Status**: DECIDED
+**Roadmap**: NAV-T04 .. NAV-T08
+**Spec**: `docs/35-arquitetura-de-navegacao.md` (proposta de 2026-08-12)
+
+**Context**: `docs/35` auditou a navegação e recomendou o **Model C**. Ficou
+como proposta e **nunca virou tarefa** — zero referências no roadmap. Nesta
+sessão, ao levantar o que faltava de tudo que planejamos, isso apareceu como o
+maior buraco.
+
+O dono escolheu executá-lo, depois de eu recomendar a navegação em vez de
+terminar a metade Holding do Preparedness State. O argumento que pesou:
+**a navegação é onde o usuário perde acesso ao que já existe e já funciona.**
+
+Os números da auditoria seguem válidos:
+
+- `/plan` — **1409 linhas de funcionalidade** atrás de um hambúrguer sem rótulo
+- `/edu` — RAG, curadoria e conteúdo aprovado com **uma única porta** no app
+- barra com **7 destinos**, onde iOS HIG e Material convergem em 3–5
+- `/weather` duplicando o MUNDO em duas linguagens visuais
+
+**Decision**:
+
+1. **Model C é canônico.** `docs/35` deixa de ser proposta.
+
+2. **INV-NAV-01 vira invariante do produto**: MUNDO ocupa a mesma posição, tem
+   a mesma função e está disponível em qualquer tela e qualquer modo. Nenhuma
+   tela, modo ou overlay pode removê-lo, movê-lo ou reatribuí-lo.
+
+3. **A barra global tem cinco slots e NUNCA muda** — em nenhuma tela, em nenhum
+   modo. A subdivisão acontece dentro do domínio, como navegação local, que
+   PREP-T07 já provou funcionar.
+
+4. **Execução em cinco fases, na ordem das absorções primeiro**, porque são
+   elas que liberam os slots:
+
+   | Fase | O quê |
+   |---|---|
+   | NAV-T04 | Plano e Aprender entram na Preparação; ☰ perde o Plano |
+   | NAV-T05 | Círculos entra em Família; Ficha entra em Família |
+   | NAV-T06 | Barra encolhe para 5; `/mais` absorve o que resta do ☰ |
+   | NAV-T07 | `/weather` desce para dentro do MUNDO |
+   | NAV-T08 | Cenário deixa de ser destino e vira MODO |
+
+5. **Endereço antigo nunca vira 404.** Redireciona — o padrão já escrito em
+   `family-legacy`, `/inventory` e `/checklist`.
+
+6. **Os três atalhos do `manifest.json`** (`/ficha`, `/plan`, `/preparedness`)
+   continuam válidos por redirecionamento. Atualizar o manifesto exigiria
+   reinstalação para parte dos usuários já instalados; o redirecionamento não
+   custa nada a ninguém.
+
+**Consequence**:
+
+- A frente Preparedness State fica **pausada, não abandonada**. `holdings`,
+  `lib/coverage.ts` e `lib/holdings-store.ts` estão corretos, testados e sem
+  consumidor — e permanecem assim de propósito. Registrado em NAV-T00 abaixo o
+  raciocínio: a pergunta "onde está minha água de reserva?" só tem sentido para
+  quem tem **dois lugares**, e enquanto todos tiverem um, `holdings` é
+  redundante com os sete escalares. **Não é dívida; é obra parada esperando a
+  demanda certa.** É o mesmo teste do `docs/37` §35 que recusou
+  `ReadinessAssessment` — aplicado tarde, e por isso registrado.
+- `docs/36` continua valendo para dentro da Preparação; suas fases 5 e 6 são
+  exatamente NAV-T04.
+
+**Não autorizado por D-177**: mexer na barra antes das absorções, mudar o
+manifesto, tocar em `holdings`/`coverage`.
+
+---
+
 ## D-176 — Cutover: `requirements` é a verdade; `checklists` vira retrato
 
 **Date**: 2026-08-13

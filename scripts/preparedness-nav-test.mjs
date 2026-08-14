@@ -177,9 +177,9 @@ try {
   await page.goto(`${B}/preparedness`, { waitUntil: 'networkidle' })
   await navLocal.waitFor({ timeout: 20000 })
   const chips = await navLocal.locator('a').count()
-  chips === 3
-    ? ok('a faixa tem os 3 destinos')
-    : no('a faixa não tem 3 destinos', String(chips))
+  chips === 5
+    ? ok('a faixa tem os 5 destinos')
+    : no('a faixa não tem 5 destinos', String(chips))
 
   await navLocal.locator('a', { hasText: 'O que tenho' }).click()
   await page.waitForURL(/\/preparedness\/o-que-tenho/, { timeout: 10000 }).catch(() => {})
@@ -203,6 +203,31 @@ try {
   steppers === 0
     ? ok('a Visão não tem nenhum editor')
     : no('a Visão voltou a ter editor', String(steppers))
+
+  // ── 5d. Plano e Aprender viraram subtópicos (NAV-T04) ─────────────────────
+  // Eram as duas coisas mais escondidas do app: 1409 linhas atrás de um
+  // hambúrguer, e um RAG inteiro com uma porta só.
+  for (const [rota, chip] of [['/plan', 'Plano'], ['/edu', 'Aprender']]) {
+    await page.goto(`${B}${rota}`, { waitUntil: 'networkidle' })
+    const destino = chip === 'Plano' ? '/preparedness/plano' : '/preparedness/aprender'
+    const foi = page.url().includes(destino)
+    foi ? ok(`${rota} redireciona para ${destino}`) : no(`${rota} não redirecionou`, page.url())
+
+    const aceso = await page.locator('nav[aria-label="Seções da Preparação"] [aria-current="page"]').innerText().catch(() => '')
+    aceso.trim() === chip
+      ? ok(`${chip} acende o próprio chip`)
+      : no(`${chip} não acendeu`, aceso)
+  }
+
+  // ── 5e. O ☰ perdeu o Plano ────────────────────────────────────────────────
+  await page.goto(`${B}/preparedness`, { waitUntil: 'networkidle' })
+  await page.locator('.app-actions-trigger').click()
+  await page.waitForTimeout(300)
+  const itensMenu = await page.locator('.app-actions-menu a').allInnerTexts()
+  !itensMenu.some(x => /plano/i.test(x))
+    ? ok('o ☰ não tem mais o Plano')
+    : no('o Plano continua escondido no ☰', itensMenu.join(', '))
+  await page.keyboard.press('Escape')
 
   // ── 6. O endereço antigo não vira 404 ─────────────────────────────────────
   await page.goto(`${B}/checklist`, { waitUntil: 'networkidle' })

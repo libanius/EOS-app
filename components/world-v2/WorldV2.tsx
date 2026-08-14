@@ -992,7 +992,7 @@ function WorldSections({
           {c.scenario}
         </PillLink>
         <PillLink href="/preparedness">{c.checklist}</PillLink>
-        <PillLink href="/plan">{c.plan}</PillLink>
+        <PillLink href="/preparedness/plano">{c.plan}</PillLink>
       </div>
 
       {/* ── Autonomy ── */}

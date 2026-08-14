@@ -1,14 +1,12 @@
-'use client'
+import { redirect } from 'next/navigation'
 
 /**
- * /plan — o plano de voo da família (D-066 / doc 18).
+ * `/plan` virou `/preparedness/plano` (NAV-T04 / D-177).
  *
- * Rota própria e não uma aba: o plano é editado em tempo de calma e lido em
- * tempo de evento, e nenhum dos dois momentos é "navegar entre abas".
+ * O endereço fica: é atalho do `manifest.json` e pode estar salvo em qualquer
+ * lugar. Atualizar o manifesto exigiria reinstalação para parte de quem já tem
+ * o app; o redirecionamento não custa nada a ninguém.
  */
-
-import PlanPage from '@/components/world-v2/PlanPage'
-
 export default function Page() {
-  return <PlanPage />
+  redirect('/preparedness/plano')
 }

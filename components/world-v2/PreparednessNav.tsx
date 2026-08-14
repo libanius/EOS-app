@@ -39,13 +39,17 @@ type Destino = { href: string; pt: string; en: string }
  * defeito de `checklists.kit_type`, reproduzido na navegação (`docs/37` §29.2).
  * Localização e kit viram FILTROS dentro de cada superfície.
  *
- * `Plano` e `Aprender` entram quando `/plan` e `/edu` migrarem; até lá a faixa
- * tem três chips e cabe sem rolar em qualquer telefone.
+ * `Plano` e `Aprender` entraram em NAV-T04 (D-177). Com cinco destinos a faixa
+ * ESTOURA 360px — por isso ela rola, e por isso o chip ativo é trazido para a
+ * vista no `useEffect` abaixo. Uma navegação cujo item atual está escondido é
+ * pior que navegação nenhuma: a pessoa perde a única pista de onde está.
  */
 const DESTINOS: Destino[] = [
   { href: '/preparedness', pt: 'Visão', en: 'Overview' },
   { href: '/preparedness/o-que-tenho', pt: 'O que tenho', en: 'What I have' },
   { href: '/preparedness/o-que-falta', pt: 'O que falta', en: 'What’s missing' },
+  { href: '/preparedness/plano', pt: 'Plano', en: 'Plan' },
+  { href: '/preparedness/aprender', pt: 'Aprender', en: 'Learn' },
 ]
 
 export default function PreparednessNav() {

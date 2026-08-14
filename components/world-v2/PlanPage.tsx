@@ -48,6 +48,7 @@ import MapPointPicker from './MapPointPicker'
 import PlanChart from './PlanChart'
 import RouteDraw, { routeSummary } from './RouteDraw'
 import { Card, Pill, SectionLabel } from './primitives'
+import PreparednessNav from './PreparednessNav'
 import { FADE, SPRING, haptic } from './motion'
 import './world-v2.css'
 
@@ -591,6 +592,16 @@ export default function PlanPage() {
           <h1 className="plan-title">{c.noCircle}</h1>
           <p className="t-body ink-2">{c.noCircleHint}</p>
         </header>
+
+        {/*
+          A faixa vai NOS DOIS caminhos.
+          Um teste pegou isto: sem círculo, o Plano renderiza este ramo curto, e
+          eu tinha posto a navegação só no principal. A pessoa sem círculo
+          chegaria numa tela sem saída dentro da Preparação — justamente quem
+          mais precisa de um caminho de volta.
+        */}
+        <PreparednessNav />
+
         <Card>
           <a className="wv2-pill primary" href="/circles">{c.goCircles}</a>
         </Card>
@@ -606,6 +617,10 @@ export default function PlanPage() {
         <p className="t-caps ink-3">{c.eyebrow}</p>
         <h1 className="plan-title">{circle?.name ?? '—'}</h1>
         <p className="t-body ink-2">{c.subtitle}</p>
+
+        {/* NAV-T04: o Plano virou subtópico da Preparação. Mesma ordem das
+            outras telas — título primeiro, seções depois (D-164). */}
+        <PreparednessNav />
 
         <div className="wv2-plan-meta">
           {version > 0 && (

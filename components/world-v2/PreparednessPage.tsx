@@ -832,7 +832,7 @@ export default function PreparednessPage() {
           <span style={S.portaSeta} aria-hidden>›</span>
         </a>
 
-        <a href="/edu" style={S.porta}>
+        <a href="/preparedness/aprender" style={S.porta}>
           <span style={S.portaTexto}>
             <span style={S.portaTitulo}>{language === 'pt' ? 'Aprender' : 'Learn'}</span>
             <span style={S.portaEstado}>

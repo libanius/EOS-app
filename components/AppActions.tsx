@@ -37,13 +37,6 @@ const orbe: React.CSSProperties = {
   cursor: 'pointer',
 }
 
-const PinIcon = () => (
-  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12 21s-7-4.5-7-10a7 7 0 1 1 14 0c0 5.5-7 10-7 10Z" />
-    <circle cx="12" cy="11" r="2.5" />
-  </svg>
-)
-
 const GearIcon = () => (
   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="12" cy="12" r="3" />
@@ -125,8 +118,16 @@ export default function AppActions() {
   // órfão no ar.
   useEffect(() => { if (oculto) setAberto(false) }, [oculto])
 
+  /*
+   * NAV-T04 / D-177: o Plano saiu daqui.
+   *
+   * Eram 1409 linhas de funcionalidade atrás de um hambúrguer sem rótulo. Ele
+   * agora é subtópico da Preparação, com chip próprio — onde a preparação vive.
+   *
+   * Ficha e Configurações saem em NAV-T05 e NAV-T06, e aí este menu deixa de
+   * existir: duas navegações concorrentes é uma a mais.
+   */
   const portas = [
-    { href: '/plan', rotulo: t('actions.familyPlan'), icone: <PinIcon /> },
     { href: '/ficha', rotulo: t('actions.emergencyCard'), icone: <PersonIcon /> },
     { href: '/settings', rotulo: t('actions.settings'), icone: <GearIcon /> },
   ]
