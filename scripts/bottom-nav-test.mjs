@@ -151,6 +151,29 @@ try {
     ? ok('/settings redireciona para /mais')
     : no('/settings não redirecionou', page.url())
 
+  /*
+   * A CHECAGEM QUE FALTOU EM D-180.
+   *
+   * Clima perdeu o ícone da barra, então a porta no MUNDO virou a única — e
+   * ela era CONDICIONAL: só aparecia com alerta ativo. Quem está bem, que é
+   * quase todo mundo quase sempre, ficava sem caminho nenhum.
+   *
+   * O usuário temporário não tem localização e portanto não tem alerta: este
+   * teste roda exatamente no ramo que estava quebrado.
+   */
+  await page.goto(`${B}/dashboard`, { waitUntil: 'networkidle' })
+  await page.waitForSelector('nav.nav a', { timeout: 10000 })
+  await page.waitForTimeout(1500)
+  const portaClima = await page.locator('a[href="/weather"]').count()
+  portaClima >= 1
+    ? ok('o MUNDO tem porta para o Clima mesmo SEM alerta ativo')
+    : no('o Clima ficou órfão: nenhuma porta no MUNDO', String(portaClima))
+
+  const portaCenario = await page.locator('a[href="/scenario"]').count()
+  portaCenario >= 1
+    ? ok('o MUNDO tem porta para o Cenário')
+    : no('o Cenário ficou órfão no MUNDO', String(portaCenario))
+
   // Clima e Cenário perderam o ícone, não o endereço.
   for (const rota of ['/weather', '/scenario']) {
     const resposta = await page.goto(`${B}${rota}`, { waitUntil: 'domcontentloaded' })

@@ -63,6 +63,7 @@ const COPY = {
     alerts: 'Alertas ativos',
     noAlerts: 'Nenhum alerta oficial na sua área',
     seeAlerts: 'Ver alertas',
+    seeConditions: 'Ver condições e previsão',
     scenario: 'Abrir cenário',
     checklist: 'Preparação',
     plan: 'Plano da família',
@@ -146,6 +147,7 @@ const COPY = {
     alerts: 'Active alerts',
     noAlerts: 'No official alert in your area',
     seeAlerts: 'See alerts',
+    seeConditions: 'See conditions and forecast',
     scenario: 'Open scenario',
     checklist: 'Preparedness',
     plan: 'Family plan',
@@ -1063,7 +1065,6 @@ function WorldSections({
                 <em className="t-foot ink-3">{c.showOnMap}</em>
               </button>
             ))}
-            <PillLink href="/weather">{c.seeAlerts}</PillLink>
           </div>
         ) : headlines.length ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.25rem' }}>
@@ -1072,13 +1073,28 @@ function WorldSections({
                 {alert.headline}
               </p>
             ))}
-            <PillLink href="/weather">{c.seeAlerts}</PillLink>
           </div>
         ) : (
           <p className="t-body ink-2" style={{ marginTop: '0.25rem' }}>
             {c.noAlerts}
           </p>
         )}
+        {/*
+          A porta é INCONDICIONAL (NAV-T06 correção / D-181).
+
+          Ela vivia DENTRO de dois dos três ramos acima — aparecia com alerta
+          localizado e com manchete, e sumia justamente no caso mais comum:
+          nenhum alerta. Enquanto Clima tinha ícone próprio na barra global isso
+          passava despercebido; ao remover o ícone (D-180), `/weather` virou
+          órfão para quem está bem, que é quase todo mundo quase sempre.
+
+          Com zero alertas o rótulo muda: "Ver alertas" mentiria sobre o que há
+          do outro lado. O que há são condições, qualidade do ar e a
+          recomendação de atividade — e essas existem sempre.
+        */}
+        <div style={{ marginTop: '0.75rem' }}>
+          <PillLink href="/weather">{alertCount ? c.seeAlerts : c.seeConditions}</PillLink>
+        </div>
       </Card>
 
       {/* ── Official shelters (D-065). "None open" is a real answer. ── */}

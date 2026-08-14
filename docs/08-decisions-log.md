@@ -4,6 +4,66 @@
 
 ---
 
+## D-181 — A porta do Clima era condicional, e a condição era "estar em perigo"
+
+**Date**: 2026-08-14
+**Status**: DECIDED
+**Roadmap**: NAV-T06 (correção)
+**Achado**: dono do produto — *"eu não vejo em lugar nenhum o weather"*
+
+**Context**: D-180 tirou o ícone de Clima da barra global afirmando que
+*"Clima e Cenário perdem o ícone, não o endereço: os dois continuam a um toque
+no MUNDO"*. Para Cenário isso era verdade. Para Clima, **não**.
+
+`WorldV2.tsx` tinha o `PillLink href="/weather"` dentro de **dois dos três**
+ramos do card de Alertas:
+
+```
+locatedAlerts.length  → lista + Ver alertas      ✅ porta
+headlines.length      → manchetes + Ver alertas  ✅ porta
+senão                 → "Nenhum alerta na área"  ❌ NADA
+```
+
+A porta aparecia quando havia alerta e sumia quando não havia — ou seja, ela
+existia exatamente para quem **já sabia** que havia algo, e faltava para quem
+queria conferir. Enquanto Clima tinha ícone próprio na barra isso passava
+despercebido; ao remover o ícone, `/weather` virou órfão no estado normal.
+
+**Causa da falha de verificação**: eu confirmei que os links existiam no arquivo
+e não que eles **renderizavam sempre**. `grep` acha a linha; ele não acha a
+condição que a envolve.
+
+**Decision**:
+
+1. **A porta sai dos ramos e vira incondicional.** Um card chamado "Alertas
+   ativos" oferece o caminho para os alertas independentemente de haver algum.
+
+2. **O rótulo muda com o estado**: "Ver alertas" com alerta, **"Ver condições e
+   previsão"** sem. "Ver alertas" quando não há nenhum mentiria sobre o que há
+   do outro lado — e o que há sempre são condições, qualidade do ar e
+   recomendação de atividade.
+
+3. **`bottom-nav-test` ganha a checagem que faltou**: o MUNDO tem porta para o
+   Clima **sem alerta ativo**. O usuário temporário não tem localização e
+   portanto não tem alerta — o teste roda no ramo que estava quebrado.
+
+**Consequence**:
+
+- **Terceira vez nesta sessão que um teste passa com a tela errada.** D-179 foi
+  `one-door-test` sem o caso da conta; aqui foi `test:nav` sem o caso do estado
+  vazio. O padrão: os testes cobrem o caminho **cheio** e o defeito mora no
+  **vazio**.
+- Reforça que remover um ponto de entrada exige verificar o substituto **no
+  estado mais comum**, não no estado que ilustra a feature.
+- **Não fecha o problema de fundo**: o Clima continua no fim da rolagem da folha
+  do MUNDO, abaixo de Autonomia, Alertas e Abrigos. Uma porta que existe e está
+  enterrada ainda é ruim. Quem resolve é NAV-T07, dando ao MUNDO a faixa de
+  domínio que Preparação e Família já têm.
+
+**Não autorizado por D-181**: reintroduzir o ícone de Clima na barra global,
+antecipar NAV-T07.
+
+
 ## D-180 — A barra encolhe para cinco, e o menu invisível morre
 
 **Date**: 2026-08-14
