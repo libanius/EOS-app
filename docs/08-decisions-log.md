@@ -4,6 +4,71 @@
 
 ---
 
+## D-188 — A conversa vira uma coisa
+
+**Date**: 2026-08-15
+**Status**: DECIDED
+**Roadmap**: COMMS-T11
+**Pedido do dono**: *"melhore o chat do círculo, e quero chat individual também com
+pessoas do círculo — conversar individualmente, excluir conversas, ou falar em grupo"*
+
+**Context**: Hoje o thread é **implícito**. `circle_messages` tem `circle_id` e
+nada mais: existe exatamente uma conversa por círculo, e ela não tem nome, nem
+identidade, nem endereço próprio. A tela usa `?view=chat` em memória — COMMS é
+o último domínio sem rota de verdade (`docs/35` §ROUTE HIERARCHY).
+
+Para ter conversa individual havia dois caminhos:
+
+| | Custo | Consequência |
+| --- | --- | --- |
+| `to_user_id` em `circle_messages` | baratíssimo | grupo e 1:1 viram **dois caminhos de código** para a mesma coisa |
+| `conversations` de primeira classe | uma migração | **um** caminho: a conversa do círculo é a conversa cujos membros são o círculo inteiro |
+
+Esta sessão passou inteira fechando defeitos da primeira forma — D-129 e D-179
+(duas definições de "casa"), D-181 e D-182 (duas telas de alerta), D-187 (uma
+classe em dois contextos). Escolher de novo o caminho barato aqui seria não ter
+aprendido nada.
+
+**Decision**:
+
+1. **A conversa é a entidade.** `conversations` + `conversation_members`, e
+   `circle_messages.conversation_id` aditivo. A conversa do círculo passa a ser
+   um registro real, não uma ausência de registro.
+
+2. **Toda conversa nasce DENTRO de um círculo.** A regra de permissão continua
+   sendo **uma só** — *você fala com quem divide círculo com você*, a mesma que
+   D-073 estabeleceu para o ping. Conversa individual não é relação nova; é
+   recorte de uma que já existe. Não há como falar com estranho, e não há
+   convite de conversa.
+
+3. **Chave natural para a direta**: `direct_key` = os dois `user_id` ordenados
+   e unidos, único por círculo. Abrir a mesma conversa duas vezes não pode
+   criar dois threads — a lição de PREP-T05, aplicada antes de doer.
+
+4. **"Excluir conversa" é ESCONDER PARA MIM, nunca destruir para todos.**
+   `conversation_members.hidden_at`. Duas razões:
+   - é o que o app de referência faz (apagar conversa é local);
+   - num app de emergência o histórico compartilhado é **registro**: quem
+     avisou o quê e quando. Apagar do lado do outro destrói a prova de que o
+     aviso existiu, e é irreversível.
+
+   Uma mensagem nova reabre a conversa escondida — esconder é arrumar a lista,
+   não bloquear alguém.
+
+5. **Lista e thread viram ROTAS.** `/comms` é a lista, `/comms/[id]` é o thread,
+   `/comms/radio` e `/comms/linha-do-tempo` saem de `?view=`. COMMS ganha a
+   faixa de domínio que os outros quatro já têm — era o último sem.
+
+**Backfill**: uma conversa `kind='circle'` por círculo existente, e toda
+mensagem recebe o `conversation_id` dela. Nenhuma mensagem se move, nenhum
+thread muda de endereço.
+
+**Não autorizado por D-188**: conversa com quem não divide círculo, apagar
+mensagem do lado do outro, anexos, áudio, chamada, entrega garantida, conversa
+de grupo com subconjunto arbitrário do círculo (o modelo suporta; o produto
+ainda não decidiu se quer).
+
+
 ## D-187 — Uma classe, dois contextos de empilhamento, e a folha sumiu embaixo do próprio scrim
 
 **Date**: 2026-08-14
