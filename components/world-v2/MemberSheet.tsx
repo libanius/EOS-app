@@ -60,6 +60,7 @@ export default function MemberSheet({
   const reduceMotion = useReducedMotion()
   const [sent, setSent] = useState<string | null>(null)
   const [failed, setFailed] = useState<string | null>(null)
+  const [conversa, setConversa] = useState<string | null>(null)
   const [execution, setExecution] = useState<ExecutionState>({ status: 'idle' })
   const [broadcast, setBroadcast] = useState<string | null>(null)
   const [doneSteps, setDoneSteps] = useState<Set<string>>(new Set())
@@ -69,6 +70,25 @@ export default function MemberSheet({
     () => execution.status === 'ready' ? buildPlanExecutionSteps(execution.doc, pt) : [],
     [execution, pt],
   )
+
+  /*
+   * A conversa direta com esta pessoa (COMMS-T13 / D-189).
+   *
+   * Ela é criada pelo próprio ping, ou aberta no botão abaixo. Nos dois casos
+   * é o MESMO thread — a chave é simétrica, então não importa por onde se
+   * chegou.
+   */
+  const abrirConversa = async () => {
+    if (!member) return
+    haptic.impact()
+    const r = await fetch('/api/comms/conversations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: member.id }),
+    }).then(x => x.json()).catch(() => null)
+    if (r?.conversation?.id) window.location.assign(`/comms/${r.conversation.id}`)
+    else setFailed(pt ? 'Não consegui abrir a conversa.' : 'Could not open the chat.')
+  }
 
   const send = async (preset: string) => {
     if (!member) return
@@ -82,7 +102,12 @@ export default function MemberSheet({
       .then(r => r.json())
       .catch(() => null)
 
-    if (response?.ok) setSent(preset)
+    if (response?.ok) {
+      setSent(preset)
+      // O preset virou mensagem na conversa (D-189): guardar o id permite
+      // oferecer a porta para ela logo abaixo, onde a resposta vai chegar.
+      if (response.conversationId) setConversa(response.conversationId as string)
+    }
     // Honest failure: the sender must not believe a message arrived when the
     // recipient has no device registered for notifications.
     else setFailed(response?.reason === 'no_device'
@@ -283,6 +308,20 @@ export default function MemberSheet({
                   ))}
                 </div>
                 {failed && <p className="t-foot warn">{failed}</p>}
+
+                {/*
+                  A porta para a conversa (D-189).
+
+                  Os presets são atalhos para as frases mais pedidas sob
+                  estresse — e agora cada um deles cai NESTA conversa. O botão
+                  existe para as duas outras coisas que um preset não faz:
+                  escrever o que não estava na lista, e LER a resposta.
+                */}
+                <button type="button" className="wv2-pill" onClick={() => { void abrirConversa() }}>
+                  {conversa
+                    ? (pt ? 'Ver a conversa →' : 'Open the chat →')
+                    : (pt ? 'Escrever para ' : 'Message ') + (conversa ? '' : member.name.split(' ')[0])}
+                </button>
               </>
             )}
 

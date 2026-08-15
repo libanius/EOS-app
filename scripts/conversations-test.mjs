@@ -265,6 +265,65 @@ try {
   pAna.url().includes('/comms/linha-do-tempo')
     ? ok('?view=timeline redireciona para a rota')
     : no('?view=timeline não redirecionou', pAna.url())
+  /*
+   * ── 10. A PORTA DA CONVERSA INDIVIDUAL (COMMS-T13 / D-189) ───────────────
+   *
+   * Pergunta do dono: "como faço para mandar mensagem privada para a Daniela?"
+   * A resposta era: não fazia. O servidor abria e nenhuma tela chamava.
+   */
+  const pForasteiro2 = pForasteiro
+  await pBruno.goto(`${B}/comms`, { waitUntil: 'networkidle' })
+  await pBruno.waitForTimeout(2000)
+  const temFalarCom = await pBruno.getByText('Falar com alguém').count()
+  // Bruno já tem conversa com Ana, então a seção só aparece se houver mais
+  // gente sem conversa — o que prova que a lista NÃO repete quem já está acima.
+  const nomeRepetido = await pBruno.locator('button', { hasText: 'Ana' }).count()
+  nomeRepetido === 0
+    ? ok('a lista não repete quem já tem conversa em "Falar com alguém"')
+    : no('a pessoa aparece duas vezes na lista', String(nomeRepetido))
+
+  // Com um terceiro no círculo, a porta aparece e funciona.
+  await admin('/rest/v1/circle_members', {
+    method: 'POST',
+    body: JSON.stringify([{ circle_id: circleId, user_id: forasteiro.id, role: 'Viewer', share_inventory: true, shared_fields: [] }]),
+  })
+  await pAna.goto(`${B}/comms`, { waitUntil: 'networkidle' })
+  await pAna.waitForTimeout(2000)
+  const secao = await pAna.getByText('Falar com alguém').count()
+  secao > 0
+    ? ok('"Falar com alguém" aparece com quem ainda não tem conversa')
+    : no('a porta da conversa individual não apareceu', `temFalarCom=${temFalarCom}`)
+
+  // Regex em CONST, nunca no início de linha depois de `)`: a inserção
+  // automática de ponto e vírgula lê a barra como divisão. Terceira vez nesta
+  // frente, e a correção é sempre a mesma.
+  const ROTA_CONVERSA = /\/comms\/[0-9a-f-]{36}/
+  await pAna.locator('button', { hasText: 'Forasteiro' }).first().click()
+  await pAna.waitForURL(ROTA_CONVERSA, { timeout: 15000 }).catch(() => {})
+  const abriuDireta = ROTA_CONVERSA.test(pAna.url())
+  abriuDireta
+    ? ok('tocar no nome abre a conversa individual')
+    : no('não abriu a conversa individual', pAna.url())
+
+  /*
+   * ── 11. O PING CAI NA CONVERSA (D-189) ───────────────────────────────────
+   *
+   * Antes ele era só notificação: chegava e acabava ali, sem onde responder.
+   * "Onde você está?" sem caixa de resposta é meia pergunta.
+   */
+  const pingou = await chamar(pAna, '/api/family/ping', 'POST', { toUserId: bruno.id, preset: 'where', pt: true })
+  const convDoPing = pingou.body?.conversationId
+  convDoPing === idA
+    ? ok('o ping cai na MESMA conversa direta que já existia', String(convDoPing).slice(0, 8))
+    : no('o ping criou outro thread', `${convDoPing} vs ${idA}`)
+
+  const depoisDoPing = await chamar(pBruno, `/api/comms/messages?conversationId=${idA}`)
+  const textos = (depoisDoPing.body?.messages ?? []).map(m => m.body)
+  textos.some(t => /onde voc/i.test(t))
+    ? ok('a mensagem predefinida vira MENSAGEM no thread', textos[textos.length - 1])
+    : no('o ping não virou mensagem', JSON.stringify(textos).slice(0, 140))
+
+  void pForasteiro2
 } finally {
   await browser.close().catch(() => {})
   stopServer()

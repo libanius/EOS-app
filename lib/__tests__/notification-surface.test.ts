@@ -20,10 +20,15 @@ describe('notificationSurface', () => {
   })
 })
 
-describe('ping da família (D-186)', () => {
-  it('cai em Família, não em Comms', () => {
-    // Ping é sobre GENTE — "onde você está", "estou bem". Comms é a conversa.
-    // A superfície decide em qual ícone da barra o badge aparece.
-    expect(notificationSurface({ scope: 'circle', kind: 'family_ping' })).toBe('family')
+describe('ping da família (D-186, revisto em D-189)', () => {
+  it('cai em Comms, porque é lá que se responde', () => {
+    /*
+     * D-186 mandou para `family`: "é sobre gente, não sobre conversa". Era
+     * verdade quando o ping não tinha conversa — chegava e acabava ali.
+     *
+     * D-189 fez o preset virar MENSAGEM num thread. O badge tem que levar para
+     * onde a ação acontece; em Família não dá para responder nada.
+     */
+    expect(notificationSurface({ scope: 'circle', kind: 'family_ping' })).toBe('comms')
   })
 })

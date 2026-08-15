@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { PING_PRESETS, type PingPreset } from '@/lib/family-ping'
 import { createCommsNotifications } from '@/lib/comms-notifications'
 import { logError } from '@/lib/error-log'
+import { findOrCreateDirect } from '@/lib/conversations-store'
 
 /**
  * POST /api/family/ping — a preset message to ONE person in your circle (D-073).
@@ -45,8 +46,10 @@ export async function POST(request: NextRequest) {
     admin.from('circle_members').select('circle_id').eq('user_id', user.id),
     admin.from('circle_members').select('circle_id').eq('user_id', body.toUserId),
   ])
-  const shared = (mine ?? []).some(a => (theirs ?? []).some(b => b.circle_id === a.circle_id))
-  if (!shared) return NextResponse.json({ error: 'Sem círculo em comum.' }, { status: 403 })
+  const circleCompartilhado = (mine ?? [])
+    .map(a => a.circle_id as string)
+    .find(id => (theirs ?? []).some(b => b.circle_id === id))
+  if (!circleCompartilhado) return NextResponse.json({ error: 'Sem círculo em comum.' }, { status: 403 })
 
   const { data: sender } = await admin.from('profiles').select('name').eq('id', user.id).maybeSingle()
   const text = PING_PRESETS[preset][body.pt === false ? 'en' : 'pt']
@@ -65,22 +68,57 @@ export async function POST(request: NextRequest) {
    * Agora a ordem é outra: **grava primeiro, empurra depois.** O push vira
    * reforço — o que faz o telefone vibrar — e não o meio de transporte.
    */
+  /*
+   * ── O PING É UMA MENSAGEM (COMMS-T13 / D-189) ───────────────────────────
+   *
+   * Até aqui ele era um aviso e nada mais: chegava, e acabava ali. **Não havia
+   * como responder.** Numa emergência, "Onde você está?" sem caixa de resposta
+   * é meia pergunta — a informação que importa é a volta.
+   *
+   * Com a conversa existindo (D-188), o preset deixa de ser um canal próprio e
+   * passa a ser o que sempre foi: um **atalho para escrever**. O texto entra na
+   * conversa direta, onde tem endereço, histórico e resposta.
+   *
+   * A conversa é criada aqui se ainda não existir — pela mesma chave simétrica
+   * de qualquer outra, então mandar um ping e abrir a conversa pela lista caem
+   * no MESMO thread.
+   */
+  const conversa = await findOrCreateDirect(admin, circleCompartilhado, user.id, body.toUserId)
+  if (conversa) {
+    await admin.from('circle_messages').insert({
+      circle_id: conversa.circle_id,
+      conversation_id: conversa.id,
+      sender_id: user.id,
+      body: text,
+      kind: 'text',
+    })
+  }
+
+  /*
+   * UMA notificação, e ela aponta para a conversa.
+   *
+   * D-186 pôs o ping na superfície `family` argumentando que era "sobre gente,
+   * não sobre conversa". Aquilo era verdade quando não havia conversa nenhuma.
+   * Agora há, e o badge tem que apontar para onde a AÇÃO acontece — responder.
+   * Badge em Família levaria a uma tela onde não dá para responder nada.
+   */
   await createCommsNotifications({
     admin,
+    circleId: conversa?.circle_id ?? null,
     actorId: user.id,
     recipientIds: [body.toUserId],
     scope: 'circle',
-    surface: 'family',
+    surface: 'comms',
     kind: 'family_ping',
     title: sender?.name ?? 'Família',
     body: text,
-    href: '/family',
-    metadata: { preset },
+    href: conversa ? `/comms/${conversa.id}` : '/comms',
+    metadata: { preset, conversation_id: conversa?.id ?? null },
   })
 
   if (!VAPID_PUBLIC || !VAPID_PRIVATE) {
     // A mensagem chegou; só não vibra. Dizer "não entregou" aqui seria mentira.
-    return NextResponse.json({ ok: true, sent: text, reason: 'in_app_only', push: 'unconfigured' })
+    return NextResponse.json({ ok: true, sent: text, reason: 'in_app_only', push: 'unconfigured', conversationId: conversa?.id ?? null })
   }
 
   const { data: subs } = await admin
@@ -91,7 +129,7 @@ export async function POST(request: NextRequest) {
     .eq('user_id', body.toUserId)
 
   if (!subs?.length) {
-    return NextResponse.json({ ok: true, sent: text, reason: 'in_app_only', push: 'no_device' })
+    return NextResponse.json({ ok: true, sent: text, reason: 'in_app_only', push: 'no_device', conversationId: conversa?.id ?? null })
   }
 
   webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE)
@@ -145,5 +183,6 @@ export async function POST(request: NextRequest) {
     // A mensagem SEMPRE chegou; `push` diz se ela também vibrou.
     push: delivered ? 'delivered' : 'failed',
     reason: delivered ? undefined : 'in_app_only',
+    conversationId: conversa?.id ?? null,
   })
 }

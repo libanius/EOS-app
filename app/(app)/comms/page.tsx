@@ -24,9 +24,12 @@ import { Card, PillLink, SectionLabel } from '@/components/world-v2/primitives'
 import { conversationTitle, hasUnread, preview, type ConversationRow } from '@/lib/conversations'
 import '@/components/world-v2/world-v2.css'
 
+type Pessoa = { userId: string; name: string }
+
 type Resposta = {
   conversations: ConversationRow[]
   circleNames: Record<string, string>
+  people: Pessoa[]
   me: string
 }
 
@@ -42,6 +45,8 @@ const COPY = {
     abrirCirculos: 'Abrir Círculos',
     grupo: 'Grupo',
     novaDireta: 'Falar com alguém',
+    novaDiretaPorque: 'Toque num nome para abrir uma conversa só entre vocês dois.',
+    abrindo: 'Abrindo…',
     semMensagem: 'Sem mensagens ainda',
     esconder: 'Esconder',
     escondida: 'Conversa escondida. Ela volta se chegar mensagem nova.',
@@ -60,6 +65,8 @@ const COPY = {
     abrirCirculos: 'Open Circles',
     grupo: 'Group',
     novaDireta: 'Message someone',
+    novaDiretaPorque: 'Tap a name to open a chat between just the two of you.',
+    abrindo: 'Opening…',
     semMensagem: 'No messages yet',
     esconder: 'Hide',
     escondida: 'Chat hidden. It comes back if a new message arrives.',
@@ -95,6 +102,7 @@ function ListaConteudo() {
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState(false)
   const [escondida, setEscondida] = useState<string | null>(null)
+  const [abrindo, setAbrindo] = useState<string | null>(null)
 
   const carregar = useCallback(async () => {
     try {
@@ -155,6 +163,30 @@ function ListaConteudo() {
   }
 
   const linhas = useMemo(() => dados?.conversations ?? [], [dados])
+
+  /*
+   * Quem ainda não tem conversa aberta.
+   *
+   * Quem já tem aparece na lista de cima — repetir a pessoa nos dois lugares
+   * faria a de baixo parecer um segundo caminho para outro lugar, e não é.
+   */
+  const semConversa = useMemo(() => {
+    const jaTem = new Set(
+      linhas.filter(x => x.kind === 'direct').flatMap(x => x.others.map(o => o.userId)),
+    )
+    return (dados?.people ?? []).filter(p => !jaTem.has(p.userId))
+  }, [dados, linhas])
+
+  const abrirDireta = async (pessoa: Pessoa) => {
+    setAbrindo(pessoa.userId)
+    const r = await fetch('/api/comms/conversations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: pessoa.userId }),
+    }).then(x => x.json()).catch(() => null)
+    if (r?.conversation?.id) router.push(`/comms/${r.conversation.id}`)
+    else { setAbrindo(null); setErro(true) }
+  }
 
   return (
     <div className="wv2 wv2-list-page" data-risk="safe" data-ready="true">
@@ -231,8 +263,36 @@ function ListaConteudo() {
           </div>
         )}
 
-        {!carregando && !erro && linhas.length > 0 && (
-          <p className="t-foot ink-3" style={{ margin: '1rem 0 0' }}>{c.vazioPorque}</p>
+        {/*
+          "Falar com alguém" (COMMS-T13 / D-189).
+          A pergunta que a lista precisa responder para quem nunca conversou
+          com ninguém. Sem isto, a conversa individual existia no servidor e não
+          tinha nenhuma porta na interface.
+        */}
+        {!carregando && !erro && semConversa.length > 0 && (
+          <div style={{ marginTop: '1.25rem' }}>
+            <SectionLabel trailing={String(semConversa.length)}>{c.novaDireta}</SectionLabel>
+            <p className="t-foot ink-3" style={{ margin: '0.35rem 0 0.75rem' }}>{c.novaDiretaPorque}</p>
+            <div style={S.lista}>
+              {semConversa.map(pessoa => (
+                <button
+                  key={pessoa.userId}
+                  type="button"
+                  onClick={() => { void abrirDireta(pessoa) }}
+                  disabled={abrindo === pessoa.userId}
+                  style={{ ...S.alvo, cursor: 'pointer', textAlign: 'left', font: 'inherit', color: 'inherit' }}
+                >
+                  <Iniciais nome={pessoa.name} />
+                  <span style={S.texto}>
+                    <strong className="t-body" style={S.nome}>{pessoa.name}</strong>
+                    <span className="t-foot ink-3" style={S.previa}>
+                      {abrindo === pessoa.userId ? c.abrindo : ''}
+                    </span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
         )}
       </div>
     </div>

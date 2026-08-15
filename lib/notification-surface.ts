@@ -19,16 +19,20 @@ export function notificationSurface(input: SurfaceInput): NotificationSurface {
   if (input.scope === 'weather') return 'weather'
   if (input.scope === 'edu') return 'preparedness'
   if (input.scope === 'simulation') return 'scenario'
-  if (input.kind === 'message') return 'comms'
+  /*
+   * `family_ping` entrou aqui em D-189, e saiu de `family` onde D-186 o pôs.
+   *
+   * Aquela decisão dizia "é sobre gente, não sobre conversa" — verdade enquanto
+   * o ping NÃO TINHA conversa: chegava e acabava, sem onde responder. Agora ele
+   * é mensagem num thread, e o badge aponta para onde se RESPONDE.
+   */
+  if (input.kind === 'message' || input.kind === 'family_ping') return 'comms'
   if (
     input.kind === 'join_request_approved' ||
     input.kind === 'member_joined' ||
     input.kind === 'family_invite' ||
     input.kind === 'family_invite_accepted' ||
-    input.kind === 'family_invite_denied' ||
-    // D-186: ping predefinido entre pessoas do círculo. É sobre gente, não
-    // sobre conversa — por isso Família, e não Comms.
-    input.kind === 'family_ping'
+    input.kind === 'family_invite_denied'
   ) {
     return 'family'
   }

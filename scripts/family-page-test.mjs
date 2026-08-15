@@ -184,11 +184,20 @@ const retorno = await cartao('Daniela').innerText().catch(() => '')
   ? ok('a tela diz a verdade sobre o que aconteceu', retorno.split('\n').find(l => /Enviado/i.test(l)) ?? '')
   : no('a tela mentiu sobre a entrega', retorno.slice(0, 160).replace(/\n+/g, ' '))
 
-// A superfície importa: ping é sobre GENTE, então cai em Família — é onde o
-// badge da barra aparece.
+/*
+ * A superfície do ping mudou em D-189, e a mudança é deliberada.
+ *
+ * D-186 pôs o ping em `family` argumentando que era "sobre gente, não sobre
+ * conversa". Aquilo era verdade quando o ping NÃO TINHA conversa: ele chegava
+ * e acabava ali, sem onde responder.
+ *
+ * Agora ele vira mensagem na conversa direta, e o badge tem que apontar para
+ * onde a AÇÃO acontece — responder. Badge em Família levaria a uma tela onde
+ * não dá para responder nada.
+ */
 const superficie = notificacoes[0]?.metadata?.surface
-superficie === 'family'
-  ? ok('o ping cai na superfície Família')
+superficie === 'comms'
+  ? ok('o ping cai na superfície Comms, onde dá para responder')
   : no('superfície errada para o ping', String(superficie))
 
 /*

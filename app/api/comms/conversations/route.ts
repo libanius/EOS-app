@@ -17,6 +17,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isVisible, orderConversations } from '@/lib/conversations'
+import { logError } from '@/lib/error-log'
 import {
   ensureCircleConversation,
   findOrCreateDirect,
@@ -71,7 +72,51 @@ export async function GET() {
   // mensagem nova reabre a conversa escondida (D-188 §4).
   const visiveis = orderConversations(todas.filter(isVisible))
 
-  return NextResponse.json({ conversations: visiveis, circleNames: nomePorCirculo, me: ctx.user.id })
+  /*
+   * ── COM QUEM DÁ PARA FALAR ────────────────────────────────────────────────
+   *
+   * Vem junto da lista, e não numa rota própria, porque é a mesma pergunta:
+   * *"quem eu posso procurar agora?"*. Duas chamadas para montar uma tela só
+   * significa que a metade de baixo aparece depois — e essa metade é justamente
+   * a resposta para quem ainda não conversou com ninguém.
+   */
+  const { data: pessoas } = await ctx.admin
+    .from('circle_members')
+    .select('user_id, circle_id')
+    .in('circle_id', idsDeCirculo.length ? idsDeCirculo : ['00000000-0000-0000-0000-000000000000'])
+
+  const outrosIds = Array.from(
+    new Set((pessoas ?? []).map(p => p.user_id as string).filter(id => id !== ctx.user.id)),
+  )
+  /*
+   * `id, name` e nada mais.
+   *
+   * A primeira versão pedia `avatar_url` — **coluna que não existe em
+   * `profiles`**. O PostgREST devolvia 400, o `data` vinha nulo, e a resposta
+   * saía 200 com a lista VAZIA: a seção "Falar com alguém" simplesmente não
+   * aparecia, sem erro em lugar nenhum. Mesma forma dos defeitos de D-183,
+   * D-185 e D-187 — por isso o erro agora é registrado em vez de virar lista
+   * vazia.
+   */
+  const { data: perfis, error: erroPerfis } = outrosIds.length
+    ? await ctx.admin.from('profiles').select('id, name').in('id', outrosIds)
+    : { data: [] as Array<{ id: string; name: string | null }>, error: null }
+
+  if (erroPerfis) {
+    await logError('api/comms/conversations:perfis', erroPerfis.message, { userId: ctx.user.id })
+  }
+
+  const people = (perfis ?? []).map(p => ({
+    userId: p.id as string,
+    name: (p.name as string | null) || '—',
+  })).sort((a, b) => a.name.localeCompare(b.name))
+
+  return NextResponse.json({
+    conversations: visiveis,
+    circleNames: nomePorCirculo,
+    people,
+    me: ctx.user.id,
+  })
 }
 
 /** Abre a conversa direta com alguém do círculo. */
@@ -82,29 +127,36 @@ export async function POST(req: NextRequest) {
   let body: { circleId?: string; userId?: string }
   try { body = await req.json() } catch { return NextResponse.json({ error: 'Corpo inválido.' }, { status: 400 }) }
 
-  const { circleId, userId: outro } = body
-  if (!circleId || !outro) {
-    return NextResponse.json({ error: 'circleId e userId são obrigatórios.' }, { status: 400 })
-  }
+  const { userId: outro } = body
+  if (!outro) return NextResponse.json({ error: 'userId é obrigatório.' }, { status: 400 })
   if (outro === ctx.user.id) {
     return NextResponse.json({ error: 'Não existe conversa consigo mesmo.' }, { status: 400 })
   }
 
   /*
-   * A regra de permissão do EOS, e ela é UMA só (D-073): você fala com quem
-   * divide círculo com você. Os DOIS lados precisam ser membros — sem checar o
-   * outro, alguém poderia abrir conversa com um id qualquer e criar uma linha
-   * que a outra pessoa passaria a ver.
+   * ── `circleId` é OPCIONAL, e isso é a regra de permissão em forma de API ──
+   *
+   * Quem chama tem a PESSOA na mão — a folha do mapa, a lista da família, a
+   * lista de conversas. Nenhum desses lugares sabe (nem deveria saber) por qual
+   * círculo os dois se conhecem.
+   *
+   * Então o servidor descobre: existe círculo em comum? A resposta a essa
+   * pergunta **é** a autorização — a mesma regra única de D-073. Exigir o
+   * `circleId` do cliente empurraria a decisão de permissão para a tela, que é
+   * exatamente onde ela não pode morar.
    */
-  const { data: euMembro } = await ctx.supabase
-    .from('circle_members').select('user_id')
-    .eq('circle_id', circleId).eq('user_id', ctx.user.id).maybeSingle()
-  if (!euMembro) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const [{ data: meus }, { data: dele }] = await Promise.all([
+    ctx.supabase.from('circle_members').select('circle_id').eq('user_id', ctx.user.id),
+    ctx.admin.from('circle_members').select('circle_id').eq('user_id', outro),
+  ])
+  const dosDois = (meus ?? [])
+    .map(r => r.circle_id as string)
+    .filter(id => (dele ?? []).some(o => o.circle_id === id))
 
-  const { data: eleMembro } = await ctx.admin
-    .from('circle_members').select('user_id')
-    .eq('circle_id', circleId).eq('user_id', outro).maybeSingle()
-  if (!eleMembro) return NextResponse.json({ error: 'Essa pessoa não está neste círculo.' }, { status: 403 })
+  const circleId = body.circleId && dosDois.includes(body.circleId) ? body.circleId : dosDois[0]
+  if (!circleId) {
+    return NextResponse.json({ error: 'Vocês não dividem nenhum círculo.' }, { status: 403 })
+  }
 
   const conversa = await findOrCreateDirect(ctx.admin, circleId, ctx.user.id, outro)
   if (!conversa) return NextResponse.json({ error: 'Não foi possível abrir a conversa.' }, { status: 500 })
