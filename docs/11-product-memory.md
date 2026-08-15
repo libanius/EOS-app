@@ -28,6 +28,11 @@ barra: a barra real carrega badges, i18n, deep-links e propriedade de
 notificação. O comportamento copiado foi só: spring de entrada, toque comprimido
 e rótulo ativo que expande. `MUNDO` participa da pílula, mas fica verde sempre.
 
+**`components/ui/bottom-nav-bar.tsx` é exemplo shadcn, não shell do EOS
+(D-190).** Ele compila e preserva o prompt original, mas suas classes Tailwind
+não têm design system ativo neste repo. A navegação que o usuário vê continua
+em `components/BottomNav.tsx`.
+
 **Ordem das fases: absorções primeiro.** São elas que liberam os slots — mexer
 na barra antes seria mudar o visível sem ter para onde mover o resto.
 

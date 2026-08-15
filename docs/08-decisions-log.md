@@ -4,6 +4,40 @@
 
 ---
 
+## D-190 — O componente shadcn da BottomNav entra como exemplo, não como navegação real
+
+**Date**: 2026-08-15
+**Status**: DECIDED
+**Roadmap**: NAV-T10
+**Pedido do dono**: integrar o componente React `bottom-nav-bar.tsx` em
+`/components/ui`, com `lucide-react`, `framer-motion` e helper `cn`.
+
+**Context**: O projeto EOS não é hoje uma instalação shadcn/Tailwind completa:
+não há `components.json`, `tailwind.config.*`, `postcss.config.*` nem tokens
+Tailwind ativos. A estrutura real usa `components/` e `app/globals.css`.
+
+Mesmo assim, o componente pode existir como exemplo compilável em
+`components/ui/`, desde que não substitua `components/BottomNav.tsx`. A barra
+real carrega rotas, badges, i18n, propriedades de notificação e a regra do
+MUNDO verde de D-189.
+
+**Decision**:
+
+1. Criar `components/ui/bottom-nav-bar.tsx` e
+   `components/ui/bottom-nav-bar-demo.tsx` como componente standalone de
+   referência.
+2. Adicionar `lib/utils.ts` com o helper `cn` padrão (`clsx` +
+   `tailwind-merge`).
+3. Instalar `lucide-react`; `framer-motion` já existia. `clsx` e
+   `tailwind-merge` entram porque o componente importa `cn`.
+4. Não conectar esse componente ao app shell enquanto Tailwind/shadcn não forem
+   uma decisão formal de design system.
+
+**Consequence**: `npm run type-check`, `git diff --check` e `npm run build`
+passam. O componente compila, mas suas classes Tailwind só terão aparência
+correta depois de configurar Tailwind/shadcn.
+
+
 ## D-189 — A BottomNav vira pílula expansível sem trocar de mapa mental
 
 **Date**: 2026-08-15
