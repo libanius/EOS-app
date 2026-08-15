@@ -226,6 +226,7 @@ function ListaConteudo() {
               const nome = conversationTitle(conversa, dados?.circleNames[conversa.circleId] ?? null)
                 ?? (conversa.kind === 'circle' ? c.grupo : '—')
               const naoLida = hasUnread(conversa, dados?.me ?? '')
+              const ehGrupo = conversa.kind === 'circle'
               const previa = preview(conversa.lastMessageBody)
               const autor = conversa.kind === 'circle' && conversa.lastMessageSenderName
                 ? `${conversa.lastMessageSenderName}: `
@@ -236,7 +237,16 @@ function ListaConteudo() {
                     <Iniciais nome={nome} />
                     <span style={S.texto}>
                       <span style={S.topo}>
-                        <strong className="t-body" style={S.nome}>{nome}</strong>
+                        <strong
+                          className="t-body"
+                          style={{
+                            ...S.nome,
+                            ...(ehGrupo ? S.nomeGrupo : null),
+                            ...(naoLida ? S.nomeNaoLida : null),
+                          }}
+                        >
+                          {nome}
+                        </strong>
                         <time className="t-caption ink-3" dateTime={conversa.lastMessageAt ?? undefined}>
                           {quando(conversa.lastMessageAt, language === 'en' ? 'en' : 'pt')}
                         </time>
@@ -311,6 +321,15 @@ const S: Record<string, React.CSSProperties> = {
   lista: { display: 'grid', gap: 2 },
   linha: { display: 'flex', alignItems: 'stretch', gap: 4 },
   alvo: {
+    /*
+     * `color` explícito, e este é um DEFEITO consertado, não um gosto.
+     *
+     * Sem ele o `<a>` herdava a cor padrão do navegador: azul quando não
+     * visitado, **roxo quando visitado**. Na tela do dono, "Beta Testers"
+     * aparecia roxo e as outras azuis — a lista parecia ter três estados
+     * inventados que ninguém programou.
+     */
+    color: 'var(--ink, #f0f0f8)',
     flex: 1,
     minWidth: 0,
     display: 'flex',
@@ -342,7 +361,36 @@ const S: Record<string, React.CSSProperties> = {
   topo: { display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 },
   // `minWidth: 0` nos dois níveis: sem isso o flex recusa encolher e a prévia
   // empurra a hora para fora da tela em vez de cortar.
-  nome: { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  nome: {
+    minWidth: 0,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    color: 'var(--ink, #f0f0f8)',
+  },
+  /*
+   * ── O OURO TEM UM TRABALHO (D-194) ────────────────────────────────────────
+   *
+   * Ele marca **a conversa do círculo** — a única do grupo, o canal da casa.
+   * Numa emergência é ela que a pessoa procura primeiro, e ela precisa se
+   * separar das diretas sem depender de ler o nome.
+   *
+   * É `#f4c75b`, o MESMO ouro que já pinta a bolha da sua própria mensagem
+   * dentro do chat. Reusar o que existe mantém a paleta fechada em vez de abrir
+   * uma cor nova.
+   *
+   * E **não é** o âmbar `--warn` (#ffb347). Naquele tom o EOS diz "atenção", o
+   * degrau entre estável e crítico. Nome de conversa permanentemente em âmbar
+   * diria "cuidado" o tempo todo — e aviso permanente deixa de ser aviso.
+   */
+  nomeGrupo: { color: '#f4c75b' },
+  /*
+   * Não lida engrossa, e não muda de cor.
+   *
+   * Mesma regra dos chips de domínio (D-131): peso E fundo, nunca só matiz.
+   * Quem não distingue as duas cores continua vendo qual linha está em negrito.
+   */
+  nomeNaoLida: { fontWeight: 800 },
   baixo: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, minWidth: 0 },
   previa: { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   ponto: { flex: 'none', width: 9, height: 9, borderRadius: 999, background: '#ff453a' },

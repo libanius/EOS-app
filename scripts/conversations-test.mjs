@@ -266,6 +266,25 @@ try {
     ? ok('?view=timeline redireciona para a rota')
     : no('?view=timeline não redirecionou', pAna.url())
   /*
+   * ── 9b. NENHUM NOME SAI COM COR DE LINK (D-194) ──────────────────────────
+   *
+   * O `<Link>` sem `color` herdava o padrão do navegador: azul quando não
+   * visitado, roxo quando visitado. A lista parecia ter estados que ninguém
+   * programou — e "visitado" muda sozinho com o histórico, então o mesmo app
+   * ficava diferente em cada aparelho.
+   */
+  await pAna.goto(`${B}/comms`, { waitUntil: 'networkidle' })
+  await pAna.waitForTimeout(2000)
+  const cores = await pAna.locator('a[href^="/comms/"] strong').evaluateAll(
+    els => els.map(el => getComputedStyle(el).color),
+  )
+  const LINK_PADRAO = /rgb\(0,\s*0,\s*238\)|rgb\(85,\s*26,\s*139\)/
+  const temCorDeLink = cores.some(c => LINK_PADRAO.test(c))
+  !temCorDeLink && cores.length > 0
+    ? ok('nenhum nome usa a cor padrão de link', cores.join(' · '))
+    : no('nome saiu com cor de link do navegador', cores.join(' · '))
+
+  /*
    * ── 10. A PORTA DA CONVERSA INDIVIDUAL (COMMS-T13 / D-193) ───────────────
    *
    * Pergunta do dono: "como faço para mandar mensagem privada para a Daniela?"

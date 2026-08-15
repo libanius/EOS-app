@@ -250,8 +250,8 @@ textarea.input { resize: vertical; min-height: 100px; line-height: 1.6; }
   bottom: 0;
   left: 0;
   right: 0;
-  background: rgba(10, 10, 15, 0.94);
-  border-top: 1px solid rgba(255, 214, 10, 0.14);
+  background: color-mix(in srgb, var(--sf) 94%, transparent);
+  border-top: 1px solid var(--bd);
   display: flex;
   justify-content: center;
   padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0));
@@ -305,7 +305,7 @@ textarea.input { resize: vertical; min-height: 100px; line-height: 1.6; }
   max-height: 48px;
   padding: 11px 10px;
   border-radius: 14px;
-  color: rgba(255, 214, 10, 0.52);
+  color: var(--mu);
   font-size: 12px;
   font-weight: 700;
   line-height: 1;
@@ -317,9 +317,20 @@ textarea.input { resize: vertical; min-height: 100px; line-height: 1.6; }
   white-space: nowrap;
 }
 
+/*
+ * A barra volta ao neutro (D-194).
+ *
+ * D-192 pintou os itens comuns de amarelo do Treino. Num app de emergência a
+ * cor **carrega significado**: âmbar é o `--warn` do EOS, o degrau entre estável
+ * e crítico. Uma navegação inteira em âmbar diz "atenção" o tempo todo, e um
+ * aviso permanente deixa de ser aviso.
+ *
+ * O ativo se marca por FUNDO e PESO, não por matiz — a mesma regra dos chips de
+ * domínio (D-131): daltonismo não pode custar a noção de onde se está.
+ */
 .nb.on {
-  background: rgba(255, 214, 10, 0.12);
-  color: #ffd60a;
+  background: rgba(255, 255, 255, 0.08);
+  color: #f4f7fb;
 }
 .nb:active { opacity: 0.86; }
 .nb-icon {

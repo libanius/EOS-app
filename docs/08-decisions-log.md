@@ -4,6 +4,63 @@
 
 ---
 
+## D-194 — A barra volta ao neutro; o ouro ganha um trabalho
+
+**Date**: 2026-08-15
+**Status**: DECIDED
+**Roadmap**: COMMS-T14
+**Correção do dono**: *"foi alterado as cores para amarelo no bottom nav mas eu
+me equivoquei. Volta a cor antiga. A fonte que era pra mudar para amarelo é no
+chat círculo. Amarelo é uma sugestão não regra."*
+
+**Context**: D-192 pintou os itens comuns da BottomNav de amarelo do Treino
+(`#ffd60a`). O dono corrigiu: o alvo era o chat, não a barra.
+
+E ao olhar a tela do chat apareceu um defeito separado: os nomes das conversas
+saíam **azuis e roxos**.
+
+**Causa do azul/roxo**: o `<Link>` da linha não definia `color`, então herdava o
+padrão do navegador — azul para não visitado, **roxo para visitado**. A lista
+parecia ter três estados que ninguém programou, e "visitado" muda sozinho com o
+histórico: o mesmo app ficava diferente em cada aparelho.
+
+**Decision**:
+
+1. **A BottomNav volta ao neutro.** Num app de emergência a cor **carrega
+   significado**: âmbar é o `--warn` do EOS, o degrau entre estável e crítico.
+   Navegação inteira em âmbar diz "atenção" o tempo todo — e aviso permanente
+   deixa de ser aviso. O ativo se marca por **fundo e peso**, como os chips de
+   domínio já fazem (D-131).
+
+2. **Todo nome recebe `color` explícito.** Cor de link do navegador nunca é uma
+   escolha de design; é a ausência de uma.
+
+3. **O ouro tem UM trabalho: a conversa do círculo.** É a única de grupo, o
+   canal da casa, e numa emergência é a primeira que se procura. Ela se separa
+   das diretas sem depender de ler o nome.
+
+4. **É `#f4c75b`, o ouro que JÁ existe no chat** — o mesmo da bolha da própria
+   mensagem. Reusar fecha a paleta em vez de abrir cor nova. E **não** é o âmbar
+   `--warn`: aquele tom já significa "cuidado", e emprestá-lo para decoração
+   gastaria o único sinal que o app tem para dizer que algo piorou.
+
+5. **Não lida engrossa, não muda de matiz.** Peso e fundo, nunca só cor — quem
+   não distingue os dois tons continua vendo qual linha está em negrito.
+
+**Consequence**:
+
+- O teste passou a ler a **cor computada** dos nomes e recusar o azul/roxo
+  padrão. Um teste de existência não pegaria isto: os nomes estavam lá, legíveis
+  e clicáveis — só na cor errada.
+- Sobre a sugestão do dono: o amarelo entrou, mas **não onde ele apontou**. Ele
+  pediu nos nomes; recebeu na conversa do grupo. A diferença é que ali ele
+  **informa** em vez de decorar, e não disputa com o vocabulário de risco.
+
+**Não autorizado por D-194**: usar `--warn` como cor decorativa, pintar a
+BottomNav de novo, marcar estado só por matiz.
+
+---
+
 ## D-193 — A mensagem predefinida é uma mensagem
 
 **Date**: 2026-08-15
