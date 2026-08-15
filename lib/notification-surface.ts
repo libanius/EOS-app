@@ -20,7 +20,7 @@ export function notificationSurface(input: SurfaceInput): NotificationSurface {
   if (input.scope === 'edu') return 'preparedness'
   if (input.scope === 'simulation') return 'scenario'
   /*
-   * `family_ping` entrou aqui em D-189, e saiu de `family` onde D-186 o pôs.
+   * `family_ping` entrou aqui em D-193, e saiu de `family` onde D-186 o pôs.
    *
    * Aquela decisão dizia "é sobre gente, não sobre conversa" — verdade enquanto
    * o ping NÃO TINHA conversa: chegava e acabava, sem onde responder. Agora ele

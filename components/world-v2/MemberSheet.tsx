@@ -72,7 +72,7 @@ export default function MemberSheet({
   )
 
   /*
-   * A conversa direta com esta pessoa (COMMS-T13 / D-189).
+   * A conversa direta com esta pessoa (COMMS-T13 / D-193).
    *
    * Ela é criada pelo próprio ping, ou aberta no botão abaixo. Nos dois casos
    * é o MESMO thread — a chave é simétrica, então não importa por onde se
@@ -104,7 +104,7 @@ export default function MemberSheet({
 
     if (response?.ok) {
       setSent(preset)
-      // O preset virou mensagem na conversa (D-189): guardar o id permite
+      // O preset virou mensagem na conversa (D-193): guardar o id permite
       // oferecer a porta para ela logo abaixo, onde a resposta vai chegar.
       if (response.conversationId) setConversa(response.conversationId as string)
     }
@@ -310,7 +310,7 @@ export default function MemberSheet({
                 {failed && <p className="t-foot warn">{failed}</p>}
 
                 {/*
-                  A porta para a conversa (D-189).
+                  A porta para a conversa (D-193).
 
                   Os presets são atalhos para as frases mais pedidas sob
                   estresse — e agora cada um deles cai NESTA conversa. O botão

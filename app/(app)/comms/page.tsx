@@ -264,7 +264,7 @@ function ListaConteudo() {
         )}
 
         {/*
-          "Falar com alguém" (COMMS-T13 / D-189).
+          "Falar com alguém" (COMMS-T13 / D-193).
           A pergunta que a lista precisa responder para quem nunca conversou
           com ninguém. Sem isto, a conversa individual existia no servidor e não
           tinha nenhuma porta na interface.

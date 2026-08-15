@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
    * reforço — o que faz o telefone vibrar — e não o meio de transporte.
    */
   /*
-   * ── O PING É UMA MENSAGEM (COMMS-T13 / D-189) ───────────────────────────
+   * ── O PING É UMA MENSAGEM (COMMS-T13 / D-193) ───────────────────────────
    *
    * Até aqui ele era um aviso e nada mais: chegava, e acabava ali. **Não havia
    * como responder.** Numa emergência, "Onde você está?" sem caixa de resposta

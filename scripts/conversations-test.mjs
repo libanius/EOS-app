@@ -266,7 +266,7 @@ try {
     ? ok('?view=timeline redireciona para a rota')
     : no('?view=timeline não redirecionou', pAna.url())
   /*
-   * ── 10. A PORTA DA CONVERSA INDIVIDUAL (COMMS-T13 / D-189) ───────────────
+   * ── 10. A PORTA DA CONVERSA INDIVIDUAL (COMMS-T13 / D-193) ───────────────
    *
    * Pergunta do dono: "como faço para mandar mensagem privada para a Daniela?"
    * A resposta era: não fazia. O servidor abria e nenhuma tela chamava.
@@ -306,7 +306,7 @@ try {
     : no('não abriu a conversa individual', pAna.url())
 
   /*
-   * ── 11. O PING CAI NA CONVERSA (D-189) ───────────────────────────────────
+   * ── 11. O PING CAI NA CONVERSA (D-193) ───────────────────────────────────
    *
    * Antes ele era só notificação: chegava e acabava ali, sem onde responder.
    * "Onde você está?" sem caixa de resposta é meia pergunta.

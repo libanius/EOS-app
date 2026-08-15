@@ -185,7 +185,7 @@ const retorno = await cartao('Daniela').innerText().catch(() => '')
   : no('a tela mentiu sobre a entrega', retorno.slice(0, 160).replace(/\n+/g, ' '))
 
 /*
- * A superfície do ping mudou em D-189, e a mudança é deliberada.
+ * A superfície do ping mudou em D-193, e a mudança é deliberada.
  *
  * D-186 pôs o ping em `family` argumentando que era "sobre gente, não sobre
  * conversa". Aquilo era verdade quando o ping NÃO TINHA conversa: ele chegava

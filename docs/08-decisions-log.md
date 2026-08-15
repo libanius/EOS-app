@@ -4,6 +4,70 @@
 
 ---
 
+## D-193 — A mensagem predefinida é uma mensagem
+
+**Date**: 2026-08-15
+**Status**: DECIDED
+**Roadmap**: COMMS-T13
+**Perguntas do dono**: *"como faço para mandar uma mensagem privada para a
+Daniela?"* e *"se eu clicar no avatar dela no mapa, as msgs preconfiguradas
+devem direcionar para onde?"*
+
+> **Nota de numeração**: esta decisão nasceu como D-189 e foi renumerada. A
+> frente paralela da BottomNav ocupou D-189 a D-192 no mesmo dia. Duas decisões
+> com o mesmo número é exatamente a ambiguidade que este arquivo existe para
+> impedir, então as referências no código foram corrigidas junto.
+
+**Context**: D-188 construiu a conversa individual inteira no servidor — e
+**nenhuma tela a chamava**. A funcionalidade existia, testada, e era
+inalcançável. A primeira pergunta não tinha resposta.
+
+A segunda pergunta expôs algo maior. Os presets do ping (D-073) eram um canal
+**paralelo**: chegavam como notificação e **acabavam ali**. Não havia onde
+responder. "Onde você está?" sem caixa de resposta é meia pergunta — a
+informação que importa é a volta.
+
+**Decision**:
+
+1. **O preset vira mensagem na conversa direta.** `/api/family/ping` deixa de
+   ser um canal e passa a ser o que sempre foi: um **atalho para escrever**. O
+   texto entra no thread, onde tem endereço, histórico e resposta.
+
+2. **Pela mesma chave simétrica.** Mandar um ping, abrir pela lista e abrir pela
+   folha do mapa caem no **mesmo** thread. Se fossem caminhos diferentes, cada
+   um criaria o seu — e as duas pessoas conversariam sozinhas.
+
+3. **O badge do ping muda de Família para Comms, revendo D-186.** Aquela decisão
+   dizia *"é sobre gente, não sobre conversa"*, e era verdade **enquanto não
+   havia conversa**. Agora há, e o badge tem que apontar para onde a **ação**
+   acontece: responder. Badge em Família levaria a uma tela onde não dá para
+   responder nada.
+
+4. **Duas portas para abrir a conversa**: a folha da pessoa no mapa (onde você
+   já está olhando para ela) e "Falar com alguém" na lista (onde você foi
+   justamente para procurar). A lista **não repete** quem já tem conversa
+   acima — a mesma pessoa em dois lugares faria a de baixo parecer outro destino.
+
+5. **`circleId` some do pedido.** Quem chama tem a PESSOA na mão e não sabe (nem
+   deveria) por qual círculo os dois se conhecem. O servidor descobre, e a
+   resposta a *"existe círculo em comum?"* **é** a autorização — a regra única
+   de D-073. Exigir o círculo do cliente empurraria permissão para a tela.
+
+**Consequence**:
+
+- **Achado no caminho, e da mesma família dos anteriores**: a consulta de
+  perfis pedia `avatar_url`, **coluna que não existe em `profiles`**. O
+  PostgREST devolvia 400, o `data` vinha nulo, e a API respondia **200 com lista
+  vazia** — a seção "Falar com alguém" simplesmente não aparecia, sem erro em
+  lugar nenhum. Quarto desta forma nesta semana (D-183, D-185, D-187). O erro
+  passou a ser registrado em vez de virar lista vazia.
+- `test:conversations` 23/23 contra o banco real; `test:family` 10/10.
+
+**Não autorizado por D-193**: apagar mensagem do lado do outro, anexo, áudio,
+chamada, conversa com quem não divide círculo.
+
+---
+
 ## D-192 — Treino puxa a navegação para amarelo, e a faixa superior some
 
 **Date**: 2026-08-15
