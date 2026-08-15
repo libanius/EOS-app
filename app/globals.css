@@ -247,43 +247,96 @@ textarea.input { resize: vertical; min-height: 100px; line-height: 1.6; }
 /* ─── NAV ────────────────────────────────────────────────── */
 .nav {
   position: fixed;
-  bottom: 0; left: 0; right: 0;
-  background: var(--sf);
-  border-top: 1px solid var(--bd);
+  bottom: calc(12px + env(safe-area-inset-bottom, 0));
+  left: 0;
+  right: 0;
+  background: transparent;
+  border-top: 0;
   display: flex;
-  flex-direction: column;
-  padding-bottom: env(safe-area-inset-bottom, 0);
+  justify-content: center;
+  padding: 0 10px;
   z-index: 100;
+  pointer-events: none;
 }
 
-.nav-tabs { display: flex; flex-direction: row; }
+.nav-tabs {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 2px;
+  width: fit-content;
+  min-width: min(320px, calc(100vw - 20px));
+  max-width: calc(100vw - 20px);
+  min-height: 56px;
+  padding: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--sf) 88%, transparent);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(18px) saturate(1.25);
+  -webkit-backdrop-filter: blur(18px) saturate(1.25);
+  overflow: hidden;
+  pointer-events: auto;
+}
+
+.nb-shell {
+  display: flex;
+  flex: 0 1 auto;
+  min-width: 44px;
+}
 
 .nb {
-  flex: 1;
+  flex: 0 1 auto;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 4px;
-  padding: 10px 4px;
-  min-height: 56px;
+  justify-content: center;
+  gap: 0;
+  width: auto;
+  min-width: 44px;
+  min-height: 44px;
+  max-height: 44px;
+  padding: 10px;
+  border-radius: 999px;
   color: var(--mu);
-  font-size: 10px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
   cursor: pointer;
-  transition: color 0.15s;
+  transition: color 0.2s ease, background-color 0.2s ease;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
   text-decoration: none;
+  white-space: nowrap;
 }
 
-.nb.on { color: var(--ac); }
-.nb:active { opacity: 0.7; }
+.nb.on {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f4f7fb;
+}
+.nb:active { opacity: 0.86; }
 .nb-icon {
   position: relative;
   display: grid;
   place-items: center;
   width: 24px;
   height: 24px;
+  flex: 0 0 24px;
+}
+.nb-label {
+  display: flex;
+  align-items: center;
+  max-width: 62px;
+  overflow: hidden;
+}
+.nb-label > span {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: inherit;
+  font-size: clamp(0.66rem, 0.63rem + 0.18vw, 0.75rem);
+  line-height: 1.9;
 }
 .nb-badge {
   position: absolute;
@@ -508,10 +561,11 @@ textarea.input { resize: vertical; min-height: 100px; line-height: 1.6; }
   font-weight: 900;
 }
 
-/* Raised home tab: the World dashboard. Bigger target, fixed position, and the
-   only filled control in the bar — so "where do I get back to" is never a
-   question the user has to answer twice. */
-.nb-home { justify-content: flex-end; }
+/* World keeps its permanent green treatment inside the floating pill. */
+.nb-home {
+  background: rgba(0, 229, 160, 0.12);
+  color: var(--ac);
+}
 .nb-home:active { opacity: 1; }
 .nb-home-orb {
   display: grid;
@@ -520,13 +574,13 @@ textarea.input { resize: vertical; min-height: 100px; line-height: 1.6; }
      da barra. O selo é `position: absolute`, e sem esta âncora ele iria parar no
      canto da barra inteira em vez do canto do orbe. */
   position: relative;
-  width: 46px;
-  height: 46px;
-  margin-top: -20px;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
   border-radius: 999px;
   background: var(--ac);
   color: #06070b;
-  border: 3px solid var(--sf);
+  border: 0;
   box-shadow: 0 10px 22px -8px rgba(0, 229, 160, 0.55);
   transition: transform 110ms ease-out;
 }
@@ -537,9 +591,13 @@ textarea.input { resize: vertical; min-height: 100px; line-height: 1.6; }
 .nb-home-orb .nb-badge {
   top: -4px;
   right: -6px;
-  border-color: var(--sf);
+  border-color: color-mix(in srgb, var(--sf) 88%, transparent);
 }
 .nb-home:active .nb-home-orb { transform: scale(0.92); }
+.nb-home.on {
+  background: rgba(0, 229, 160, 0.18);
+  color: var(--ac);
+}
 .nb-home.on .nb-home-orb { box-shadow: 0 0 0 4px rgba(0, 229, 160, 0.18), 0 10px 22px -8px rgba(0, 229, 160, 0.6); }
 
 @media (prefers-reduced-motion: reduce) {

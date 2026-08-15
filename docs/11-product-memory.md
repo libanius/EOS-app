@@ -22,6 +22,12 @@ arrumação.
 subdivisão acontece dentro do domínio, como PREP-T07 provou. `MUNDO` é
 invariante de produto: mesma posição, mesma função, em qualquer tela e modo.
 
+**BottomNav visual é pílula expansível, mas a verdade continua sendo a rota
+(D-189).** Não copie componente externo para `/components/ui` criando segunda
+barra: a barra real carrega badges, i18n, deep-links e propriedade de
+notificação. O comportamento copiado foi só: spring de entrada, toque comprimido
+e rótulo ativo que expande. `MUNDO` participa da pílula, mas fica verde sempre.
+
 **Ordem das fases: absorções primeiro.** São elas que liberam os slots — mexer
 na barra antes seria mudar o visível sem ter para onde mover o resto.
 

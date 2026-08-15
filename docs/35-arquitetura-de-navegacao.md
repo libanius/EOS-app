@@ -45,8 +45,9 @@
 [ CLIMA ]  [ FAMÍLIA ]  [ PREPARAÇÃO ]  (( MUNDO ))  [ COMMS ]  [ CÍRCULOS ]  [ CENÁRIO ]
 ```
 
-`components/BottomNav.tsx`: `NAV_LEFT` (3) + `HOME` (orbe elevado, centro) +
-`NAV_RIGHT` (3). O comentário do próprio arquivo já afirma a tese:
+`components/BottomNav.tsx`: antes de NAV-T06 era `NAV_LEFT` (3) + `HOME`
+(orbe elevado, centro) + `NAV_RIGHT` (3). O comentário do próprio arquivo já
+afirmava a tese:
 *"The World dashboard is the app's home, so it does not compete as one tab among
 seven."* E `app/page.tsx:40` prova: usuário logado em `/` é redirecionado para
 `/dashboard`. **WORLD já é a home — no código, não só na intenção.**
@@ -559,6 +560,9 @@ dado, e o defeito morava no caminho **sem**.
 
 Divergências assumidas em relação ao que este documento propôs:
 
+- **A forma visual pós-D-189 é pílula expansível.** D-180 decidiu a arquitetura
+  dos cinco destinos; D-189 mudou só o comportamento visual: rótulo aparece no
+  item ativo, ativo vem da rota e MUNDO fica verde sempre.
 - **`/family/casa` ficou `/family/cadastro`.** O endereço já existia e já estava
   em links; renomear custaria mais do que informa.
 - **`/mais` ainda não tem faixa de domínio.** Conta, plano, notificações e

@@ -3,11 +3,13 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
+import { motion, useReducedMotion } from 'framer-motion'
 import { useLanguage, type MessageKey } from '@/lib/i18n'
 import { emptySurfaceCounts, type NotificationSurface } from '@/lib/notification-surface'
 import { createClient } from '@/lib/supabase/client'
 
 type NavItem = { href: string; labelKey: MessageKey; surface?: NotificationSurface; icon: React.ReactNode }
+const ACTIVE_LABEL_WIDTH = 62
 
 /**
  * A barra global, em cinco destinos (NAV-T06 / D-180).
@@ -121,6 +123,7 @@ const NAV_RIGHT: NavItem[] = [
 export default function BottomNav() {
   const pathname = usePathname()
   const { t } = useLanguage()
+  const reduceMotion = useReducedMotion()
   const [unreadBySurface, setUnreadBySurface] = useState<Record<NotificationSurface, number>>(() => emptySurfaceCounts())
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/')
@@ -222,19 +225,40 @@ export default function BottomNav() {
     const label = t(labelKey)
 
     return (
-      <Link
+      <motion.span
         key={href}
-        href={href}
-        className={`nb${active ? ' on' : ''}`}
-        aria-label={label}
-        aria-current={active ? 'page' : undefined}
+        className="nb-shell"
+        whileTap={reduceMotion ? undefined : { scale: 0.97 }}
       >
-        <span className="nb-icon">
-          {icon}
-          {selo(surface, label)}
-        </span>
-        <span>{label}</span>
-      </Link>
+        <Link
+          href={href}
+          className={`nb${active ? ' on' : ''}`}
+          aria-label={label}
+          aria-current={active ? 'page' : undefined}
+        >
+          <span className="nb-icon">
+            {icon}
+            {selo(surface, label)}
+          </span>
+          <motion.span
+            className="nb-label"
+            initial={false}
+            animate={{
+              width: active ? ACTIVE_LABEL_WIDTH : 0,
+              opacity: active ? 1 : 0,
+              marginLeft: active ? 8 : 0,
+            }}
+            transition={reduceMotion ? { duration: 0 } : {
+              width: { type: 'spring', stiffness: 350, damping: 32 },
+              opacity: { duration: 0.19 },
+              marginLeft: { duration: 0.19 },
+            }}
+            aria-hidden={!active}
+          >
+            <span title={label}>{label}</span>
+          </motion.span>
+        </Link>
+      </motion.span>
     )
   }
 
@@ -242,25 +266,53 @@ export default function BottomNav() {
   const homeLabel = t(HOME.labelKey)
 
   return (
-    <nav className="nav" role="navigation" aria-label={t('nav.main')}>
+    <motion.nav
+      className="nav"
+      role="navigation"
+      aria-label={t('nav.main')}
+      initial={reduceMotion ? false : { scale: 0.94, opacity: 0 }}
+      animate={reduceMotion ? undefined : { scale: 1, opacity: 1 }}
+      transition={reduceMotion ? undefined : { type: 'spring', stiffness: 300, damping: 26 }}
+    >
       <div className="nav-tabs">
         {NAV_LEFT.map(tab)}
 
-        <Link
-          href={HOME.href}
-          className={`nb nb-home${homeActive ? ' on' : ''}`}
-          aria-label={homeLabel}
-          aria-current={homeActive ? 'page' : undefined}
+        <motion.span
+          className="nb-shell"
+          whileTap={reduceMotion ? undefined : { scale: 0.97 }}
         >
-          <span className="nb-home-orb">
-            {HOME.icon}
-            {selo(HOME.surface, homeLabel)}
-          </span>
-          <span>{homeLabel}</span>
-        </Link>
+          <Link
+            href={HOME.href}
+            className={`nb nb-home${homeActive ? ' on' : ''}`}
+            aria-label={homeLabel}
+            aria-current={homeActive ? 'page' : undefined}
+          >
+            <span className="nb-home-orb">
+              {HOME.icon}
+              {selo(HOME.surface, homeLabel)}
+            </span>
+            <motion.span
+              className="nb-label"
+              initial={false}
+              animate={{
+                width: homeActive ? ACTIVE_LABEL_WIDTH : 0,
+                opacity: homeActive ? 1 : 0,
+                marginLeft: homeActive ? 8 : 0,
+              }}
+              transition={reduceMotion ? { duration: 0 } : {
+                width: { type: 'spring', stiffness: 350, damping: 32 },
+                opacity: { duration: 0.19 },
+                marginLeft: { duration: 0.19 },
+              }}
+              aria-hidden={!homeActive}
+            >
+              <span title={homeLabel}>{homeLabel}</span>
+            </motion.span>
+          </Link>
+        </motion.span>
 
         {NAV_RIGHT.map(tab)}
       </div>
-    </nav>
+    </motion.nav>
   )
 }

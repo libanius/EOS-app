@@ -4,6 +4,45 @@
 
 ---
 
+## D-189 — A BottomNav vira pílula expansível sem trocar de mapa mental
+
+**Date**: 2026-08-15
+**Status**: DECIDED
+**Roadmap**: NAV-T09
+**Pedido do dono**: mudar o comportamento da BottomNav usando como referência
+um componente React com rótulo ativo expansível, **mantendo os ícones atuais** e
+o MUNDO verde como está.
+
+**Context**: Depois de D-180, a barra global ficou correta em arquitetura:
+cinco destinos, sempre iguais. O componente visual, porém, ainda carregava a
+forma anterior: rótulos sempre visíveis e o MUNDO elevado como orbe fora do
+ritmo dos outros destinos.
+
+Copiar literalmente o componente externo criaria dois problemas:
+
+1. trocaria os ícones e nomes genéricos (`Portfolio`, `Transactions` etc.),
+   perdendo o mapa mental já decidido para EOS;
+2. criaria uma barra isolada em `/components/ui`, sem os badges, i18n,
+   deep-links e regras de rota da barra real.
+
+**Decision**:
+
+1. **O comportamento é copiado, não o inventário.** A BottomNav existente ganha
+   entrada com spring, toque com `whileTap` e rótulo ativo que expande; os cinco
+   destinos, os ícones SVG atuais, `aria-current`, i18n e badges ficam.
+2. **Ativo vem da rota, não de `useState`.** Navegar por link direto,
+   redirecionamento ou sub-rota continua acendendo o destino correto.
+3. **MUNDO permanece verde sempre.** Ele participa da pílula expansível, mas
+   mantém tratamento visual próprio (`var(--ac)`) porque é a home operacional do
+   produto, não só mais um item ativo.
+4. **Sem dependência nova.** `framer-motion` já existe no projeto; `lucide-react`
+   não entra porque os ícones atuais foram preservados.
+
+**Consequence**: `npm run type-check`, `npm run build` e `npm run test:nav`
+passam. Checagem visual em 320px confirma a pílula dentro do viewport
+(`nav-tabs` 300px; item MUNDO ativo 104px).
+
+
 ## D-188 — A conversa vira uma coisa
 
 **Date**: 2026-08-15
