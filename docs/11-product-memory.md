@@ -27,6 +27,8 @@ invariante de produto: mesma posição, mesma função, em qualquer tela e modo.
 barra: a barra real carrega badges, i18n, deep-links e propriedade de
 notificação. O comportamento copiado foi só: spring de entrada, toque comprimido
 e rótulo ativo que expande. `MUNDO` participa da pílula, mas fica verde sempre.
+**Follow-up D-191:** a barra não é cápsula central; ocupa a largura inteira do
+rodapé como antes, com só os itens internos arredondados.
 
 **`components/ui/bottom-nav-bar.tsx` é exemplo shadcn, não shell do EOS
 (D-190).** Ele compila e preserva o prompt original, mas suas classes Tailwind

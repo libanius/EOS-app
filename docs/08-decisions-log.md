@@ -4,6 +4,33 @@
 
 ---
 
+## D-191 — A BottomNav expansível volta a ocupar a largura inteira
+
+**Date**: 2026-08-15
+**Status**: DECIDED
+**Roadmap**: NAV-T09 follow-up
+**Pedido do dono**: a BottomNav precisava ficar maior, ocupando o espaço das
+margens como era antes; não precisava manter a cápsula arredondada nas pontas.
+
+**Context**: D-189 acertou o comportamento expansível, mas deixou a barra como
+uma pílula central de 300px em telas pequenas. Visualmente ela ficou menor que a
+barra original e o MUNDO chegou a truncar como `M...` em 320px.
+
+**Decision**:
+
+1. A superfície da BottomNav volta a ser **full-width** no rodapé (`left: 0`,
+   `right: 0`, `bottom: 0`), com fundo e borda de ponta a ponta.
+2. A linha interna respeita margens laterais de 8px e largura máxima de 720px,
+   sem cápsula externa arredondada.
+3. Os itens continuam usando o comportamento de D-189: toque comprimido,
+   rótulo ativo expansível, ativo derivado da rota e MUNDO verde sempre.
+4. O item ativo ganha mais peso flexível para o rótulo caber em 320px.
+
+**Consequence**: `npm run type-check`, `git diff --check`, `npm run build` e
+`npm run test:nav` passam. Captura Playwright em 320px mede `nav` com 320px,
+`nav-tabs` com 304px e MUNDO ativo com ~107px, texto visível.
+
+
 ## D-190 — O componente shadcn da BottomNav entra como exemplo, não como navegação real
 
 **Date**: 2026-08-15

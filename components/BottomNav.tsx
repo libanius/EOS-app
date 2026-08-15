@@ -9,7 +9,7 @@ import { emptySurfaceCounts, type NotificationSurface } from '@/lib/notification
 import { createClient } from '@/lib/supabase/client'
 
 type NavItem = { href: string; labelKey: MessageKey; surface?: NotificationSurface; icon: React.ReactNode }
-const ACTIVE_LABEL_WIDTH = 62
+const ACTIVE_LABEL_WIDTH = 50
 
 /**
  * A barra global, em cinco destinos (NAV-T06 / D-180).
@@ -36,9 +36,8 @@ const ACTIVE_LABEL_WIDTH = 62
  */
 
 /**
- * The World dashboard is the app's home, so it does not compete as one tab
- * among five — it sits raised at the centre, always the largest target and
- * always in the same place. The remaining destinations split evenly around it.
+ * The World dashboard is the app's home, so it keeps a permanent green
+ * treatment even inside the full-width bar.
  *
  * Ele herda o badge de `weather` (D-180): alerta é assunto do MUNDO na tabela
  * de propriedade do `docs/35`, e uma notificação sem ícone onde pousar é uma

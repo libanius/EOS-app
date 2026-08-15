@@ -14,7 +14,8 @@
 | **⚠ Pendência operacional** | **Aplicar `supabase/migrations/20260813210000_profiles_auth_fk.sql`** (D-175). Limpa 9 perfis de teste vazios e cria a FK que impede a recorrência. Para com erro se encontrar órfão com dado. |
 | **Migrações aplicadas** | `locations`, `holdings`, `kits`, `requirements`, `checklists.status` — todas verificadas por REST. |
 | **Migrações aplicadas** | As duas de Preparedness State **aplicadas em 2026-08-13** e verificadas por REST: `locations`, `holdings`, `kits`, `requirements` → 200. Nenhuma pendência operacional. |
-| **Last Completed Task** | **D-190 / NAV-T10 — componente shadcn BottomNavBar como exemplo standalone (2026-08-15)** |
+| **Last Completed Task** | **D-191 / NAV-T09 follow-up — BottomNav expansível volta a ocupar a largura inteira (2026-08-15)** |
+| | **D-190 / NAV-T10 — componente shadcn BottomNavBar como exemplo standalone (2026-08-15)** |
 | | **D-189 / NAV-T09 — BottomNav vira pílula expansível (2026-08-15)** |
 | | **D-188 / COMMS-T11 — a conversa vira uma coisa (2026-08-15, migração pendente)** |
 | | **D-177 / NAV-T04 — Plano e Aprender entram na Preparação (2026-08-13)** |
@@ -219,7 +220,8 @@ rota ou UI foi alterado.**
 | **Platform Alignment** | ✅ D-084: EOS é plataforma multi-superfície com um único core operacional. Web/PWA segue como superfície primária; iOS/Android serão adapters nativos futuros; Automotive é companion mode restrito; Mesh/LoRa segue bloqueado por G-05. `/mobile/` é template/conceitual, não app inicializado. |
 | **Fases pedidas pelo dono (2026-07-31)** | ✅ 1. Camadas de clima + rastreio de ciclone (D-078). 2. Reinventar a aba Família no design system da v2, com componentes dinâmicos. 3. WV2-T05 (a11y/perf), PLAN-T07 (Pilot propõe plano). |
 | **Next Task** | **SIM-T12 — Simulador encena eventos no mapa.** Precisa de decisão sobre onde o evento falso entra sem contaminar o snapshot verdadeiro. |
-| **Build** | ✅ NAV-T10 validado em 2026-08-15 com `npm run type-check`, `git diff --check`, `npm run build`. Componente shadcn standalone compila; Tailwind/shadcn ainda não está instalado como design system ativo. |
+| **Build** | ✅ NAV-T09 follow-up validado em 2026-08-15 com `npm run type-check`, `git diff --check`, `npm run build`, `npm run test:nav` e captura Playwright em 320px (`nav` 320px; `nav-tabs` 304px; MUNDO ativo ~107px e texto visível). |
+| | ✅ NAV-T10 validado em 2026-08-15 com `npm run type-check`, `git diff --check`, `npm run build`. Componente shadcn standalone compila; Tailwind/shadcn ainda não está instalado como design system ativo. |
 | | ✅ NAV-T09 validado em 2026-08-15 com `npm run type-check`, `git diff --check`, `npm run build`, `npm run test:nav` e captura Playwright em 320px (`nav-tabs` 300px; MUNDO ativo 104px). |
 | | ✅ WV2-T25 validado em 2026-08-11 com `npm run type-check`, `npm test -- --runInBand` (202/202), `npm run build`, `npm run test:weather` (14/14; slider `Setas` zerou `icon-opacity`/`text-opacity`; Fluxo/Rastro/Mapa continuam aplicando; painel recolhe ao tocar fora). |
 | | ✅ WV2-T24 validado em 2026-08-11 com `npm run type-check`, `npm test -- --runInBand` (202/202), `npm run build`, `npm run test:weather` (14/14; slider `Mapa` reduziu opacidade para 0.483; painel recolhe ao tocar fora; Fluxo/Rastro continuam aplicando). |

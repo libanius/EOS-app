@@ -560,9 +560,11 @@ dado, e o defeito morava no caminho **sem**.
 
 Divergências assumidas em relação ao que este documento propôs:
 
-- **A forma visual pós-D-189 é pílula expansível.** D-180 decidiu a arquitetura
-  dos cinco destinos; D-189 mudou só o comportamento visual: rótulo aparece no
-  item ativo, ativo vem da rota e MUNDO fica verde sempre.
+- **A forma visual pós-D-189/D-191 é full-width expansível.** D-180 decidiu a
+  arquitetura dos cinco destinos; D-189 mudou o comportamento visual para
+  rótulo ativo expansível; D-191 devolveu a barra à largura inteira do rodapé,
+  sem cápsula externa arredondada. O ativo vem da rota e MUNDO fica verde
+  sempre.
 - **`/family/casa` ficou `/family/cadastro`.** O endereço já existia e já estava
   em links; renomear custaria mais do que informa.
 - **`/mais` ainda não tem faixa de domínio.** Conta, plano, notificações e
