@@ -976,6 +976,7 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
           map.on('zoomstart', ifUser)
           map.on('rotatestart', ifUser)
           map.on('pitchstart', ifUser)
+          map.on('click', ifUser)
         }
 
         map.on('load', () => {

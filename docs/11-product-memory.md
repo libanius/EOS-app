@@ -38,6 +38,12 @@ tira própria — deixa o fundo da página aparecer.
 não têm design system ativo neste repo. A navegação que o usuário vê continua
 em `components/BottomNav.tsx`.
 
+**Mapa do Mundo vence o sheet (D-193).** Interação real no mapa manda o
+`DetentSheet` para `hidden`, não `peek`. O resumo volta só pela zona inferior:
+hover/foco no desktop, toque no mobile. Não troque ações programáticas
+("ver alerta no mapa", rota até membro) para `hidden` sem motivo: elas usam
+`peek` porque precisam preservar contexto.
+
 **Ordem das fases: absorções primeiro.** São elas que liberam os slots — mexer
 na barra antes seria mudar o visível sem ter para onde mover o resto.
 

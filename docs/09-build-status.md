@@ -15,6 +15,7 @@
 | **Migrações aplicadas** | `locations`, `holdings`, `kits`, `requirements`, `checklists.status` — todas verificadas por REST. |
 | **Migrações aplicadas** | As duas de Preparedness State **aplicadas em 2026-08-13** e verificadas por REST: `locations`, `holdings`, `kits`, `requirements` → 200. Nenhuma pendência operacional. |
 | **Last Completed Task** | **D-188 / COMMS-T12 — lista, thread e conversa individual (2026-08-15)** |
+| | **D-193 / WV2-T27 — mapa esconde completamente o sheet do Mundo (2026-08-15)** |
 | | **D-192 / NAV-T09 follow-up — navegação comum usa amarelo do Treino; top nav sem faixa (2026-08-15)** |
 | | **D-190 / NAV-T10 — componente shadcn BottomNavBar como exemplo standalone (2026-08-15)** |
 | | **D-189 / NAV-T09 — BottomNav vira pílula expansível (2026-08-15)** |
@@ -221,7 +222,8 @@ rota ou UI foi alterado.**
 | **Platform Alignment** | ✅ D-084: EOS é plataforma multi-superfície com um único core operacional. Web/PWA segue como superfície primária; iOS/Android serão adapters nativos futuros; Automotive é companion mode restrito; Mesh/LoRa segue bloqueado por G-05. `/mobile/` é template/conceitual, não app inicializado. |
 | **Fases pedidas pelo dono (2026-07-31)** | ✅ 1. Camadas de clima + rastreio de ciclone (D-078). 2. Reinventar a aba Família no design system da v2, com componentes dinâmicos. 3. WV2-T05 (a11y/perf), PLAN-T07 (Pilot propõe plano). |
 | **Next Task** | **SIM-T12 — Simulador encena eventos no mapa.** Precisa de decisão sobre onde o evento falso entra sem contaminar o snapshot verdadeiro. |
-| **Build** | ✅ NAV-T09 color follow-up validado em 2026-08-15 com `npm run type-check`, `git diff --check`, `npm run build`, `npm run test:nav` e captura Playwright de `/mais/treino` (BottomNav e `MaisNav` amarelos; top nav transparente). |
+| **Build** | ✅ WV2-T27 validado em 2026-08-15 com `npm run type-check`, `git diff --check`, `npm run build`, `npm run test:nav` e Playwright no dashboard: mobile `peek → hidden → peek` por toque; mouse `hidden → peek` por hover. |
+| | ✅ NAV-T09 color follow-up validado em 2026-08-15 com `npm run type-check`, `git diff --check`, `npm run build`, `npm run test:nav` e captura Playwright de `/mais/treino` (BottomNav e `MaisNav` amarelos; top nav transparente). |
 | | ✅ NAV-T09 follow-up validado em 2026-08-15 com `npm run type-check`, `git diff --check`, `npm run build`, `npm run test:nav` e captura Playwright em 320px (`nav` 320px; `nav-tabs` 304px; MUNDO ativo ~107px e texto visível). |
 | | ✅ NAV-T10 validado em 2026-08-15 com `npm run type-check`, `git diff --check`, `npm run build`. Componente shadcn standalone compila; Tailwind/shadcn ainda não está instalado como design system ativo. |
 | | ✅ NAV-T09 validado em 2026-08-15 com `npm run type-check`, `git diff --check`, `npm run build`, `npm run test:nav` e captura Playwright em 320px (`nav-tabs` 300px; MUNDO ativo 104px). |

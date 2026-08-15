@@ -607,7 +607,7 @@ export default function WorldV2() {
           layers={effectiveLayers}
           onMemberTap={setTappedMember}
           shelters={(shelterSnapshot?.shelters ?? []).map(s => ({ id: s.id, name: s.name, lat: s.lat, lng: s.lng, distanceKm: s.distanceKm }))}
-          onMapInteraction={() => setDetent('peek')}
+          onMapInteraction={() => setDetent('hidden')}
         />
       </div>
       <div className="wv2-scrim" aria-hidden="true" />

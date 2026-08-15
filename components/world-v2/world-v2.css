@@ -534,6 +534,20 @@
   will-change: transform;
 }
 
+.wv2-sheet-reveal-zone {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: min(148px, 24dvh);
+  z-index: 1;
+  border: 0;
+  background: transparent;
+  pointer-events: auto;
+  cursor: default;
+  touch-action: manipulation;
+}
+
 .wv2-grabber {
   flex: none;
   width: 100%;

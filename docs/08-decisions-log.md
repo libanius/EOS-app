@@ -68,6 +68,37 @@ chamada, conversa com quem não divide círculo.
 
 ---
 
+## D-193 — O mapa ganha prioridade total sobre o sheet do Mundo
+
+**Date**: 2026-08-15
+**Status**: DECIDED
+**Roadmap**: WV2-T27
+**Pedido do dono**: ao clicar no mapa ou movimentá-lo, o menu inferior do Mundo
+(`22 Estável · 1 alerta ativo · Abrir`) deve se recolher completamente. Ele só
+volta se a pessoa passar o mouse naquela região ou, no mobile, tocar naquela
+região.
+
+**Context**: A interação do mapa já recolhia o sheet para `peek`, mas `peek`
+ainda deixava a faixa-resumo cobrindo uma área relevante do mapa. Isso era
+especialmente visível sobre o BottomNav: o mapa parecia disponível, mas o
+resumo continuava em cima.
+
+**Decision**:
+
+1. `DetentSheet` ganha o detent `hidden`, abaixo de `peek`, que desloca a folha
+   inteira para fora da área visível.
+2. Interação real do usuário no mapa (`drag`, `zoom`, `rotate`, `pitch` e
+   `click`) envia o sheet para `hidden`.
+3. Quando escondido, uma zona invisível no rodapé reabre para `peek`: por
+   `hover` no mouse, por foco de teclado, ou por toque/clique no mobile.
+4. Ações programáticas que precisam mostrar contexto continuam usando `peek`
+   explicitamente, como "ver alerta no mapa" ou rota até membro da família.
+
+**Consequence**: `npm run type-check`, `git diff --check`, `npm run build` e
+`npm run test:nav` passam. Playwright confirmou `peek → hidden → peek` por toque
+mobile e `hidden → peek` por hover de mouse.
+
+
 ## D-192 — Treino puxa a navegação para amarelo, e a faixa superior some
 
 **Date**: 2026-08-15

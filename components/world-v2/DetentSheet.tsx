@@ -35,7 +35,7 @@ import {
 import { animate, motion, useMotionValue, useReducedMotion } from 'framer-motion'
 import { SPRING, haptic, projectMomentum, rubberband, velocityFrom } from './motion'
 
-export type Detent = 'peek' | 'medium' | 'large'
+export type Detent = 'hidden' | 'peek' | 'medium' | 'large'
 
 const ORDER: Detent[] = ['peek', 'medium', 'large']
 /** Movement before a drag commits to a direction (§10 hysteresis). */
@@ -102,6 +102,7 @@ export default function DetentSheet({
   /** Translate for a detent. `large` is 0 (fully open); `peek` is the deepest. */
   const yFor = useCallback((d: Detent) => {
     const { height, peek, medium } = metrics.current
+    if (d === 'hidden') return height + 8
     if (d === 'large') return 0
     return Math.max(0, height - (d === 'peek' ? peek : medium))
   }, [])
@@ -263,8 +264,24 @@ export default function DetentSheet({
     commit(next, 0)
   }
 
+  const reveal = () => {
+    commit('peek', 0)
+  }
+
   return (
     <div className="wv2-sheet-layer" ref={layerRef}>
+      {detent === 'hidden' && (
+        <button
+          type="button"
+          className="wv2-sheet-reveal-zone"
+          aria-label={grabberLabel}
+          onClick={reveal}
+          onFocus={reveal}
+          onPointerEnter={event => {
+            if (event.pointerType === 'mouse') reveal()
+          }}
+        />
+      )}
       <motion.section
         ref={sheetRef}
         className="wv2-sheet"
@@ -279,7 +296,7 @@ export default function DetentSheet({
           ref={grabberRef}
           type="button"
           className="wv2-grabber"
-          aria-expanded={detent !== 'peek'}
+          aria-expanded={detent !== 'peek' && detent !== 'hidden'}
           aria-label={grabberLabel}
           onPointerDown={onPointerDown}
           onClick={onGrabberClick}
