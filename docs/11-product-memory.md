@@ -29,6 +29,9 @@ notificação. O comportamento copiado foi só: spring de entrada, toque comprim
 e rótulo ativo que expande. `MUNDO` participa da pílula, mas fica verde sempre.
 **Follow-up D-191:** a barra não é cápsula central; ocupa a largura inteira do
 rodapé como antes, com só os itens internos arredondados.
+**Follow-up D-192:** os itens comuns usam amarelo/âmbar do Treino, não
+roxo/azul; `MUNDO` continua verde. A faixa superior de domínio não pinta uma
+tira própria — deixa o fundo da página aparecer.
 
 **`components/ui/bottom-nav-bar.tsx` é exemplo shadcn, não shell do EOS
 (D-190).** Ele compila e preserva o prompt original, mas suas classes Tailwind

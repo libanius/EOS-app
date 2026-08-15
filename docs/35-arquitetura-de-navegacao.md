@@ -564,7 +564,9 @@ Divergências assumidas em relação ao que este documento propôs:
   arquitetura dos cinco destinos; D-189 mudou o comportamento visual para
   rótulo ativo expansível; D-191 devolveu a barra à largura inteira do rodapé,
   sem cápsula externa arredondada. O ativo vem da rota e MUNDO fica verde
-  sempre.
+  sempre. D-192 removeu o roxo/azul dos itens comuns: navegação global e
+  `Mais/Treino` usam amarelo do Treino, e a faixa superior de domínio não pinta
+  uma tira de fundo própria.
 - **`/family/casa` ficou `/family/cadastro`.** O endereço já existia e já estava
   em links; renomear custaria mais do que informa.
 - **`/mais` ainda não tem faixa de domínio.** Conta, plano, notificações e

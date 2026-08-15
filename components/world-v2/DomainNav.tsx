@@ -51,12 +51,15 @@ export type DomainNavProps = {
   destinos: Destino[]
   /** O que o leitor de tela anuncia. Ex.: "Seções da Preparação". */
   rotulo: string
+  tone?: 'default' | 'drill'
 }
 
-export default function DomainNav({ destinos, rotulo }: DomainNavProps) {
+export default function DomainNav({ destinos, rotulo, tone = 'default' }: DomainNavProps) {
   const pathname = usePathname()
   const { language } = useLanguage()
   const faixa = useRef<HTMLDivElement>(null)
+  const chip = tone === 'drill' ? { ...S.chip, ...S.chipDrill } : S.chip
+  const chipAtivo = tone === 'drill' ? S.chipDrillAtivo : S.chipAtivo
 
   /*
    * O chip ativo nunca pode nascer fora da vista. Com cinco destinos a faixa
@@ -79,7 +82,7 @@ export default function DomainNav({ destinos, rotulo }: DomainNavProps) {
             key={destino.href}
             href={destino.href}
             aria-current={ativo ? 'page' : undefined}
-            style={{ ...S.chip, ...(ativo ? S.chipAtivo : null) }}
+            style={{ ...chip, ...(ativo ? chipAtivo : null) }}
           >
             {language === 'pt' ? destino.pt : destino.en}
           </Link>
@@ -102,7 +105,7 @@ const S: Record<string, React.CSSProperties> = {
     position: 'sticky',
     top: 0,
     zIndex: 5,
-    background: 'var(--bg)',
+    background: 'transparent',
     padding: '10px 0 12px',
     marginBottom: 4,
   },
@@ -130,5 +133,16 @@ const S: Record<string, React.CSSProperties> = {
     background: 'rgba(0,229,160,0.12)',
     color: 'var(--tx)',
     fontWeight: 800,
+  },
+  chipDrill: {
+    borderColor: 'rgba(255,214,10,0.22)',
+    background: 'rgba(255,214,10,0.06)',
+    color: 'rgba(255,244,190,0.72)',
+  },
+  chipDrillAtivo: {
+    borderColor: '#ffd60a',
+    background: '#ffd60a',
+    color: '#191400',
+    fontWeight: 850,
   },
 }

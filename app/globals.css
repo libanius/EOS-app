@@ -250,8 +250,8 @@ textarea.input { resize: vertical; min-height: 100px; line-height: 1.6; }
   bottom: 0;
   left: 0;
   right: 0;
-  background: color-mix(in srgb, var(--sf) 94%, transparent);
-  border-top: 1px solid var(--bd);
+  background: rgba(10, 10, 15, 0.94);
+  border-top: 1px solid rgba(255, 214, 10, 0.14);
   display: flex;
   justify-content: center;
   padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0));
@@ -305,7 +305,7 @@ textarea.input { resize: vertical; min-height: 100px; line-height: 1.6; }
   max-height: 48px;
   padding: 11px 10px;
   border-radius: 14px;
-  color: var(--mu);
+  color: rgba(255, 214, 10, 0.52);
   font-size: 12px;
   font-weight: 700;
   line-height: 1;
@@ -318,8 +318,8 @@ textarea.input { resize: vertical; min-height: 100px; line-height: 1.6; }
 }
 
 .nb.on {
-  background: rgba(255, 255, 255, 0.08);
-  color: #f4f7fb;
+  background: rgba(255, 214, 10, 0.12);
+  color: #ffd60a;
 }
 .nb:active { opacity: 0.86; }
 .nb-icon {

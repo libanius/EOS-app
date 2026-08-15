@@ -4,6 +4,34 @@
 
 ---
 
+## D-192 — Treino puxa a navegação para amarelo, e a faixa superior some
+
+**Date**: 2026-08-15
+**Status**: DECIDED
+**Roadmap**: NAV-T09 follow-up
+**Pedido do dono**: as cores da navegação ainda não pareciam EOS; trocar o
+roxo/azul por amarelo do Simulador/Treino e remover a faixa de fundo do top nav,
+como nos outros top navs.
+
+**Context**: D-191 devolveu escala e largura à BottomNav, mas manteve restos da
+paleta antiga: itens comuns usavam o `--mu` arroxeado e ativo comum branco sobre
+fundo neutro. Em `/mais/treino`, a faixa de domínio ainda tinha fundo próprio
+(`var(--bg)`) e o chip ativo continuava verde, mesmo o contexto sendo Treino.
+
+**Decision**:
+
+1. BottomNav comum passa para amarelo/âmbar do treino (`#ffd60a`), em repouso,
+   ativo e borda superior. O MUNDO permanece verde, por D-189.
+2. `DomainNav` deixa de pintar uma faixa de fundo; a barra sticky fica
+   transparente e deixa o fundo da página aparecer.
+3. `MaisNav` usa tom `drill`: chip ativo preenchido em amarelo, inativo com
+   amarelo suave. As demais faixas de domínio continuam no tom padrão.
+
+**Consequence**: `npm run type-check`, `git diff --check`, `npm run build` e
+`npm run test:nav` passam. Captura Playwright de `/mais/treino` mede top nav
+transparente e navegação em amarelo.
+
+
 ## D-191 — A BottomNav expansível volta a ocupar a largura inteira
 
 **Date**: 2026-08-15

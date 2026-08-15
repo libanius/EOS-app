@@ -29,6 +29,7 @@ export default function MaisNav() {
     <DomainNav
       destinos={DESTINOS}
       rotulo={language === 'pt' ? 'Seções de Mais' : 'More sections'}
+      tone="drill"
     />
   )
 }
