@@ -14,7 +14,7 @@
 | **⚠ Pendência operacional** | **Aplicar `supabase/migrations/20260813210000_profiles_auth_fk.sql`** (D-175). Limpa 9 perfis de teste vazios e cria a FK que impede a recorrência. Para com erro se encontrar órfão com dado. |
 | **Migrações aplicadas** | `locations`, `holdings`, `kits`, `requirements`, `checklists.status` — todas verificadas por REST. |
 | **Migrações aplicadas** | As duas de Preparedness State **aplicadas em 2026-08-13** e verificadas por REST: `locations`, `holdings`, `kits`, `requirements` → 200. Nenhuma pendência operacional. |
-| **Last Completed Task** | **D-191 / NAV-T09 follow-up — BottomNav expansível volta a ocupar a largura inteira (2026-08-15)** |
+| **Last Completed Task** | **D-188 / COMMS-T12 — lista, thread e conversa individual (2026-08-15)** |
 | | **D-190 / NAV-T10 — componente shadcn BottomNavBar como exemplo standalone (2026-08-15)** |
 | | **D-189 / NAV-T09 — BottomNav vira pílula expansível (2026-08-15)** |
 | | **D-188 / COMMS-T11 — a conversa vira uma coisa (2026-08-15, migração pendente)** |
