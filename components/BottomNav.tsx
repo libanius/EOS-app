@@ -86,7 +86,9 @@ const NAV_LEFT: NavItem[] = [
 
 const NAV_RIGHT: NavItem[] = [
   {
-    href: '/comms?view=chat',
+    // `?view=chat` morreu em COMMS-T12/D-188: a seção virou rota, e `/comms`
+    // agora é a LISTA de conversas.
+    href: '/comms',
     labelKey: 'nav.comms',
     surface: 'comms',
     icon: (

@@ -260,7 +260,7 @@ export default function NotificationInbox() {
   function openItem(item: InboxItem) {
     setOpen(false)
     markReadKeepalive(item.ids)
-    window.location.assign(item.href || '/comms?view=chat')
+    window.location.assign(item.href || '/comms')
   }
 
   if (!open) return null

@@ -214,6 +214,57 @@ try {
   ;(aindaLa.body?.messages ?? []).length >= 2
     ? ok('esconder não destruiu histórico do outro lado', `${aindaLa.body.messages.length} mensagens`)
     : no('o histórico sumiu para o outro', JSON.stringify(aindaLa.body).slice(0, 140))
+  // ── 8. A TELA: /comms é a lista, /comms/[id] é o thread ───────────────────
+  await pAna.goto(`${B}/comms`, { waitUntil: 'networkidle' })
+  await pAna.waitForTimeout(1500)
+
+  const faixa = pAna.locator('nav[aria-label="Seções do Comms"]')
+  await faixa.waitFor({ timeout: 20000 }).catch(() => {})
+  const chips = await faixa.locator('a').count()
+  chips === 3
+    ? ok('a faixa do Comms tem os 3 destinos')
+    : no('faixa do Comms ausente ou com contagem errada', String(chips))
+
+  const linhas = await pAna.locator('a[href^="/comms/"]').count()
+  linhas >= 2
+    ? ok('a lista mostra as conversas', `${linhas} linhas`)
+    : no('a lista não mostrou as conversas', String(linhas))
+
+  await pAna.locator(`a[href="/comms/${idA}"]`).first().click()
+  await pAna.waitForURL(new RegExp(`/comms/${idA}`), { timeout: 10000 }).catch(() => {})
+  pAna.url().includes(`/comms/${idA}`)
+    ? ok('tocar na linha abre o thread pelo endereço dele')
+    : no('a linha não abriu o thread', pAna.url())
+
+  // Esperar a mensagem, e não só a rota: ler antes do fetch mediria o
+  // "Carregando", não o conteúdo.
+  await pAna.getByText('vou buscar a Isadora').first().waitFor({ timeout: 15000 }).catch(() => {})
+  const naTela = await pAna.locator('body').innerText()
+  naTela.includes('vou buscar a Isadora')
+    ? ok('o thread mostra a conversa certa')
+    : no('o thread abriu vazio ou errado', naTela.slice(0, 160).replace(/\n+/g, ' '))
+
+  /*
+   * ── 9. O LINK GUARDADO NO BANCO ──────────────────────────────────────────
+   *
+   * Os `href` de notificações já gravadas apontam para
+   * `/comms?view=chat&circleId=…&messageId=…`. Isso é histórico e ninguém pode
+   * reescrever: alguém pode tocar num aviso de semanas atrás. É o caso mais
+   * difícil desta migração de rota, e o único que não dá para consertar depois.
+   */
+  const circulo = (await chamar(pAna, '/api/comms/conversations')).body.conversations
+    .find(x => x.kind === 'circle')
+  await pAna.goto(`${B}/comms?view=chat&circleId=${circleId}&messageId=abc`, { waitUntil: 'networkidle' })
+  await pAna.waitForTimeout(2000)
+  pAna.url().includes(`/comms/${circulo.id}`)
+    ? ok('link ANTIGO do Inbox leva à conversa certa', '?view=chat&circleId=…')
+    : no('o link guardado no banco quebrou', pAna.url())
+
+  await pAna.goto(`${B}/comms?view=timeline`, { waitUntil: 'networkidle' })
+  await pAna.waitForTimeout(1500)
+  pAna.url().includes('/comms/linha-do-tempo')
+    ? ok('?view=timeline redireciona para a rota')
+    : no('?view=timeline não redirecionou', pAna.url())
 } finally {
   await browser.close().catch(() => {})
   stopServer()

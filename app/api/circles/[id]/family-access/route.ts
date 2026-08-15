@@ -72,7 +72,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
       body: body.action === 'accept'
         ? `${actorName} aceitou compartilhar a ficha master com a Família íntima em ${circleName}.`
         : `${actorName} recusou o convite de Família íntima em ${circleName}.`,
-      href: '/comms?view=notifications',
+      href: '/comms/linha-do-tempo',
     })
   }
   return NextResponse.json({ ok: true, family_access_status: data[0].family_access_status })

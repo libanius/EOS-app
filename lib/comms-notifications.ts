@@ -70,7 +70,12 @@ export async function createCommsNotifications({
   kind,
   title,
   body,
-  href = '/comms?view=notifications',
+  /*
+   * COMMS-T12/D-188: o padrão passou de `?view=notifications` para a rota.
+   * Os `href` JÁ GRAVADOS continuam com o endereço antigo — `/comms` os
+   * redireciona, porque histórico não se reescreve.
+   */
+  href = '/comms/linha-do-tempo',
   severity = null,
   sourceKey = null,
   excludeActor = true,
