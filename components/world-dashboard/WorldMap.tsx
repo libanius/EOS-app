@@ -249,21 +249,6 @@ function short(text: string, max = 38) {
   return text.length <= max ? text : `${text.slice(0, max - 1).trim()}…`
 }
 
-const WIND_CARDINAL = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW']
-
-function windCardinal(deg: number) {
-  return WIND_CARDINAL[Math.round((((deg % 360) + 360) % 360) / 22.5) % 16]
-}
-
-type WindPopup = {
-  x: number
-  y: number
-  speedMph: number
-  gustMph: number | null
-  direction: string
-  forecast: string
-}
-
 type CycloneWindTarget = Pick<CycloneStorm, 'id' | 'name' | 'lat' | 'lng' | 'windKmh' | 'headingDeg' | 'speedKmh'>
 
 function featurePoint(feature: GeoJSON.Feature): { lat: number; lng: number } | null {
@@ -524,7 +509,8 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
   const windLayerRef = useRef<WindParticleLayer | null>(null)
   const windTimeInputRef = useRef<HTMLInputElement | null>(null)
   const windLegendRef = useRef<HTMLDivElement | null>(null)
-  const [windPopup, setWindPopup] = useState<WindPopup | null>(null)
+  const [windControlsOpen, setWindControlsOpen] = useState(false)
+  const [windControlsVisible, setWindControlsVisible] = useState(false)
   const [mapReadyNonce, setMapReadyNonce] = useState(0)
   const [windFrameIndex, setWindFrameIndex] = useState(0)
   const [viewportWind, setViewportWind] = useState<WindSnapshot | null>(null)
@@ -1369,9 +1355,13 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
       layer.disable()
       setViewportWind(null)
       setWindFrameIndex(0)
-      setWindPopup(null)
+      setWindControlsOpen(false)
+      setWindControlsVisible(false)
     }
-    const update = () => layer.updateViewport()
+    const update = () => {
+      layer.updateViewport()
+      if (!windControlsOpen) setWindControlsVisible(false)
+    }
     map.on('move', update)
     map.on('zoom', update)
     window.addEventListener('resize', update)
@@ -1381,7 +1371,7 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
       window.removeEventListener('resize', update)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [layers?.wind, activeWindReadings.length, mapReadyNonce])
+  }, [layers?.wind, activeWindReadings.length, mapReadyNonce, windControlsOpen])
 
   useEffect(() => {
     const input = windTimeInputRef.current
@@ -1394,6 +1384,15 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
       input.removeEventListener('change', sync)
     }
   }, [windForMap?.frames.length])
+
+  useEffect(() => {
+    if (!layers?.wind) {
+      setWindControlsOpen(false)
+      setWindControlsVisible(false)
+      return
+    }
+    if (windForMap?.readings.length) setWindControlsVisible(true)
+  }, [layers?.wind, windForMap?.readings.length])
 
   useEffect(() => {
     const map = mapRef.current
@@ -1451,44 +1450,6 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [layers?.wind, mapBase, mapReadyNonce])
-
-  useEffect(() => {
-    const map = mapRef.current
-    const readings = activeWindReadings
-    if (!map || !readyRef.current || !layers?.wind || !readings.length) {
-      setWindPopup(null)
-      return
-    }
-    const onClick = (event: { point: { x: number; y: number } }) => {
-      const lngLat = map.unproject([event.point.x, event.point.y])
-      const sampled = windLayerRef.current?.sample(lngLat.lng, lngLat.lat)
-      if (!sampled) {
-        setWindPopup(null)
-        return
-      }
-      let best: (typeof readings)[number] | null = null
-      let bestD = Number.POSITIVE_INFINITY
-      for (const r of readings) {
-        const p = map.project([r.lng, r.lat])
-        const d = Math.hypot(p.x - event.point.x, p.y - event.point.y)
-        if (d < bestD) {
-          bestD = d
-          best = r
-        }
-      }
-      if (!best) return
-      setWindPopup({
-        x: event.point.x,
-        y: event.point.y,
-        speedMph: Math.round(sampled.speedMph),
-        gustMph: best.gustMph ?? (best.gustKmh === null ? null : Math.round(best.gustKmh * 0.621371)),
-        direction: windCardinal(best.fromDeg),
-        forecast: activeWindFrame?.label ?? 'NOW',
-      })
-    }
-    map.on('click', onClick)
-    return () => { map.off('click', onClick) }
-  }, [activeWindReadings, activeWindFrame, layers?.wind])
 
   useEffect(() => {
     const map = mapRef.current
@@ -1717,17 +1678,16 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
         data-active={layers?.wind ? 'true' : 'false'}
         style={{ ['--wind-particle-opacity' as string]: String(0.42 + windMapOpacity * 0.58) }}
       />
-      {layers?.wind && windForMap?.readings.length ? (
-        /*
-         * A pílula "Vento" saiu daqui (D-199).
-         *
-         * Ela era o liga/desliga flutuante no meio do mapa, e virou o botão da
-         * coluna. Deixá-la seria ter DUAS coisas escritas "Vento" fazendo coisas
-         * diferentes — a de cima ligando a camada, a de baixo dobrando a régua.
-         *
-         * A legenda aparece quando o vento está ligado, e é só isso que ela é.
-         */
-        <div ref={windLegendRef} className="world-wind-legend" data-open="true">
+      {layers?.wind && windControlsVisible && windForMap?.readings.length ? (
+        <div ref={windLegendRef} className="world-wind-legend" data-open={windControlsOpen ? 'true' : 'false'}>
+          <button
+            type="button"
+            className="world-wind-toggle"
+            aria-expanded={windControlsOpen}
+            onClick={() => setWindControlsOpen(open => !open)}
+          >
+            <span>WIND</span>
+          </button>
           <span className="world-wind-title">WIND SPEED</span>
           <b className="world-wind-scale">0</b><b className="world-wind-scale">10</b><b className="world-wind-scale">20</b><b className="world-wind-scale">30</b><b className="world-wind-scale">40+ mph</b>
           <i className="world-wind-ramp" aria-hidden="true" />
@@ -1793,15 +1753,6 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
               onChange={event => setWindArrowTint(Number(event.currentTarget.value))}
             />
           </label>
-        </div>
-      ) : null}
-      {windPopup && layers?.wind ? (
-        <div className="world-wind-popup" style={{ left: windPopup.x, top: windPopup.y }}>
-          <strong>WIND</strong>
-          <span>Speed: {windPopup.speedMph} mph</span>
-          {windPopup.gustMph !== null && <span>Gusts: {windPopup.gustMph} mph</span>}
-          <span>Direction: {windPopup.direction}</span>
-          <span>Forecast: {windPopup.forecast}</span>
         </div>
       ) : null}
     </div>

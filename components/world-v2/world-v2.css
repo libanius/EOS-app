@@ -1107,10 +1107,11 @@
 .wv2 .world-wind-canvas[data-active='true'] { opacity: var(--wind-particle-opacity, 1); }
 .wv2 .world-wind-legend {
   position: absolute;
-  left: clamp(320px, 28vw, 520px);
-  top: 46%;
+  left: auto;
+  right: 78px;
+  top: calc(var(--chrome-top, 16px) + var(--chrome-h, 40px) + var(--chrome-gap, 10px) + 146px);
   bottom: auto;
-  transform: translateY(-50%);
+  transform: none;
   z-index: 5;
   display: grid;
   grid-template-columns: auto repeat(5, auto);
@@ -1132,12 +1133,13 @@
   display: block;
   border: 0;
   border-radius: 999px;
-  padding: 8px 10px;
+  padding: 8px 11px;
   background: rgba(122, 215, 255, 0.18);
   color: #ffffff;
   font: inherit;
   letter-spacing: 0.08em;
   pointer-events: auto;
+  cursor: pointer;
 }
 .wv2 .world-wind-legend span { color: #ffffff; }
 .wv2 .world-wind-legend b { font-size: 0.5625rem; font-weight: 800; color: rgba(255, 255, 255, 0.72); }
@@ -1188,9 +1190,9 @@
 @media (max-width: 700px) {
   .wv2 .world-wind-legend {
     left: auto;
-    right: 12px;
-    top: auto;
-    bottom: calc(var(--nav-inset) + 72px);
+    right: 76px;
+    top: calc(var(--chrome-top, 16px) + var(--chrome-h, 40px) + var(--chrome-gap, 10px) + 146px);
+    bottom: auto;
     transform: none;
     max-width: min(230px, calc(100vw - 28px));
     grid-template-columns: 1fr;
@@ -1201,33 +1203,6 @@
   .wv2 .world-wind-legend[data-open='true'] .world-wind-ramp { grid-column: 1 / -1; }
   .wv2 .world-wind-time,
   .wv2 .world-wind-control { grid-template-columns: 54px minmax(120px, 1fr); }
-}
-.wv2 .world-wind-popup {
-  position: absolute;
-  z-index: 6;
-  transform: translate(12px, -50%);
-  min-width: 148px;
-  display: grid;
-  gap: 3px;
-  padding: 10px 12px;
-  border-radius: 14px;
-  border: 1px solid rgba(122, 215, 255, 0.28);
-  background: rgba(7, 10, 14, 0.86);
-  color: #fff;
-  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.42);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  pointer-events: none;
-}
-.wv2 .world-wind-popup strong {
-  color: #7ad7ff;
-  font-size: 0.6875rem;
-  letter-spacing: 0.12em;
-}
-.wv2 .world-wind-popup span {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.82);
 }
 .wv2 .w-selfpuck .eos-glyph {
   width: 26px;

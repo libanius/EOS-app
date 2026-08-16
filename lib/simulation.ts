@@ -13,7 +13,15 @@
 
 import type { WeatherSnapshot, WeatherAlert, HourlyForecast } from './weather/types'
 
-export type ThreatType = 'hurricane' | 'flood' | 'wildfire' | 'earthquake' | 'winter' | 'blackout' | 'general'
+/*
+ * `fallout` entrou em SIM-T12 / D-200, a pedido do dono.
+ *
+ * Ele já existia no vocabulário do app — `checklist.fallout` gera itens de
+ * contaminação radioativa desde o começo — e faltava do lado do treino. Um
+ * cenário que o checklist sabe preparar e o simulador não sabe encenar é meia
+ * ferramenta.
+ */
+export type ThreatType = 'hurricane' | 'flood' | 'wildfire' | 'earthquake' | 'fallout' | 'winter' | 'blackout' | 'general'
 export type Severity = 1 | 2 | 3 | 4 | 5
 export type ReserveLevel = 'real' | 'half' | 'critical'
 
@@ -132,6 +140,7 @@ export const THREATS: Array<{ id: ThreatType; pt: string; en: string }> = [
   { id: 'flood', pt: 'Enchente', en: 'Flood' },
   { id: 'wildfire', pt: 'Incêndio', en: 'Wildfire' },
   { id: 'earthquake', pt: 'Terremoto', en: 'Earthquake' },
+  { id: 'fallout', pt: 'Contaminação radioativa', en: 'Radioactive fallout' },
   { id: 'winter', pt: 'Tempestade de inverno', en: 'Winter storm' },
   { id: 'blackout', pt: 'Apagão prolongado', en: 'Extended blackout' },
   { id: 'general', pt: 'Geral', en: 'General' },

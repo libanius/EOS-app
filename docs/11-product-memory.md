@@ -52,6 +52,10 @@ do Mundo é uma superfície fixa.
 `storm surge`. O produto certo para o desenho operacional é o KML **Peak Storm
 Surge Forecast** do NHC/CPHC (`*_PeakStormSurge_*adv.kml`), convertido no
 servidor e desenhado como layer própria.
+**Follow-up D-201:** não abrir popup de vento ao clicar no mapa. A régua/sliders
+de vento ficam num controle colapsável perto do botão `Vento`; fechado ele é só
+um toggle compacto, aberto expõe escala/timeline/sliders, e fechado ele some ao
+mover/zoomar o mapa.
 
 **Ordem das fases: absorções primeiro.** São elas que liberam os slots — mexer
 na barra antes seria mudar o visível sem ter para onde mover o resto.

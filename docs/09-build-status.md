@@ -15,6 +15,7 @@
 | **Migrações aplicadas** | `locations`, `holdings`, `kits`, `requirements`, `checklists.status` — todas verificadas por REST. |
 | **Migrações aplicadas** | As duas de Preparedness State **aplicadas em 2026-08-13** e verificadas por REST: `locations`, `holdings`, `kits`, `requirements` → 200. Nenhuma pendência operacional. |
 | **Last Completed Task** | **D-188 / COMMS-T12 — lista, thread e conversa individual (2026-08-15)** |
+| | **D-201 / WV2-T31 — controles de vento recolhíveis junto ao botão Vento (2026-08-16)** |
 | | **D-200 / WV2-T30 — Surge usa Peak Storm Surge Forecast do NHC/CPHC (2026-08-16)** |
 | | **D-197 / WV2-T29 — painel de Camadas rola em qualquer device (2026-08-16)** |
 | | **D-196 / WV2-T28 — controles laterais do mapa sempre expandidos (2026-08-15)** |
@@ -225,7 +226,8 @@ rota ou UI foi alterado.**
 | **Platform Alignment** | ✅ D-084: EOS é plataforma multi-superfície com um único core operacional. Web/PWA segue como superfície primária; iOS/Android serão adapters nativos futuros; Automotive é companion mode restrito; Mesh/LoRa segue bloqueado por G-05. `/mobile/` é template/conceitual, não app inicializado. |
 | **Fases pedidas pelo dono (2026-07-31)** | ✅ 1. Camadas de clima + rastreio de ciclone (D-078). 2. Reinventar a aba Família no design system da v2, com componentes dinâmicos. 3. WV2-T05 (a11y/perf), PLAN-T07 (Pilot propõe plano). |
 | **Next Task** | **SIM-T12 — Simulador encena eventos no mapa.** Precisa de decisão sobre onde o evento falso entra sem contaminar o snapshot verdadeiro. |
-| **Build** | ✅ WV2-T30 validado em 2026-08-16 com `npm run type-check`, `git diff --check`, `npm run build`, `/api/world/peak-surge` lendo KML NHC real de Lala e Playwright mobile confirmando fonte/layer `eos-peak-surge-*` com polígonos. |
+| **Build** | ✅ WV2-T31 validado em 2026-08-16 com `npm run type-check`, `git diff --check`, `npm run build` e Playwright mobile: popup de clique do vento ausente, toggle compacto perto do botão `Vento`, expansão por clique e desaparecimento após movimento quando colapsado. |
+| | ✅ WV2-T30 validado em 2026-08-16 com `npm run type-check`, `git diff --check`, `npm run build`, `/api/world/peak-surge` lendo KML NHC real de Lala e Playwright mobile confirmando fonte/layer `eos-peak-surge-*` com polígonos. |
 | | ✅ WV2-T29 validado em 2026-08-16 com `npm run type-check`, `git diff --check`, `npm run build` e Playwright mobile no dashboard: painel `Camadas` tem overflow vertical e aceita scroll interno. |
 | | ✅ WV2-T28 validado em 2026-08-15 com `npm run type-check`, `git diff --check`, `npm run build` e Playwright mobile no dashboard: controles do mapa exibem `Você`, `Atualizar` e `Camadas` em repouso, sem botão `.../x`. |
 | | ✅ WV2-T27 validado em 2026-08-15 com `npm run type-check`, `git diff --check`, `npm run build`, `npm run test:nav` e Playwright no dashboard: mobile `peek → hidden → peek` por toque; mouse `hidden → peek` por hover. |

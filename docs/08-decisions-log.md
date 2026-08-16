@@ -4,6 +4,31 @@
 
 ---
 
+## D-201 — Ajuste de vento mora perto do botão, não no meio do mapa
+
+**Date**: 2026-08-16
+**Status**: DECIDED
+**Roadmap**: WV2-T31
+**Pedido do dono**: *"observe como esta poluido e sem jeito de mexer nos
+controles. onde eu clico no mapa aparece essas informações. Esse controle de
+wind speed e etc eu preciso ser capaz de expandir e contrair ao clicar."*
+
+**Context**: D-199 tirou o botão `Vento` do meio do mapa e levou para a coluna,
+mas deixou a régua/sliders de vento sempre abertos no centro/rodapé. Além disso,
+clicar no mapa criava um popup `WIND` com velocidade/rajada/direção naquele
+ponto, competindo com a própria régua e com a sheet inferior.
+
+**Decision**: o mapa não abre mais popup de vento por clique. A régua/sliders
+viram um controle colapsável perto do botão `Vento`: fechado mostra só um toggle
+compacto; aberto mostra `WIND SPEED`, escala, timeline e sliders. Se o controle
+estiver fechado e o usuário mover/zoomar o mapa, o toggle desaparece.
+
+**Consequence**: a leitura do mapa volta a ser o objeto principal. Ajustes de
+vento ficam no mesmo canto operacional do botão que liga a camada, e não como
+painéis soltos sobre família, mapa e sheet.
+
+---
+
 ## D-200 — Surge usa o Peak Storm Surge Forecast do NHC/CPHC
 
 **Date**: 2026-08-16
@@ -48,6 +73,76 @@ auto`, com rolagem touch nativa e `overscroll-behavior: contain`.
 
 **Consequence**: o usuário consegue percorrer o painel para cima e para baixo em
 telefone, tablet e desktop sem mover a página nem perder o contexto do mapa.
+
+---
+
+## D-200 — O evento falso não entra no verdadeiro; ele fica ao lado
+
+**Date**: 2026-08-16
+**Status**: DECIDED
+**Roadmap**: SIM-T12 (fase 1 de 2)
+**Ideia do dono**, 2026-08-13, retomada hoje: *"quero ser capaz de colocar
+ícones de furacão, dar nome a ele, terremoto, Fallout, Wildfire..."*
+
+**Context**: O Simulador derruba **fontes** (`isSourceDown`) mas não **fabrica
+evento**. A faixa de reavaliação de D-168 só aparece com alerta real na região,
+então o treino não consegue ensaiar a coisa que mais importa: *o que a família
+faz quando algo está vindo*.
+
+**A pergunta que travava a tarefa desde 13/08**: como o evento falso entra sem
+contaminar o snapshot verdadeiro?
+
+**Decision**:
+
+1. **Ele não entra.** `lib/staged-events.ts` produz um fluxo **separado**, que
+   existe só enquanto a simulação está ativa e que o mapa compõe por cima. Nada
+   é escrito no snapshot, no cache de hazards ou no banco.
+
+   Isso não é economia de esforço. Se o falso fosse injetado no real, encerrar
+   o treino viraria uma operação de **desfazer** — e toda operação de desfazer
+   falha algum dia. Aqui encerrar apaga o evento **por construção**: sem
+   simulação a lista vem vazia, e não há nada para reverter.
+
+2. **`simulated: true` é do TIPO, não do valor.** O campo é o literal `true`,
+   não `boolean`: um evento real não consegue satisfazer `StagedEvent` sem se
+   declarar simulado, e o compilador recusa. É `unknown ≠ safe` levado ao
+   sistema de tipos — o perigoso não pode ser o silêncio.
+
+3. **Determinístico. Zero `Math.random()`.** O mesmo cenário produz o mesmo
+   furacão, na mesma rota, com o mesmo nome. *"Vamos fazer de novo, agora sem
+   errar"* é metade do valor de treinar, e um evento que muda a cada execução
+   torna isso impossível.
+
+4. **Sem casa, não há encenação** — devolve vazio em vez de inventar posição.
+   Um treino que mente sobre ONDE a coisa está ensina a rota errada.
+
+5. **Nem toda ameaça vira objeto no mapa.** Furacão, terremoto, incêndio e
+   fallout têm posição e rumo. Enchente, inverno, apagão e geral não: apagão não
+   tem geografia, e desenhar um círculo para ele ensinaria que existe um "ponto
+   do apagão".
+
+6. **`fallout` entra no vocabulário do Simulador.** Ele já existia no checklist
+   (`checklist.fallout`) desde o começo. Um cenário que o checklist sabe
+   preparar e o simulador não sabe encenar é meia ferramenta.
+
+7. **Os raios são de TREINO, e está escrito no código.** Eles ordenam a
+   severidade de forma plausível e nada mais. Categoria 5 desenha maior que 1
+   porque a pessoa precisa **sentir** a diferença — não porque isto preveja
+   coisa alguma.
+
+**Consequence**:
+
+- A geometria é grande-círculo de verdade (destino e haversine), não "graus por
+  km": a aproximação já distorce leste-oeste na Flórida, e um cone torto ensina
+  a coisa errada sobre de onde a tempestade vem.
+- 24 testes. Os que importam não são de desenho: são a **fronteira** (encenado
+  nunca passa por real, e vice-versa) e a **repetibilidade**.
+- **Fase 2 pendente**: ligar ao mapa e ao painel do Simulador (campo de nome,
+  rumo, e o desenho com tratamento visual próprio).
+
+**Não autorizado por D-200**: escrever evento encenado em `hazard_events`, no
+snapshot de risco ou em qualquer cache; usar o evento falso para disparar push
+real; encenar sem simulação ativa.
 
 ---
 
