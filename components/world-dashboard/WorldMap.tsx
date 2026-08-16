@@ -53,6 +53,11 @@ type HazardEvent = {
 }
 type HazardSnapshot = { events?: HazardEvent[]; fetchedAt?: string }
 type RadarSnapshot = { ok?: boolean; tileUrl?: string; attribution?: string; frameTime?: number }
+type PeakSurgeSnapshot = {
+  features?: GeoJSON.FeatureCollection
+  empty?: boolean
+  error?: string
+}
 export type WorldFamilyMember = {
   id: string
   name: string
@@ -95,7 +100,7 @@ type StormMotion = { bearingDeg: number; speedMph: number; phrase: string }
 const HAZARD_LAYER_COLOR: Record<HazardMapLayer, string> = {
   alert: '#ffb347',
   flood: '#35d7f2',
-  surge: '#7c6bff',
+  surge: '#0a84ff',
   tornado: '#ff453a',
 }
 
@@ -527,7 +532,6 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
   const [windTrail, setWindTrail] = useState(0.62)
   const [windMapOpacity, setWindMapOpacity] = useState(0.72)
   const [windArrowTint, setWindArrowTint] = useState(1)
-  const [windControlsOpen, setWindControlsOpen] = useState(false)
 
   const ensureWindLayer = () => {
     const map = mapRef.current
@@ -580,22 +584,6 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
     if (map.getLayer('eos-wind')) map.setPaintProperty('eos-wind', 'icon-opacity', windArrowTint * 0.95)
     if (map.getLayer('eos-wind-label')) map.setPaintProperty('eos-wind-label', 'text-opacity', windArrowTint * 0.8)
   }, [windArrowTint, mapReadyNonce])
-  useEffect(() => {
-    if (!windControlsOpen) return
-    const closeIfOutside = (event: Event) => {
-      const target = event.target as Node | null
-      if (target && windLegendRef.current?.contains(target)) return
-      setWindControlsOpen(false)
-    }
-    document.addEventListener('pointerdown', closeIfOutside, true)
-    document.addEventListener('mousedown', closeIfOutside, true)
-    document.addEventListener('click', closeIfOutside, true)
-    return () => {
-      document.removeEventListener('pointerdown', closeIfOutside, true)
-      document.removeEventListener('mousedown', closeIfOutside, true)
-      document.removeEventListener('click', closeIfOutside, true)
-    }
-  }, [windControlsOpen])
   const activeCycloneTargets = useMemo(
     () => (cyclones?.storms ?? []).map(storm => stormAtTime(storm, cyclones?.forecastPoints, activeWindFrame?.validAt)),
     [cyclones, activeWindFrame?.validAt],
@@ -933,6 +921,65 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
     }
   }
 
+  const renderPeakSurge = async () => {
+    const map = mapRef.current
+    if (!map) return
+    try {
+      const snap = (await fetch('/api/world/peak-surge').then(r => (r.ok ? r.json() : null))) as PeakSurgeSnapshot | null
+      const data = snap?.features?.type === 'FeatureCollection' ? snap.features : EMPTY_FC
+      const src = map.getSource('eos-peak-surge-polygons') as { setData?: (d: unknown) => void } | undefined
+      if (src) {
+        src.setData?.(data)
+        return
+      }
+
+      map.addSource('eos-peak-surge-polygons', { type: 'geojson', data })
+      const before = map.getLayer('eos-route-glow') ? 'eos-route-glow' : undefined
+      const visibility = layers?.surge ? 'visible' : 'none'
+      map.addLayer({
+        id: 'eos-peak-surge-fill',
+        type: 'fill',
+        source: 'eos-peak-surge-polygons',
+        layout: { visibility },
+        paint: {
+          'fill-color': HAZARD_LAYER_COLOR.surge,
+          'fill-opacity': 0.24,
+        },
+      }, before)
+      map.addLayer({
+        id: 'eos-peak-surge-outline',
+        type: 'line',
+        source: 'eos-peak-surge-polygons',
+        layout: { visibility },
+        paint: {
+          'line-color': HAZARD_LAYER_COLOR.surge,
+          'line-width': 3,
+          'line-opacity': 0.95,
+        },
+      }, before)
+      map.addLayer({
+        id: 'eos-peak-surge-label',
+        type: 'symbol',
+        source: 'eos-peak-surge-polygons',
+        layout: {
+          visibility,
+          'text-field': ['coalesce', ['get', 'label'], ['get', 'name'], 'Surge'],
+          'text-size': 12,
+          'text-font': ['Open Sans Semibold', 'Arial Unicode MS Bold'],
+          'text-allow-overlap': false,
+          'text-padding': 4,
+        },
+        paint: {
+          'text-color': '#f4f8ff',
+          'text-halo-color': '#03111f',
+          'text-halo-width': 1.6,
+        },
+      }, before)
+    } catch {
+      // Peak Surge é aditivo. Se a NOAA falhar, os alertas continuam no mapa.
+    }
+  }
+
   // init once
   useEffect(() => {
     let cancelled = false
@@ -942,7 +989,9 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
         const maplibregl = (await import('maplibre-gl')).default
         if (cancelled || !ref.current) return
         const cfg = getMapConfig(mapBase)
-        const center: [number, number] = mapBase === 'wind' ? cfg.center : coords ? [coords.lng, coords.lat] : cfg.center
+        // D-199: sem base de vento, o centro é sempre a pessoa quando ela é
+        // conhecida. A base de vento abria o mapa no meio do oceano.
+        const center: [number, number] = coords ? [coords.lng, coords.lat] : cfg.center
         centerRef.current = center
 
         map = new maplibregl.Map({
@@ -1147,6 +1196,7 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
           if (plateRef.current) plateRef.current.style.opacity = '0'
           loadRadar()
           renderHazards(cur)
+          renderPeakSurge()
         })
       } catch {
         // WebGL/init failure → keep the static plate visible (§28)
@@ -1360,7 +1410,12 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
       const bounds = map.getBounds()
       const lngSpan = Math.min(360, Math.abs(bounds.getEast() - bounds.getWest()))
       const latSpan = Math.abs(bounds.getNorth() - bounds.getSouth())
-      const globalWind = mapBase === 'wind' || map.getZoom() <= 4.5
+      /*
+       * D-199: `mapBase === 'wind'` deixou de existir. O vento global passa a
+       * depender só do ZOOM, que é o que ele sempre quis dizer: afastado, as
+       * partículas contam o padrão do continente; perto, contam a sua rua.
+       */
+      const globalWind = map.getZoom() <= 4.5
       const latSpanRequest = globalWind ? 170 : Math.min(170, Math.max(0.35, latSpan * 1.2))
       const lngSpanRequest = globalWind ? 360 : Math.min(360, Math.max(0.35, lngSpan * 1.2))
       const broadSpan = Math.max(latSpanRequest, lngSpanRequest)
@@ -1461,7 +1516,9 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
       toggle(id, Boolean(layers?.alerts))
     }
     for (const id of ['eos-flood-fill', 'eos-flood-outline']) toggle(id, Boolean(layers?.flood))
-    for (const id of ['eos-surge-fill', 'eos-surge-outline']) toggle(id, Boolean(layers?.surge))
+    for (const id of ['eos-surge-fill', 'eos-surge-outline', 'eos-peak-surge-fill', 'eos-peak-surge-outline', 'eos-peak-surge-label']) {
+      toggle(id, Boolean(layers?.surge))
+    }
     for (const id of ['eos-tornado-fill', 'eos-tornado-outline', 'eos-tornado-motion', 'eos-tornado-motion-arrow']) {
       toggle(id, Boolean(layers?.tornado))
     }
@@ -1528,10 +1585,38 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
        */
       if (focus.bounds) {
         const sheetSpace = window.innerWidth < 760 ? 300 : 60
+        /*
+         * Deitar ANTES de calcular, e não junto (D-199).
+         *
+         * Passar `pitch`/`bearing` dentro das opções do `fitBounds` não
+         * funciona: ele calcula o zoom para a câmera ATUAL — inclinada 56°, que
+         * enxerga muito mais longe — e só então aplica a câmera nova. O
+         * resultado media o mesmo zoom 4.4 com metade da vista, e o cone de 22°
+         * não cabia numa janela de 14°.
+         *
+         * Zerando primeiro, o cálculo acontece contra a câmera que vai valer.
+         */
+        map.jumpTo({ pitch: 0, bearing: 0 })
         map.fitBounds(focus.bounds, {
           padding: { top: 90, bottom: sheetSpace, left: 40, right: 40 },
           duration: reduce ? 0 : 1200,
           maxZoom: 9,   // acima disso o cone volta a não caber
+          /*
+           * ── POR QUE A CÂMERA DEITA (D-199) ───────────────────────────────
+           *
+           * O mapa vive inclinado 56° e girado -18°, que é o que dá a
+           * perspectiva de painel. Num cone de furacão isso mente: a inclinação
+           * estica o horizonte (a vista chega a 59° de altura contra 27° de
+           * largura) e a rotação faz o "para onde ele vai" apontar torto.
+           *
+           * Até D-199 isto funcionava por acidente — a base de vento zerava
+           * `pitch` e `bearing`, e enquadrar tempestade acontecia quase sempre
+           * com ela ligada. Ao tirar a base, o acidente sumiu e o cone deixou
+           * de caber.
+           *
+           * Deitar a câmera aqui é o certo por mérito próprio: alcance de
+           * tempestade se lê de cima, com o norte para cima.
+           */
           essential: true,
         })
         return
@@ -1604,12 +1689,12 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courseTo, coords?.lat, coords?.lng])
 
-  const closeWindControlsFromMap = (event: PointerEvent<HTMLDivElement> | MouseEvent<HTMLDivElement>) => {
-    if (!windControlsOpen) return
-    const target = event.target as Node | null
-    if (target && windLegendRef.current?.contains(target)) return
-    setWindControlsOpen(false)
-  }
+  /*
+   * D-199: a legenda não abre nem fecha mais — ela existe enquanto o vento
+   * estiver ligado, e o liga/desliga foi para a coluna de controles. Estes
+   * ouvintes de "clicou fora" fechavam uma pílula que não existe mais.
+   */
+  const closeWindControlsFromMap = (_event: PointerEvent<HTMLDivElement> | MouseEvent<HTMLDivElement>) => {}
 
   return (
     <div
@@ -1633,15 +1718,16 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
         style={{ ['--wind-particle-opacity' as string]: String(0.42 + windMapOpacity * 0.58) }}
       />
       {layers?.wind && windForMap?.readings.length ? (
-        <div ref={windLegendRef} className="world-wind-legend" data-open={windControlsOpen ? 'true' : 'false'}>
-          <button
-            type="button"
-            className="world-wind-toggle"
-            aria-expanded={windControlsOpen}
-            onClick={() => setWindControlsOpen(open => !open)}
-          >
-            Vento
-          </button>
+        /*
+         * A pílula "Vento" saiu daqui (D-199).
+         *
+         * Ela era o liga/desliga flutuante no meio do mapa, e virou o botão da
+         * coluna. Deixá-la seria ter DUAS coisas escritas "Vento" fazendo coisas
+         * diferentes — a de cima ligando a camada, a de baixo dobrando a régua.
+         *
+         * A legenda aparece quando o vento está ligado, e é só isso que ela é.
+         */
+        <div ref={windLegendRef} className="world-wind-legend" data-open="true">
           <span className="world-wind-title">WIND SPEED</span>
           <b className="world-wind-scale">0</b><b className="world-wind-scale">10</b><b className="world-wind-scale">20</b><b className="world-wind-scale">30</b><b className="world-wind-scale">40+ mph</b>
           <i className="world-wind-ramp" aria-hidden="true" />

@@ -309,43 +309,52 @@ export default function WorldV2() {
   }, [layersOpen])
 
   /**
-   * Base do mapa. D-144: Vento é modo premium de mapa, não chip empilhado em
-   * cima de Satélite/Escuro.
+   * Base do mapa — **duas**, e o Vento não é uma delas (D-199).
+   *
+   * D-144 fez do Vento uma BASE, exclusiva com Escuro e Satélite. A consequência
+   * era literal: `getMapConfig('wind')` carrega o `CARTO_DARK`, então **ligar o
+   * vento apagava o satélite**. Quem quisesse ver a rajada sobre a imagem real
+   * da própria rua não tinha como.
+   *
+   * Vento é um FENÔMENO sobre o mundo, não uma forma de desenhar o mundo. Ele
+   * volta a ser camada, e compõe sobre a base que a pessoa escolheu.
    */
   const [mapBase, setMapBase] = useState<MapBaseMode>('dark')
   useEffect(() => {
     try {
       const stored = localStorage.getItem('eos-map-base')
-      if (stored === 'dark' || stored === 'satellite' || stored === 'wind') setMapBase(stored)
+      if (stored === 'dark' || stored === 'satellite') setMapBase(stored)
+      /*
+       * Quem tinha 'wind' salvo volta para escuro COM o vento ligado — que é
+       * exatamente o que aquela base fazia. Ninguém perde o vento na virada.
+       */
+      if (stored === 'wind') {
+        setMapBase('dark')
+        setLayers(current => ({ ...current, wind: true }))
+        localStorage.setItem('eos-map-base', 'dark')
+      }
     } catch { /* private mode */ }
   }, [])
+
   const setBase = (next: MapBaseMode) => {
     haptic.selection()
-    if (next === 'wind' && !windAllowed) {
-      setLayers(current => {
-        const cleaned = { ...current, wind: false }
-        try { localStorage.setItem('eos-map-layers', JSON.stringify(cleaned)) } catch { /* private mode */ }
-        return cleaned
-      })
-      window.location.href = '/mais'
-      return
-    }
-    setLayers(current => {
-      const nextLayers = { ...current, wind: next === 'wind' }
-      try { localStorage.setItem('eos-map-layers', JSON.stringify(nextLayers)) } catch { /* private mode */ }
-      return nextLayers
-    })
     setMapBase(next)
     setLayersOpen(false)
     try { localStorage.setItem('eos-map-base', next) } catch { /* private mode */ }
   }
-  useEffect(() => {
-    if (plan === null || windAllowed || mapBase !== 'wind') return
-    setMapBase('dark')
-    try { localStorage.setItem('eos-map-base', 'dark') } catch { /* private mode */ }
-  }, [plan, windAllowed, mapBase])
 
-  const effectiveLayers = useMemo(() => ({ ...layers, wind: (layers.wind || mapBase === 'wind') && windAllowed }), [layers, mapBase, windAllowed])
+  /** Liga e desliga o vento — com o muro de plano, que era o único motivo de ele ser base. */
+  const toggleWind = () => {
+    haptic.selection()
+    if (!windAllowed) { window.location.href = '/mais'; return }
+    setLayers(current => {
+      const nextLayers = { ...current, wind: !current.wind }
+      try { localStorage.setItem('eos-map-layers', JSON.stringify(nextLayers)) } catch { /* private mode */ }
+      return nextLayers
+    })
+  }
+
+  const effectiveLayers = useMemo(() => ({ ...layers, wind: layers.wind && windAllowed }), [layers, windAllowed])
   const { cyclones, wind, alerts: locatedAlerts } = useWeatherLayers(coords, effectiveLayers)
 
   /**
@@ -653,6 +662,21 @@ export default function WorldV2() {
           >
             <LayersIcon />
           </IconButton>
+          {/*
+            Vento na COLUNA, logo abaixo de Camadas (D-199).
+
+            Ele morava numa pílula flutuante no meio do mapa — longe do resto dos
+            controles, e num lugar que o dedo só encontra por acidente. É a
+            camada que a pessoa mais liga e desliga; fica com os outros controles.
+          */}
+          <IconButton
+            label={c.layerWind}
+            caption={c.layerWind}
+            active={effectiveLayers.wind}
+            onClick={toggleWind}
+          >
+            <WindIcon />
+          </IconButton>
           {isDesktop && (
             <IconButton label={c.panel} caption={c.panelCap} active={panelOpen} onClick={() => setPanelOpen(open => !open)}>
               <PanelIcon />
@@ -707,14 +731,15 @@ export default function WorldV2() {
               <div className="row">
                 <button type="button" className={`wv2-chip${mapBase === 'dark' ? ' on' : ''}`} onClick={() => setBase('dark')}>{c.darkBase}</button>
                 <button type="button" className={`wv2-chip${mapBase === 'satellite' ? ' on' : ''}`} onClick={() => setBase('satellite')}>{c.satCap}</button>
-                <button type="button" className={`wv2-chip${mapBase === 'wind' ? ' on' : ''}${!windAllowed ? ' premium' : ''}`} onClick={() => setBase('wind')}>
-                  {c.windBase}
-                  {!windAllowed && <span>{c.premiumTag}</span>}
-                </button>
               </div>
 
               <p className="t-caps ink-3">{c.layersLabel}</p>
               <div className="row">
+                {/* Vento saiu da fileira de BASE e entrou aqui, onde sempre pertenceu (D-199). */}
+                <button type="button" className={`wv2-chip${effectiveLayers.wind ? ' on' : ''}${!windAllowed ? ' premium' : ''}`} onClick={toggleWind}>
+                  {c.layerWind}
+                  {!windAllowed && <span>{c.premiumTag}</span>}
+                </button>
                 <button type="button" className={`wv2-chip${layers.radar ? ' on' : ''}`} onClick={() => toggleLayer('radar')}>{c.layerRadar}</button>
                 <button type="button" className={`wv2-chip${layers.alerts ? ' on' : ''}`} onClick={() => toggleLayer('alerts')}>{c.layerAlerts}</button>
                 <button type="button" className={`wv2-chip${layers.cyclone ? ' on' : ''}`} onClick={() => toggleLayer('cyclone')}>{c.layerCyclone}</button>
@@ -1126,6 +1151,17 @@ function WorldSections({
 /* ── Icons ────────────────────────────────────────────────────────────────── */
 
 /** Camadas empilhadas — a metáfora que todo app de mapa usa para base layer. */
+/** Rajada: três linhas de ar, a do meio enrolando. */
+function WindIcon() {
+  return (
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 8h9a2.5 2.5 0 1 0-2.5-2.5" />
+      <path d="M3 16h13a2.5 2.5 0 1 1-2.5 2.5" />
+      <path d="M3 12h16" />
+    </svg>
+  )
+}
+
 function LayersIcon() {
   return (
     <svg viewBox="0 0 24 24" width="20" height="20" fill="none" aria-hidden="true">

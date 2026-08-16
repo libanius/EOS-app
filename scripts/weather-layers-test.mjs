@@ -83,6 +83,18 @@ cleanupOnExit(admin)
  * Se o botão estivesse VISÍVEL em repouso, seria o recolhimento que quebrou.
  */
 async function abrirCamadas(page) {
+  /*
+   * A folha pode JÁ estar aberta (D-199).
+   *
+   * Antes, escolher Vento fechava o painel — ele era uma BASE, e trocar de base
+   * encerra a escolha. Vento virou camada, e ligar uma camada não fecha o
+   * painel: quem liga chuva costuma querer ligar vento em seguida.
+   *
+   * Sem esta checagem o teste bate no `.wv2-layers-catch`, o captador de toque
+   * do painel aberto, e falha dizendo que o botão está coberto.
+   */
+  if (await page.locator('.wv2-layers-catch').count()) return
+
   const camadas = page.locator('button[aria-label="Camadas"]')
   if (!(await camadas.count())) {
     await page.locator('.wv2-mapcontrols button').last().click()
@@ -199,9 +211,18 @@ await page.waitForTimeout(6000)
 await page.waitForFunction(() => {
   try { return Boolean(window.__eosMap?.loaded?.() && window.__eosMap?.getSource?.('eos-wind')) } catch { return false }
 }, null, { timeout: 12000 }).catch(() => {})
-// D-144: Vento é um modo de mapa. O clique já deve levar para câmera mundial;
-// o setZoom abaixo só estabiliza o teste se o navegador restaurou zoom antigo.
-await page.evaluate(() => window.__eosMap?.setZoom(Math.min(window.__eosMap?.getZoom?.() ?? 4, 4)))
+/*
+ * D-199 substitui D-144: Vento é CAMADA, não base.
+ *
+ * A versão anterior confiava que o clique levava sozinho para a câmera mundial,
+ * porque a base de vento abria o mapa em [0,18] com zoom 1.55. Isso era o
+ * defeito que o dono apontou — ligar o vento teleportava a pessoa para o meio
+ * do Atlântico e apagava o satélite.
+ *
+ * Agora a câmera não se move ao ligar a camada, e é o TESTE que precisa afastar
+ * para ver o campo global.
+ */
+await page.evaluate(() => window.__eosMap?.setZoom(4))
 await page.waitForTimeout(4500)
 await page.waitForFunction(() => window.__eosWindLayer?.active === true, null, { timeout: 8000 }).catch(() => {})
 // Perguntar ao MapLibre o que ele RENDERIZOU, não o que foi entregue à fonte.
@@ -274,6 +295,17 @@ timelineOk.ok && frameDebug.frameIndex === 3
   ? ok('timeline de vento troca frame sem novo modo', `frame=${frameDebug.frameIndex}`)
   : no('timeline de vento não atualizou frame', JSON.stringify({ timelineOk, frameDebug }))
 
+/*
+ * Fechar a folha antes de tocar no mapa (D-199).
+ *
+ * Ligar uma camada não fecha mais o painel — quem liga chuva costuma querer
+ * ligar vento em seguida. Mas o painel tem um captador de toque por cima do
+ * mapa, então enquanto ele estiver aberto a roda do mouse não chega ao MapLibre.
+ * É o que a pessoa faz: termina de escolher, fecha, e aí navega.
+ */
+await page.locator('.wv2-layers-catch').click({ position: { x: 5, y: 5 } }).catch(() => {})
+await page.waitForTimeout(400)
+
 const mapBox = await page.locator('.wv2-map canvas.maplibregl-canvas').boundingBox()
 if (mapBox) {
   const beforeZoom = await page.evaluate(() => window.__eosMap?.getZoom?.() ?? null)
@@ -291,11 +323,27 @@ if (mapBox) {
   ;(zoomWind.visibleParticles ?? 0) > 250
     ? ok('vento mantém densidade no zoom', `${zoomWind.visibleParticles}/${zoomWind.particles} partículas visíveis`)
     : no('vento perdeu densidade no zoom', JSON.stringify(zoomWind))
-  await page.mouse.click(mapBox.x + 24, mapBox.y + 24)
-  await page.waitForTimeout(250)
-  ;(await page.locator('.world-wind-legend[data-open="false"]').count()) === 1
-    ? ok('painel de vento recolhe ao tocar fora')
-    : no('painel de vento não recolheu ao tocar fora')
+  /*
+   * A legenda não recolhe mais, e é de propósito (D-199).
+   *
+   * Ela tinha uma pílula "Vento" que a dobrava — e essa pílula era o liga/desliga
+   * flutuante que subiu para a coluna de controles. Deixar as duas seria ter
+   * DUAS coisas escritas "Vento" fazendo coisas diferentes.
+   *
+   * O que a legenda faz agora é uma coisa só: existir enquanto o vento estiver
+   * ligado, mostrando a régua de velocidade. Então o que vale medir é isso.
+   */
+  const legenda = await page.locator('.world-wind-legend').count()
+  const regua = await page.locator('.world-wind-ramp').count()
+  const pilulaAntiga = await page.locator('.world-wind-toggle').count()
+  legenda === 1 && regua === 1 && pilulaAntiga === 0
+    ? ok('a legenda mostra a régua, e o liga/desliga saiu dela')
+    : no('legenda de vento em estado errado', `legenda=${legenda} regua=${regua} pilula=${pilulaAntiga}`)
+
+  const naColuna = await page.locator('.wv2-mapcontrols button[aria-label="Vento"]').count()
+  naColuna === 1
+    ? ok('o botão Vento está na coluna de controles')
+    : no('o Vento não subiu para a coluna', String(naColuna))
 } else {
   no('canvas do mapa ausente no modo vento')
 }

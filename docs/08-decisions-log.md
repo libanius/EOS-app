@@ -4,6 +4,32 @@
 
 ---
 
+## D-200 — Surge usa o Peak Storm Surge Forecast do NHC/CPHC
+
+**Date**: 2026-08-16
+**Status**: DECIDED
+**Roadmap**: WV2-T30
+**Pedido do dono**: *"eu pedi para instalar a camada Surge, mas parece que ela
+nao esta funcionando como um layer."*
+
+**Context**: `Surge` existia na UI, mas era só uma separação de polígonos de
+alerta vindos de `/api/hazards` quando o texto continha `storm surge`. Durante
+Hurricane Lala, o NHC/CPHC publicou o mapa oficial **Peak Storm Surge Forecast**
+para o Havaí, com KML próprio (`CP012026_PeakStormSurge_*adv.kml`), e o EOS não
+desenhava nada.
+
+**Decision**: a camada `Surge` passa a consumir o produto oficial **Peak Storm
+Surge Forecast** do NHC/CPHC quando houver ciclone ativo. O servidor baixa o KML
+mais recente por tempestade ativa, converte polígonos para GeoJSON e entrega uma
+FeatureCollection própria para o mapa. O botão `Surge` controla essa camada real
+e mantém a separação antiga de alertas apenas como fallback.
+
+**Consequence**: quando a NOAA publicar áreas de pico de maré de tempestade,
+como `Hawaii...1-3 ft`, o mapa EOS deve mostrar o contorno/preenchimento oficial
+em vez de depender de um alerta genérico conter a palavra certa.
+
+---
+
 ## D-197 — Camadas rola dentro do próprio painel
 
 **Date**: 2026-08-16
@@ -22,6 +48,67 @@ auto`, com rolagem touch nativa e `overscroll-behavior: contain`.
 
 **Consequence**: o usuário consegue percorrer o painel para cima e para baixo em
 telefone, tablet e desktop sem mover a página nem perder o contexto do mapa.
+
+---
+
+## D-199 — Vento é fenômeno sobre o mundo, não uma forma de desenhar o mundo
+
+**Date**: 2026-08-16
+**Status**: DECIDED
+**Roadmap**: MAP-T05
+**Pedido do dono**: *"o mapa tb pode ser em Satélite, ou preto... não precisa
+ficar somente em preto como é agora. E o botão Vento deve subir perto do ✕, logo
+abaixo de Camadas."*
+
+**Context**: D-144 fez do Vento uma **BASE de mapa**, exclusiva com Escuro e
+Satélite. A consequência era literal: `getMapConfig('wind')` devolve o
+`CARTO_DARK`. **Ligar o vento apagava o satélite.** Quem quisesse ver a rajada
+sobre a imagem real da própria rua não tinha como.
+
+E a base fazia mais do que trocar o estilo — ela mudava a câmera para
+`[0, 18]`, zoom `1.55`, `pitch 0`, `bearing 0`. Ligar o vento **teleportava a
+pessoa para o meio do Atlântico**.
+
+**Decision**:
+
+1. **`'wind'` sai do tipo `MapBaseMode`.** Não é depreciado: é removido, para
+   não voltar por distração. A base tem duas opções, Escuro e Satélite, e o
+   vento compõe sobre qualquer uma.
+
+2. **Quem tinha `'wind'` salvo volta para Escuro COM o vento ligado** — que é
+   exatamente o que aquela base fazia. Ninguém perde o vento na virada.
+
+3. **O botão sobe para a coluna de controles**, logo abaixo de Camadas. Ele
+   morava numa pílula flutuante no meio do mapa, longe do resto e num lugar que
+   o dedo só encontra por acidente.
+
+4. **A pílula "Vento" da legenda morre.** Ela era o liga/desliga; mantê-la seria
+   ter duas coisas escritas "Vento" fazendo coisas diferentes. A legenda passa a
+   ser uma coisa só: a régua de velocidade, visível enquanto o vento estiver
+   ligado.
+
+5. **Enquadrar tempestade deita a câmera de propósito.** O mapa vive inclinado
+   56° e girado -18°; num cone de furacão isso mente — a inclinação estica o
+   horizonte e a rotação faz o "para onde ele vai" apontar torto. Isso
+   **funcionava por acidente** até aqui: a base de vento zerava os dois, e quem
+   olhava tempestade normalmente estava com ela ligada.
+
+   E o `pitch` tem que ser zerado **antes** do `fitBounds`, não dentro dele: o
+   `fitBounds` calcula o zoom para a câmera atual e só depois aplica a nova.
+
+**Consequence**:
+
+- **Uma checagem do `test:weather` já estava vermelha antes desta mudança**, e
+  eu confirmei guardando o trabalho e rodando o código anterior: números
+  idênticos (`zoom 4.4`, cone `22.0°×6.8°`, vista `14.0°×28.8°`). O
+  enquadramento do cone não cabe, e o defeito é anterior. **Fica registrado como
+  pendência própria** em vez de virar suspeita permanente sobre esta mudança.
+- Ligar camada **não fecha mais** a folha de camadas — quem liga chuva costuma
+  querer ligar vento em seguida. Trocar de BASE continua fechando, porque ali a
+  escolha termina.
+
+**Não autorizado por D-199**: reintroduzir base de vento, mexer nos sliders de
+partículas, mudar o comportamento de zoom global do campo.
 
 ---
 

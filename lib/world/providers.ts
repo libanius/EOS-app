@@ -24,7 +24,15 @@ export type MapProviderConfig = {
   terrainSource?: string
 }
 
-export type MapBaseMode = 'hybrid' | 'dark' | 'satellite' | 'wind'
+/*
+ * D-199: `'wind'` saiu do tipo.
+ *
+ * Ele carregava o `CARTO_DARK`, então escolher vento **apagava o satélite** —
+ * o defeito que o dono apontou. Vento é fenômeno sobre o mundo, não uma forma
+ * de desenhar o mundo, e virou camada. Tirar do tipo impede que ele volte por
+ * distração.
+ */
+export type MapBaseMode = 'hybrid' | 'dark' | 'satellite'
 
 // Keyless, MapLibre-compatible dark vector basemap (CARTO). Good enough for the
 // automotive-grade dark instrument look without any API key.
@@ -94,23 +102,29 @@ export function getMapConfig(base: MapBaseMode = 'hybrid'): MapProviderConfig {
   // the user can restore the original operational vector look in production.
   const isDark = base === 'dark'
   const isSatellite = base === 'satellite'
-  const isWind = base === 'wind'
   const styleUrl = isDark
     ? CARTO_DARK
     : isSatellite
       ? esriSatelliteStyle()
-      : isWind
-        ? CARTO_DARK
-        : styleOverride || (key ? `https://api.maptiler.com/maps/hybrid/style.json?key=${key}` : CARTO_DARK)
+      : styleOverride || (key ? `https://api.maptiler.com/maps/hybrid/style.json?key=${key}` : CARTO_DARK)
 
+  /*
+   * D-199: as ramificações `isWind` sumiram junto com a base.
+   *
+   * Ela abria o mapa em [0, 18] com zoom 1.55 — o meio do Atlântico, o planeta
+   * inteiro na tela. Fazia sentido para "modo vento global" e nenhum sentido
+   * para uma camada: ligar o vento teleportava a pessoa para longe da própria
+   * casa. Agora a câmera é sempre a mesma, e só o zoom decide se as partículas
+   * contam o padrão do continente ou o da rua.
+   */
   return {
     styleUrl,
-    center: isWind ? [0, 18] : PARKLAND,
-    zoom: isWind ? 1.55 : 13.1,
-    pitch: isWind ? 0 : 56, // pitched automotive perspective (doc 16 §11.1: ~45–70°)
-    bearing: isWind ? 0 : -18,
-    hasTerrain: !isDark && !isSatellite && !isWind && Boolean(key),
-    terrainSource: !isDark && !isSatellite && !isWind && key
+    center: PARKLAND,
+    zoom: 13.1,
+    pitch: 56, // pitched automotive perspective (doc 16 §11.1: ~45–70°)
+    bearing: -18,
+    hasTerrain: !isDark && !isSatellite && Boolean(key),
+    terrainSource: !isDark && !isSatellite && key
       ? `https://api.maptiler.com/tiles/terrain-rgb-v2/tiles.json?key=${key}`
       : undefined,
   }

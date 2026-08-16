@@ -48,6 +48,10 @@ hover/foco no desktop, toque no mobile. Não troque ações programáticas
 **Follow-up D-197:** o painel de `Camadas` deve rolar dentro dele mesmo em
 qualquer device; não deixe conteúdo depender do scroll da página, porque o Mapa
 do Mundo é uma superfície fixa.
+**Follow-up D-200:** `Surge` não pode depender só de `/api/hazards` conter texto
+`storm surge`. O produto certo para o desenho operacional é o KML **Peak Storm
+Surge Forecast** do NHC/CPHC (`*_PeakStormSurge_*adv.kml`), convertido no
+servidor e desenhado como layer própria.
 
 **Ordem das fases: absorções primeiro.** São elas que liberam os slots — mexer
 na barra antes seria mudar o visível sem ter para onde mover o resto.
