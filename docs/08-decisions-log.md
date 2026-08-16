@@ -4,7 +4,7 @@
 
 ---
 
-## D-203 — Leitura ajustável não pode depender de toque repetido
+## D-204 — Leitura ajustável não pode depender de toque repetido
 
 **Date**: 2026-08-16
 **Status**: DECIDED

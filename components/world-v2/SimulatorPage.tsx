@@ -671,6 +671,7 @@ function Stepper({
         step={step}
         value={value}
         aria-label={label}
+        onInput={event => change(Number(event.currentTarget.value))}
         onChange={event => change(Number(event.currentTarget.value))}
         style={{ ['--sim-stepper-progress' as string]: `${percent}%` }}
       />
