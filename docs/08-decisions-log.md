@@ -47,6 +47,69 @@ próprio botão `Camadas`.
 
 ---
 
+## D-196 — A API dizia 403 e o banco dizia sim
+
+**Date**: 2026-08-16
+**Status**: DECIDED — **migração pendente de aplicação**
+**Roadmap**: COMMS-T15
+**Achado**: ao ligar o Realtime na lista de conversas
+
+**Context**: D-188 criou a conversa direta e a API a protege. `requireParticipant`
+responde **403** para quem não participa, e há teste provando.
+
+**O Realtime não passa pela API.** O cliente Supabase assina `circle_messages`
+direto, e quem decide o que ele recebe é a política RLS de SELECT criada em
+COMMS-T05:
+
+```sql
+USING (deleted_at IS NULL AND EXISTS (
+  SELECT 1 FROM circle_members cm
+   WHERE cm.circle_id = circle_messages.circle_id
+     AND cm.user_id = auth.uid()))
+```
+
+Ela é **por círculo** — correta enquanto existia uma conversa por círculo. Uma
+mensagem direta guarda o `circle_id` do círculo compartilhado. Com esta
+política, **qualquer membro do círculo lia a conversa direta de duas outras
+pessoas**, em tempo real, direto do cliente.
+
+Medido, não deduzido: um terceiro membro recebeu `status 200` e as três
+mensagens, incluindo *"vou buscar a Isadora"*.
+
+**A API dizia não. O banco dizia sim. Quando os dois discordam, vale o banco.**
+
+**Decision**:
+
+1. **A política passa a ser por CONVERSA**, via
+   `is_conversation_member(uuid)` — função `SECURITY DEFINER` com
+   `search_path` fixo.
+
+2. **Função, e não subconsulta direta.** `conversation_members` nega tudo por
+   RLS; uma política que a consultasse nunca acharia linha. Criar política de
+   leitura ali reintroduziria a recursão com `circle_members` que D-087 evitou.
+
+3. **`conversation_id IS NOT NULL` é exigido**, não tolerado. O backfill de
+   D-188 terminou com zero órfãs e falhava alto se sobrasse alguma. Aceitar
+   `NULL` deixaria a porta aberta para a próxima linha que esquecesse de
+   preencher.
+
+**Consequence**:
+
+- **O teste passou pelo motivo errado na primeira versão.** Ele lia o token do
+  `localStorage`, pegava a chave errada, mandava `Bearer` vazio e recebia
+  **401** — e passava. Um 401 mede **autenticação ausente**, não **autorização
+  negada**, e confundir os dois é o erro exato que esta checagem existe para não
+  cometer. Agora o token vem do endpoint de senha.
+- **A checagem tem duas metades.** Sem provar que o participante **enxerga**, a
+  outra passaria com a tabela invisível para todo mundo.
+- A lição estrutural: **proteger na API não protege no Realtime.** Toda tabela
+  publicada para o cliente precisa que a RLS diga a mesma coisa que a rota.
+
+**Não autorizado por D-196**: dar política de leitura a `conversation_members`,
+voltar a política por círculo.
+
+---
+
 ## D-194 — A barra volta ao neutro; o ouro ganha um trabalho
 
 **Date**: 2026-08-15

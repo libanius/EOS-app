@@ -360,6 +360,53 @@ try {
     ? ok('abrir a conversa marca como lida', String(naoLidaDepois).slice(11, 19))
     : no('o ponto de não lida não apaga ao abrir', `antes=${naoLidaAntes} depois=${naoLidaDepois}`)
 
+  /*
+   * ── 13. O CLIENTE NÃO ENXERGA A CONVERSA DOS OUTROS (D-196) ──────────────
+   *
+   * A checagem nº 5 provou que a **API** responde 403. Isto mede outra coisa:
+   * o que o cliente alcança **direto**, com o token do usuário — que é
+   * exatamente o caminho do Realtime, e ele não passa pela API.
+   *
+   * A política de SELECT era por CÍRCULO. Mensagem direta guarda o `circle_id`
+   * do círculo compartilhado, então qualquer membro podia ler a conversa direta
+   * de dois outros. A API dizia não, o banco dizia sim — e vale o banco.
+   *
+   * O token vem do endpoint de senha, e NÃO do localStorage: a primeira versão
+   * deste teste lia a chave errada, mandava `Bearer ` vazio e recebia **401**.
+   * Ele passava — pelo motivo errado. Um 401 mede autenticação ausente, não
+   * autorização negada, e as duas coisas são exatamente o que não pode ser
+   * confundido aqui.
+   */
+  const tokenDe = async (user) => {
+    const r = await fetch(`${URL_SB}/auth/v1/token?grant_type=password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY },
+      body: JSON.stringify({ email: user.email, password: PASS }),
+    }).then(x => x.json())
+    return r.access_token
+  }
+  const comoUsuario = async (user, path) => {
+    const token = await tokenDe(user)
+    if (!token) return { status: 0, linhas: null, semToken: true }
+    const r = await fetch(`${URL_SB}/rest/v1/${path}`, {
+      headers: { apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, Authorization: `Bearer ${token}` },
+    })
+    return { status: r.status, linhas: await r.json().catch(() => null), semToken: false }
+  }
+
+  // Controle: o participante PRECISA enxergar. Sem esta metade, a checagem
+  // abaixo passaria com a tabela inteira invisível para todo mundo.
+  const brunoVe = await comoUsuario(bruno, `circle_messages?conversation_id=eq.${idA}&select=body`)
+  !brunoVe.semToken && Array.isArray(brunoVe.linhas) && brunoVe.linhas.length > 0
+    ? ok('quem participa LÊ a conversa pelo cliente', `${brunoVe.linhas.length} mensagens`)
+    : no('nem o participante enxerga — a checagem abaixo não valeria', JSON.stringify(brunoVe).slice(0, 140))
+
+  const forasteiroVe = await comoUsuario(forasteiro, `circle_messages?conversation_id=eq.${idA}&select=body`)
+  const vazou = Array.isArray(forasteiroVe.linhas) && forasteiroVe.linhas.length > 0
+  !forasteiroVe.semToken && !vazou
+    ? ok('membro do círculo NÃO lê a conversa direta pelo cliente', `status ${forasteiroVe.status}`)
+    : no('a conversa direta vaza pelo cliente/Realtime', JSON.stringify(forasteiroVe).slice(0, 160))
+
   void pForasteiro2
 } finally {
   await browser.close().catch(() => {})
