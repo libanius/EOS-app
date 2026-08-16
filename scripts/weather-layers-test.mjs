@@ -252,6 +252,8 @@ const windToggle = page.locator('.world-wind-toggle')
 if (!(await windToggle.count())) {
   // D-201: mover/zoomar o mapa com o ajuste colapsado esconde o toggle. Para
   // testar os sliders depois do zoom programático, ligamos a camada novamente.
+  await page.locator('.wv2-layers-catch').click({ position: { x: 5, y: 5 } }).catch(() => {})
+  await page.waitForTimeout(300)
   await page.locator('.wv2-mapcontrols button[aria-label="Vento"]').click()
   await page.waitForTimeout(300)
   await page.locator('.wv2-mapcontrols button[aria-label="Vento"]').click()
@@ -438,7 +440,15 @@ if (await linhas.count()) {
    * válvula `semCone` — um teste que reportava sucesso sem testar coisa alguma.
    */
   const coneBox = (() => {
-    const f = cyc.cone?.features?.[0]
+    const wanted = texto.split('·')[0]?.trim().toUpperCase()
+    const features = cyc.cone?.features ?? []
+    const f = features.find(feature => {
+      const name = String(feature?.properties?.stormname ?? feature?.properties?.name ?? '').trim().toUpperCase()
+      return name && wanted && name === wanted
+    }) ?? features.find(feature => {
+      const name = String(feature?.properties?.stormname ?? feature?.properties?.name ?? '').trim()
+      return !name
+    }) ?? features[0]
     if (!f) return null
     let w = 180, e = -180, so = 90, n = -90
     const walk = node => {
