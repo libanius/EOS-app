@@ -90,6 +90,14 @@ export function pontoDistante(origem: Ponto, bearingDeg: number, distKm: number)
   return { lat: deg(lat2), lng: ((deg(lng2) + 540) % 360) - 180 }
 }
 
+/** O rumo de `a` para `b`, em graus de bússola. */
+export function rumoEntre(a: Ponto, b: Ponto): number {
+  const y = Math.sin(rad(b.lng - a.lng)) * Math.cos(rad(b.lat))
+  const x = Math.cos(rad(a.lat)) * Math.sin(rad(b.lat))
+    - Math.sin(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.cos(rad(b.lng - a.lng))
+  return (deg(Math.atan2(y, x)) + 360) % 360
+}
+
 /** Distância em km entre dois pontos (haversine). */
 export function distanciaKm(a: Ponto, b: Ponto): number {
   const dLat = rad(b.lat - a.lat)
@@ -188,6 +196,15 @@ export type StageInput = {
   name?: string
   /** De onde ele vem, em graus. Padrão: sudeste, a rota clássica na Flórida. */
   bearingDeg?: number
+  /**
+   * Onde ele está, escolhido no mapa (SIM-T12c / D-202).
+   *
+   * Quando existe, **manda**: o rumo e o tempo de chegada deixam de decidir a
+   * posição e passam a ser derivados dela. É a diferença entre "vem do sudeste
+   * em 12h" e "está EXATAMENTE ali" — e a segunda é a que permite ensaiar a
+   * tempestade que já aconteceu, no lugar em que ela aconteceu.
+   */
+  at?: Ponto | null
 }
 
 const NOME_PADRAO: Record<StagedKind, string> = {
@@ -220,7 +237,7 @@ export function stageEvents(input: StageInput): StagedEvent[] {
    * narrativa, não distância — por isso ele nasce PERTO e sem rota.
    */
   if (kind === 'earthquake') {
-    const epicentro = pontoDistante(home, bearing, 18 + severidade * 12)
+    const epicentro = input.at ?? pontoDistante(home, bearing, 18 + severidade * 12)
     return [{
       id: `staged:earthquake:${nome}`,
       kind,
@@ -242,17 +259,26 @@ export function stageEvents(input: StageInput): StagedEvent[] {
    * desenhar diferente de "chega agora".
    */
   const velocidadeKmH = kind === 'hurricane' ? 22 : kind === 'wildfire' ? 6 : 35
-  const distanciaInicial = Math.max(8, input.arrivalHours * velocidadeKmH)
-  const centro = pontoDistante(home, bearing, distanciaInicial)
+
+  /*
+   * Posição escolhida MANDA sobre rumo e tempo (D-202).
+   *
+   * Quando a pessoa aponta no mapa, a distância e o rumo passam a ser
+   * **medidos** a partir dali em vez de calculados a partir do relógio. O
+   * cenário deixa de descrever uma abstração e passa a descrever um lugar.
+   */
+  const centro = input.at ?? pontoDistante(home, bearing, Math.max(8, input.arrivalHours * velocidadeKmH))
+  const distanciaInicial = Math.max(0.5, distanciaKm(home, centro))
+  const rumoReal = input.at ? rumoEntre(home, centro) : bearing
 
   // A rota é o caminho de volta até a casa: é para lá que ele vai.
   const track: Ponto[] = []
   const passos = 5
   for (let i = 0; i <= passos; i += 1) {
-    track.push(pontoDistante(home, bearing, distanciaInicial * (1 - i / passos)))
+    track.push(pontoDistante(home, rumoReal, distanciaInicial * (1 - i / passos)))
   }
 
-  const rumoDeImpacto = (bearing + 180) % 360
+  const rumoDeImpacto = (rumoReal + 180) % 360
   const raio = raioKm(kind, severidade)
 
   const footprint = kind === 'hurricane'
@@ -274,7 +300,14 @@ export function stageEvents(input: StageInput): StagedEvent[] {
     track,
     footprint,
     distanceKm: Math.round(distanciaInicial),
-    etaHours: input.arrivalHours > 0 ? input.arrivalHours : null,
+    /*
+     * Com posição escolhida, o ETA é MEDIDO — distância dividida por
+     * velocidade. Repetir o `arrivalHours` do formulário faria a tela dizer
+     * "12h" para uma tempestade que a pessoa acabou de colocar a 5 km.
+     */
+    etaHours: input.at
+      ? Math.round((distanciaInicial / velocidadeKmH) * 10) / 10 || null
+      : input.arrivalHours > 0 ? input.arrivalHours : null,
     headline,
   }]
 }

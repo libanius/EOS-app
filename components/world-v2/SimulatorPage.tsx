@@ -30,6 +30,7 @@ import {
 } from '@/lib/simulation'
 import { Card, Pill, SectionLabel } from './primitives'
 import { kindDoThreat } from '@/lib/staged-events'
+import MapPointPicker from './MapPointPicker'
 import MaisNav from './MaisNav'
 import { SPRING, haptic } from './motion'
 import './world-v2.css'
@@ -70,6 +71,10 @@ const COPY = {
     eventNamePlaceholder: 'Ex.: Furacão Isadora',
     eventNameHelp: 'Aparece no mapa durante o treino. Dar nome é o que faz a família falar dele.',
     comesFrom: 'Vem de',
+    placeOnMap: 'Escolher no mapa',
+    placed: 'Posição escolhida',
+    clearPlace: 'Usar o rumo',
+    placeHelp: 'Aponte onde ele está. Aí o rumo e o tempo passam a ser medidos a partir dali.',
     noGeography: 'Este cenário não desenha no mapa — apagão e frio não têm um ponto de origem.',
     now: 'agora',
     hours: 'h',
@@ -133,6 +138,10 @@ const COPY = {
     eventNamePlaceholder: 'e.g. Hurricane Isadora',
     eventNameHelp: 'Shows on the map during the drill. Naming it is what makes the family talk about it.',
     comesFrom: 'Comes from',
+    placeOnMap: 'Pick on the map',
+    placed: 'Position picked',
+    clearPlace: 'Use the bearing',
+    placeHelp: 'Point where it is. Bearing and time are then measured from there.',
     noGeography: 'This scenario draws nothing on the map — a blackout has no point of origin.',
     now: 'now',
     hours: 'h',
@@ -191,6 +200,7 @@ export default function SimulatorPage() {
   const router = useRouter()
   const c = COPY[language]
   const pt = language === 'pt'
+  const [escolhendo, setEscolhendo] = useState(false)
   const { config: active, start, stop, setSharedSession } = useSimulation()
   const [circles, setCircles] = useState<Array<{ id: string; name: string; members: number }>>([])
   const [selected, setSelected] = useState<string[]>([])
@@ -213,6 +223,8 @@ export default function SimulatorPage() {
   }, [])
 
   const [draft, setDraft] = useState<SimulationConfig>(DEFAULT_SIMULATION)
+
+  const posto = draft.eventLat != null && draft.eventLng != null
   const set = (patch: Partial<SimulationConfig>) => setDraft(current => ({ ...current, ...patch }))
 
   const applyDescription = async () => {
@@ -429,13 +441,45 @@ export default function SimulatorPage() {
                     {RUMOS.map(r => (
                       <Chip
                         key={r.deg}
-                        on={(draft.eventBearingDeg ?? 135) === r.deg}
-                        onClick={() => set({ eventBearingDeg: r.deg })}
+                        on={!posto && (draft.eventBearingDeg ?? 135) === r.deg}
+                        onClick={() => set({ eventBearingDeg: r.deg, eventLat: null, eventLng: null })}
                       >
                         {pt ? r.pt : r.en}
                       </Chip>
                     ))}
                   </div>
+
+                  {/*
+                    Apontar no mapa (SIM-T12c / D-202).
+
+                    O rumo responde "de que lado ele vem". Isto responde "onde
+                    ele ESTÁ" — e é o que permite ensaiar a tempestade que já
+                    aconteceu, no lugar exato em que aconteceu.
+
+                    Escolher um rumo limpa a posição, e vice-versa: os dois
+                    respondem à mesma pergunta, e deixar ambos acesos faria a
+                    tela mentir sobre qual está valendo.
+                  */}
+                  <div className="sim-chips" style={{ marginTop: '0.5rem' }}>
+                    <Chip on={posto} onClick={() => setEscolhendo(true)}>
+                      {posto ? `✓ ${c.placed}` : c.placeOnMap}
+                    </Chip>
+                    {posto && (
+                      <Chip on={false} onClick={() => set({ eventLat: null, eventLng: null })}>
+                        {c.clearPlace}
+                      </Chip>
+                    )}
+                  </div>
+                  <p className="t-foot ink-3" style={{ margin: '0.4rem 0 0' }}>{c.placeHelp}</p>
+
+                  <MapPointPicker
+                    open={escolhendo}
+                    pt={pt}
+                    start={posto ? { lat: draft.eventLat!, lng: draft.eventLng! } : null}
+                    fallback={null}
+                    onPick={p => { set({ eventLat: p.lat, eventLng: p.lng }); setEscolhendo(false) }}
+                    onClose={() => setEscolhendo(false)}
+                  />
                 </>
               ) : (
                 <p className="t-foot ink-3" style={{ margin: '1rem 0 0' }}>{c.noGeography}</p>

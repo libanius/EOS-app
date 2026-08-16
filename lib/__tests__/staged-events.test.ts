@@ -208,3 +208,41 @@ describe('a pegada existe e é desenhável', () => {
     }
   })
 })
+
+describe('POSIÇÃO ESCOLHIDA manda sobre o rumo (D-202)', () => {
+  const ALVO = { lat: 26.9, lng: -80.9 }   // a noroeste da casa
+
+  it('o evento nasce exatamente onde foi apontado', () => {
+    const [e] = stageEvents(cenario({ at: ALVO }))
+    expect(distanciaKm(e.center, ALVO)).toBeLessThan(0.5)
+  })
+
+  it('o rumo do formulário é IGNORADO quando há posição', () => {
+    // Sudeste no formulário, mas o ponto está a noroeste: vale o ponto.
+    const [e] = stageEvents(cenario({ at: ALVO, bearingDeg: 135 }))
+    expect(e.center.lat).toBeGreaterThan(CASA.lat)
+    expect(e.center.lng).toBeLessThan(CASA.lng)
+  })
+
+  it('a distância passa a ser MEDIDA, não calculada pelo relógio', () => {
+    const [e] = stageEvents(cenario({ at: ALVO, arrivalHours: 24 }))
+    expect(e.distanceKm).toBe(Math.round(distanciaKm(CASA, ALVO)))
+  })
+
+  it('e o ETA também — senão a tela diria 12h para algo a 5 km', () => {
+    const perto = pontoDistante(CASA, 90, 44)   // 44 km = 2h a 22 km/h
+    const [e] = stageEvents(cenario({ at: perto, arrivalHours: 12 }))
+    expect(e.etaHours).toBeCloseTo(2, 0)
+    expect(e.etaHours).not.toBe(12)
+  })
+
+  it('a rota continua terminando na casa', () => {
+    const [e] = stageEvents(cenario({ at: ALVO }))
+    expect(distanciaKm(CASA, e.track[e.track.length - 1])).toBeLessThan(1)
+  })
+
+  it('terremoto também obedece ao ponto', () => {
+    const [e] = stageEvents(cenario({ threat: 'earthquake', at: ALVO }))
+    expect(distanciaKm(e.center, ALVO)).toBeLessThan(0.5)
+  })
+})

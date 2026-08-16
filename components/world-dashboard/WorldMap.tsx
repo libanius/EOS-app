@@ -1324,6 +1324,42 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
    */
   useEffect(() => {
     renderStaged()
+
+    /*
+     * ── ENQUADRAR, SENÃO ELE NÃO EXISTE (SIM-T12c / D-202) ─────────────────
+     *
+     * Este era o defeito que o dono achou: *"onde está o furacão que eu criei?"*
+     *
+     * Um furacão a 12h de distância nasce a **264 km** da casa. O mapa vive em
+     * zoom 13.1, que mostra **3,5 km** de largura. O evento estava desenhado,
+     * correto, e 76 telas fora do campo de visão — o equivalente prático a não
+     * existir.
+     *
+     * Encenar sem enquadrar não é meia entrega: é entrega nenhuma. Quem inicia
+     * um treino quer VER o que está vindo, e a câmera deita pelo mesmo motivo
+     * de D-199 — alcance de tempestade se lê de cima.
+     */
+    const map = mapRef.current
+    if (!map || !stagedEvents.length || !map.isStyleLoaded()) return
+
+    let w = 180, e = -180, so = 90, n = -90
+    const abrir = (lng: number, lat: number) => {
+      w = Math.min(w, lng); e = Math.max(e, lng)
+      so = Math.min(so, lat); n = Math.max(n, lat)
+    }
+    for (const ev of stagedEvents) for (const [lng, lat] of ev.footprint) abrir(lng, lat)
+    // A casa entra na caixa: o treino é sobre a distância ENTRE os dois.
+    if (coords) abrir(coords.lng, coords.lat)
+
+    const semMovimento = typeof window !== 'undefined'
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    map.jumpTo({ pitch: 0, bearing: 0 })
+    map.fitBounds([[w, so], [e, n]], {
+      padding: { top: 80, bottom: window.innerWidth < 760 ? 260 : 60, left: 40, right: 40 },
+      duration: semMovimento ? 0 : 900,
+      maxZoom: 9,
+      essential: true,
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stagedEvents, mapReadyNonce])
 

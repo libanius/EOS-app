@@ -444,6 +444,9 @@ export default function WorldV2() {
           home: coords ? { lat: coords.lat, lng: coords.lng } : null,
           name: simulation.config.eventName,
           bearingDeg: simulation.config.eventBearingDeg,
+          at: simulation.config.eventLat != null && simulation.config.eventLng != null
+            ? { lat: simulation.config.eventLat, lng: simulation.config.eventLng }
+            : null,
         })
       : []),
     [simulation.active, simulation.config, coords],

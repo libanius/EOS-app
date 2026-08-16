@@ -74,6 +74,11 @@ export type SimulationConfig = {
   eventName?: string
   /** De onde ele vem, em graus. 135 = sudeste, a rota clássica na Flórida. */
   eventBearingDeg?: number
+  /**
+   * Onde ele está, apontado no mapa (D-202). Quando existe, manda sobre o rumo.
+   */
+  eventLat?: number | null
+  eventLng?: number | null
   powerOut: boolean
   networkDown: boolean
   roadsBlocked: boolean
@@ -101,6 +106,8 @@ export const DEFAULT_SIMULATION: SimulationConfig = {
   description: '',
   eventName: '',
   eventBearingDeg: 135,
+  eventLat: null,
+  eventLng: null,
   durationMin: 30,
   powerOut: false,
   networkDown: false,

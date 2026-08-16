@@ -4,6 +4,58 @@
 
 ---
 
+## D-202 — Encenar sem enquadrar é entrega nenhuma
+
+**Date**: 2026-08-16
+**Status**: DECIDED
+**Roadmap**: SIM-T12c
+**Achado do dono**: *"onde está o furacão que eu criei, e como eu posiciono ele
+onde eu quero?"*
+
+**Context**: D-201 desenhou o evento e eu declarei a tarefa entregue. Ela não
+estava.
+
+Um furacão a 12h de distância nasce a **264 km** da casa (12h × 22 km/h). O mapa
+vive em zoom 13.1, que mostra **3,5 km** de largura. O evento estava desenhado,
+correto, e **76 telas fora do campo de visão** — o equivalente prático a não
+existir.
+
+Contei em vez de supor: `12 * 22 = 264 km` contra `360 / 2^13.1 × (390/512) ×
+111 = 3,5 km`.
+
+**Decision**:
+
+1. **Iniciar o treino ENQUADRA o evento.** A caixa inclui a casa **e** a pegada
+   — o treino é sobre a distância entre os dois, e mostrar só a tempestade
+   perderia a metade que importa. A câmera deita pelo mesmo motivo de D-199:
+   alcance se lê de cima.
+
+2. **A posição pode ser apontada no mapa.** `eventLat`/`eventLng` na config,
+   pelo `MapPointPicker` que já existia. Quando há posição, **ela manda**: rumo
+   e tempo deixam de decidir onde ele está e passam a ser **medidos** a partir
+   dali.
+
+3. **O ETA também vira medido.** Repetir o `arrivalHours` do formulário faria a
+   tela dizer *"12h"* para uma tempestade que a pessoa acabou de colocar a 5 km.
+
+4. **Rumo e posição se excluem.** Escolher um limpa o outro: os dois respondem à
+   mesma pergunta, e deixar ambos acesos faria a tela mentir sobre qual vale.
+
+**Consequence**:
+
+- **A lição é sobre o que conta como pronto.** O código estava correto, testado
+  e completo — e a funcionalidade não existia para quem usa. "Desenhei o
+  polígono" não é "a pessoa vê o furacão", do mesmo jeito que "o servidor abre a
+  conversa" não era "dá para mandar mensagem" (D-193). Terceira vez nesta
+  sessão que construí o mecanismo inteiro e nenhuma tela o alcançava.
+- 30 testes (era 24). Os novos medem que a posição escolhida **vence** o rumo,
+  e que a distância e o ETA passam a ser medidos.
+
+**Não autorizado por D-202**: mover o evento durante o treino em andamento,
+arrastar o polígono, posição fora do círculo de alcance do mapa.
+
+---
+
 ## D-201 — Ajuste de vento mora perto do botão, não no meio do mapa
 
 **Date**: 2026-08-16
