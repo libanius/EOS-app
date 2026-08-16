@@ -25,6 +25,78 @@ telefone, tablet e desktop sem mover a página nem perder o contexto do mapa.
 
 ---
 
+## D-198 — O padrão é inglês, e o aparelho tem voz
+
+**Date**: 2026-08-16
+**Status**: DECIDED
+**Roadmap**: I18N-T01
+**Decisão do dono**: *"todo o app tem que ser majoritariamente em inglês.
+Português só quando for preciso traduzir."*
+
+**Context**: `LanguageProvider` nascia em `'pt'` e o documento declarava
+`lang="pt-BR"`. O pedido do dono era sobre `AlertsPage` ficar em inglês, mas a
+frase que ele usou é sobre o app inteiro — e o padrão contradizia.
+
+**Por que inglês é o padrão certo aqui**: o EOS opera nos Estados Unidos e lê
+NWS, USGS, NHC e FEMA. **O alerta que chega no telefone chega em inglês.** Um
+app que abre em português para um alerta em inglês obriga a pessoa a traduzir no
+pior momento possível.
+
+**Decision**:
+
+1. **`'en'` é o padrão** e `<html lang="en">` é o documento.
+2. **A preferência salva vence sempre**, e é a primeira coisa que o provedor lê.
+   Ninguém que já escolheu é afetado.
+3. **Sem escolha salva, o idioma do APARELHO decide** entre os dois que existem:
+   telefone em `pt-*` abre em português, qualquer outro em inglês. Isto não
+   contradiz o padrão — padrão é o que vale quando **não há informação**, e o
+   aparelho é informação.
+4. **`AlertsPage` fica em inglês**, encerrando a dívida registrada em D-182. Ela
+   deixa de ser dívida e passa a ser a norma.
+
+**Consequence**: português continua inteiro e a um toque, em Mais. Ele deixa de
+ser a suposição e passa a ser a escolha.
+
+**Não autorizado por D-198**: remover o português, traduzir automaticamente
+conteúdo de fonte oficial (o texto do NWS é citação, não interface).
+
+---
+
+## D-197 — O realtime assina a conversa, e a lista para de mentir
+
+**Date**: 2026-08-16
+**Status**: DECIDED
+**Roadmap**: COMMS-T16
+**Pedido do dono**: item 2 da fila — *"repare"*
+
+**Context**: Duas falhas na mesma máquina.
+
+1. **O filtro do thread era `circle_id=eq.…`**, escrito quando havia uma
+   conversa por círculo. Com conversa direta ele acordava a tela para mensagens
+   de OUTRO thread do mesmo círculo — e, numa conversa direta, o `circleId` do
+   estado é o primeiro círculo da lista, que pode nem ser o da conversa.
+   Funcionava por coincidência: o recarregamento usa `conversationId` e traz o
+   thread certo de qualquer jeito.
+
+2. **A lista não tinha realtime nenhum.** Chegava mensagem e a prévia só mudava
+   se a pessoa recarregasse. Numa emergência, uma lista que mente sobre o que é
+   recente é pior que uma lista sem prévia.
+
+**Decision**:
+
+1. **O thread assina `conversation_id`** quando há um, e cai para `circle_id`
+   apenas no caminho legado.
+2. **A lista assina sem filtro, de propósito.** Depois de D-196 a RLS já entrega
+   só as mensagens de conversas de que a pessoa participa; filtrar por círculo
+   deixaria de fora justamente as diretas. **A autorização mora no banco, não no
+   `filter`** — e foi confiar no filtro como se fosse permissão que produziu o
+   vazamento de D-196.
+
+**Consequence**: foi ao ligar este realtime que o furo de D-196 apareceu. Ligar
+uma tabela ao cliente é o momento em que a RLS deixa de ser teoria.
+
+---
+
 ## D-196 — Controles do mapa ficam sempre expandidos
 
 **Date**: 2026-08-15

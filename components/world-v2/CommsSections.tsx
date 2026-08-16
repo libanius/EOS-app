@@ -361,25 +361,38 @@ function CommsContent({ section, conversationId }: { section: CommsSection; conv
     return () => window.clearTimeout(timer)
   }, [messages, view, focusedMessageId])
 
+  /*
+   * O realtime assina a CONVERSA, não o círculo (COMMS-T16 / D-197).
+   *
+   * O filtro era `circle_id=eq.…`, escrito quando havia uma conversa por
+   * círculo. Com conversa direta ele passou a acordar a tela para mensagens de
+   * OUTRO thread do mesmo círculo — e, pior, numa conversa direta o `circleId`
+   * do estado é o primeiro círculo da lista, que pode nem ser o da conversa.
+   * Funcionava por coincidência: o recarregamento usa `conversationId` e traz
+   * o thread certo de qualquer jeito.
+   *
+   * Agora ele acorda pelo que realmente mudou.
+   */
   useEffect(() => {
-    if (!circleId) return
+    const alvo = conversationId
+      ? { chave: `conversation_id=eq.${conversationId}`, canal: `comms:conv:${conversationId}` }
+      : circleId
+        ? { chave: `circle_id=eq.${circleId}`, canal: `comms:circle:${circleId}` }
+        : null
+    if (!alvo) return
+
     const supabase = createClient()
     const channel = supabase
-      .channel(`comms-messages:${circleId}`)
+      .channel(alvo.canal)
       .on(
         'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'circle_messages',
-          filter: `circle_id=eq.${circleId}`,
-        },
-          () => { void loadMessages(circleId, { silent: true }) },
+        { event: 'INSERT', schema: 'public', table: 'circle_messages', filter: alvo.chave },
+        () => { void loadMessages(circleId, { silent: true }) },
       )
       .subscribe()
 
     return () => { void supabase.removeChannel(channel) }
-  }, [circleId, loadMessages])
+  }, [circleId, conversationId, loadMessages])
 
   useEffect(() => {
     if (!circleId || view !== 'chat') return

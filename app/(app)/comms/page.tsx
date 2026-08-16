@@ -22,6 +22,7 @@ import { useLanguage } from '@/lib/i18n'
 import CommsNav from '@/components/world-v2/CommsNav'
 import { Card, PillLink, SectionLabel } from '@/components/world-v2/primitives'
 import { conversationTitle, hasUnread, preview, type ConversationRow } from '@/lib/conversations'
+import { createClient } from '@/lib/supabase/client'
 import '@/components/world-v2/world-v2.css'
 
 type Pessoa = { userId: string; name: string }
@@ -118,6 +119,31 @@ function ListaConteudo() {
   }, [])
 
   useEffect(() => { void carregar() }, [carregar])
+
+  /*
+   * A lista se atualiza sozinha (COMMS-T16 / D-197).
+   *
+   * O thread já tinha realtime; a lista não. Chegava mensagem e a prévia só
+   * mudava se a pessoa recarregasse — numa emergência, uma lista que mente
+   * sobre o que é recente é pior que uma lista sem prévia nenhuma.
+   *
+   * **Sem filtro, de propósito.** Depois de D-196 a RLS já entrega só as
+   * mensagens de conversas de que a pessoa participa; filtrar por círculo aqui
+   * deixaria de fora as diretas, que são exatamente as que ela mais quer ver
+   * subir. A autorização mora no banco, não neste `filter`.
+   */
+  useEffect(() => {
+    const supabase = createClient()
+    const channel = supabase
+      .channel('comms-lista')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'circle_messages' },
+        () => { void carregar() },
+      )
+      .subscribe()
+    return () => { void supabase.removeChannel(channel) }
+  }, [carregar])
 
   /*
    * O redirecionamento dos links guardados no banco.

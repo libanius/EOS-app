@@ -710,14 +710,42 @@ function isLanguage(value: string | null): value is Language {
   return value === 'pt' || value === 'en'
 }
 
+/**
+ * O padrão é INGLÊS (D-198).
+ *
+ * Era `'pt'`. O EOS opera nos Estados Unidos — as fontes que ele lê são o NWS,
+ * o USGS, o NHC e a FEMA, e o alerta que chega no telefone chega em inglês.
+ * Um app que abre em português para um alerta em inglês obriga a pessoa a
+ * traduzir no pior momento possível.
+ *
+ * Português continua inteiro e a um toque, em Mais. Ele deixa de ser a
+ * suposição e passa a ser a escolha — que é o que ele sempre foi para quem
+ * abre o app pela primeira vez neste país.
+ *
+ * **Quem já escolheu não é afetado**: a preferência salva vence o padrão, e é a
+ * primeira coisa que o efeito abaixo faz.
+ */
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguageState] = useState<Language>('pt')
+  const [language, setLanguageState] = useState<Language>('en')
 
   useEffect(() => {
     const savedLanguage = window.localStorage.getItem(STORAGE_KEY)
     if (isLanguage(savedLanguage)) {
       setLanguageState(savedLanguage)
       document.documentElement.lang = savedLanguage === 'pt' ? 'pt-BR' : 'en'
+      return
+    }
+    /*
+     * Sem escolha salva, o IDIOMA DO APARELHO decide entre os dois que existem.
+     * Um telefone em pt-BR abre em português; qualquer outro abre em inglês.
+     *
+     * Isto não contradiz o padrão inglês — o padrão é o que vale quando não há
+     * informação. O aparelho é informação.
+     */
+    const doAparelho = typeof navigator !== 'undefined' ? navigator.language : ''
+    if (doAparelho.toLowerCase().startsWith('pt')) {
+      setLanguageState('pt')
+      document.documentElement.lang = 'pt-BR'
     }
   }, [])
 

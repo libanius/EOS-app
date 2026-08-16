@@ -40,8 +40,15 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
+  /*
+   * D-198: o documento nasce em INGLÊS.
+   *
+   * O `LanguageProvider` corrige para `pt-BR` quando a pessoa escolheu
+   * português ou quando o aparelho está em português. O EOS opera nos EUA —
+   * NWS, USGS, NHC e FEMA falam inglês, e o alerta chega no telefone em inglês.
+   */
   return (
-    <html lang="pt-BR">
+    <html lang="en">
       <head>
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta
