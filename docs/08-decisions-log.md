@@ -4,6 +4,28 @@
 
 ---
 
+## D-196 — Controles do mapa ficam sempre expandidos
+
+**Date**: 2026-08-15
+**Status**: DECIDED
+**Roadmap**: WV2-T28
+**Pedido do dono**: *"preciso que vc deixe constantemente expandido."*
+
+**Context**: D-131 recolheu a coluna lateral do mapa para reduzir ruído visual:
+`Você` ficava visível e `Atualizar`/`Camadas` entravam atrás de `...`. Na prática
+isso cobrou um gesto para ações comuns e deixou a tela alternando entre dois
+formatos.
+
+**Decision**: a coluna lateral do World V2 fica sempre expandida. `Você`,
+`Atualizar` e `Camadas` aparecem em repouso; no desktop, o controle do painel
+também segue visível. O botão `.../x` deixa de existir.
+
+**Consequence**: menos um estado local na superfície do mapa e menos um gesto
+antes de ações frequentes. O painel de camadas continua abrindo e fechando pelo
+próprio botão `Camadas`.
+
+---
+
 ## D-194 — A barra volta ao neutro; o ouro ganha um trabalho
 
 **Date**: 2026-08-15

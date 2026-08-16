@@ -43,6 +43,8 @@ em `components/BottomNav.tsx`.
 hover/foco no desktop, toque no mobile. Não troque ações programáticas
 ("ver alerta no mapa", rota até membro) para `hidden` sem motivo: elas usam
 `peek` porque precisam preservar contexto.
+**Follow-up D-196:** a coluna lateral do mapa não recolhe mais. `Você`,
+`Atualizar` e `Camadas` ficam sempre visíveis; o botão `.../x` saiu.
 
 **Ordem das fases: absorções primeiro.** São elas que liberam os slots — mexer
 na barra antes seria mudar o visível sem ter para onde mover o resto.
