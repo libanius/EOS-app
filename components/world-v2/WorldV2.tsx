@@ -344,6 +344,14 @@ export default function WorldV2() {
     try { localStorage.setItem('eos-map-base', next) } catch { /* private mode */ }
   }
 
+  /*
+   * Ligar o vento afasta para escala continental (D-205).
+   *
+   * O nonce sobe só ao LIGAR — desligar não mexe na câmera, porque quem desliga
+   * quer voltar a olhar o que estava olhando.
+   */
+  const [windFramedNonce, setWindFramedNonce] = useState(0)
+
   /** Liga e desliga o vento — com o muro de plano, que era o único motivo de ele ser base. */
   const toggleWind = () => {
     haptic.selection()
@@ -351,6 +359,7 @@ export default function WorldV2() {
     setLayers(current => {
       const nextLayers = { ...current, wind: !current.wind }
       try { localStorage.setItem('eos-map-layers', JSON.stringify(nextLayers)) } catch { /* private mode */ }
+      if (nextLayers.wind) setWindFramedNonce(n => n + 1)
       return nextLayers
     })
   }
@@ -636,6 +645,7 @@ export default function WorldV2() {
           onMemberTap={setTappedMember}
           shelters={(shelterSnapshot?.shelters ?? []).map(s => ({ id: s.id, name: s.name, lat: s.lat, lng: s.lng, distanceKm: s.distanceKm }))}
           stagedEvents={stagedEvents}
+          windFramedNonce={windFramedNonce}
           onMapInteraction={() => setDetent('hidden')}
         />
       </div>

@@ -266,20 +266,21 @@ if (await windToggle.count()) {
 await page.waitForTimeout(250)
 const controlsOk = await page.evaluate(() => {
   const controls = Array.from(document.querySelectorAll('.world-wind-control input'))
-  if (controls.length < 4) return { ok: false, reason: 'controles ausentes' }
+  /*
+   * São TRÊS réguas agora, e não quatro (D-205).
+   *
+   * "Setas" virou um liga/desliga: pedir uma OPACIDADE para números é uma
+   * pergunta que ninguém sabe responder. A pergunta real é binária.
+   */
+  if (controls.length < 3) return { ok: false, reason: `controles ausentes (${controls.length})` }
   const before = window.__eosWindLayer ?? {}
-  const density = controls[0]
-  const trail = controls[1]
-  const opacity = controls[2]
-  const arrows = controls[3]
+  const [density, trail, opacity] = controls
   density.value = '1.4'
   density.dispatchEvent(new Event('input', { bubbles: true }))
   trail.value = '0.95'
   trail.dispatchEvent(new Event('input', { bubbles: true }))
   opacity.value = '0.35'
   opacity.dispatchEvent(new Event('input', { bubbles: true }))
-  arrows.value = '0'
-  arrows.dispatchEvent(new Event('input', { bubbles: true }))
   return { ok: true, beforeParticles: before.particles }
 })
 await page.waitForTimeout(650)
@@ -288,9 +289,32 @@ const arrowPaint = await page.evaluate(() => ({
   icon: window.__eosMap?.getPaintProperty?.('eos-wind', 'icon-opacity'),
   text: window.__eosMap?.getPaintProperty?.('eos-wind-label', 'text-opacity'),
 }))
-controlsOk.ok && tunedWind.particles > (controlsOk.beforeParticles ?? 0) && tunedWind.fadeAlpha >= 0.98 && tunedWind.scalarOpacity < 0.55 && tunedWind.particleOpacity < 0.7 && arrowPaint.icon === 0 && arrowPaint.text === 0
-  ? ok('sliders de vento ajustam fluxo, rastro, mapa e setas', `${controlsOk.beforeParticles} → ${tunedWind.particles} partículas · fade ${tunedWind.fadeAlpha} · opacidade ${tunedWind.scalarOpacity} · setas ${arrowPaint.icon}`)
-  : no('sliders de vento não aplicaram configuração', JSON.stringify({ controlsOk, tunedWind, arrowPaint }))
+controlsOk.ok && tunedWind.particles > (controlsOk.beforeParticles ?? 0) && tunedWind.fadeAlpha >= 0.98 && tunedWind.scalarOpacity < 0.55 && tunedWind.particleOpacity < 0.7
+  ? ok('sliders de vento ajustam fluxo, rastro e mapa', `${controlsOk.beforeParticles} → ${tunedWind.particles} partículas · fade ${tunedWind.fadeAlpha} · opacidade ${tunedWind.scalarOpacity}`)
+  : no('sliders de vento não aplicaram configuração', JSON.stringify({ controlsOk, tunedWind }))
+
+/*
+ * ── OS VALORES NASCEM DESLIGADOS (D-205) ────────────────────────────────────
+ *
+ * Achado do dono: no zoom continental são 625 rótulos sobrepostos, e eles
+ * escondem exatamente o que o campo veio mostrar — o padrão. O teste mede o
+ * PADRÃO (desligado por default) e o liga/desliga funcionando.
+ */
+arrowPaint.icon === 0 && arrowPaint.text === 0
+  ? ok('as bolinhas de velocidade nascem desligadas')
+  : no('as bolinhas voltaram a poluir por padrão', JSON.stringify(arrowPaint))
+
+const chave = page.locator('.world-wind-switch')
+if (await chave.count()) {
+  await chave.click()
+  await page.waitForTimeout(350)
+  const ligado = await page.evaluate(() => window.__eosMap?.getPaintProperty?.('eos-wind-label', 'text-opacity'))
+  ;(ligado ?? 0) > 0
+    ? ok('e o liga/desliga traz os valores de volta', `text-opacity ${ligado}`)
+    : no('o liga/desliga dos valores não funcionou', String(ligado))
+} else {
+  no('o liga/desliga dos valores não existe')
+}
 
 const timelineOk = await page.evaluate(() => {
   const input = document.querySelector('.world-wind-time input')

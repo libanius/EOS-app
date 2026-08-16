@@ -446,7 +446,7 @@ export const DEFAULT_LAYERS: MapLayerState = {
   tornado: true,
 }
 
-export default function WorldMap({ plateUrl, family = [], shelters = [], guidance = null, mapBase = 'hybrid', routeFocusNonce = 0, focus = null, courseTo = null, recenterNonce = 0, cyclones = null, wind = null, layers = DEFAULT_LAYERS, onMemberTap, onMapInteraction, stagedEvents = [] }: {
+export default function WorldMap({ plateUrl, family = [], shelters = [], guidance = null, mapBase = 'hybrid', routeFocusNonce = 0, focus = null, courseTo = null, recenterNonce = 0, cyclones = null, wind = null, layers = DEFAULT_LAYERS, onMemberTap, onMapInteraction, stagedEvents = [], windFramedNonce = 0 }: {
   state: string
   plateUrl: string
   family?: WorldFamilyMember[]
@@ -489,6 +489,15 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
    * seu jeito.
    */
   stagedEvents?: StagedEvent[]
+  /**
+   * Sobe a cada vez que o vento é LIGADO (D-205).
+   *
+   * O mapa afasta para escala continental. Não é enfeite: no zoom de rua o
+   * campo de vento cabe em 3,5 km e não conta padrão nenhum — e a grade global,
+   * que é a que demora, só começa a ser buscada abaixo de zoom 4.5. Enquadrar
+   * ao ligar resolve as duas coisas com um gesto só.
+   */
+  windFramedNonce?: number
   onMapInteraction?: () => void
 }) {
   const { coords } = useRisk()
@@ -527,7 +536,18 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
   const [windDensity, setWindDensity] = useState(1)
   const [windTrail, setWindTrail] = useState(0.62)
   const [windMapOpacity, setWindMapOpacity] = useState(0.72)
-  const [windArrowTint, setWindArrowTint] = useState(1)
+  /*
+   * As bolinhas de velocidade nascem DESLIGADAS (D-205).
+   *
+   * Achado do dono: *"esse monte de bolinhas amarelas está extremamente
+   * poluído"*. Ele estava certo — no zoom continental são 625 rótulos
+   * sobrepostos, e eles escondem exatamente o que o campo de partículas veio
+   * mostrar: o PADRÃO. Número em cima de número não informa; ele tapa.
+   *
+   * Continuam a um toque, para quem quiser ler o valor exato de um ponto. O que
+   * muda é o padrão: o campo mostra a forma, e o número é sob demanda.
+   */
+  const [windArrowTint, setWindArrowTint] = useState(0)
 
   const ensureWindLayer = () => {
     const map = mapRef.current
@@ -1410,6 +1430,32 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stagedEvents, mapReadyNonce])
 
+  /*
+   * Ligar o vento AFASTA (D-205).
+   *
+   * Pedido do dono: *"talvez o zoom devesse ser amplo enquadrando os
+   * continentes ao clicar em vento"*. Ele está certo por dois motivos que se
+   * somam: no zoom de rua o campo não conta padrão, e a grade global — a que
+   * demora — só é pedida abaixo de zoom 4.5. Um gesto resolve os dois.
+   *
+   * Só ao LIGAR: nonce zero é a montagem, e afastar a cada render tiraria o
+   * mapa do lugar toda vez que qualquer coisa mudasse.
+   */
+  useEffect(() => {
+    if (!windFramedNonce) return
+    const map = mapRef.current
+    if (!map) return
+    const semMovimento = typeof window !== 'undefined'
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    map.easeTo({
+      zoom: 3.4,
+      pitch: 0,
+      bearing: 0,
+      duration: semMovimento ? 0 : 900,
+      essential: true,
+    })
+  }, [windFramedNonce])
+
   // recenter when the real location resolves/changes
   useEffect(() => {
     const map = mapRef.current
@@ -1975,17 +2021,23 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
               onChange={event => setWindMapOpacity(Number(event.currentTarget.value))}
             />
           </label>
+          {/*
+            Liga/desliga, não régua (D-205).
+
+            Um slider para isto pedia que a pessoa escolhesse uma OPACIDADE
+            para números — uma pergunta que ninguém tem resposta. A pergunta
+            real é binária: quero ver os valores ou não.
+          */}
           <label className="world-wind-control">
-            <span>SETAS</span>
-            <input
-              type="range"
-              min={0}
-              max={1}
-              step={0.05}
-              value={windArrowTint}
-              onInput={event => setWindArrowTint(Number(event.currentTarget.value))}
-              onChange={event => setWindArrowTint(Number(event.currentTarget.value))}
-            />
+            <span>VALORES</span>
+            <button
+              type="button"
+              className={`world-wind-switch${windArrowTint > 0 ? ' on' : ''}`}
+              aria-pressed={windArrowTint > 0}
+              onClick={() => setWindArrowTint(v => (v > 0 ? 0 : 1))}
+            >
+              {windArrowTint > 0 ? 'ON' : 'OFF'}
+            </button>
           </label>
         </div>
       ) : null}

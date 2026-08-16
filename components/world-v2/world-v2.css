@@ -4394,3 +4394,23 @@
   .pilot-orb:active { transform: none; }
   .pilot-orb[data-risk='critical'] { animation: none; }
 }
+
+/* O liga/desliga dos valores de vento (D-205). Binário, não régua: a pergunta
+   é "quero ver os números?", e ninguém sabe responder "40% de opacidade". */
+.wv2 .world-wind-switch {
+  min-width: 46px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--sep);
+  background: transparent;
+  color: var(--ink-3);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+.wv2 .world-wind-switch.on {
+  border-color: rgba(var(--accent-rgb), 0.55);
+  background: rgba(var(--accent-rgb), 0.14);
+  color: var(--accent);
+}

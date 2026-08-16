@@ -30,6 +30,49 @@ mover o mundo.
 
 ---
 
+## D-205 — O número tapa o padrão; e ligar o vento afasta o mapa
+
+**Date**: 2026-08-16
+**Status**: DECIDED
+**Roadmap**: MAP-T08
+**Achados do dono**: *"esse monte de bolinhas amarelas com a velocidade está
+extremamente poluído"* e *"talvez o zoom devesse ser amplo enquadrando os
+continentes ao clicar em vento"*.
+
+**Decision**:
+
+1. **As bolinhas de velocidade nascem DESLIGADAS.** No zoom continental são
+   **625 rótulos sobrepostos**, e eles escondem exatamente o que o campo de
+   partículas veio mostrar: o **padrão**. Número em cima de número não informa —
+   ele tapa. O campo mostra a forma; o valor exato passa a ser sob demanda.
+
+2. **Liga/desliga, não régua.** O controle era um slider de opacidade, o que
+   pedia à pessoa que escolhesse *quão transparentes* os números deveriam ser —
+   uma pergunta que ninguém tem resposta. A pergunta real é binária: **quero ver
+   os valores ou não**.
+
+3. **Ligar o vento afasta para escala continental** (zoom 3.4, câmera deitada).
+   O dono propôs isso como estética e ele está certo por dois motivos que se
+   somam:
+   - no zoom de rua o campo cabe em 3,5 km e **não conta padrão nenhum**;
+   - a grade global — a que demora — só é pedida **abaixo de zoom 4.5**.
+
+   Um gesto resolve a poluição visual e a latência de uma vez. É a parte útil da
+   antiga base de vento (D-144) recuperada **sem** trazer de volta o que ela
+   tinha de errado: ela também apagava o satélite e trocava o estilo.
+
+4. **Só ao LIGAR.** Desligar não mexe na câmera: quem desliga quer voltar a
+   olhar o que estava olhando.
+
+**Consequence**: `test:weather` 18/18 (era 16). As checagens novas medem que os
+valores **nascem desligados** e que o liga/desliga os traz de volta — e a antiga
+deixou de exigir uma quarta régua que não existe mais.
+
+**Não autorizado por D-205**: remover os valores de vez, voltar a base de vento,
+afastar a câmera ao desligar.
+
+---
+
 ## D-204 — Leitura ajustável não pode depender de toque repetido
 
 **Date**: 2026-08-16
