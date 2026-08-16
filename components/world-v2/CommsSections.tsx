@@ -307,6 +307,27 @@ function CommsContent({ section, conversationId }: { section: CommsSection; conv
     if (conversationId || circleId) void loadMessages(circleId)
   }, [circleId, conversationId, loadMessages])
 
+  /*
+   * Abrir a conversa é lê-la (COMMS-T14 / D-195).
+   *
+   * `conversation_members.last_read_at` existia no schema e a API sabia
+   * gravá-lo — e **nenhuma tela chamava**. Sem isso `hasUnread` respondia
+   * `true` para sempre: o ponto vermelho aparecia na primeira mensagem e não
+   * apagava nunca, transformando o único sinal de "tem coisa nova" em enfeite
+   * permanente.
+   *
+   * Roda a cada mensagem nova também, e não só na entrada: ficar com a conversa
+   * aberta é continuar lendo.
+   */
+  useEffect(() => {
+    if (!conversationId || section !== 'chat') return
+    void fetch('/api/comms/conversations', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ conversationId, read: true }),
+    }).catch(() => { /* marcar como lida nunca pode derrubar a leitura */ })
+  }, [conversationId, section, messages.length])
+
   useEffect(() => {
     if (!focusedMessageId || !messages.length) return
     const timer = window.setTimeout(() => {

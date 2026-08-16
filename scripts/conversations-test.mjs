@@ -342,6 +342,24 @@ try {
     ? ok('a mensagem predefinida vira MENSAGEM no thread', textos[textos.length - 1])
     : no('o ping não virou mensagem', JSON.stringify(textos).slice(0, 140))
 
+  /*
+   * ── 12. ABRIR A CONVERSA É LÊ-LA (D-195) ─────────────────────────────────
+   *
+   * `last_read_at` existia no schema, a API sabia gravá-lo, e nenhuma tela
+   * chamava: o ponto vermelho aparecia na primeira mensagem e não apagava
+   * nunca. O único sinal de "tem coisa nova" virava enfeite permanente.
+   */
+  const naoLidaAntes = (await chamar(pBruno, '/api/comms/conversations'))
+    .body.conversations.find(x => x.id === idA)?.lastReadAt
+  await pBruno.goto(`${B}/comms/${idA}`, { waitUntil: 'networkidle' })
+  await pBruno.waitForTimeout(2500)
+  const naoLidaDepois = (await chamar(pBruno, '/api/comms/conversations'))
+    .body.conversations.find(x => x.id === idA)?.lastReadAt
+
+  naoLidaAntes === null && naoLidaDepois !== null
+    ? ok('abrir a conversa marca como lida', String(naoLidaDepois).slice(11, 19))
+    : no('o ponto de não lida não apaga ao abrir', `antes=${naoLidaAntes} depois=${naoLidaDepois}`)
+
   void pForasteiro2
 } finally {
   await browser.close().catch(() => {})

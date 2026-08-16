@@ -75,8 +75,6 @@ const COPY = {
     useGps: 'Usar GPS',
     gpsCap: 'Você',
     refreshCap: 'Atualizar',
-    moreControls: 'Mais controles do mapa',
-    lessControls: 'Recolher controles',
     layersLabel: 'Camadas',
     base: 'Base do mapa',
     darkBase: 'Escuro',
@@ -188,8 +186,6 @@ const COPY = {
     coneNote: 'The cone is the uncertainty of the centre position, not the damage area — wind and rain reach well beyond it.',
     panelCap: 'Panel',
     refresh: 'Refresh data',
-    moreControls: 'More map controls',
-    lessControls: 'Collapse controls',
     panel: 'Show or hide the panel',
     open: 'Open',
     fix: 'Fix',
@@ -298,8 +294,6 @@ export default function WorldV2() {
     })
   }
   const [layersOpen, setLayersOpen] = useState(false)
-  /** Os controles de ajuste do mapa, recolhidos em repouso (D-131). */
-  const [controlsOpen, setControlsOpen] = useState(false)
 
   /*
    * `Escape` fecha o painel de Camadas (D-128).
@@ -635,23 +629,7 @@ export default function WorldV2() {
         </p>
 
 
-        {/*
-          Os controles do mapa recolhem (D-131).
-
-          O relatório mediu dezesseis controles visíveis em repouso e cinco
-          objetos disputando o olho: o orbe do Pilot, esta cápsula verde, o pulso
-          do puck, o número da faixa e o orbe elevado da navegação. Numa tela que
-          uma família abre sob estresse, isso pede mais do que informa.
-
-          "Você" fica de fora do recolhimento de propósito: centralizar no
-          próprio ponto é o gesto mais usado num mapa, e escondê-lo atrás de um
-          toque cobraria dois gestos pelo mais comum. Atualizar e Camadas — que
-          são ajuste, não leitura — entram.
-
-          O que sai da tela em repouso não some do produto: fica a um toque, com
-          o rótulo à vista quando aberto.
-        */}
-        <div className="wv2-mapcontrols" data-open={controlsOpen ? '' : undefined}>
+        <div className="wv2-mapcontrols">
           <IconButton
             label={c.useGps}
             caption={c.gpsCap}
@@ -664,38 +642,22 @@ export default function WorldV2() {
             <LocationIcon />
           </IconButton>
 
-          {controlsOpen && (
-            <>
-              <IconButton label={c.refresh} caption={c.refreshCap} onClick={() => { refresh(); data.refresh() }}>
-                <RefreshIcon />
-              </IconButton>
-              <IconButton
-                label={c.layersLabel}
-                caption={c.darkCap}
-                active={layersOpen}
-                onClick={() => { haptic.selection(); setLayersOpen(open => !open) }}
-              >
-                <LayersIcon />
-              </IconButton>
-              {isDesktop && (
-                <IconButton label={c.panel} caption={c.panelCap} active={panelOpen} onClick={() => setPanelOpen(open => !open)}>
-                  <PanelIcon />
-                </IconButton>
-              )}
-            </>
-          )}
-
-          <IconButton
-            label={controlsOpen ? c.lessControls : c.moreControls}
-            active={controlsOpen}
-            onClick={() => {
-              haptic.selection()
-              setControlsOpen(o => !o)
-              if (controlsOpen) setLayersOpen(false)
-            }}
-          >
-            <span className="wv2-more" aria-hidden="true">{controlsOpen ? '×' : '···'}</span>
+          <IconButton label={c.refresh} caption={c.refreshCap} onClick={() => { refresh(); data.refresh() }}>
+            <RefreshIcon />
           </IconButton>
+          <IconButton
+            label={c.layersLabel}
+            caption={c.darkCap}
+            active={layersOpen}
+            onClick={() => { haptic.selection(); setLayersOpen(open => !open) }}
+          >
+            <LayersIcon />
+          </IconButton>
+          {isDesktop && (
+            <IconButton label={c.panel} caption={c.panelCap} active={panelOpen} onClick={() => setPanelOpen(open => !open)}>
+              <PanelIcon />
+            </IconButton>
+          )}
         </div>
 
         {/*
