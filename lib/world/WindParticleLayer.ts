@@ -412,6 +412,22 @@ export class WindParticleLayer {
     }
   }
 
+  /**
+   * Quantos graus valem um passo, para que o passo em PIXELS não dependa do
+   * zoom.
+   *
+   * `K` foi escolhido para que 10 m/s ande cerca de 1,5 px por quadro — o
+   * ritmo que o campo tinha no zoom local antes de D-204, e que é onde ele
+   * sempre pareceu certo.
+   */
+  private zoomGain(): number {
+    const a = this.map.project([0, 0])
+    const b = this.map.project([1, 0])
+    const pxPorGrau = Math.abs(b.x - a.x)
+    if (!Number.isFinite(pxPorGrau) || pxPorGrau <= 0) return 1
+    return 625 / pxPorGrau
+  }
+
   private stepParticle(p: Particle) {
     const vector = this.grid ? interpolate(this.grid, p.lng, p.lat) : null
     if (!vector) {
@@ -425,8 +441,26 @@ export class WindParticleLayer {
     }
     const latRad = p.lat * Math.PI / 180
     const globalScale = this.grid && gridWrapsWorld(this.grid) ? 0.58 : 1
-    const deltaLng = (vector.uMps * this.config.speedScale * globalScale) / Math.max(0.2, Math.cos(latRad))
-    const deltaLat = vector.vMps * this.config.speedScale * globalScale
+    /*
+     * ── O PASSO É NORMALIZADO PELA ESCALA DO MAPA (D-204) ──────────────────
+     *
+     * Achado do dono: *"os elementos estão todos na mesma velocidade"*.
+     *
+     * O passo era calculado em GRAUS com escala fixa, então o movimento em
+     * PIXELS colapsava ao afastar o mapa: para 10 m/s no zoom 4 dava **0,016 px
+     * por quadro**. Aí o piso de `minStepPx` assumia — e como ele satura em
+     * 1,45 para qualquer vento acima de ~22 mph, **toda partícula rápida
+     * passava a andar igual**. O campo virava uma tela de ruído uniforme, que é
+     * o oposto do que ele existe para mostrar.
+     *
+     * Agora o ganho é medido contra a projeção real: `K / pixelsPorGrau`. O
+     * deslocamento em pixels volta a ser proporcional à velocidade **em
+     * qualquer zoom**, e o piso volta a ser o que deveria ter sido sempre — um
+     * resgate para partícula parada, não um nivelador.
+     */
+    const passo = this.config.speedScale * globalScale * this.zoomGain()
+    const deltaLng = (vector.uMps * passo) / Math.max(0.2, Math.cos(latRad))
+    const deltaLat = vector.vMps * passo
     p.lng += deltaLng
     p.lat += deltaLat
     if (this.grid) p.lng = normalizeLngForGrid(this.grid, p.lng)
@@ -434,7 +468,12 @@ export class WindParticleLayer {
     const firstDx = firstNext.x - old.x
     const firstDy = firstNext.y - old.y
     const firstDist = Math.sqrt(firstDx * firstDx + firstDy * firstDy)
-    const speedFloor = Math.min(this.config.minStepPx, 0.22 + vector.speedMph * 0.055)
+    /*
+     * O piso agora só resgata quem está praticamente parado. Ele NÃO pode mais
+     * empatar os rápidos: era exatamente isso que apagava a diferença entre 10
+     * e 40 mph.
+     */
+    const speedFloor = Math.min(0.3, 0.05 + vector.speedMph * 0.01)
     if (firstDist > 0 && firstDist < speedFloor) {
       const boost = speedFloor / firstDist
       p.lng += deltaLng * (boost - 1)

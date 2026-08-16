@@ -1629,10 +1629,47 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
         .catch(() => {})
     }
 
+    /*
+     * ── CRUZAR O LIMIAR NÃO ESPERA (D-204) ─────────────────────────────────
+     *
+     * O debounce de 350 ms existe para não pedir a grade a cada quadro de um
+     * arrasto. Mas passar de local para GLOBAL não é um arrasto — é outra
+     * pergunta, e a grade que está na mão não cobre nada do que apareceu na
+     * tela.
+     *
+     * Antes de D-199 isso não doía porque a base de vento saltava a câmera
+     * para o mundo inteiro no mesmo instante, e a busca global saía junto. Sem
+     * a base, a segunda ida só começava depois que a pessoa parava de mexer —
+     * a "demora significativa" que o dono descreveu.
+     */
+    let eraGlobal = map.getZoom() <= 4.5
     const schedule = () => {
+      const agoraGlobal = map.getZoom() <= 4.5
+      if (agoraGlobal !== eraGlobal) {
+        eraGlobal = agoraGlobal
+        if (timer !== null) window.clearTimeout(timer)
+        /*
+         * 60 ms, e não zero. Disparar no PRIMEIRO evento de zoom pega os
+         * limites do mapa no meio do gesto — e a grade vinha LOCAL mesmo com o
+         * zoom já em modo global. Foi o que a primeira versão desta correção
+         * fez: ganhou latência e perdeu a resposta certa.
+         *
+         * Uma batida é o suficiente para a câmera assentar, e ainda é ~6x mais
+         * rápido que os 350 ms do arrasto comum.
+         */
+        timer = window.setTimeout(load, 60)
+        return
+      }
       if (timer !== null) window.clearTimeout(timer)
       timer = window.setTimeout(load, 350)
     }
+
+    /*
+     * `zoom` (durante), e não só `zoomend` (depois): o limiar é cruzado no meio
+     * do gesto, e esperar o dedo sair da tela é justamente a espera que o dono
+     * sentiu.
+     */
+    map.on('zoom', schedule)
 
     load()
     map.on('moveend', schedule)
@@ -1643,6 +1680,7 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
       controller?.abort()
       map.off('moveend', schedule)
       map.off('zoomend', schedule)
+      map.off('zoom', schedule)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [layers?.wind, mapBase, mapReadyNonce])

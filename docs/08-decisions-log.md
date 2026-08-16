@@ -55,6 +55,58 @@ vira um controle contínuo. O usuário consegue montar "categoria 3 piorando" ou
 
 ---
 
+## D-204 — O piso das partículas empatava o vento
+
+**Date**: 2026-08-16
+**Status**: DECIDED
+**Roadmap**: MAP-T07
+**Achado do dono**: *"há uma demora significativa em ele aparecer no mapa todo.
+Os elementos estão todos na mesma velocidade — onde é mais forte deveria ser
+mais rápido."*
+
+**Context — por que tudo andava igual**:
+
+O passo era calculado em **graus**, com escala fixa (`speedScale 0.00024`).
+Movimento em pixels, portanto, colapsava ao afastar o mapa:
+
+```
+10 m/s no zoom 4  →  0,016 px por quadro
+```
+
+Aí o piso assumia: `min(minStepPx = 1.45, 0.22 + mph × 0.055)`. Ele **satura em
+1,45 para qualquer vento acima de ~22 mph** — então toda partícula rápida
+passava a andar exatamente igual. O campo virava ruído uniforme, que é o oposto
+do que ele existe para mostrar.
+
+**Decision**:
+
+1. **O passo é normalizado pela projeção real**: `625 / pixelsPorGrau`. O
+   deslocamento em pixels volta a ser proporcional à velocidade **em qualquer
+   zoom** — 3 m/s anda 0,45 px, 25 m/s anda 3,75 px, e a razão de 8× sobrevive.
+
+2. **O piso volta a ser resgate, não nivelador**: `min(0.3, …)`. Ele existe para
+   partícula parada, e nunca mais para empatar as rápidas.
+
+3. **Cruzar o limiar global não espera o arrasto.** O debounce de 350 ms existe
+   para não pedir grade a cada quadro de um arrasto; passar de local para global
+   é outra pergunta, e a grade na mão não cobre nada do que apareceu na tela.
+   Antes de D-199 isso não doía porque a base de vento saltava a câmera junto.
+
+**Consequence**:
+
+- **A primeira versão da correção de latência estava errada, e o teste pegou.**
+  Disparar no primeiro evento de `zoom` lia os limites **no meio do gesto**, e a
+  grade vinha LOCAL mesmo com o zoom já global (`wrapsWorld: false`). Ganhei
+  latência e perdi a resposta certa. 60 ms de espera resolvem, e ainda são ~6x
+  mais rápidos que o arrasto comum.
+- `test:weather` **16/16** — incluindo o enquadramento da tempestade, que estava
+  vermelho desde antes de D-199 (`MAP-T06` pode ser fechada).
+
+**Não autorizado por D-204**: mexer nos sliders de densidade, mudar o limiar de
+4.5, voltar a calcular passo em graus fixos.
+
+---
+
 ## D-203 — O mapa desistia em silêncio, e o cone conta a outra metade
 
 **Date**: 2026-08-16
