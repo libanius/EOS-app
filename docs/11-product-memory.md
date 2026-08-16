@@ -43,6 +43,10 @@ em `components/BottomNav.tsx`.
 hover/foco no desktop, toque no mobile. Não troque ações programáticas
 ("ver alerta no mapa", rota até membro) para `hidden` sem motivo: elas usam
 `peek` porque precisam preservar contexto.
+**Follow-up D-205:** essa zona inferior não é uma faixa invisível larga. Quando
+o sheet está escondido, só uma alça central pequena pode reabri-lo; o restante
+da parte baixa pertence ao pan do mapa. Faixa transparente de 148px faz o mapa
+parecer "insensível" porque rouba o primeiro gesto.
 **Follow-up D-196:** a coluna lateral do mapa não recolhe mais. `Você`,
 `Atualizar` e `Camadas` ficam sempre visíveis; o botão `.../x` saiu.
 **Follow-up D-197:** o painel de `Camadas` deve rolar dentro dele mesmo em

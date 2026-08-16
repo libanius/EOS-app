@@ -4,6 +4,32 @@
 
 ---
 
+## D-205 — O mapa não pode perder o primeiro gesto para uma zona invisível
+
+**Date**: 2026-08-16
+**Status**: DECIDED
+**Roadmap**: WV2 map touch follow-up
+**Pedido do dono**: *"houve uma piora significante em sensibilidade ao toque na
+tela. no mapa do world eu preciso tocar varias vezes para conseguir arrastar e
+mover."*
+
+**Context**: D-193 escondeu o sheet quando a pessoa mexe no mapa e deixou uma
+zona inferior para trazê-lo de volta. A intenção estava certa, mas a zona
+invisível era grande demais: `height: min(148px, 24dvh)` atravessava a parte
+baixa do mapa. Em telefone, arrastar perto do rodapé podia cair no botão
+transparente de reveal, não no canvas do MapLibre.
+
+**Decision**: a área que reabre o sheet escondido vira uma alça pequena,
+centralizada e limitada ao fundo. Todo o resto da área baixa volta a pertencer
+ao mapa. Em desktop, hover ainda revela; em mobile, o toque precisa mirar a
+alça, não uma faixa invisível de 148px.
+
+**Consequence**: o primeiro gesto de pan volta a chegar no mapa. Reabrir o sheet
+continua possível, mas deixa de competir com a operação principal da tela:
+mover o mundo.
+
+---
+
 ## D-204 — Leitura ajustável não pode depender de toque repetido
 
 **Date**: 2026-08-16

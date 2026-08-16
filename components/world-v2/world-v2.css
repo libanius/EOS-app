@@ -536,16 +536,29 @@
 
 .wv2-sheet-reveal-zone {
   position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: min(148px, 24dvh);
+  left: 50%;
+  bottom: max(10px, env(safe-area-inset-bottom));
+  width: min(168px, 42vw);
+  height: 48px;
+  transform: translateX(-50%);
   z-index: 1;
   border: 0;
+  border-radius: var(--r-pill);
   background: transparent;
   pointer-events: auto;
   cursor: default;
   touch-action: manipulation;
+}
+.wv2-sheet-reveal-zone::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 66px;
+  height: 5px;
+  transform: translate(-50%, -50%);
+  border-radius: var(--r-pill);
+  background: rgba(235, 235, 245, 0.34);
 }
 
 .wv2-grabber {
