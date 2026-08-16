@@ -649,14 +649,31 @@ function Stepper({
   onChange: (value: number) => void
 }) {
   const clamp = (n: number) => Math.max(min, Math.min(max, n))
+  const percent = ((value - min) / (max - min)) * 100
+  const change = (next: number, tactile = false) => {
+    if (tactile) haptic.selection()
+    onChange(clamp(next))
+  }
+
   return (
     <div className="sim-stepper">
       <span className="t-sub">{label}</span>
-      <div>
-        <button type="button" aria-label="-" onClick={() => { haptic.selection(); onChange(clamp(value - step)) }}>−</button>
+      <div className="sim-stepper-controls">
+        <button type="button" aria-label={`Diminuir ${label}`} onClick={() => change(value - step, true)}>−</button>
         <strong className="t-sub">{value}{unit}</strong>
-        <button type="button" aria-label="+" onClick={() => { haptic.selection(); onChange(clamp(value + step)) }}>+</button>
+        <button type="button" aria-label={`Aumentar ${label}`} onClick={() => change(value + step, true)}>+</button>
       </div>
+      <input
+        className="sim-stepper-range"
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        aria-label={label}
+        onChange={event => change(Number(event.currentTarget.value))}
+        style={{ ['--sim-stepper-progress' as string]: `${percent}%` }}
+      />
     </div>
   )
 }

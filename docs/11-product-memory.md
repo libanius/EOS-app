@@ -57,6 +57,11 @@ de vento ficam num controle colapsável perto do botão `Vento`; fechado ele é 
 um toggle compacto, aberto expõe escala/timeline/sliders, e fechado ele some ao
 mover/zoomar o mapa.
 
+**Simulador D-203:** leitura numérica ajustável não pode ser só `-`/`+`.
+Temperatura, vento, rajada, chuva, umidade, UV, visibilidade e AQI usam o mesmo
+controle híbrido: stepper para ajuste fino e slider para varrer cenário rápido
+em mouse, trackpad ou toque.
+
 **Ordem das fases: absorções primeiro.** São elas que liberam os slots — mexer
 na barra antes seria mudar o visível sem ter para onde mover o resto.
 

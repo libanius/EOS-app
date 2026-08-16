@@ -56,6 +56,12 @@ export type StagedEvent = {
   track: Ponto[]
   /** O desenho no mapa: polígono fechado em [lng, lat]. */
   footprint: Array<[number, number]>
+  /**
+   * O CONE de incerteza, no formato do NOAA (SIM-T12d / D-203).
+   *
+   * Vazio para terremoto, que não tem rumo. Ver `coneDeIncerteza`.
+   */
+  cone: Array<[number, number]>
   /** Quantos km da casa, agora. */
   distanceKm: number
   /** Horas até tocar a casa. `null` quando já está acontecendo. */
@@ -141,6 +147,64 @@ export function cunha(
   pontos.push([centro.lng, centro.lat])
   return pontos
 }
+
+/**
+ * O cone de incerteza, como o do NOAA.
+ *
+ * ── O que o cone do NOAA é, e o que ele NÃO é ────────────────────────────
+ *
+ * Ele **não** é a área que vai ser atingida. É a área onde o CENTRO da
+ * tempestade provavelmente vai passar — historicamente, cerca de dois terços
+ * das vezes. Essa distinção mata gente todo ano: quem mora "fora do cone"
+ * conclui que está a salvo, e o campo de vento é muito maior que o cone.
+ *
+ * Por isso ele é desenhado **junto** com a pegada, não no lugar dela: o cone
+ * conta para onde ele vai, a pegada conta quanto ele cobre.
+ *
+ * ── A forma ──────────────────────────────────────────────────────────────
+ *
+ * Círculos de raio crescente ao longo da rota, envolvidos por uma linha só.
+ * Cresce porque a incerteza cresce: onde ele está agora se sabe bem, onde ele
+ * estará em 3 dias se sabe mal. O passeio é pelo lado esquerdo até o fim e pelo
+ * direito de volta, o que fecha o polígono sem precisar de casco convexo.
+ */
+export function coneDeIncerteza(
+  track: Ponto[],
+  raioInicialKm: number,
+  raioFinalKm: number,
+): Array<[number, number]> {
+  if (track.length < 2) return []
+
+  const esquerda: Array<[number, number]> = []
+  const direita: Array<[number, number]> = []
+
+  for (let i = 0; i < track.length; i += 1) {
+    const t = i / (track.length - 1)
+    const raio = raioInicialKm + (raioFinalKm - raioInicialKm) * t
+    // O rumo local: para onde ele está indo NESTE trecho.
+    const proximo = track[Math.min(i + 1, track.length - 1)]
+    const anterior = track[Math.max(i - 1, 0)]
+    const rumo = rumoEntre(anterior, proximo)
+
+    esquerda.push(toPar(pontoDistante(track[i], (rumo - 90 + 360) % 360, raio)))
+    direita.push(toPar(pontoDistante(track[i], (rumo + 90) % 360, raio)))
+  }
+
+  // Tampa arredondada na ponta, senão o cone termina num corte reto que parece
+  // que a tempestade para ali — e ela não para.
+  const fim = track[track.length - 1]
+  const rumoFinal = rumoEntre(track[track.length - 2], fim)
+  const tampa: Array<[number, number]> = []
+  for (let a = -90; a <= 90; a += 15) {
+    tampa.push(toPar(pontoDistante(fim, (rumoFinal + a + 360) % 360, raioFinalKm)))
+  }
+
+  const anel = [...esquerda, ...tampa, ...direita.reverse()]
+  anel.push(anel[0])
+  return anel
+}
+
+const toPar = (p: Ponto): [number, number] => [p.lng, p.lat]
 
 /** Severidade → categoria Saffir-Simpson. */
 export function categoriaFuracao(s: Severity): number {
@@ -247,6 +311,8 @@ export function stageEvents(input: StageInput): StagedEvent[] {
       center: epicentro,
       track: [],
       footprint: circulo(epicentro, raioKm(kind, severidade)),
+      // Terremoto não tem rumo: não há cone a desenhar.
+      cone: [],
       distanceKm: Math.round(distanciaKm(home, epicentro)),
       etaHours: null,
       headline: `${nome} · M${magnitudeTerremoto(severidade)}`,
@@ -290,6 +356,13 @@ export function stageEvents(input: StageInput): StagedEvent[] {
     ? `${nome} · Cat ${categoriaFuracao(severidade)}`
     : nome
 
+  /*
+   * O cone aponta da posição ATUAL para a casa — que é a rota. Ele começa no
+   * tamanho do olho e termina bem mais largo: a incerteza de onde ele estará
+   * cresce com o tempo, e é isso que o desenho tem que contar.
+   */
+  const cone = coneDeIncerteza(track, Math.max(8, raio * 0.22), raio * 0.85)
+
   return [{
     id: `staged:${kind}:${nome}`,
     kind,
@@ -299,6 +372,7 @@ export function stageEvents(input: StageInput): StagedEvent[] {
     center: centro,
     track,
     footprint,
+    cone,
     distanceKm: Math.round(distanciaInicial),
     /*
      * Com posição escolhida, o ETA é MEDIDO — distância dividida por

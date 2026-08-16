@@ -4,6 +4,86 @@
 
 ---
 
+## D-203 — Leitura ajustável não pode depender de toque repetido
+
+**Date**: 2026-08-16
+**Status**: DECIDED
+**Roadmap**: SIM-T08 follow-up
+**Pedido do dono**: *"todos esses controles que existem no app, habilite para
+poder incrementar os numeros usando slide tb"*
+
+**Context**: o painel de Instrumentos do simulador tinha leituras numéricas com
+`-` e `+`: temperatura, vento, rajada, chuva, umidade, UV, visibilidade e AQI.
+Isso funciona para ajuste fino, mas é ruim para varrer cenário. Levar vento de
+45 para 220 km/h exige dezenas de toques exatamente no painel que deveria
+parecer cockpit.
+
+**Decision**: toda leitura simulada com stepper também tem slider. O stepper
+fica para ajuste discreto; o slider é o gesto principal para mudar grandezas
+rapidamente em qualquer device. Os dois escrevem no mesmo valor e respeitam o
+mesmo `min`, `max` e `step`.
+
+**Consequence**: configurar o ambiente deixa de ser uma sequência de taps e
+vira um controle contínuo. O usuário consegue montar "categoria 3 piorando" ou
+"visibilidade caindo" com um gesto, sem perder a precisão dos botões.
+
+---
+
+## D-203 — O mapa desistia em silêncio, e o cone conta a outra metade
+
+**Date**: 2026-08-16
+**Status**: DECIDED
+**Roadmap**: SIM-T12d
+**Achado do dono**: *"escolhi no mapa, mas ao iniciar a simulação nada
+aconteceu. Preciso que ele tenha o cone também."*
+
+**Context — o defeito**: `renderStaged` começava com
+
+```ts
+if (!map || !map.isStyleLoaded()) return
+```
+
+`isStyleLoaded()` responde `false` por um tempo **depois** do evento `load`, e o
+código simplesmente **desistia**. Como nada re-disparava, o treino iniciava e o
+mapa ficava limpo.
+
+É a mesma forma de todos os defeitos caros desta sessão: **um retorno
+antecipado silencioso**. Sem erro, sem log, sem tela vermelha — só ausência.
+D-185 (o guarda do estoque), D-193 (a lista vazia por coluna inexistente),
+D-199 (o `filter` que não protegia) e este são o mesmo animal.
+
+**Decision**:
+
+1. **Esperar em vez de desistir.** `map.once('idle', …)` e tenta de novo. Um
+   guarda que sai calado é indistinguível de um bug.
+
+2. **O cone entra como camada própria**, e o desenho conta **duas coisas
+   diferentes**:
+   - **cone** = para onde o CENTRO vai;
+   - **pegada** = quanto ele cobre.
+
+   Essa distinção é a razão de o cone do NOAA matar gente todo ano: quem mora
+   "fora do cone" conclui que está a salvo, e **o campo de vento é muito maior
+   que o cone**. Desenhar um sem o outro ensinaria exatamente o erro que o
+   treino existe para desfazer.
+
+3. **Ele ALARGA ao longo da rota** — é o que define um cone. Largura constante
+   seria um corredor, e diria que se sabe o mesmo sobre daqui a 1h e daqui a 3
+   dias. A ponta é arredondada: um corte reto pareceria que a tempestade para
+   ali.
+
+4. **O enquadramento passa a incluir o cone**, senão a metade que conta o rumo
+   ficaria fora da tela — o defeito de D-202 outra vez, num pedaço novo.
+
+**Consequence**: 35 testes (era 30). O que mais importa não mede desenho: mede
+que o cone é **mais estreito que a pegada** perto da origem, que é a afirmação
+de segurança que o desenho inteiro existe para fazer.
+
+**Não autorizado por D-203**: usar o cone como área de impacto, ou desenhá-lo
+sem a pegada junto.
+
+---
+
 ## D-202 — Encenar sem enquadrar é entrega nenhuma
 
 **Date**: 2026-08-16

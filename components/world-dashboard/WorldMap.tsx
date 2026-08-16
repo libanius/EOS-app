@@ -933,7 +933,22 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
 
   const renderStaged = () => {
     const map = mapRef.current
-    if (!map || !map.isStyleLoaded()) return
+    if (!map) return
+    /*
+     * ── O DEFEITO QUE FAZIA "NADA ACONTECER" (SIM-T12d / D-203) ────────────
+     *
+     * `isStyleLoaded()` responde `false` por um tempo DEPOIS do evento `load`,
+     * e o código simplesmente desistia. Como nada re-disparava, o treino
+     * iniciava e o mapa ficava limpo — o achado do dono: *"escolhi no mapa, mas
+     * ao iniciar a simulação nada aconteceu"*.
+     *
+     * Desistir em silêncio é o padrão de defeito desta semana inteira. Agora
+     * ele **espera** o mapa ficar pronto e tenta de novo.
+     */
+    if (!map.isStyleLoaded()) {
+      map.once('idle', () => renderStaged())
+      return
+    }
 
     const fc = {
       type: 'FeatureCollection' as const,
@@ -954,6 +969,14 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
         },
       })),
     }
+    const cones = {
+      type: 'FeatureCollection' as const,
+      features: stagedEvents.filter(e => e.cone.length > 3).map(e => ({
+        type: 'Feature' as const,
+        properties: { id: e.id },
+        geometry: { type: 'Polygon' as const, coordinates: [e.cone] },
+      })),
+    }
     const centros = {
       type: 'FeatureCollection' as const,
       features: stagedEvents.map(e => ({
@@ -972,9 +995,28 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
 
     const jaExistia = upsert('eos-staged-area', fc)
     upsert('eos-staged-track', rotas)
+    upsert('eos-staged-cone', cones)
     upsert('eos-staged-center', centros)
     if (jaExistia) return
 
+    /*
+     * O cone entra ANTES da pegada, e o desenho conta duas coisas diferentes:
+     * o cone é **para onde o centro vai**, a pegada é **quanto ele cobre**.
+     * Confundir os dois é o erro que mata gente todo ano — quem mora fora do
+     * cone conclui que está a salvo, e o campo de vento é muito maior que ele.
+     */
+    map.addLayer({
+      id: 'eos-staged-cone-fill',
+      type: 'fill',
+      source: 'eos-staged-cone',
+      paint: { 'fill-color': SIM_COR, 'fill-opacity': 0.10 },
+    })
+    map.addLayer({
+      id: 'eos-staged-cone-line',
+      type: 'line',
+      source: 'eos-staged-cone',
+      paint: { 'line-color': SIM_COR, 'line-width': 1.2, 'line-dasharray': [5, 3], 'line-opacity': 0.7 },
+    })
     map.addLayer({
       id: 'eos-staged-fill',
       type: 'fill',
@@ -1340,14 +1382,19 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
      * de D-199 — alcance de tempestade se lê de cima.
      */
     const map = mapRef.current
-    if (!map || !stagedEvents.length || !map.isStyleLoaded()) return
+    if (!map || !stagedEvents.length) return
+    if (!map.isStyleLoaded()) { map.once('idle', () => setMapReadyNonce(n => n + 1)); return }
 
     let w = 180, e = -180, so = 90, n = -90
     const abrir = (lng: number, lat: number) => {
       w = Math.min(w, lng); e = Math.max(e, lng)
       so = Math.min(so, lat); n = Math.max(n, lat)
     }
-    for (const ev of stagedEvents) for (const [lng, lat] of ev.footprint) abrir(lng, lat)
+    for (const ev of stagedEvents) {
+      for (const [lng, lat] of ev.footprint) abrir(lng, lat)
+      // O cone entra na caixa: ele é a parte que conta para onde ele vai.
+      for (const [lng, lat] of ev.cone) abrir(lng, lat)
+    }
     // A casa entra na caixa: o treino é sobre a distância ENTRE os dois.
     if (coords) abrir(coords.lng, coords.lat)
 

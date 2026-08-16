@@ -17,6 +17,7 @@ import {
   raioKm,
   categoriaFuracao,
   magnitudeTerremoto,
+  coneDeIncerteza,
 } from '@/lib/staged-events'
 
 const CASA = { lat: 26.31, lng: -80.237 }   // Parkland, FL
@@ -244,5 +245,54 @@ describe('POSIÇÃO ESCOLHIDA manda sobre o rumo (D-202)', () => {
   it('terremoto também obedece ao ponto', () => {
     const [e] = stageEvents(cenario({ threat: 'earthquake', at: ALVO }))
     expect(distanciaKm(e.center, ALVO)).toBeLessThan(0.5)
+  })
+})
+
+describe('o CONE de incerteza, como o do NOAA (D-203)', () => {
+  it('quem tem rumo tem cone; terremoto não', () => {
+    for (const t of ['hurricane', 'wildfire', 'fallout'] as const) {
+      expect(stageEvents(cenario({ threat: t }))[0].cone.length).toBeGreaterThan(10)
+    }
+    expect(stageEvents(cenario({ threat: 'earthquake' }))[0].cone).toEqual([])
+  })
+
+  it('ele ALARGA ao longo da rota — a incerteza cresce com o tempo', () => {
+    /*
+     * É a propriedade que define o cone. Um "cone" de largura constante seria
+     * um corredor, e diria que se sabe o mesmo sobre daqui a 1h e daqui a 3
+     * dias.
+     */
+    const cone = coneDeIncerteza(
+      [CASA, pontoDistante(CASA, 0, 100), pontoDistante(CASA, 0, 200)],
+      20, 90,
+    )
+    // Lado esquerdo do primeiro ponto contra o do último.
+    const larguraInicio = distanciaKm(CASA, { lng: cone[0][0], lat: cone[0][1] })
+    const larguraFim = distanciaKm(
+      pontoDistante(CASA, 0, 200),
+      { lng: cone[2][0], lat: cone[2][1] },
+    )
+    expect(larguraFim).toBeGreaterThan(larguraInicio * 2)
+  })
+
+  it('fecha, para poder ser preenchido', () => {
+    const [e] = stageEvents(cenario())
+    expect(e.cone[0]).toEqual(e.cone[e.cone.length - 1])
+  })
+
+  it('rota curta demais não inventa cone', () => {
+    expect(coneDeIncerteza([CASA], 10, 50)).toEqual([])
+    expect(coneDeIncerteza([], 10, 50)).toEqual([])
+  })
+
+  it('o cone é MAIS ESTREITO que a pegada perto da origem', () => {
+    /*
+     * A distinção que mata gente todo ano: o cone é onde o CENTRO passa, a
+     * pegada é o que ele cobre. Quem mora "fora do cone" conclui que está a
+     * salvo — e o campo de vento é muito maior.
+     */
+    const [e] = stageEvents(cenario({ severity: 4 }))
+    const raioCone = distanciaKm(e.center, { lng: e.cone[0][0], lat: e.cone[0][1] })
+    expect(raioCone).toBeLessThan(raioKm('hurricane', 4))
   })
 })
