@@ -249,6 +249,14 @@ animado.active === true && animado.mode === 'bilinear' && animado.scalar === tru
   : no('vento não desenhou', JSON.stringify({ setas, animado }))
 
 const windToggle = page.locator('.world-wind-toggle')
+if (!(await windToggle.count())) {
+  // D-201: mover/zoomar o mapa com o ajuste colapsado esconde o toggle. Para
+  // testar os sliders depois do zoom programático, ligamos a camada novamente.
+  await page.locator('.wv2-mapcontrols button[aria-label="Vento"]').click()
+  await page.waitForTimeout(300)
+  await page.locator('.wv2-mapcontrols button[aria-label="Vento"]').click()
+  await page.waitForSelector('.world-wind-legend[data-open="false"] .world-wind-toggle', { timeout: 12000 }).catch(() => {})
+}
 if (await windToggle.count()) {
   const collapsed = await page.locator('.world-wind-legend[data-open="false"]').count()
   if (collapsed) await windToggle.click()
@@ -324,21 +332,14 @@ if (mapBox) {
     ? ok('vento mantém densidade no zoom', `${zoomWind.visibleParticles}/${zoomWind.particles} partículas visíveis`)
     : no('vento perdeu densidade no zoom', JSON.stringify(zoomWind))
   /*
-   * A legenda não recolhe mais, e é de propósito (D-199).
-   *
-   * Ela tinha uma pílula "Vento" que a dobrava — e essa pílula era o liga/desliga
-   * flutuante que subiu para a coluna de controles. Deixar as duas seria ter
-   * DUAS coisas escritas "Vento" fazendo coisas diferentes.
-   *
-   * O que a legenda faz agora é uma coisa só: existir enquanto o vento estiver
-   * ligado, mostrando a régua de velocidade. Então o que vale medir é isso.
+   * D-201: a régua de vento voltou a ser colapsável, mas o liga/desliga da
+   * CAMADA continua na coluna. O toggle pequeno aqui só abre/fecha os ajustes.
    */
-  const legenda = await page.locator('.world-wind-legend').count()
-  const regua = await page.locator('.world-wind-ramp').count()
-  const pilulaAntiga = await page.locator('.world-wind-toggle').count()
-  legenda === 1 && regua === 1 && pilulaAntiga === 0
-    ? ok('a legenda mostra a régua, e o liga/desliga saiu dela')
-    : no('legenda de vento em estado errado', `legenda=${legenda} regua=${regua} pilula=${pilulaAntiga}`)
+  const toggleCompacto = await page.locator('.world-wind-legend[data-open="false"] .world-wind-toggle').count()
+  const popup = await page.locator('.world-wind-popup').count()
+  toggleCompacto === 0 && popup === 0
+    ? ok('ajuste de vento colapsado some ao mover o mapa')
+    : no('ajuste de vento não sumiu após movimento', `toggle=${toggleCompacto} popup=${popup}`)
 
   const naColuna = await page.locator('.wv2-mapcontrols button[aria-label="Vento"]').count()
   naColuna === 1

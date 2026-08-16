@@ -29,6 +29,54 @@ painéis soltos sobre família, mapa e sheet.
 
 ---
 
+## D-201 — O furacão de mentira aparece, e não dá para confundir
+
+**Date**: 2026-08-16
+**Status**: DECIDED
+**Roadmap**: SIM-T12 (fase 2 de 2)
+
+**Context**: D-200 construiu o núcleo puro e deixou explícito que nada desenhava
+ainda. Esta fase liga as duas pontas: o painel do Simulador e o mapa.
+
+**Decision**:
+
+1. **`stagedEvents` chega ao mapa por prop PRÓPRIA**, nunca misturado em
+   `cyclones` ou nos hazards. É a fronteira de D-200 chegando ao pixel: o mapa
+   **nunca precisa perguntar** se um evento é real — recebe duas listas
+   separadas e desenha cada uma do seu jeito.
+
+2. **`simulation.active &&` é a fronteira inteira.** Fora do treino a lista é
+   vazia, e o efeito de redesenho manda a coleção vazia para o mapa. O furacão
+   some **sem ninguém lembrar de apagá-lo**.
+
+3. **Tracejado e roxo não são gosto.** Todo evento real deste mapa usa linha
+   cheia e a paleta de risco — âmbar, laranja, vermelho. O encenado usa traço
+   interrompido e uma cor (`#a78bfa`) que **não pertence a nenhuma severidade**,
+   para que a diferença sobreviva a uma olhada de dois segundos numa tela
+   pequena. A faixa global do treino já grita (doc 19 §5.2); isto é a segunda
+   camada da mesma promessa, no lugar onde a decisão é tomada.
+
+4. **Dar nome não é enfeite.** Uma família não conversa sobre "o cenário de
+   furacão categoria 3" — ela conversa sobre a **Isadora**. O nome é o que faz
+   o treino virar assunto, e o que faz a lembrança durar depois que ele acaba.
+
+5. **Rumo em oito chips, não em graus.** Sob estresse ninguém digita "137°", e a
+   diferença entre 135 e 137 não muda decisão nenhuma.
+
+6. **Nome e rumo só aparecem para ameaça COM geografia.** Pedi-los para um
+   apagão seria coletar dado que não vai a lugar nenhum — e sugerir que existe
+   um "ponto do apagão", que é exatamente o que D-200 recusou. Quando não há,
+   a tela **diz por quê** em vez de esconder os campos em silêncio.
+
+**Consequence**: o Simulador passa a poder ensaiar o que D-168 só conseguia com
+alerta real na região. A faixa de reavaliação continua exigindo evento real —
+ligá-la ao encenado é decisão própria, e não foi tomada aqui.
+
+**Não autorizado por D-201**: fazer o evento encenado disparar push real,
+alimentar a faixa de reavaliação ou entrar no `error_log`/snapshot.
+
+---
+
 ## D-200 — Surge usa o Peak Storm Surge Forecast do NHC/CPHC
 
 **Date**: 2026-08-16

@@ -65,6 +65,15 @@ export type SimulationConfig = {
   arrivalHours: number
   /** Free-text description the user typed; feeds the Pilot briefing. */
   description: string
+  /*
+   * O nome e a direção do evento encenado (SIM-T12 / D-201).
+   *
+   * Opcionais porque cenário sem geografia (apagão, inverno) não encena nada, e
+   * exigir nome ali seria pedir um dado que não vai a lugar nenhum.
+   */
+  eventName?: string
+  /** De onde ele vem, em graus. 135 = sudeste, a rota clássica na Flórida. */
+  eventBearingDeg?: number
   powerOut: boolean
   networkDown: boolean
   roadsBlocked: boolean
@@ -90,6 +99,8 @@ export const DEFAULT_SIMULATION: SimulationConfig = {
   severity: 3,
   arrivalHours: 12,
   description: '',
+  eventName: '',
+  eventBearingDeg: 135,
   durationMin: 30,
   powerOut: false,
   networkDown: false,

@@ -28,6 +28,7 @@ import type { WindSnapshot } from '@/lib/world/wind'
 import { blendCycloneWind, blowingToward } from '@/lib/world/wind'
 import { WindParticleLayer } from '@/lib/world/WindParticleLayer'
 import type { MapBaseMode } from '@/lib/world/providers'
+import type { StagedEvent } from '@/lib/staged-events'
 
 // D-064 §5: no mock overlays. This component used to invent three family pins
 // ("Paulo/Isadora/Ana"), a route and a `SHELTER · mock` marker whenever it got no
@@ -445,7 +446,7 @@ export const DEFAULT_LAYERS: MapLayerState = {
   tornado: true,
 }
 
-export default function WorldMap({ plateUrl, family = [], shelters = [], guidance = null, mapBase = 'hybrid', routeFocusNonce = 0, focus = null, courseTo = null, recenterNonce = 0, cyclones = null, wind = null, layers = DEFAULT_LAYERS, onMemberTap, onMapInteraction }: {
+export default function WorldMap({ plateUrl, family = [], shelters = [], guidance = null, mapBase = 'hybrid', routeFocusNonce = 0, focus = null, courseTo = null, recenterNonce = 0, cyclones = null, wind = null, layers = DEFAULT_LAYERS, onMemberTap, onMapInteraction, stagedEvents = [] }: {
   state: string
   plateUrl: string
   family?: WorldFamilyMember[]
@@ -479,6 +480,15 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
   layers?: MapLayerState
   /** Tapping a face is how the user acts on a person, not just sees them (D-073). */
   onMemberTap?: (id: string) => void
+  /**
+   * Eventos ENCENADOS do treino (SIM-T12 / D-201).
+   *
+   * Chegam por uma prop PRÓPRIA, e não misturados em `cyclones`/hazards. É a
+   * fronteira de D-200 chegando até aqui: o mapa nunca precisa perguntar se um
+   * evento é real — ele recebe as duas listas separadas e desenha cada uma do
+   * seu jeito.
+   */
+  stagedEvents?: StagedEvent[]
   onMapInteraction?: () => void
 }) {
   const { coords } = useRisk()
@@ -907,6 +917,96 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
     }
   }
 
+  /*
+   * ── O TREINO DESENHADO (SIM-T12 / D-201) ────────────────────────────────
+   *
+   * Três camadas por evento: a pegada preenchida, a rota tracejada e o nome.
+   *
+   * **O tracejado e o roxo não são gosto.** Todo evento real deste mapa usa
+   * linha cheia e a paleta de risco — âmbar, laranja, vermelho. O encenado usa
+   * traço interrompido e uma cor que não pertence a nenhuma severidade, para
+   * que a diferença sobreviva a uma olhada de dois segundos numa tela pequena.
+   * A faixa global do treino já grita (doc 19 §5.2); isto é a segunda camada da
+   * mesma promessa, no lugar onde a decisão é tomada.
+   */
+  const SIM_COR = '#a78bfa'
+
+  const renderStaged = () => {
+    const map = mapRef.current
+    if (!map || !map.isStyleLoaded()) return
+
+    const fc = {
+      type: 'FeatureCollection' as const,
+      features: stagedEvents.map(e => ({
+        type: 'Feature' as const,
+        properties: { id: e.id, label: e.headline, kind: e.kind },
+        geometry: { type: 'Polygon' as const, coordinates: [e.footprint] },
+      })),
+    }
+    const rotas = {
+      type: 'FeatureCollection' as const,
+      features: stagedEvents.filter(e => e.track.length > 1).map(e => ({
+        type: 'Feature' as const,
+        properties: { id: e.id },
+        geometry: {
+          type: 'LineString' as const,
+          coordinates: e.track.map(p => [p.lng, p.lat] as [number, number]),
+        },
+      })),
+    }
+    const centros = {
+      type: 'FeatureCollection' as const,
+      features: stagedEvents.map(e => ({
+        type: 'Feature' as const,
+        properties: { label: e.headline },
+        geometry: { type: 'Point' as const, coordinates: [e.center.lng, e.center.lat] },
+      })),
+    }
+
+    const upsert = (id: string, data: unknown) => {
+      const src = map.getSource(id) as { setData?: (d: unknown) => void } | undefined
+      if (src?.setData) { src.setData(data); return true }
+      map.addSource(id, { type: 'geojson', data } as never)
+      return false
+    }
+
+    const jaExistia = upsert('eos-staged-area', fc)
+    upsert('eos-staged-track', rotas)
+    upsert('eos-staged-center', centros)
+    if (jaExistia) return
+
+    map.addLayer({
+      id: 'eos-staged-fill',
+      type: 'fill',
+      source: 'eos-staged-area',
+      paint: { 'fill-color': SIM_COR, 'fill-opacity': 0.16 },
+    })
+    map.addLayer({
+      id: 'eos-staged-outline',
+      type: 'line',
+      source: 'eos-staged-area',
+      paint: { 'line-color': SIM_COR, 'line-width': 1.6, 'line-dasharray': [3, 2] },
+    })
+    map.addLayer({
+      id: 'eos-staged-track-line',
+      type: 'line',
+      source: 'eos-staged-track',
+      paint: { 'line-color': SIM_COR, 'line-width': 2.2, 'line-dasharray': [1, 2], 'line-opacity': 0.85 },
+    })
+    map.addLayer({
+      id: 'eos-staged-label',
+      type: 'symbol',
+      source: 'eos-staged-center',
+      layout: {
+        'text-field': ['get', 'label'],
+        'text-size': 12,
+        'text-offset': [0, -1.4],
+        'text-allow-overlap': true,
+      },
+      paint: { 'text-color': SIM_COR, 'text-halo-color': '#0a0a0f', 'text-halo-width': 1.6 },
+    })
+  }
+
   const renderPeakSurge = async () => {
     const map = mapRef.current
     if (!map) return
@@ -1183,6 +1283,7 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
           loadRadar()
           renderHazards(cur)
           renderPeakSurge()
+          renderStaged()
         })
       } catch {
         // WebGL/init failure → keep the static plate visible (§28)
@@ -1213,6 +1314,18 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapBase])
+
+  /*
+   * O treino redesenha quando muda — inclusive quando ESVAZIA.
+   *
+   * Encerrar a simulação faz `stagedEvents` virar `[]`, e este efeito manda a
+   * coleção vazia para o mapa. O furacão de mentira some sem ninguém precisar
+   * lembrar de apagá-lo: é a fronteira de D-200 chegando ao pixel.
+   */
+  useEffect(() => {
+    renderStaged()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stagedEvents, mapReadyNonce])
 
   // recenter when the real location resolves/changes
   useEffect(() => {

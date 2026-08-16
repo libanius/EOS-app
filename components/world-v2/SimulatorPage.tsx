@@ -29,9 +29,28 @@ import {
   type ThreatType,
 } from '@/lib/simulation'
 import { Card, Pill, SectionLabel } from './primitives'
+import { kindDoThreat } from '@/lib/staged-events'
 import MaisNav from './MaisNav'
 import { SPRING, haptic } from './motion'
 import './world-v2.css'
+
+/**
+ * De onde ele vem, em graus de bússola.
+ *
+ * Oito, e não um seletor livre: sob estresse ninguém digita "137°", e a
+ * diferença entre 135 e 137 não muda decisão nenhuma. O sudeste vem primeiro
+ * porque é a rota clássica na Flórida.
+ */
+const RUMOS = [
+  { deg: 135, pt: 'Sudeste', en: 'Southeast' },
+  { deg: 180, pt: 'Sul', en: 'South' },
+  { deg: 225, pt: 'Sudoeste', en: 'Southwest' },
+  { deg: 270, pt: 'Oeste', en: 'West' },
+  { deg: 315, pt: 'Noroeste', en: 'Northwest' },
+  { deg: 0, pt: 'Norte', en: 'North' },
+  { deg: 45, pt: 'Nordeste', en: 'Northeast' },
+  { deg: 90, pt: 'Leste', en: 'East' },
+]
 
 const COPY = {
   pt: {
@@ -47,6 +66,11 @@ const COPY = {
     threat: 'Ameaça',
     severity: 'Severidade',
     arrival: 'Chegada',
+    eventName: 'Nome do evento',
+    eventNamePlaceholder: 'Ex.: Furacão Isadora',
+    eventNameHelp: 'Aparece no mapa durante o treino. Dar nome é o que faz a família falar dele.',
+    comesFrom: 'Vem de',
+    noGeography: 'Este cenário não desenha no mapa — apagão e frio não têm um ponto de origem.',
     now: 'agora',
     hours: 'h',
     conditions: 'O que já falhou',
@@ -105,6 +129,11 @@ const COPY = {
     threat: 'Threat',
     severity: 'Severity',
     arrival: 'Arrival',
+    eventName: 'Event name',
+    eventNamePlaceholder: 'e.g. Hurricane Isadora',
+    eventNameHelp: 'Shows on the map during the drill. Naming it is what makes the family talk about it.',
+    comesFrom: 'Comes from',
+    noGeography: 'This scenario draws nothing on the map — a blackout has no point of origin.',
     now: 'now',
     hours: 'h',
     conditions: 'What has already failed',
@@ -364,6 +393,53 @@ export default function SimulatorPage() {
                   </Chip>
                 ))}
               </div>
+
+              {/*
+                ── DAR NOME AO QUE ESTÁ VINDO (SIM-T12 / D-201) ──────────────
+
+                Pedido do dono: *"dar nome a ele"*. Não é enfeite. Uma família
+                não conversa sobre "o cenário de furacão categoria 3" — ela
+                conversa sobre a **Isadora**. O nome é o que faz o treino virar
+                assunto, e o que faz a lembrança durar depois que ele acaba.
+
+                Os campos só aparecem para as ameaças que TÊM geografia
+                (`kindDoThreat`). Pedir nome e rumo para um apagão seria coletar
+                um dado que não vai a lugar nenhum — e sugerir que existe um
+                "ponto do apagão", que é justamente o que D-200 recusou.
+              */}
+              {kindDoThreat(draft.threat) ? (
+                <>
+                  <div className="sim-row" style={{ marginTop: '1rem' }}>
+                    <span className="t-caps ink-3">{c.eventName}</span>
+                  </div>
+                  <input
+                    className="wv2-input"
+                    value={draft.eventName ?? ''}
+                    maxLength={40}
+                    placeholder={c.eventNamePlaceholder}
+                    aria-label={c.eventName}
+                    onChange={e => set({ eventName: e.target.value })}
+                  />
+                  <p className="t-foot ink-3" style={{ margin: '0.4rem 0 0' }}>{c.eventNameHelp}</p>
+
+                  <div className="sim-row" style={{ marginTop: '1rem' }}>
+                    <span className="t-caps ink-3">{c.comesFrom}</span>
+                  </div>
+                  <div className="sim-chips">
+                    {RUMOS.map(r => (
+                      <Chip
+                        key={r.deg}
+                        on={(draft.eventBearingDeg ?? 135) === r.deg}
+                        onClick={() => set({ eventBearingDeg: r.deg })}
+                      >
+                        {pt ? r.pt : r.en}
+                      </Chip>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <p className="t-foot ink-3" style={{ margin: '1rem 0 0' }}>{c.noGeography}</p>
+              )}
             </Card>
 
             {/* ── Infrastructure ── */}

@@ -21,6 +21,7 @@ import { useLanguage } from '@/lib/i18n'
 import { useRisk } from '@/components/v2/RiskProvider'
 import { useSimulation } from '@/components/SimulationProvider'
 import { SOURCE_LABELS, isSourceDown } from '@/lib/simulation'
+import { stageEvents } from '@/lib/staged-events'
 import WorldMap from '@/components/world-dashboard/WorldMap'
 import DetentSheet, { type Detent } from './DetentSheet'
 import PilotBar from './PilotBar'
@@ -427,6 +428,27 @@ export default function WorldV2() {
   // A failed instrument must actually be blind, not quietly still working.
   const shelterSnapshot = isSourceDown(simulation.config, 'shelters') ? null : shelterSnapshotRaw
 
+  /*
+   * Os eventos ENCENADOS (SIM-T12 / D-201).
+   *
+   * `simulation.active &&` é a fronteira inteira. Fora do treino a lista é
+   * vazia — não porque alguém limpa, mas porque ela nunca chega a existir.
+   * Encerrar a simulação apaga o furacão de mentira por construção.
+   */
+  const stagedEvents = useMemo(
+    () => (simulation.active && simulation.config
+      ? stageEvents({
+          threat: simulation.config.threat,
+          severity: simulation.config.severity,
+          arrivalHours: simulation.config.arrivalHours,
+          home: coords ? { lat: coords.lat, lng: coords.lng } : null,
+          name: simulation.config.eventName,
+          bearingDeg: simulation.config.eventBearingDeg,
+        })
+      : []),
+    [simulation.active, simulation.config, coords],
+  )
+
   const [detent, setDetent] = useState<Detent>('peek')
   const [isDesktop, setIsDesktop] = useState(false)
   const [panelOpen, setPanelOpen] = useState(true)
@@ -610,6 +632,7 @@ export default function WorldV2() {
           layers={effectiveLayers}
           onMemberTap={setTappedMember}
           shelters={(shelterSnapshot?.shelters ?? []).map(s => ({ id: s.id, name: s.name, lat: s.lat, lng: s.lng, distanceKm: s.distanceKm }))}
+          stagedEvents={stagedEvents}
           onMapInteraction={() => setDetent('hidden')}
         />
       </div>
