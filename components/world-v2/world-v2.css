@@ -3187,6 +3187,10 @@
   top: calc(50px + 3 * 62px);
   z-index: 60;
   width: min(280px, calc(100vw - var(--edge) * 2));
+  max-height: clamp(180px, calc(100dvh - 348px), 520px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   display: grid;
   gap: var(--s2);
   padding: var(--s4);

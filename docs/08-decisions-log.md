@@ -4,6 +4,27 @@
 
 ---
 
+## D-197 — Camadas rola dentro do próprio painel
+
+**Date**: 2026-08-16
+**Status**: DECIDED
+**Roadmap**: WV2-T29
+**Pedido do dono**: *"preciso ser capaz de scroll para cima em para baixo em
+qualquer device."*
+
+**Context**: depois de deixar os controles sempre expandidos, o painel de
+Camadas continuou absoluto sobre o mapa. Em telas menores, a lista de bases,
+camadas, notas e ciclones ultrapassava a área visível e ficava presa atrás da
+sheet inferior, sem rolagem própria.
+
+**Decision**: `Camadas` passa a ter altura máxima por viewport e `overflow-y:
+auto`, com rolagem touch nativa e `overscroll-behavior: contain`.
+
+**Consequence**: o usuário consegue percorrer o painel para cima e para baixo em
+telefone, tablet e desktop sem mover a página nem perder o contexto do mapa.
+
+---
+
 ## D-196 — Controles do mapa ficam sempre expandidos
 
 **Date**: 2026-08-15

@@ -45,6 +45,9 @@ hover/foco no desktop, toque no mobile. Não troque ações programáticas
 `peek` porque precisam preservar contexto.
 **Follow-up D-196:** a coluna lateral do mapa não recolhe mais. `Você`,
 `Atualizar` e `Camadas` ficam sempre visíveis; o botão `.../x` saiu.
+**Follow-up D-197:** o painel de `Camadas` deve rolar dentro dele mesmo em
+qualquer device; não deixe conteúdo depender do scroll da página, porque o Mapa
+do Mundo é uma superfície fixa.
 
 **Ordem das fases: absorções primeiro.** São elas que liberam os slots — mexer
 na barra antes seria mudar o visível sem ter para onde mover o resto.
