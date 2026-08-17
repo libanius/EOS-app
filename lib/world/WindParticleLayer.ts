@@ -440,7 +440,22 @@ export class WindParticleLayer {
       return
     }
     const latRad = p.lat * Math.PI / 180
-    const globalScale = this.grid && gridWrapsWorld(this.grid) ? 0.58 : 1
+    /*
+     * ── O AMORTECEDOR GLOBAL FOI EMBORA (D-206) ────────────────────────────
+     *
+     * Era `0.58` quando a grade cobre o mundo: as partículas globais andavam
+     * **42% mais devagar** que a mesma velocidade vista de perto. Ele existia
+     * para compensar o passo em graus não normalizado — no zoom afastado tudo
+     * disparava, e alguém freou no braço.
+     *
+     * D-204 normalizou o passo pela projeção. Com isso o amortecedor deixou de
+     * compensar coisa alguma e passou a ser só uma mentira: o mesmo vento
+     * contava velocidades diferentes conforme a distância do olho.
+     *
+     * Achado do dono: *"de perto o movimento coincide com o radar de chuva e
+     * parece certo; de longe tudo parece mais fake"*. Metade disso era isto.
+     */
+    const globalScale = 1
     /*
      * ── O PASSO É NORMALIZADO PELA ESCALA DO MAPA (D-204) ──────────────────
      *

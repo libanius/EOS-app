@@ -1958,7 +1958,15 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
         data-active={layers?.wind ? 'true' : 'false'}
         style={{ ['--wind-particle-opacity' as string]: String(0.42 + windMapOpacity * 0.58) }}
       />
-      {layers?.wind && windControlsVisible && windForMap?.readings.length ? (
+      {/*
+        O controle não espera o DADO (D-206).
+        Achado do dono: *"o toggle não aparece sempre"*. Ele exigia
+        `readings.length`, então sumia durante a busca da grade global — que é
+        exatamente o momento em que a pessoa está olhando e querendo mexer.
+        `windControlsVisible` continua: aquilo é o chrome saindo da frente
+        enquanto se arrasta o mapa, e é intencional.
+      */}
+      {layers?.wind && windControlsVisible ? (
         <div ref={windLegendRef} className="world-wind-legend" data-open={windControlsOpen ? 'true' : 'false'}>
           <button
             type="button"
@@ -1971,14 +1979,15 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
           <span className="world-wind-title">WIND SPEED</span>
           <b className="world-wind-scale">0</b><b className="world-wind-scale">10</b><b className="world-wind-scale">20</b><b className="world-wind-scale">30</b><b className="world-wind-scale">40+ mph</b>
           <i className="world-wind-ramp" aria-hidden="true" />
-          {windForMap.frames.length > 1 ? (
+          {/* A linha do tempo só existe quando os quadros chegam. */}
+          {(windForMap?.frames.length ?? 0) > 1 ? (
             <label className="world-wind-time">
               <span>{activeWindFrame?.label ?? 'NOW'}</span>
               <input
                 ref={windTimeInputRef}
                 type="range"
                 min={0}
-                max={windForMap.frames.length - 1}
+                max={(windForMap?.frames.length ?? 1) - 1}
                 value={windFrameIndex}
                 onInput={setWindFrameFromInput}
                 onChange={setWindFrameFromInput}

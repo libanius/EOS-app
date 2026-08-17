@@ -4,6 +4,58 @@
 
 ---
 
+## D-206 — De longe o vento mentia duas vezes
+
+**Date**: 2026-08-16
+**Status**: DECIDED
+**Roadmap**: MAP-T09
+**Achado do dono**: *"de perto o movimento coincide com o radar de chuva e me
+parece certo; de longe tudo parece mais fake, não condiz com o que de perto é."*
+
+**Context**: A observação é precisa e aponta para dois números diferentes.
+
+**Mentira 1 — o amortecedor.** `globalScale = 0.58`: quando a grade cobre o
+mundo, as partículas andavam **42% mais devagar** que a mesma velocidade vista
+de perto. Ele existia para compensar o passo em graus não normalizado — afastado
+tudo disparava, e alguém freou no braço. **D-204 normalizou o passo pela
+projeção**, e com isso o amortecedor deixou de compensar coisa alguma: virou
+distorção pura, fazendo o mesmo vento contar velocidades diferentes conforme a
+distância do olho. Removido.
+
+**Mentira 2 — a resolução, e essa NÃO foi corrigida.**
+
+```
+global : 25×25 sobre 170°×360°  →  uma leitura a cada 1.598 km
+local  : 25×25 sobre ~0,4°      →  uma leitura a cada 1,8 km
+                                   razão: 900×
+```
+
+Tudo entre os pontos globais é **interpolação bilinear** — invenção suave entre
+amostras separadas por 1.600 km. É por isso que de perto o campo coincide com o
+radar de chuva (a estrutura real está resolvida) e de longe parece liso demais.
+
+**Decision**:
+
+1. **O amortecedor global sai.** Velocidade é velocidade, em qualquer zoom.
+
+2. **A resolução global fica como está, e a limitação fica ESCRITA.** Subir a
+   grade multiplica o tempo da busca — e "demora para carregar" foi queixa do
+   mesmo dono, no mesmo dia. Trocar uma queixa por outra sem ele decidir seria
+   escolher por ele. **Registrado como MAP-T10, com os números na mão.**
+
+3. **O controle não espera o dado.** Ele exigia `readings.length` e sumia
+   durante a busca da grade global — exatamente quando a pessoa está olhando e
+   querendo mexer.
+
+4. **Três estados nos valores**, como pedido: `OFF → FRACO → ON`. Transparente é
+   útil de verdade: deixa ler o número sem tapar o padrão embaixo, que era a
+   queixa original de D-205.
+
+**Não autorizado por D-206**: subir a resolução global sem decisão sobre o custo
+de latência, reintroduzir amortecimento por zoom.
+
+---
+
 ## D-205 — O mapa não pode perder o primeiro gesto para uma zona invisível
 
 **Date**: 2026-08-16
