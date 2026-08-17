@@ -1,4 +1,4 @@
-import type { PlanDocument, PlanRoute, PlanTrigger, PlanWaypoint } from './family-plan'
+import type { PlanDocument, PlanRoute, PlanTrigger, PlanWaypoint, WaypointKind } from './family-plan'
 
 export type PlanExecutionStepKind = 'circle' | 'trigger' | 'role' | 'rendezvous' | 'route' | 'finish'
 
@@ -7,6 +7,13 @@ export type PlanExecutionStep = {
   kind: PlanExecutionStepKind
   title: string
   body: string
+}
+
+export type PlanExecutionProtocol = {
+  id: string
+  label: string
+  trigger: PlanTrigger | null
+  triggerIndex: number | null
 }
 
 const ORDER: Record<string, number> = {
@@ -28,6 +35,48 @@ function routeSummary(route: PlanRoute, pt: boolean) {
     : mode
 }
 
+function inferRendezvousKind(trigger: PlanTrigger | null): WaypointKind | null {
+  const text = `${trigger?.condition ?? ''} ${trigger?.action ?? ''}`
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+
+  if (/(evacu|fora da regiao|out-of-region|regional|saida)/.test(text)) return 'rendezvous_3'
+  if (/\b(bairro|neighbourhood|neighborhood|escola|school)\b/.test(text)) return 'rendezvous_2'
+  if (/\b(casa|porta|imovel|doorstep|home|building)\b/.test(text)) return 'rendezvous_1'
+  return null
+}
+
+function destinationCopy(kind: WaypointKind | null, pt: boolean) {
+  if (!kind) {
+    return pt
+      ? 'Revise os pontos do plano e escolha o destino que combina com este protocolo.'
+      : 'Review the plan points and choose the destination that matches this protocol.'
+  }
+  return pt
+    ? 'Destino provável para este protocolo. Confirme se a orientação oficial não mudou.'
+    : 'Likely destination for this protocol. Confirm official guidance has not changed.'
+}
+
+export function buildPlanExecutionProtocols(doc: PlanDocument, pt: boolean): PlanExecutionProtocol[] {
+  const triggers = doc.triggers ?? []
+  if (!triggers.length) {
+    return [{
+      id: 'general',
+      label: pt ? 'Execução geral do plano' : 'General plan execution',
+      trigger: null,
+      triggerIndex: null,
+    }]
+  }
+
+  return triggers.map((trigger, index) => ({
+    id: `trigger-${index}`,
+    label: trigger.condition,
+    trigger,
+    triggerIndex: index,
+  }))
+}
+
 /**
  * PLAN-T08 / D-079: turn the approved plan into a local execution script.
  *
@@ -35,9 +84,15 @@ function routeSummary(route: PlanRoute, pt: boolean) {
  * family's approved plan; it does not invent a new plan because a model found a
  * persuasive sentence.
  */
-export function buildPlanExecutionSteps(doc: PlanDocument, pt: boolean): PlanExecutionStep[] {
+export function buildPlanExecutionSteps(
+  doc: PlanDocument,
+  pt: boolean,
+  protocol: PlanExecutionProtocol | PlanTrigger | null = null,
+): PlanExecutionStep[] {
   const steps: PlanExecutionStep[] = []
   const version = doc.plan?.version ? `v${doc.plan.version}` : pt ? 'versão atual' : 'current version'
+  const trigger = protocol && 'trigger' in protocol ? protocol.trigger : protocol
+  const inferredKind = inferRendezvousKind(trigger)
 
   steps.push({
     id: 'circle-alert',
@@ -48,9 +103,18 @@ export function buildPlanExecutionSteps(doc: PlanDocument, pt: boolean): PlanExe
       : `Tell the circle that plan ${version} is now running. Then ask everyone for status and location.`,
   })
 
-  ;(doc.triggers ?? []).forEach((trigger, index) => {
-    steps.push(triggerStep(trigger, index, pt))
-  })
+  if (trigger) {
+    steps.push(triggerStep(trigger, pt))
+  } else if (doc.triggers?.length) {
+    steps.push({
+      id: 'protocol-missing',
+      kind: 'trigger',
+      title: pt ? 'Escolha o protocolo' : 'Choose the protocol',
+      body: pt
+        ? 'Antes de avançar, selecione qual gatilho está acontecendo agora.'
+        : 'Before continuing, select which trigger is happening now.',
+    })
+  }
 
   ;(doc.roles ?? []).forEach((role, index) => {
     steps.push({
@@ -61,7 +125,13 @@ export function buildPlanExecutionSteps(doc: PlanDocument, pt: boolean): PlanExe
     })
   })
 
-  for (const point of orderedRendezvous(doc.waypoints ?? [])) {
+  const rendezvous = orderedRendezvous(doc.waypoints ?? [])
+  const matchingRendezvous = inferredKind
+    ? rendezvous.filter(point => point.kind === inferredKind)
+    : []
+  const selectedRendezvous = matchingRendezvous.length ? matchingRendezvous : rendezvous
+
+  for (const point of selectedRendezvous) {
     const rank = ORDER[point.kind]
     steps.push({
       id: `rendezvous-${point.kind}`,
@@ -69,9 +139,7 @@ export function buildPlanExecutionSteps(doc: PlanDocument, pt: boolean): PlanExe
       title: pt ? `Ponto ${rank}: ${point.name}` : `Point ${rank}: ${point.name}`,
       body: point.notes?.trim()
         ? point.notes.trim()
-        : pt
-          ? 'Use este ponto apenas se ele combina com o gatilho e com a orientação oficial.'
-          : 'Use this point only if it matches the trigger and official guidance.',
+        : destinationCopy(inferredKind, pt),
     })
   }
 
@@ -96,11 +164,11 @@ export function buildPlanExecutionSteps(doc: PlanDocument, pt: boolean): PlanExe
   return steps
 }
 
-function triggerStep(trigger: PlanTrigger, index: number, pt: boolean): PlanExecutionStep {
+function triggerStep(trigger: PlanTrigger, pt: boolean): PlanExecutionStep {
   return {
-    id: `trigger-${index}`,
+    id: 'active-protocol',
     kind: 'trigger',
-    title: pt ? `Gatilho: ${trigger.condition}` : `Trigger: ${trigger.condition}`,
+    title: pt ? `Protocolo: ${trigger.condition}` : `Protocol: ${trigger.condition}`,
     body: pt ? `Ação combinada: ${trigger.action}` : `Agreed action: ${trigger.action}`,
   }
 }

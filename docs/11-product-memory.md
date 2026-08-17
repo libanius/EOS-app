@@ -1,7 +1,7 @@
 # 11 — Product Memory
 
 > Non-obvious facts that don't belong in code comments but must survive across sessions.
-> Last updated: 2026-08-12
+> Last updated: 2026-08-17
 
 ---
 
@@ -73,6 +73,14 @@ na barra antes seria mudar o visível sem ter para onde mover o resto.
 pegou: sem círculo, o Plano renderiza um ramo curto, e a faixa estava só no
 principal — a pessoa sem círculo chegaria numa tela sem saída. Justamente quem
 mais precisa de um caminho de volta.
+
+**Plano é envelope; protocolo é execução (D-207 / PLAN-T11).** O executor não
+deve despejar o documento inteiro. Primeiro escolhe o plano salvo; depois escolhe
+o protocolo/gatilho ativo. No MVP, cada `family_plan_triggers` salvo é uma
+opção acionável. O Pilot pode sugerir protocolo, mas só vira executável depois
+de aplicado ao rascunho e salvo. Sem migration nova: a execução local seleciona
+um gatilho, mostra sua ação, papéis, ponto provável por heurística textual e
+rotas/notas existentes.
 
 **O teste de navegador roda contra `.next`.** Editar componente e rodar o teste
 sem `npm run build` testa o build anterior. Perdi uma rodada com isso.

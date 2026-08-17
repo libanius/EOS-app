@@ -1,7 +1,7 @@
 # 09 — Build Status
 
 > The single most important file for resuming a session. Read this first after AGENTS.md.
-> Last updated: 2026-08-15
+> Last updated: 2026-08-17
 
 ---
 
@@ -15,6 +15,7 @@
 | **Migrações aplicadas** | `locations`, `holdings`, `kits`, `requirements`, `checklists.status` — todas verificadas por REST. |
 | **Migrações aplicadas** | As duas de Preparedness State **aplicadas em 2026-08-13** e verificadas por REST: `locations`, `holdings`, `kits`, `requirements` → 200. Nenhuma pendência operacional. |
 | **Last Completed Task** | **D-188 / COMMS-T12 — lista, thread e conversa individual (2026-08-15)** |
+| | **D-207 / PLAN-T11 — execução escolhe protocolo dentro do plano (2026-08-17)** |
 | | **D-205 / WV2 touch follow-up — alça de retorno do sheet não rouba pan do mapa (2026-08-16)** |
 | | **D-204 / SIM-T08 follow-up — leituras simuladas ajustam por slider e stepper (2026-08-16)** |
 | | **D-201 / WV2-T31 — controles de vento recolhíveis junto ao botão Vento (2026-08-16)** |
@@ -229,6 +230,7 @@ rota ou UI foi alterado.**
 | **Fases pedidas pelo dono (2026-07-31)** | ✅ 1. Camadas de clima + rastreio de ciclone (D-078). 2. Reinventar a aba Família no design system da v2, com componentes dinâmicos. 3. WV2-T05 (a11y/perf), PLAN-T07 (Pilot propõe plano). |
 | **Next Task** | **SIM-T12 — Simulador encena eventos no mapa.** Precisa de decisão sobre onde o evento falso entra sem contaminar o snapshot verdadeiro. |
 | **Build** | ✅ D-205 validado em 2026-08-16 com `npm run type-check`, `git diff --check`, `npm run build` e Playwright mobile no Mundo: o antigo y=692 virou canvas, a lateral baixa virou canvas, a alça central ainda reabre o sheet e drags movem o MapLibre no primeiro gesto. |
+| | ✅ D-207 validado em 2026-08-17 com `npm run type-check`, `npm test -- --runInBand lib/__tests__/plan-execution.test.ts`, `git diff --check` e `npm run build`. |
 | | ✅ D-204 validado em 2026-08-16 com `npm run type-check`, `npm run build`, `git diff --check` e Playwright mobile em `/mais/treino`: 7 sliders de Clima simulado; slider de Vento alterou `45km/h → 160km/h`; botão `+` continuou para `165km/h`. |
 | | ✅ WV2-T30 validado em 2026-08-16 com `npm run type-check`, `git diff --check`, `npm run build`, `/api/world/peak-surge` lendo KML NHC real de Lala e Playwright mobile confirmando fonte/layer `eos-peak-surge-*` com polígonos. |
 | | ✅ WV2-T29 validado em 2026-08-16 com `npm run type-check`, `git diff --check`, `npm run build` e Playwright mobile no dashboard: painel `Camadas` tem overflow vertical e aceita scroll interno. |
@@ -253,6 +255,7 @@ rota ou UI foi alterado.**
 | | ✅ WV2-T14 validado em 2026-08-10 com `npm run type-check`, `npm test -- --runInBand` (202/202), `npm run build`, `npm run test:weather` (8/8; `WindParticleLayer` bilinear `9x9`, 780 partículas) e `git diff --check`. |
 | **Plano execução** | ✅ PLAN-T08 MVP: tocar no próprio rosto no mapa abre comando familiar; "Executar plano" carrega um plano escolhido, monta passos determinísticos do host (círculo → gatilhos → papéis → pontos → rotas → encerramento) e alerta o círculo com push preset "Execute o plano da família agora". Sem nova tabela ainda: timeline compartilhada fica para `family_plan_executions`. |
 | **Plano múltiplo** | ✅ PLAN-T09: o círculo pode ter vários planos ativos; `/plan` alterna/cria planos por nome, o executor escolhe qual plano rodar, passos fixos do EOS saem da lista numerada e há cancelar/falso alarme. Migration `20260731000000_multiple_family_plans.sql` aplicada pelo dono. |
+| **Protocolos de execução** | ✅ PLAN-T11: execução é plano → protocolo. Cada gatilho salvo vira protocolo acionável; o host local pede a escolha antes dos passos e mostra o caminho selecionado. Sem migration nova; timeline compartilhada segue futura em `family_plan_executions`. |
 | **Rotas do plano** | ✅ PLAN-T10: cada rota desenhada no plano agora tem handoff "Google Maps" com origem, destino e paradas intermediárias na ordem da `LineString`. O EOS mantém o combinado offline; Google Maps calcula ruas/ETA quando abrir. |
 | **Família** | ✅ `npm run test:family` **5/5** (2026-08-01) — posição com frescor, quem NÃO está coberto e por quê, papel do plano junto da pessoa, necessidades que mudam a decisão, e o cadastro preservado em `/family-legacy`. |
 | **Planos** | ✅ `npm run test:multiplan` **4/4** (2026-08-01) — dois planos coexistem, salvar um não toca no outro, id de outro círculo é 403 e salvar sem dizer qual é 409. |

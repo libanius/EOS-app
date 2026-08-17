@@ -219,6 +219,7 @@ product phase sequenced.
 | PLAN-T08 | Executar Plano: Pilot host situacional + painel de ação familiar | ✅ COMPLETE (MVP local) | 2026-07-31 — D-079. Tocar no próprio rosto no mapa abre ferramentas de comando; o host deriva passos da versão atual do plano e alerta o círculo para executar agora. Timeline compartilhada e `family_plan_executions` ficam como próxima evolução. |
 | PLAN-T09 | Múltiplos planos + cancelar execução | ✅ COMPLETE | 2026-07-31 — D-080. Remove a regra de um plano ativo por círculo, permite criar/alternar planos por situação e torna cancelamento/falso alarme explícito. Passos fixos do EOS saem da lista numerada editável. |
 | PLAN-T10 | Handoff de rota multi-stop para Google Maps | ✅ COMPLETE | 2026-07-31 — D-082. A rota autoral/offline do EOS abre o Google Maps com origem, destino e paradas intermediárias na ordem do traçado. Sem migration. |
+| PLAN-T11 | Execução por protocolo dentro do plano | ✅ COMPLETE | 2026-08-17 — D-207. Plano é envelope; gatilhos salvos viram protocolos acionáveis. O host escolhe o protocolo antes de montar os passos locais. |
 
 ---
 

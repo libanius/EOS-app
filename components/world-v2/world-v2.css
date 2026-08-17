@@ -2616,6 +2616,36 @@
   font-size: 0.8125rem;
   font-style: normal;
 }
+.wv2-member .protocol-choices {
+  margin-top: var(--s2);
+}
+.wv2-member .selected-protocol {
+  width: 100%;
+  min-height: 54px;
+  margin: 0 0 var(--s3);
+  padding: var(--s3);
+  border: 1px solid rgba(var(--accent-rgb), 0.42);
+  border-radius: 14px;
+  background: rgba(var(--accent-rgb), 0.13);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.wv2-member .selected-protocol strong,
+.wv2-member .selected-protocol em {
+  display: block;
+}
+.wv2-member .selected-protocol em {
+  margin-top: 2px;
+  color: var(--accent);
+  font-size: 0.8125rem;
+  font-style: normal;
+  font-weight: 700;
+}
+.wv2-member .note.compact {
+  margin-top: var(--s2);
+}
 .wv2-member .execution-head {
   display: flex;
   align-items: flex-start;

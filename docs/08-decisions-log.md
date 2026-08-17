@@ -4,6 +4,44 @@
 
 ---
 
+## D-207 — Plano não executa documento; executa protocolo
+
+**Date**: 2026-08-17
+**Status**: DECIDED
+**Roadmap**: PLAN-T11
+**Pedido do dono**: *"eu deveria escolher em uma lista de protocolos/planos qual
+executar, seja o Pilot sugerir ou eu acionar."*
+
+**Context**: PLAN-T08 e PLAN-T09 permitiram executar um plano e escolher entre
+vários planos do círculo. Mas depois da escolha o host local ainda despejava o
+documento inteiro em ordem fixa: todos os gatilhos, todos os papéis, todos os
+pontos e todas as rotas. Isso não é execução operacional; é leitura assistida.
+
+**Decision**:
+
+1. **Plano é envelope; protocolo é execução.** O usuário primeiro escolhe o
+   plano salvo e depois escolhe qual gatilho/protocolo está ativo.
+
+2. **Gatilhos atuais viram protocolos MVP.** Sem migration nova, cada
+   `family_plan_triggers` define uma opção acionável: condição observável +
+   ação combinada. O Pilot pode sugerir esses gatilhos, mas eles só entram como
+   protocolo depois de aplicados ao rascunho e salvos pelo usuário.
+
+3. **Executar mostra o caminho selecionado, não o documento inteiro.** O host
+   local sempre alerta o círculo, mostra o protocolo ativo, aplica papéis, tenta
+   destacar o ponto de encontro compatível com a ação e inclui rotas/notas
+   existentes. Quando não houver gatilho salvo, cai para execução geral.
+
+4. **Sem fingir automação que não existe.** A inferência de ponto é heurística
+   textual simples sobre ações já aprovadas; ela não cria rota, não decide risco
+   e não substitui autoridade oficial.
+
+**Consequence**: a execução passa a começar por "o que está acontecendo?" em vez
+de "ler todos os itens do plano". A timeline compartilhada continua futura em
+`family_plan_executions`.
+
+---
+
 ## D-206 — De longe o vento mentia duas vezes
 
 **Date**: 2026-08-16

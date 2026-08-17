@@ -18,7 +18,7 @@ import { directionsUrl, formatDistance, walkingMinutes } from '@/lib/world/navig
 import { FADE, SPRING, haptic } from './motion'
 import { PING_PRESETS, type PingPreset } from '@/lib/family-ping'
 import type { PlanDocument, PlanSummary } from '@/lib/family-plan'
-import { buildPlanExecutionSteps } from '@/lib/plan-execution'
+import { buildPlanExecutionProtocols, buildPlanExecutionSteps } from '@/lib/plan-execution'
 
 export type MapMember = {
   id: string
@@ -64,11 +64,26 @@ export default function MemberSheet({
   const [execution, setExecution] = useState<ExecutionState>({ status: 'idle' })
   const [broadcast, setBroadcast] = useState<string | null>(null)
   const [doneSteps, setDoneSteps] = useState<Set<string>>(new Set())
+  const [selectedProtocolId, setSelectedProtocolId] = useState<string | null>(null)
 
   const away = member && myCoords ? distanceKm(myCoords, member) : null
-  const executionSteps = useMemo(
-    () => execution.status === 'ready' ? buildPlanExecutionSteps(execution.doc, pt) : [],
+  const executionProtocols = useMemo(
+    () => execution.status === 'ready' ? buildPlanExecutionProtocols(execution.doc, pt) : [],
     [execution, pt],
+  )
+  const selectedProtocol = useMemo(
+    () => {
+      if (execution.status !== 'ready') return null
+      if (!execution.doc.triggers.length) return executionProtocols[0] ?? null
+      return executionProtocols.find(protocol => protocol.id === selectedProtocolId) ?? null
+    },
+    [execution, executionProtocols, selectedProtocolId],
+  )
+  const executionSteps = useMemo(
+    () => execution.status === 'ready' && selectedProtocol
+      ? buildPlanExecutionSteps(execution.doc, pt, selectedProtocol)
+      : [],
+    [execution, pt, selectedProtocol],
   )
 
   /*
@@ -120,6 +135,7 @@ export default function MemberSheet({
     setExecution({ status: 'loading' })
     setBroadcast(null)
     setDoneSteps(new Set())
+    setSelectedProtocolId(null)
 
     const circlesResponse = await fetch('/api/circles').catch(() => null)
     const circlesData = circlesResponse?.ok
@@ -164,6 +180,7 @@ export default function MemberSheet({
     }
 
     setExecution({ status: 'ready', circle, doc })
+    setSelectedProtocolId(null)
   }
 
   const sendCirclePreset = async (preset: 'execute_plan' | 'false_alarm') => {
@@ -204,6 +221,7 @@ export default function MemberSheet({
     if (notify && current.status === 'ready') await sendCirclePreset('false_alarm')
     setExecution({ status: 'idle' })
     setDoneSteps(new Set())
+    setSelectedProtocolId(null)
     setBroadcast(pt ? 'Execução cancelada.' : 'Execution cancelled.')
   }
 
@@ -378,38 +396,87 @@ export default function MemberSheet({
                         {pt ? 'Host local' : 'Local host'} · v{execution.doc.plan?.version ?? '—'}
                       </span>
                     </div>
-                    <div className="execution-actions">
-                      <button type="button" className="broadcast" onClick={() => sendCirclePreset('execute_plan')}>
-                        {pt ? 'Alertar círculo: executar agora' : 'Alert circle: run now'}
-                      </button>
-                      <button type="button" className="cancel" onClick={() => cancelExecution(false)}>
-                        {pt ? 'Cancelar' : 'Cancel'}
-                      </button>
-                    </div>
-                    <button type="button" className="false-alarm" onClick={() => cancelExecution(true)}>
-                      {pt ? 'Falso alarme: avisar e cancelar' : 'False alarm: notify and cancel'}
-                    </button>
-                    {broadcast && <p className="t-foot ink-3 note">{broadcast}</p>}
 
-                    <div className="execution-steps">
-                      {executionSteps.map((step, index) => {
-                        const done = doneSteps.has(step.id)
-                        return (
+                    {execution.doc.triggers.length > 0 && !selectedProtocol && (
+                      <>
+                        <p className="t-caps ink-3 label">{pt ? 'Protocolos' : 'Protocols'}</p>
+                        <p className="t-foot ink-3 note compact">
+                          {pt
+                            ? 'Escolha o que está acontecendo agora. O host mostra só o caminho desse protocolo.'
+                            : 'Choose what is happening now. The host shows only that protocol path.'}
+                        </p>
+                        <div className="plan-choices protocol-choices">
+                          {executionProtocols.map(protocol => (
+                            <button
+                              key={protocol.id}
+                              type="button"
+                              onClick={() => {
+                                haptic.selection()
+                                setDoneSteps(new Set())
+                                setSelectedProtocolId(protocol.id)
+                              }}
+                            >
+                              <strong>{protocol.label}</strong>
+                              <em>{protocol.trigger?.action ?? (pt ? 'Executar o plano geral' : 'Run the general plan')}</em>
+                            </button>
+                          ))}
+                        </div>
+                        <button type="button" className="false-alarm" onClick={() => cancelExecution(false)}>
+                          {pt ? 'Cancelar' : 'Cancel'}
+                        </button>
+                      </>
+                    )}
+
+                    {selectedProtocol && (
+                      <>
+                        {execution.doc.triggers.length > 0 && (
                           <button
-                            key={step.id}
                             type="button"
-                            className={done ? 'done' : ''}
-                            onClick={() => toggleStep(step.id)}
+                            className="selected-protocol"
+                            onClick={() => {
+                              haptic.selection()
+                              setSelectedProtocolId(null)
+                              setDoneSteps(new Set())
+                            }}
                           >
-                            <span className="num">{done ? '✓' : index + 1}</span>
-                            <span>
-                              <strong>{step.title}</strong>
-                              <em>{step.body}</em>
-                            </span>
+                            <strong>{selectedProtocol.label}</strong>
+                            <em>{pt ? 'Trocar protocolo' : 'Change protocol'}</em>
                           </button>
-                        )
-                      })}
-                    </div>
+                        )}
+                        <div className="execution-actions">
+                          <button type="button" className="broadcast" onClick={() => sendCirclePreset('execute_plan')}>
+                            {pt ? 'Alertar círculo: executar agora' : 'Alert circle: run now'}
+                          </button>
+                          <button type="button" className="cancel" onClick={() => cancelExecution(false)}>
+                            {pt ? 'Cancelar' : 'Cancel'}
+                          </button>
+                        </div>
+                        <button type="button" className="false-alarm" onClick={() => cancelExecution(true)}>
+                          {pt ? 'Falso alarme: avisar e cancelar' : 'False alarm: notify and cancel'}
+                        </button>
+                        {broadcast && <p className="t-foot ink-3 note">{broadcast}</p>}
+
+                        <div className="execution-steps">
+                          {executionSteps.map((step, index) => {
+                            const done = doneSteps.has(step.id)
+                            return (
+                              <button
+                                key={step.id}
+                                type="button"
+                                className={done ? 'done' : ''}
+                                onClick={() => toggleStep(step.id)}
+                              >
+                                <span className="num">{done ? '✓' : index + 1}</span>
+                                <span>
+                                  <strong>{step.title}</strong>
+                                  <em>{step.body}</em>
+                                </span>
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </>
+                    )}
                   </>
                 )}
               </section>

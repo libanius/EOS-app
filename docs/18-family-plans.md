@@ -196,14 +196,17 @@ Um plano alterado por IA sem o usuário saber é indistinguível de sabotagem.
 ## 9.1 Executar plano — Pilot como host situacional (D-079)
 
 O plano só vira produto quando pode ser **executado**. Ler a versão atual é
-preparação; executar é abrir uma sessão operacional em que o EOS guia a família
-pela ordem lógica:
+preparação; executar é abrir uma sessão operacional em que o EOS guia a família.
+Com D-207, execução não significa despejar o documento inteiro: o usuário escolhe
+um **plano** e, dentro dele, um **protocolo**. No MVP, cada gatilho observável
+salvo em `family_plan_triggers` é um protocolo acionável.
 
 1. Alertar o círculo de que o plano está em execução.
 2. Confirmar localização/presença dos membros.
-3. Ler os gatilhos observáveis e a ação correspondente.
+3. Escolher o protocolo/gatilho que está ativo e ler a ação correspondente.
 4. Aplicar os papéis: quem busca quem, quem liga, quem fica.
-5. Levar a família para o ponto de encontro correto.
+5. Levar a família para o ponto de encontro correto quando ele puder ser
+   derivado do protocolo aprovado.
 6. Usar rotas desenhadas e notas locais quando existirem.
 7. Encerrar só quando todos estiverem localizados, orientados ou explicitamente
    pendentes.
@@ -215,6 +218,12 @@ escrever plano novo no meio do evento.
 Regra de autoria: a lista numerada da execução só pode conter passos derivados
 do plano editável. Avisos fixos do EOS, como "confirme a fonte" ou "siga
 autoridades", devem aparecer como aviso do sistema, não como etapa 1 do plano.
+
+Regra de protocolo: o Pilot pode sugerir gatilhos/protocolos na revisão, mas um
+protocolo só é executável depois de aplicado ao rascunho e salvo pelo usuário.
+Quando um plano não tiver gatilhos, o host pode rodar uma execução geral para
+não bloquear a família, mas a tela deve deixar claro que falta a escolha
+operacional do "por quê estamos executando".
 
 ### Active shooting e eventos de segurança humana
 
