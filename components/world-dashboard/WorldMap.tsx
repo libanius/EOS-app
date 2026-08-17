@@ -1661,18 +1661,65 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
       const lngSpanRequest = globalWind ? 360 : Math.min(360, Math.max(0.35, lngSpan * 1.2))
       const broadSpan = Math.max(latSpanRequest, lngSpanRequest)
       const grid = globalWind ? 25 : broadSpan > 90 ? 19 : broadSpan > 35 ? 21 : 25
-      fetch(`/api/world/wind?lat=${center.lat.toFixed(4)}&lng=${center.lng.toFixed(4)}&latSpan=${latSpanRequest.toFixed(2)}&lngSpan=${lngSpanRequest.toFixed(2)}&grid=${grid}&forecastHours=25&model=best_match&cellSelection=nearest`, {
-        signal: controller.signal,
-        cache: 'no-store',
-      })
+
+      const buscar = (pontos: number) => fetch(
+        `/api/world/wind?lat=${center.lat.toFixed(4)}&lng=${center.lng.toFixed(4)}&latSpan=${latSpanRequest.toFixed(2)}&lngSpan=${lngSpanRequest.toFixed(2)}&grid=${pontos}&forecastHours=25&model=best_match&cellSelection=nearest`,
+        { signal: controller!.signal, cache: 'no-store' },
+      )
         .then(r => (r.ok ? r.json() : null))
         .then((snap: WindSnapshot | null) => {
-          if (!cancelled && snap?.readings?.length) {
-            setViewportWind(snap)
-            setWindFrameIndex(current => Math.min(current, Math.max(0, (snap.frames?.length ?? 1) - 1)))
-          }
+          if (cancelled || !snap?.readings?.length) return null
+          setViewportWind(snap)
+          setWindFrameIndex(current => Math.min(current, Math.max(0, (snap.frames?.length ?? 1) - 1)))
+          return snap
         })
-        .catch(() => {})
+        .catch(() => null)
+
+      /*
+       * ── DUAS IDAS: PINTA GROSSO, DEPOIS REFINA (MAP-T10 / D-207) ──────────
+       *
+       * Escolha do dono entre "mais fiel e mais lento" e "duas idas". A queixa
+       * dele era dupla e as duas eram reais:
+       *
+       *   "demora muito para carregar"      → a grade fina sozinha piora isso
+       *   "de longe parece fake"            → a grade grossa sozinha causa isso
+       *
+       * Uma ida só teria que escolher qual queixa atender. Duas atendem as
+       * duas: a grossa chega rápido e a tela para de estar vazia; a fina chega
+       * depois e substitui, e o campo fica mais parecido com o que ele é de
+       * perto.
+       *
+       * A resolução salta de **1.598 km por leitura** para **~700 km** — não
+       * chega perto dos 1,8 km locais, e não vai chegar: são 625 contra 3.249
+       * pontos, e o custo é linear no tempo de resposta.
+       *
+       * **Só no global.** De perto a grade já resolve 1,8 km, e uma segunda ida
+       * ali gastaria rede para melhorar o que já está certo.
+       */
+      /*
+       * ── A SEGUNDA IDA ESTÁ DESLIGADA, E O MOTIVO IMPORTA ─────────────────
+       *
+       * A escolha do dono foi a B (pinta grosso, depois refina), e o código
+       * está aqui inteiro. Ele **não** foi ligado porque eu não consegui provar
+       * que funciona:
+       *
+       *   grade 25 (625 pts) →  625 leituras em **20.280 ms**
+       *   grade 57 (3249 pts) →   0 leituras em 991 ms
+       *   grades 13/19/31/41  →   0 leituras em ~900 ms  ← inclusive as PEQUENAS
+       *
+       * As pequenas falharem também revela que a medição se contaminou: eu
+       * queimei o limite de requisições do provedor com a própria rajada de
+       * testes. Ou seja, **não sei** se a grade fina falha por tamanho ou se
+       * tudo falhou por excesso de chamadas minhas.
+       *
+       * E os 20 segundos da grade GROSSA mudam o problema: o gargalo não é a
+       * resolução, é o custo por ponto do provedor. Uma segunda ida com 5x mais
+       * pontos levaria minutos, e a opção B não entregaria o que promete.
+       *
+       * Ligar isto sem medir de novo seria entregar um refinamento que não
+       * refina — exatamente o que o teto de 25 no motor já fazia em silêncio.
+       */
+      void buscar(grid)
     }
 
     /*

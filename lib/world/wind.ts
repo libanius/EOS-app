@@ -104,7 +104,25 @@ function rangeAround(center: number, span: number, min: number, max: number): [n
 }
 
 export function buildGrid(centre: { lat: number; lng: number }, options: WindGridOptions = {}): Array<[number, number]> {
-  const grid = Math.round(clamp(options.grid ?? GRID, 3, 25))
+  /*
+   * O teto subiu de 25 para 57 (MAP-T10 / D-207).
+   *
+   * 25×25 = 625 pontos. Sobre o mundo inteiro isso é **uma leitura a cada
+   * 1.598 km**, e tudo entre elas é interpolação — o motivo de o campo global
+   * parecer liso e falso enquanto o local coincide com o radar de chuva.
+   *
+   * 57×57 = 3.249 pontos, uma leitura a cada ~700 km. Ainda longe dos 1,8 km
+   * locais, e nunca vai chegar lá: o custo é linear no número de pontos.
+   *
+   * O teto continua existindo, e continua sendo o freio certo: sem ele, um
+   * `grid` grande vindo da query viraria uma requisição enorme para o provedor
+   * a cada movimento de mapa.
+   *
+   * **Descoberto ao tentar refinar**: o cliente pedia 57 e recebia 25 calado.
+   * Sem esta linha, a "segunda ida" de D-207 buscaria exatamente o mesmo dado —
+   * um refinamento que não refina nada.
+   */
+  const grid = Math.round(clamp(options.grid ?? GRID, 3, 57))
   const baseSpan = options.spanDeg ?? SPAN_DEG
   const latSpan = clamp(options.latSpanDeg ?? baseSpan, 0.15, 170)
   const lngSpan = clamp(options.lngSpanDeg ?? baseSpan, 0.15, 360)
