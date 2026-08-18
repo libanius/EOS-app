@@ -12,7 +12,6 @@
 | **Current Phase** | Preparedness Engine (PREP/EDU/COMMS/ONB/PILOT) sobre Web/PWA |
 | **Current Task** | **SIM-T12 — Simulador encena eventos no mapa.** PENDING — ideia do dono registrada em 2026-08-13. |
 | **⚠ Pendência operacional** | **Aplicar `supabase/migrations/20260813210000_profiles_auth_fk.sql`** (D-175). Limpa 9 perfis de teste vazios e cria a FK que impede a recorrência. Para com erro se encontrar órfão com dado. |
-| **⚠ Pendência operacional** | **Aplicar `supabase/migrations/20260817000000_family_plan_protocol_fields.sql`** (D-208). Libera persistência de tipo de ação, destino, rota e aviso ao círculo nos protocolos do plano. Sem ela, a API degrada para `condition/action` legado. |
 | **Migrações aplicadas** | `locations`, `holdings`, `kits`, `requirements`, `checklists.status` — todas verificadas por REST. |
 | **Migrações aplicadas** | As duas de Preparedness State **aplicadas em 2026-08-13** e verificadas por REST: `locations`, `holdings`, `kits`, `requirements` → 200. Nenhuma pendência operacional. |
 | **Last Completed Task** | **D-188 / COMMS-T12 — lista, thread e conversa individual (2026-08-15)** |
@@ -185,6 +184,7 @@ rota ou UI foi alterado.**
 | | D-066 / PLAN-T00 — spec dos Planos de Emergência da Família (`docs/18-family-plans.md`) (2026-07-27) |
 | | D-064 / FAM-T01→T04 — localização familiar ao vivo, consentimento próprio e remoção dos mocks do mapa (2026-07-27) |
 | **Migration** | ✅ `20260730000000_family_plan_triggers.sql` aplicada pelo dono em 2026-07-30 e verificada. Gatilho gravando ponta a ponta no teste de navegador. |
+| **Migration** | ✅ `20260817000000_family_plan_protocol_fields.sql` aplicada pelo dono em 2026-08-17. Libera persistência de tipo de ação, destino, rota e aviso ao círculo nos protocolos do plano. |
 | **Migration** | ✅ `20260804014000_inbox_eos_notifications.sql` aplicada pelo dono em 2026-08-04. Evolui `circle_notifications` para Inbox EOS app-level (`scope`, `severity`, `source_key`, `circle_id` nullable). |
 | **Migration** | ✅ `20260804180000_rate_limit_and_error_log.sql` aplicada pelo dono em 2026-08-04 e verificada com `/api/health` + `node scripts/guardrails-test.mjs` (5/5). Adiciona `rate_limit_buckets`, RPC `consume_rate_limit` e `error_log`. |
 | **Migration** | ✅ `20260804015000_edu_view_count.sql` aplicada pelo dono e verificada em 2026-08-04 via REST service-role (`edu_content?select=id,view_count` responde 200). Adiciona `edu_content.view_count` para destaque do vídeo mais clicado. |
@@ -259,7 +259,7 @@ rota ou UI foi alterado.**
 | **Plano execução** | ✅ PLAN-T08 MVP: tocar no próprio rosto no mapa abre comando familiar; "Executar plano" carrega um plano escolhido, monta passos determinísticos do host (círculo → gatilhos → papéis → pontos → rotas → encerramento) e alerta o círculo com push preset "Execute o plano da família agora". Sem nova tabela ainda: timeline compartilhada fica para `family_plan_executions`. |
 | **Plano múltiplo** | ✅ PLAN-T09: o círculo pode ter vários planos ativos; `/plan` alterna/cria planos por nome, o executor escolhe qual plano rodar, passos fixos do EOS saem da lista numerada e há cancelar/falso alarme. Migration `20260731000000_multiple_family_plans.sql` aplicada pelo dono. |
 | **Protocolos de execução** | ✅ PLAN-T11: execução é plano → protocolo. Cada gatilho salvo vira protocolo acionável; o host local pede a escolha antes dos passos e mostra o caminho selecionado. Sem migration nova; timeline compartilhada segue futura em `family_plan_executions`. |
-| **Protocolos estruturados** | ✅ PLAN-T12: gatilhos/protocolos agora têm tipo de ação (`meet/evacuate/shelter/communicate/wait/custom`), destino, rota e aviso ao círculo. Migration `20260817000000_family_plan_protocol_fields.sql` pendente para persistência completa. |
+| **Protocolos estruturados** | ✅ PLAN-T12: gatilhos/protocolos agora têm tipo de ação (`meet/evacuate/shelter/communicate/wait/custom`), destino, rota e aviso ao círculo. Migration `20260817000000_family_plan_protocol_fields.sql` aplicada pelo dono em 2026-08-17. |
 | **Rotas do plano** | ✅ PLAN-T10: cada rota desenhada no plano agora tem handoff "Google Maps" com origem, destino e paradas intermediárias na ordem da `LineString`. O EOS mantém o combinado offline; Google Maps calcula ruas/ETA quando abrir. |
 | **Família** | ✅ `npm run test:family` **5/5** (2026-08-01) — posição com frescor, quem NÃO está coberto e por quê, papel do plano junto da pessoa, necessidades que mudam a decisão, e o cadastro preservado em `/family-legacy`. |
 | **Planos** | ✅ `npm run test:multiplan` **4/4** (2026-08-01) — dois planos coexistem, salvar um não toca no outro, id de outro círculo é 403 e salvar sem dizer qual é 409. |

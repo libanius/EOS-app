@@ -85,9 +85,10 @@ rotas/notas existentes.
 **Protocolo não volta a ser frase (D-208 / PLAN-T12).** `condition/action` é o
 legado mínimo. A forma correta tem `action_type`, `destination_kind`,
 `route_label` e `notify_circle`. Texto livre é instrução curta; não é onde se
-esconde destino, rota ou intenção operacional. Enquanto
-`20260817000000_family_plan_protocol_fields.sql` não estiver aplicada, a API
-degrada para o legado e registra a perda dos campos estruturados.
+esconde destino, rota ou intenção operacional.
+`20260817000000_family_plan_protocol_fields.sql` foi aplicada pelo dono em
+2026-08-17; se um ambiente futuro não tiver essa migration, a API degrada para o
+legado e registra a perda dos campos estruturados.
 
 **O teste de navegador roda contra `.next`.** Editar componente e rodar o teste
 sem `npm run build` testa o build anterior. Perdi uma rodada com isso.
