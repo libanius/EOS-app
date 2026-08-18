@@ -81,6 +81,12 @@ digitar um rótulo manual antes de confirmar. O nome padrão (`Casa`, `Ponto 1`,
 etc.) deve entrar automaticamente; o que torna o lugar salvável é ter
 coordenada.
 
+**Picker de endereço não usa blur do Pilot (D-210).** O modal "Onde fica?"
+reutilizava `.wv2-pilot-scrim`, que aplica `backdrop-filter: blur(2px)`, e
+ainda entrava com `filter: blur(12px)`. Em formulário isso parece tela quebrada.
+O picker deve escurecer o fundo sem embaçar e entrar nítido; o efeito do Pilot
+fica no Pilot.
+
 **Plano é envelope; protocolo é execução (D-207 / PLAN-T11).** O executor não
 deve despejar o documento inteiro. Primeiro escolhe o plano salvo; depois escolhe
 o protocolo/gatilho ativo. No MVP, cada `family_plan_triggers` salvo é uma

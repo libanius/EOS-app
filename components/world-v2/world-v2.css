@@ -2976,6 +2976,15 @@
 .wv2 .wv2-field { display: grid; gap: var(--s2); }
 
 /* ── point picker: the same fumé material as the Pilot ── */
+.wv2-picker-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 299;
+  border: 0;
+  padding: 0;
+  background: rgba(0, 0, 0, 0.52);
+  cursor: pointer;
+}
 .wv2-picker {
   position: fixed;
   left: var(--edge);

@@ -1366,7 +1366,7 @@ function PointPicker({
         <>
           <motion.button
             type="button"
-            className="wv2-pilot-scrim"
+            className="wv2-picker-scrim"
             aria-label={copy.cancel}
             onClick={onClose}
             initial={{ opacity: 0 }}
@@ -1378,8 +1378,8 @@ function PointPicker({
             className="wv2-picker wv2-fume"
             role="dialog"
             aria-label={copy.pickTitle}
-            initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 40, filter: 'blur(12px)' }}
-            animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, filter: 'blur(0px)' }}
+            initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 40 }}
+            animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
             exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 30 }}
             transition={reduceMotion ? { duration: 0.12 } : SPRING.sheet}
           >
