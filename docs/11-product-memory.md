@@ -1,7 +1,7 @@
 # 11 — Product Memory
 
 > Non-obvious facts that don't belong in code comments but must survive across sessions.
-> Last updated: 2026-08-17
+> Last updated: 2026-08-18
 
 ---
 
@@ -73,6 +73,13 @@ na barra antes seria mudar o visível sem ter para onde mover o resto.
 pegou: sem círculo, o Plano renderiza um ramo curto, e a faixa estava só no
 principal — a pessoa sem círculo chegaria numa tela sem saída. Justamente quem
 mais precisa de um caminho de volta.
+
+**No plano, coordenada vence nome digitado (D-209).** O modal "Onde fica?"
+dizia no comentário que nome não bloqueava confirmação, mas o botão ainda exigia
+`name.trim()`. Resultado: ao definir Casa por GPS/mapa, a pessoa precisava
+digitar um rótulo manual antes de confirmar. O nome padrão (`Casa`, `Ponto 1`,
+etc.) deve entrar automaticamente; o que torna o lugar salvável é ter
+coordenada.
 
 **Plano é envelope; protocolo é execução (D-207 / PLAN-T11).** O executor não
 deve despejar o documento inteiro. Primeiro escolhe o plano salvo; depois escolhe

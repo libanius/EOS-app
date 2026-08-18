@@ -1248,12 +1248,12 @@ function PointPicker({
     setResults([])
     setSearched(false)
     setPoint(existing ? { lat: existing.lat, lng: existing.lng } : null)
-    setName(existing?.name ?? '')
+    setName(existing?.name ?? defaultPlaceName(target.kind, pt))
     setNotes(existing?.notes ?? '')
     setGeoBusy(false)
     setGeoError(null)
     setAccuracy(null)
-  }, [target, existing])
+  }, [target, existing, pt])
 
   /**
    * O nome deixa de bloquear a confirmação.
@@ -1266,6 +1266,8 @@ function PointPicker({
     if (!target) return
     setName(current => (current.trim() ? current : defaultPlaceName(target.kind, pt)))
   }
+
+  const finalName = target ? (name.trim() || defaultPlaceName(target.kind, pt)) : ''
 
   const runSearch = async () => {
     if (query.trim().length < 2) return
@@ -1451,12 +1453,12 @@ function PointPicker({
               <Pill onClick={onClose}>{copy.cancel}</Pill>
               <Pill
                 primary
-                disabled={!point || !name.trim()}
+                disabled={!point || !target}
                 onClick={() => {
                   if (!point || !target) return
                   onConfirm({
                     kind: target.kind,
-                    name: name.trim(),
+                    name: finalName,
                     lat: point.lat,
                     lng: point.lng,
                     notes: notes.trim() || null,

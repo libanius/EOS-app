@@ -1,7 +1,7 @@
 # 09 — Build Status
 
 > The single most important file for resuming a session. Read this first after AGENTS.md.
-> Last updated: 2026-08-17
+> Last updated: 2026-08-18
 
 ---
 
@@ -15,6 +15,7 @@
 | **Migrações aplicadas** | `locations`, `holdings`, `kits`, `requirements`, `checklists.status` — todas verificadas por REST. |
 | **Migrações aplicadas** | As duas de Preparedness State **aplicadas em 2026-08-13** e verificadas por REST: `locations`, `holdings`, `kits`, `requirements` → 200. Nenhuma pendência operacional. |
 | **Last Completed Task** | **D-188 / COMMS-T12 — lista, thread e conversa individual (2026-08-15)** |
+| | **D-209 / PLAN follow-up — casa pode ser confirmada sem digitar nome manual (2026-08-18)** |
 | | **D-207 / PLAN-T11 — execução escolhe protocolo dentro do plano (2026-08-17)** |
 | | **D-208 / PLAN-T12 — protocolos têm tipo de ação, destino e rota (2026-08-17)** |
 | | **D-205 / WV2 touch follow-up — alça de retorno do sheet não rouba pan do mapa (2026-08-16)** |
@@ -232,6 +233,7 @@ rota ou UI foi alterado.**
 | **Fases pedidas pelo dono (2026-07-31)** | ✅ 1. Camadas de clima + rastreio de ciclone (D-078). 2. Reinventar a aba Família no design system da v2, com componentes dinâmicos. 3. WV2-T05 (a11y/perf), PLAN-T07 (Pilot propõe plano). |
 | **Next Task** | **SIM-T12 — Simulador encena eventos no mapa.** Precisa de decisão sobre onde o evento falso entra sem contaminar o snapshot verdadeiro. |
 | **Build** | ✅ D-205 validado em 2026-08-16 com `npm run type-check`, `git diff --check`, `npm run build` e Playwright mobile no Mundo: o antigo y=692 virou canvas, a lateral baixa virou canvas, a alça central ainda reabre o sheet e drags movem o MapLibre no primeiro gesto. |
+| | ✅ D-209 validado em 2026-08-18 com `npm run type-check`, `git diff --check` e `npm run build`. |
 | | ✅ D-207 validado em 2026-08-17 com `npm run type-check`, `npm test -- --runInBand lib/__tests__/plan-execution.test.ts`, `git diff --check` e `npm run build`. |
 | | ✅ D-208 validado em 2026-08-17 com `npm run type-check`, `npm test -- --runInBand lib/__tests__/plan-execution.test.ts lib/__tests__/plan-pilot-review.test.ts lib/__tests__/plan-drill.test.ts`, `git diff --check` e `npm run build`. |
 | | ✅ D-204 validado em 2026-08-16 com `npm run type-check`, `npm run build`, `git diff --check` e Playwright mobile em `/mais/treino`: 7 sliders de Clima simulado; slider de Vento alterou `45km/h → 160km/h`; botão `+` continuou para `165km/h`. |
