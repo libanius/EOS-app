@@ -12,10 +12,12 @@
 | **Current Phase** | Preparedness Engine (PREP/EDU/COMMS/ONB/PILOT) sobre Web/PWA |
 | **Current Task** | **SIM-T12 — Simulador encena eventos no mapa.** PENDING — ideia do dono registrada em 2026-08-13. |
 | **⚠ Pendência operacional** | **Aplicar `supabase/migrations/20260813210000_profiles_auth_fk.sql`** (D-175). Limpa 9 perfis de teste vazios e cria a FK que impede a recorrência. Para com erro se encontrar órfão com dado. |
+| **⚠ Pendência operacional** | **Aplicar `supabase/migrations/20260817000000_family_plan_protocol_fields.sql`** (D-208). Libera persistência de tipo de ação, destino, rota e aviso ao círculo nos protocolos do plano. Sem ela, a API degrada para `condition/action` legado. |
 | **Migrações aplicadas** | `locations`, `holdings`, `kits`, `requirements`, `checklists.status` — todas verificadas por REST. |
 | **Migrações aplicadas** | As duas de Preparedness State **aplicadas em 2026-08-13** e verificadas por REST: `locations`, `holdings`, `kits`, `requirements` → 200. Nenhuma pendência operacional. |
 | **Last Completed Task** | **D-188 / COMMS-T12 — lista, thread e conversa individual (2026-08-15)** |
 | | **D-207 / PLAN-T11 — execução escolhe protocolo dentro do plano (2026-08-17)** |
+| | **D-208 / PLAN-T12 — protocolos têm tipo de ação, destino e rota (2026-08-17)** |
 | | **D-205 / WV2 touch follow-up — alça de retorno do sheet não rouba pan do mapa (2026-08-16)** |
 | | **D-204 / SIM-T08 follow-up — leituras simuladas ajustam por slider e stepper (2026-08-16)** |
 | | **D-201 / WV2-T31 — controles de vento recolhíveis junto ao botão Vento (2026-08-16)** |
@@ -231,6 +233,7 @@ rota ou UI foi alterado.**
 | **Next Task** | **SIM-T12 — Simulador encena eventos no mapa.** Precisa de decisão sobre onde o evento falso entra sem contaminar o snapshot verdadeiro. |
 | **Build** | ✅ D-205 validado em 2026-08-16 com `npm run type-check`, `git diff --check`, `npm run build` e Playwright mobile no Mundo: o antigo y=692 virou canvas, a lateral baixa virou canvas, a alça central ainda reabre o sheet e drags movem o MapLibre no primeiro gesto. |
 | | ✅ D-207 validado em 2026-08-17 com `npm run type-check`, `npm test -- --runInBand lib/__tests__/plan-execution.test.ts`, `git diff --check` e `npm run build`. |
+| | ✅ D-208 validado em 2026-08-17 com `npm run type-check`, `npm test -- --runInBand lib/__tests__/plan-execution.test.ts lib/__tests__/plan-pilot-review.test.ts lib/__tests__/plan-drill.test.ts`, `git diff --check` e `npm run build`. |
 | | ✅ D-204 validado em 2026-08-16 com `npm run type-check`, `npm run build`, `git diff --check` e Playwright mobile em `/mais/treino`: 7 sliders de Clima simulado; slider de Vento alterou `45km/h → 160km/h`; botão `+` continuou para `165km/h`. |
 | | ✅ WV2-T30 validado em 2026-08-16 com `npm run type-check`, `git diff --check`, `npm run build`, `/api/world/peak-surge` lendo KML NHC real de Lala e Playwright mobile confirmando fonte/layer `eos-peak-surge-*` com polígonos. |
 | | ✅ WV2-T29 validado em 2026-08-16 com `npm run type-check`, `git diff --check`, `npm run build` e Playwright mobile no dashboard: painel `Camadas` tem overflow vertical e aceita scroll interno. |
@@ -256,6 +259,7 @@ rota ou UI foi alterado.**
 | **Plano execução** | ✅ PLAN-T08 MVP: tocar no próprio rosto no mapa abre comando familiar; "Executar plano" carrega um plano escolhido, monta passos determinísticos do host (círculo → gatilhos → papéis → pontos → rotas → encerramento) e alerta o círculo com push preset "Execute o plano da família agora". Sem nova tabela ainda: timeline compartilhada fica para `family_plan_executions`. |
 | **Plano múltiplo** | ✅ PLAN-T09: o círculo pode ter vários planos ativos; `/plan` alterna/cria planos por nome, o executor escolhe qual plano rodar, passos fixos do EOS saem da lista numerada e há cancelar/falso alarme. Migration `20260731000000_multiple_family_plans.sql` aplicada pelo dono. |
 | **Protocolos de execução** | ✅ PLAN-T11: execução é plano → protocolo. Cada gatilho salvo vira protocolo acionável; o host local pede a escolha antes dos passos e mostra o caminho selecionado. Sem migration nova; timeline compartilhada segue futura em `family_plan_executions`. |
+| **Protocolos estruturados** | ✅ PLAN-T12: gatilhos/protocolos agora têm tipo de ação (`meet/evacuate/shelter/communicate/wait/custom`), destino, rota e aviso ao círculo. Migration `20260817000000_family_plan_protocol_fields.sql` pendente para persistência completa. |
 | **Rotas do plano** | ✅ PLAN-T10: cada rota desenhada no plano agora tem handoff "Google Maps" com origem, destino e paradas intermediárias na ordem da `LineString`. O EOS mantém o combinado offline; Google Maps calcula ruas/ETA quando abrir. |
 | **Família** | ✅ `npm run test:family` **5/5** (2026-08-01) — posição com frescor, quem NÃO está coberto e por quê, papel do plano junto da pessoa, necessidades que mudam a decisão, e o cadastro preservado em `/family-legacy`. |
 | **Planos** | ✅ `npm run test:multiplan` **4/4** (2026-08-01) — dois planos coexistem, salvar um não toca no outro, id de outro círculo é 403 e salvar sem dizer qual é 409. |

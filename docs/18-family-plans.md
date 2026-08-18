@@ -225,6 +225,18 @@ Quando um plano não tiver gatilhos, o host pode rodar uma execução geral para
 não bloquear a família, mas a tela deve deixar claro que falta a escolha
 operacional do "por quê estamos executando".
 
+Com D-208, protocolo não é só uma frase. Cada gatilho pode declarar:
+
+- condição observável;
+- tipo de ação: encontrar, evacuar, abrigar, comunicar, esperar ou personalizado;
+- instrução curta;
+- ponto de destino do plano, quando aplicável;
+- rota desenhada, quando aplicável;
+- se o círculo deve ser alertado.
+
+Campos estruturados são opcionais para preservar planos antigos. Quando ausentes,
+o host pode inferir destino por texto apenas como fallback.
+
 ### Active shooting e eventos de segurança humana
 
 No exemplo de um active shooting perto da escola, o EOS pode coordenar presença,
@@ -323,7 +335,9 @@ family_plan_acks
 
 ```
 family_plan_triggers
-  id, plan_id, condition, action, sort_order
+  id, plan_id, condition, action,
+  action_type, destination_kind, route_label, notify_circle,
+  sort_order
 ```
 
 `family_plan_acks` é o que torna a §6 real: sem ele não há como saber quem está

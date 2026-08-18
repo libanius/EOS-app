@@ -66,7 +66,7 @@ describe('buildPlanExecutionSteps', () => {
       roles: [],
       triggers: [
         { condition: 'Sem contato por 2 horas', action: 'Ir para o ponto do bairro' },
-        { condition: 'Evacuação oficial', action: 'Executar saída para fora da região' },
+        { condition: 'Evacuação oficial', action: 'Executar saída para fora da região', action_type: 'evacuate' },
       ],
       acknowledgedBy: [],
       myAck: null,
@@ -75,10 +75,42 @@ describe('buildPlanExecutionSteps', () => {
 
     const steps = buildPlanExecutionSteps(doc, true, protocol)
 
-    expect(steps.map(step => step.title)).toContain('Protocolo: Evacuação oficial')
-    expect(steps.map(step => step.title)).not.toContain('Protocolo: Sem contato por 2 horas')
+    expect(steps.map(step => step.title)).toContain('Evacuar: Evacuação oficial')
+    expect(steps.map(step => step.title)).not.toContain('Encontrar: Sem contato por 2 horas')
     expect(steps.map(step => step.title)).toContain('Ponto 3: Casa da tia')
     expect(steps.map(step => step.title)).not.toContain('Ponto 1: Esquina')
     expect(steps.map(step => step.title)).not.toContain('Ponto 2: Escola')
+  })
+
+  it('uses explicit protocol destination and route before text inference', () => {
+    const doc: PlanDocument = {
+      plan: { id: 'plan-1', name: 'Escola', version: 3, status: 'active', updated_at: '2026-07-31T00:00:00Z' },
+      waypoints: [
+        { kind: 'rendezvous_2', name: 'Escola Paola', lat: 2, lng: 2 },
+        { kind: 'rendezvous_3', name: 'Casa da tia', lat: 3, lng: 3 },
+      ],
+      routes: [
+        { label: 'Rota escola', geometry: { type: 'LineString', coordinates: [] }, mode: 'car', notes: 'Entrar pelo portão lateral.' },
+        { label: 'Rota evacuação', geometry: { type: 'LineString', coordinates: [] }, mode: 'car', notes: 'Pegar estrada oeste.' },
+      ],
+      roles: [],
+      triggers: [{
+        condition: 'Incidente na escola',
+        action: 'Buscar criança e não ir para fora da região',
+        action_type: 'meet',
+        destination_kind: 'rendezvous_2',
+        route_label: 'Rota escola',
+      }],
+      acknowledgedBy: [],
+      myAck: null,
+    }
+
+    const steps = buildPlanExecutionSteps(doc, true, buildPlanExecutionProtocols(doc, true)[0])
+
+    expect(steps.map(step => step.title)).toContain('Encontrar: Incidente na escola')
+    expect(steps.map(step => step.title)).toContain('Ponto 2: Escola Paola')
+    expect(steps.map(step => step.title)).not.toContain('Ponto 3: Casa da tia')
+    expect(steps.map(step => step.title)).toContain('Rota escola')
+    expect(steps.map(step => step.title)).not.toContain('Rota evacuação')
   })
 })

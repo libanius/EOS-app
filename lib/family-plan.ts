@@ -58,7 +58,16 @@ export type PlanRoute = {
   mode?: 'foot' | 'car'
   notes?: string | null
 }
-export type PlanTrigger = { condition: string; action: string; sort_order?: number }
+export type PlanProtocolActionType = 'meet' | 'evacuate' | 'shelter' | 'communicate' | 'wait' | 'custom'
+export type PlanTrigger = {
+  condition: string
+  action: string
+  action_type?: PlanProtocolActionType | null
+  destination_kind?: WaypointKind | null
+  route_label?: string | null
+  notify_circle?: boolean | null
+  sort_order?: number
+}
 
 export type PlanDocument = {
   plan: { id: string; name: string; version: number; status: string; updated_at: string } | null
@@ -170,22 +179,86 @@ export function precisionLabel(precision: PointPrecision, pt: boolean): string {
  * São condições OBSERVÁVEIS. "Se ficar perigoso" não é gatilho: exige que
  * alguém julgue, no pior momento possível. "Sem contato por 2 horas" é.
  */
-export const TRIGGER_SUGGESTIONS: Array<{ pt: { condition: string; action: string }; en: { condition: string; action: string } }> = [
+export const PROTOCOL_ACTION_TYPES: Array<{
+  value: PlanProtocolActionType
+  pt: string
+  en: string
+}> = [
+  { value: 'meet', pt: 'Encontrar', en: 'Meet' },
+  { value: 'evacuate', pt: 'Evacuar', en: 'Evacuate' },
+  { value: 'shelter', pt: 'Abrigar', en: 'Shelter' },
+  { value: 'communicate', pt: 'Comunicar', en: 'Communicate' },
+  { value: 'wait', pt: 'Esperar', en: 'Wait' },
+  { value: 'custom', pt: 'Personalizado', en: 'Custom' },
+]
+
+export function protocolActionTypeLabel(value: PlanProtocolActionType | null | undefined, pt: boolean): string {
+  return PROTOCOL_ACTION_TYPES.find(option => option.value === value)?.[pt ? 'pt' : 'en']
+    ?? PROTOCOL_ACTION_TYPES.find(option => option.value === 'custom')![pt ? 'pt' : 'en']
+}
+
+export const TRIGGER_SUGGESTIONS: Array<{ pt: PlanTrigger; en: PlanTrigger }> = [
   {
-    pt: { condition: 'Sem contato com alguém da família por 2 horas', action: 'Ir para o ponto de encontro do bairro' },
-    en: { condition: 'No contact with a family member for 2 hours', action: 'Go to the neighbourhood meeting point' },
+    pt: {
+      condition: 'Sem contato com alguém da família por 2 horas',
+      action: 'Ir para o ponto de encontro do bairro',
+      action_type: 'meet',
+      destination_kind: 'rendezvous_2',
+      notify_circle: true,
+    },
+    en: {
+      condition: 'No contact with a family member for 2 hours',
+      action: 'Go to the neighbourhood meeting point',
+      action_type: 'meet',
+      destination_kind: 'rendezvous_2',
+      notify_circle: true,
+    },
   },
   {
-    pt: { condition: 'Ordem oficial de evacuação para a nossa área', action: 'Executar a saída para o ponto fora da região' },
-    en: { condition: 'Official evacuation order for our area', action: 'Run the exit to the out-of-region point' },
+    pt: {
+      condition: 'Ordem oficial de evacuação para a nossa área',
+      action: 'Executar a saída para o ponto fora da região',
+      action_type: 'evacuate',
+      destination_kind: 'rendezvous_3',
+      notify_circle: true,
+    },
+    en: {
+      condition: 'Official evacuation order for our area',
+      action: 'Run the exit to the out-of-region point',
+      action_type: 'evacuate',
+      destination_kind: 'rendezvous_3',
+      notify_circle: true,
+    },
   },
   {
-    pt: { condition: 'Celular e internet fora do ar por mais de 1 hora', action: 'Ninguém espera mensagem: seguir o plano' },
-    en: { condition: 'Phone and internet down for over an hour', action: 'Nobody waits for a message: follow the plan' },
+    pt: {
+      condition: 'Celular e internet fora do ar por mais de 1 hora',
+      action: 'Ninguém espera mensagem: seguir o plano',
+      action_type: 'communicate',
+      notify_circle: false,
+    },
+    en: {
+      condition: 'Phone and internet down for over an hour',
+      action: 'Nobody waits for a message: follow the plan',
+      action_type: 'communicate',
+      notify_circle: false,
+    },
   },
   {
-    pt: { condition: 'Água entrando na rua', action: 'Subir para o ponto alto combinado antes de dirigir' },
-    en: { condition: 'Water rising in the street', action: 'Move to the agreed high ground before driving' },
+    pt: {
+      condition: 'Água entrando na rua',
+      action: 'Subir para o ponto alto combinado antes de dirigir',
+      action_type: 'shelter',
+      destination_kind: 'rendezvous_2',
+      notify_circle: true,
+    },
+    en: {
+      condition: 'Water rising in the street',
+      action: 'Move to the agreed high ground before driving',
+      action_type: 'shelter',
+      destination_kind: 'rendezvous_2',
+      notify_circle: true,
+    },
   },
 ]
 

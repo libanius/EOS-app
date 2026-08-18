@@ -220,6 +220,7 @@ product phase sequenced.
 | PLAN-T09 | Múltiplos planos + cancelar execução | ✅ COMPLETE | 2026-07-31 — D-080. Remove a regra de um plano ativo por círculo, permite criar/alternar planos por situação e torna cancelamento/falso alarme explícito. Passos fixos do EOS saem da lista numerada editável. |
 | PLAN-T10 | Handoff de rota multi-stop para Google Maps | ✅ COMPLETE | 2026-07-31 — D-082. A rota autoral/offline do EOS abre o Google Maps com origem, destino e paradas intermediárias na ordem do traçado. Sem migration. |
 | PLAN-T11 | Execução por protocolo dentro do plano | ✅ COMPLETE | 2026-08-17 — D-207. Plano é envelope; gatilhos salvos viram protocolos acionáveis. O host escolhe o protocolo antes de montar os passos locais. |
+| PLAN-T12 | Protocolos com tipo de ação, destino e rota | ✅ COMPLETE | 2026-08-17 — D-208. Gatilho deixa de ser frase engessada; protocolo ganha intenção operacional estruturada e campos opcionais retrocompatíveis. Aplicar migration `20260817000000_family_plan_protocol_fields.sql`. |
 
 ---
 

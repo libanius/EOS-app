@@ -42,6 +42,43 @@ de "ler todos os itens do plano". A timeline compartilhada continua futura em
 
 ---
 
+## D-208 — Protocolo não é uma frase; é uma decisão estruturada
+
+**Date**: 2026-08-17
+**Status**: DECIDED
+**Roadmap**: PLAN-T12
+**Pedido do dono**: *"os gatilhos estão engessados. Eu deveria poder decidir o
+tipo de ação e etc."*
+
+**Context**: D-207 transformou gatilhos em protocolos executáveis, mas o editor
+continuava limitado a `Se acontecer` → `Então`. Isso força destino, intenção,
+rota e comunicação a morarem dentro de uma frase. O host de execução fica
+obrigado a adivinhar por texto aquilo que a família já deveria ter escolhido.
+
+**Decision**:
+
+1. **Protocolo tem tipo de ação.** Ação deixa de ser só texto livre e passa a
+   aceitar uma intenção operacional: encontrar, evacuar, abrigar, comunicar,
+   esperar ou personalizado.
+
+2. **Destino e rota são escolhas explícitas quando existirem.** O protocolo pode
+   apontar um ponto do plano e uma rota desenhada. Texto livre continua como
+   instrução curta, não como lugar para esconder estrutura.
+
+3. **Migração aditiva, legado preservado.** `family_plan_triggers` ganha colunas
+   opcionais. Registros antigos seguem válidos. Enquanto a migration não estiver
+   aplicada, a API salva o formato antigo e registra a degradação.
+
+4. **Pilot sugere, família decide.** Sugestões do Pilot podem vir com tipo e
+   destino padrão, mas a família pode trocar antes de salvar. Nenhum protocolo é
+   executável sem confirmação/versionamento do plano.
+
+**Consequence**: a execução passa a ler escolhas estruturadas, não inferir tudo
+por frase. Inferência textual vira fallback para planos antigos, não motor
+principal.
+
+---
+
 ## D-206 — De longe o vento mentia duas vezes
 
 **Date**: 2026-08-16

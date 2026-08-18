@@ -1,4 +1,11 @@
-import type { PlanDocument, PlanRoute, PlanTrigger, PlanWaypoint, WaypointKind } from './family-plan'
+import {
+  protocolActionTypeLabel,
+  type PlanDocument,
+  type PlanRoute,
+  type PlanTrigger,
+  type PlanWaypoint,
+  type WaypointKind,
+} from './family-plan'
 
 export type PlanExecutionStepKind = 'circle' | 'trigger' | 'role' | 'rendezvous' | 'route' | 'finish'
 
@@ -36,6 +43,8 @@ function routeSummary(route: PlanRoute, pt: boolean) {
 }
 
 function inferRendezvousKind(trigger: PlanTrigger | null): WaypointKind | null {
+  if (trigger?.destination_kind) return trigger.destination_kind
+
   const text = `${trigger?.condition ?? ''} ${trigger?.action ?? ''}`
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -143,7 +152,12 @@ export function buildPlanExecutionSteps(
     })
   }
 
-  ;(doc.routes ?? []).forEach((route, index) => {
+  const matchingRoutes = trigger?.route_label
+    ? (doc.routes ?? []).filter(route => route.label === trigger.route_label)
+    : []
+  const routes = matchingRoutes.length ? matchingRoutes : (doc.routes ?? [])
+
+  routes.forEach((route, index) => {
     steps.push({
       id: `route-${index}`,
       kind: 'route',
@@ -165,10 +179,17 @@ export function buildPlanExecutionSteps(
 }
 
 function triggerStep(trigger: PlanTrigger, pt: boolean): PlanExecutionStep {
+  const type = protocolActionTypeLabel(trigger.action_type, pt)
+  const notify = trigger.notify_circle === false
+    ? pt
+      ? ' Este protocolo não depende de push: execute mesmo sem rede.'
+      : ' This protocol does not depend on push: run it even offline.'
+    : ''
+
   return {
     id: 'active-protocol',
     kind: 'trigger',
-    title: pt ? `Protocolo: ${trigger.condition}` : `Protocol: ${trigger.condition}`,
-    body: pt ? `Ação combinada: ${trigger.action}` : `Agreed action: ${trigger.action}`,
+    title: `${type}: ${trigger.condition}`,
+    body: (pt ? `Ação combinada: ${trigger.action}` : `Agreed action: ${trigger.action}`) + notify,
   }
 }

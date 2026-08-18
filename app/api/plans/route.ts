@@ -37,13 +37,26 @@ const VAPID_SUBJECT = process.env.VAPID_SUBJECT ?? 'mailto:brightscalegroup@gmai
 type Waypoint = { kind: string; name: string; lat: number; lng: number; notes?: string | null; sort_order?: number }
 type Route = { label: string; geometry: unknown; mode?: string; notes?: string | null }
 type Role = { member_user_id: string; for_member_id?: string | null; responsibility: string }
-type Trigger = { condition: string; action: string; sort_order?: number }
+type Trigger = {
+  condition: string
+  action: string
+  action_type?: string | null
+  destination_kind?: string | null
+  route_label?: string | null
+  notify_circle?: boolean | null
+  sort_order?: number
+}
 type PlanRow = { id: string; circle_id: string; name: string; version: number; status: string; updated_at: string }
 
 const KINDS = ['rendezvous_1', 'rendezvous_2', 'rendezvous_3', 'home', 'school', 'work', 'custom']
+const ACTION_TYPES = ['meet', 'evacuate', 'shelter', 'communicate', 'wait', 'custom']
 
 function tableMissing(error: { code?: string } | null) {
   return error?.code === '42P01'
+}
+
+function columnMissing(error: { code?: string } | null) {
+  return error?.code === '42703' || error?.code === 'PGRST204'
 }
 
 async function assertMember(admin: NonNullable<ReturnType<typeof createAdminClient>>, circleId: string, userId: string) {
@@ -316,11 +329,25 @@ export async function PUT(request: NextRequest) {
         plan_id: planId,
         condition: t.condition.trim().slice(0, 200),
         action: t.action.trim().slice(0, 200),
+        action_type: ACTION_TYPES.includes(t.action_type ?? '') ? t.action_type : 'custom',
+        destination_kind: t.destination_kind && KINDS.includes(t.destination_kind) ? t.destination_kind : null,
+        route_label: t.route_label?.trim() ? t.route_label.trim().slice(0, 80) : null,
+        notify_circle: t.notify_circle !== false,
         sort_order: t.sort_order ?? index,
       }))
     if (triggers.length) {
       const { error } = await admin.from('family_plan_triggers').insert(triggers)
       triggersPending = tableMissing(error)
+      if (columnMissing(error)) {
+        await logError('api/plans:trigger_protocol_fields', error, { userId: user.id })
+        const { error: legacyError } = await admin.from('family_plan_triggers').insert(
+          triggers.map(({ action_type: _tipo, destination_kind: _destino, route_label: _rota, notify_circle: _aviso, ...legacy }) => legacy),
+        )
+        triggersPending = tableMissing(legacyError)
+        if (legacyError && !triggersPending) throw legacyError
+      } else if (error && !triggersPending) {
+        throw error
+      }
     }
   }
 

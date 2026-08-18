@@ -29,6 +29,7 @@ import { planEnvelope } from '@/lib/plan-envelope'
 import { reviewPlanWithPilot, type PlanPilotProposal } from '@/lib/plan-pilot-review'
 import {
   PLACE_KINDS,
+  PROTOCOL_ACTION_TYPES,
   RENDEZVOUS,
   TRIGGER_SUGGESTIONS,
   ageLabel,
@@ -144,7 +145,13 @@ const COPY = {
     responsibility: 'Faz o quê',
     responsibilityPlaceholder: 'Ex.: pega a Isadora na escola',
     condition: 'Se acontecer',
-    action: 'Então',
+    action: 'Instrução',
+    actionType: 'Tipo de ação',
+    destination: 'Destino',
+    noDestination: 'Sem destino específico',
+    routeOptional: 'Rota',
+    noRoute: 'Sem rota específica',
+    notifyCircle: 'Alertar círculo ao executar',
     suggestions: 'Sugestões prontas',
     customTrigger: 'Escrever o meu',
     cannotSave: 'Falta para poder salvar',
@@ -244,7 +251,13 @@ const COPY = {
     responsibility: 'Does what',
     responsibilityPlaceholder: 'e.g. picks up Isadora at school',
     condition: 'If this happens',
-    action: 'Then',
+    action: 'Instruction',
+    actionType: 'Action type',
+    destination: 'Destination',
+    noDestination: 'No specific destination',
+    routeOptional: 'Route',
+    noRoute: 'No specific route',
+    notifyCircle: 'Alert circle when running',
     suggestions: 'Ready-made suggestions',
     customTrigger: 'Write my own',
     cannotSave: 'Missing before you can save',
@@ -1010,6 +1023,19 @@ export default function PlanPage() {
                     setTriggers(list => list.map((t, i) => (i === index ? { ...t, condition: e.target.value } : t)))
                   }}
                 />
+                <select
+                  className="wv2-input"
+                  value={trigger.action_type ?? 'custom'}
+                  aria-label={c.actionType}
+                  onChange={e => {
+                    setDirty(true)
+                    setTriggers(list => list.map((t, i) => (i === index ? { ...t, action_type: e.target.value as PlanTrigger['action_type'] } : t)))
+                  }}
+                >
+                  {PROTOCOL_ACTION_TYPES.map(option => (
+                    <option key={option.value} value={option.value}>{option[pt ? 'pt' : 'en']}</option>
+                  ))}
+                </select>
                 <input
                   className="wv2-input"
                   value={trigger.action}
@@ -1019,6 +1045,45 @@ export default function PlanPage() {
                     setTriggers(list => list.map((t, i) => (i === index ? { ...t, action: e.target.value } : t)))
                   }}
                 />
+                <select
+                  className="wv2-input"
+                  value={trigger.destination_kind ?? ''}
+                  aria-label={c.destination}
+                  onChange={e => {
+                    setDirty(true)
+                    setTriggers(list => list.map((t, i) => (i === index ? { ...t, destination_kind: (e.target.value || null) as PlanTrigger['destination_kind'] } : t)))
+                  }}
+                >
+                  <option value="">{c.noDestination}</option>
+                  {waypoints.map(point => (
+                    <option key={`${point.kind}:${point.name}`} value={point.kind}>{point.name}</option>
+                  ))}
+                </select>
+                <select
+                  className="wv2-input"
+                  value={trigger.route_label ?? ''}
+                  aria-label={c.routeOptional}
+                  onChange={e => {
+                    setDirty(true)
+                    setTriggers(list => list.map((t, i) => (i === index ? { ...t, route_label: e.target.value || null } : t)))
+                  }}
+                >
+                  <option value="">{c.noRoute}</option>
+                  {routes.map(route => (
+                    <option key={route.label} value={route.label}>{route.label}</option>
+                  ))}
+                </select>
+                <label className="wv2-plan-check">
+                  <input
+                    type="checkbox"
+                    checked={trigger.notify_circle !== false}
+                    onChange={e => {
+                      setDirty(true)
+                      setTriggers(list => list.map((t, i) => (i === index ? { ...t, notify_circle: e.target.checked } : t)))
+                    }}
+                  />
+                  <span>{c.notifyCircle}</span>
+                </label>
                 <button type="button" className="wv2-plan-x" onClick={() => { setDirty(true); setTriggers(list => list.filter((_, i) => i !== index)) }} aria-label={c.remove}>×</button>
               </div>
             ))}
@@ -1027,7 +1092,7 @@ export default function PlanPage() {
                 <Pill
                   onClick={() => {
                     setDirty(true)
-                    setTriggers(list => [...list, { condition: '', action: '' }])
+                    setTriggers(list => [...list, { condition: '', action: '', action_type: 'custom', notify_circle: true }])
                   }}
                 >
                   + {c.customTrigger}

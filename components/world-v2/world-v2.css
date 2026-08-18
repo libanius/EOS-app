@@ -2899,13 +2899,39 @@
   align-items: center;
   padding: var(--s2) 0;
 }
+.wv2-plan-page .wv2-plan-trigger {
+  grid-template-columns: 1.2fr 0.8fr 1fr auto;
+  align-items: start;
+}
+.wv2-plan-page .wv2-plan-trigger > .wv2-input:first-child,
+.wv2-plan-page .wv2-plan-trigger > .wv2-input:nth-child(3) {
+  grid-column: span 2;
+}
+.wv2-plan-page .wv2-plan-check {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: 10px 12px;
+  border: 1px solid var(--sep);
+  border-radius: var(--r-tile);
+  background: var(--fill-2);
+  color: var(--ink-2);
+  font-size: 0.875rem;
+}
+.wv2-plan-page .wv2-plan-check input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
 @media (max-width: 520px) {
   .wv2-plan-page .wv2-plan-role,
   .wv2-plan-page .wv2-plan-trigger {
     grid-template-columns: 1fr auto;
   }
   .wv2-plan-page .wv2-plan-role > .wv2-input:first-child,
-  .wv2-plan-page .wv2-plan-trigger > .wv2-input:first-child {
+  .wv2-plan-page .wv2-plan-trigger > .wv2-input,
+  .wv2-plan-page .wv2-plan-check {
     grid-column: 1 / -1;
   }
 }
