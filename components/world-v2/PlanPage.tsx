@@ -74,9 +74,9 @@ const COPY = {
     homeTitle: 'Endereço de casa',
     homeWhy: 'Toda distância desta tela é medida daqui: quanto falta até cada ponto de encontro, e quantos minutos a pé.',
     homeNone: 'Ainda não definido — por isso as distâncias não aparecem.',
-    homeSet: 'Definir endereço de casa',
-    homeFromProfile: 'Usar o do meu perfil',
-    homeProfileWarn: 'É o centro da cidade, não a sua casa. Serve para começar; ajuste depois com o GPS em casa.',
+    homeSet: 'Selecionar ponto no mapa',
+    homeFromProfile: 'Selecionar Casa',
+    homeProfileWarn: 'Use a Casa salva no perfil ou marque o ponto exato no mapa.',
     homeNeeded: 'Defina o endereço de casa para ver distância e tempo a pé.',
     rendezvous: 'Pontos de encontro',
     places: 'Lugares importantes',
@@ -180,9 +180,9 @@ const COPY = {
     homeTitle: 'Home address',
     homeWhy: 'Every distance on this screen is measured from here: how far each meeting point is, and how many minutes on foot.',
     homeNone: 'Not set yet — that is why distances are missing.',
-    homeSet: 'Set home address',
-    homeFromProfile: 'Use the one on my profile',
-    homeProfileWarn: 'That is the city centre, not your house. Fine to start with; refine it later with GPS at home.',
+    homeSet: 'Pick point on map',
+    homeFromProfile: 'Select Home',
+    homeProfileWarn: 'Use the Home saved on your profile or mark the exact point on the map.',
     homeNeeded: 'Set the home address to see distance and time on foot.',
     rendezvous: 'Meeting points',
     places: 'Important places',
@@ -306,6 +306,7 @@ export default function PlanPage() {
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [picker, setPicker] = useState<PickerTarget | null>(null)
+  const [homeMapOpen, setHomeMapOpen] = useState(false)
   const [drawing, setDrawing] = useState<{ index: number | null } | null>(null)
   const [profilePlace, setProfilePlace] = useState<{ label: string; lat: number; lng: number } | null>(null)
 
@@ -523,6 +524,19 @@ export default function PlanPage() {
       if (patch) next[at] = patch
       else next.splice(at, 1)
       return next
+    })
+  }
+
+  const selectProfileHome = () => {
+    if (!profilePlace) return
+    setWaypoint('home', null, {
+      kind: 'home',
+      name: defaultPlaceName('home', pt),
+      lat: profilePlace.lat,
+      lng: profilePlace.lng,
+      notes: pt
+        ? 'Endereço da Casa salvo no perfil — ajuste no mapa se precisar ser mais preciso'
+        : 'Home address from the profile — refine on the map if it needs to be more precise',
     })
   }
 
@@ -804,29 +818,16 @@ export default function PlanPage() {
                 {home.notes && <p className="t-foot ink-2">{home.notes}</p>}
                 <p className="t-foot ink-3">{home.lat.toFixed(5)}, {home.lng.toFixed(5)}</p>
                 <div className="acts">
-                  <Pill onClick={() => setPicker({ kind: 'home', index: null })}>{c.change}</Pill>
+                  {profilePlace && <Pill onClick={selectProfileHome}>{c.homeFromProfile}</Pill>}
+                  <Pill onClick={() => setHomeMapOpen(true)}>{c.homeSet}</Pill>
                 </div>
               </>
             ) : (
               <>
                 <p className="t-foot warn">{c.homeNone}</p>
                 <div className="acts">
-                  <Pill primary onClick={() => setPicker({ kind: 'home', index: null })}>{c.homeSet}</Pill>
-                  {profilePlace && (
-                    <Pill
-                      onClick={() =>
-                        setWaypoint('home', null, {
-                          kind: 'home',
-                          name: profilePlace.label,
-                          lat: profilePlace.lat,
-                          lng: profilePlace.lng,
-                          notes: pt ? 'Centro da cidade — ajustar com o GPS em casa' : 'City centre — refine with GPS at home',
-                        })
-                      }
-                    >
-                      {c.homeFromProfile}
-                    </Pill>
-                  )}
+                  {profilePlace && <Pill primary onClick={selectProfileHome}>{c.homeFromProfile}</Pill>}
+                  <Pill primary={!profilePlace} onClick={() => setHomeMapOpen(true)}>{c.homeSet}</Pill>
                 </div>
                 {profilePlace && <p className="t-foot ink-3">{c.homeProfileWarn}</p>}
               </>
@@ -1184,6 +1185,24 @@ export default function PlanPage() {
             drawing?.index != null ? list.map((r, i) => (i === drawing.index ? route : r)) : [...list, route],
           )
           setDrawing(null)
+        }}
+      />
+
+      <MapPointPicker
+        open={homeMapOpen}
+        pt={pt}
+        start={home ? { lat: home.lat, lng: home.lng } : null}
+        fallback={profilePlace}
+        onClose={() => setHomeMapOpen(false)}
+        onPick={point => {
+          setWaypoint('home', null, {
+            kind: 'home',
+            name: defaultPlaceName('home', pt),
+            lat: point.lat,
+            lng: point.lng,
+            notes: pt ? 'Marcado no mapa' : 'Marked on the map',
+          })
+          setHomeMapOpen(false)
         }}
       />
 

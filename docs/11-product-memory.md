@@ -87,6 +87,12 @@ ainda entrava com `filter: blur(12px)`. Em formulário isso parece tela quebrada
 O picker deve escurecer o fundo sem embaçar e entrar nítido; o efeito do Pilot
 fica no Pilot.
 
+**Casa não passa pelo modal genérico de lugar (D-211).** O app já tem a Casa no
+perfil; ao criar plano, o cartão deve oferecer dois caminhos diretos:
+`Selecionar Casa` e `Selecionar ponto no mapa`. O modal "Onde fica?" continua
+útil para escola/trabalho/pontos, mas para Casa ele era uma etapa redundante e,
+quando falhava, bloqueava o plano inteiro.
+
 **Plano é envelope; protocolo é execução (D-207 / PLAN-T11).** O executor não
 deve despejar o documento inteiro. Primeiro escolhe o plano salvo; depois escolhe
 o protocolo/gatilho ativo. No MVP, cada `family_plan_triggers` salvo é uma
