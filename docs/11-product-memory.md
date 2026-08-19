@@ -131,8 +131,8 @@ ali. Completar o gesto chama `/api/plan-executions`, que cria
 mesmo request; push continua best-effort. O modo global é `PlanExecutionProvider`
 + `PlanExecutionBanner`: a janela de falso alarme dura 30 s e é faixa não modal;
 depois disso o banner permanece como modo ativo até uma fase de encerramento
-resolver/cancelar. Migration pendente:
-`20260819124613_exec_t03_family_plan_executions.sql`.
+resolver/cancelar. Migration `20260819124613_exec_t03_family_plan_executions.sql`
+aplicada pelo dono em 2026-08-19 e verificada por REST.
 
 **Plano é envelope; protocolo é execução (D-207 / PLAN-T11).** O executor não
 deve despejar o documento inteiro. Primeiro escolhe o plano salvo; depois escolhe
