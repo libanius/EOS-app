@@ -257,7 +257,10 @@ circle_places
   lat double precision
   lng double precision
   kind text            -- 'home'|'school'|'work'|'rendezvous'|'custom'
-  precision text       -- 'gps'|'address'|'city'  (PointPrecision, já existe em lib/family-plan.ts)
+  precision text       -- 'gps'|'address'|'city'|'unknown'
+                       -- 'unknown' = nunca declarada (waypoints legados). Nunca é
+                       -- escolhida pelo sistema: só o usuário promove para um dos
+                       -- outros três.
   notes text null
   created_by uuid
   created_at, updated_at timestamptz
@@ -282,6 +285,11 @@ family_plan_waypoints
 **Migração**: cada waypoint existente gera um `circle_place` (dedupe por
 proximidade < 25 m e nome igual) e recebe `place_id`. Planos sem `place_id`
 continuam lendo `lat/lng` próprios até serem tocados.
+
+Todo `circle_place` criado pela migração recebe `precision = 'unknown'`. A
+migração não infere precisão: ela não sabe se o ponto foi tocado no mapa,
+digitado ou geocodificado, e atribuir qualquer um dos três valores declararia
+uma confiança que ninguém deu.
 
 ### 5.3 Carta do dependente (novo)
 
@@ -394,6 +402,11 @@ superfícies de execução leem daqui em vez de manter estado local próprio.
     superfície pública (`docs/18` §8).
 15. **RLS**: `circle_places`, `plan_sessions` e `family_plan_executions` são
     legíveis e escrevíveis apenas por membros do `circle_id`.
+16. **Ponto com `precision: 'unknown'` é usado normalmente** — a coordenada é
+    real; o que falta é a confiança declarada. Rumo e distância são calculados e
+    exibidos, mas a tela marca o ponto como não confirmado e oferece `Confirmar
+    no mapa`. Confirmar sem mover o ponto altera só a precisão e **não** versiona
+    o plano nem invalida acks; mover mais de 50 m cai na D-g.
 
 ---
 
@@ -411,6 +424,10 @@ Binários. Sem "parcialmente implementado".
 - [ ] Mover um lugar **< 50 m**, ou editar nome/nota, **não** altera versão nem ack.
 - [ ] Apagar um lugar usado por ≥1 plano ativo é recusado com motivo na tela.
 - [ ] A migração converte 100% dos waypoints existentes sem perder coordenada.
+- [ ] 100% dos waypoints migrados recebem `precision: 'unknown'`; nenhum recebe
+      `gps`, `address` ou `city` por inferência.
+- [ ] Confirmar a precisão de um ponto sem movê-lo não altera `version` nem
+      invalida acks.
 
 **EXEC-T02 — sessão**
 - [ ] Armar uma sessão exibe banner permanente com saída explícita.
