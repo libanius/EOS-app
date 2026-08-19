@@ -21,4 +21,26 @@ describe('map base mode preference', () => {
     expect(migration).toContain("DEFAULT 'satellite'")
     expect(migration).toContain("CHECK (map_base_mode IN ('satellite', 'hybrid', 'dark'))")
   })
+
+  /*
+   * Criterio transversal da secao 7 do spec: a preferencia "vale em todas as
+   * superficies de mapa". O `/dashboard-world` (HWD v1) tinha ficado com estado
+   * local proprio, comecando em 'hybrid' e escrevendo numa chave que ninguem
+   * lia de volta — a escolha morria no reload e nao chegava no Mundo.
+   */
+  it('reads the shared preference on every map surface', () => {
+    const surfaces = [
+      'components/world-v2/WorldV2.tsx',
+      'components/world-v2/MapPointPicker.tsx',
+      'components/world-v2/RouteDraw.tsx',
+      'components/world-dashboard/WorldDashboard.tsx',
+    ]
+
+    for (const surface of surfaces) {
+      const source = readFileSync(join(process.cwd(), surface), 'utf8')
+      expect([surface, source.includes('use-map-base-mode')]).toEqual([surface, true])
+      expect([surface, /useState<MapBaseMode>/.test(source)]).toEqual([surface, false])
+      expect([surface, source.includes('eos-world-map-base')]).toEqual([surface, false])
+    }
+  })
 })
