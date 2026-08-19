@@ -10,12 +10,14 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Execução de Plano (EXEC) sobre Web/PWA |
-| **Current Task** | **EXEC-T06 — Promoção de ponto do dia + basemap persistente.** COMPLETE — migration aplicada pelo dono e verificada por REST service-role. Follow-up de 2026-08-19 fechou o critério transversal: `/dashboard-world` passou a ler a preferência única de basemap. Próxima tarefa ainda não iniciada. |
-| **Spec Ready** | `specs/PLAN-EXEC-001-execucao-de-plano.md` — execução de plano como modo operacional; D-212. |
+| **Current Task** | **AUTHOR-T01 — rascunho persistente em IndexedDB.** NOT STARTED — não iniciar sem ler `specs/PLAN-AUTHOR-001-autoria-do-plano.md`. AUTHOR-T02 fechou em 2026-08-19 (D-217); a fase EXEC fechou T00→T06, e EXEC-T07 (destino por identidade) fica atrás das fases de autoria. |
+| **Spec Ready** | `specs/PLAN-EXEC-001-execucao-de-plano.md` **v1.1** — execução de plano como modo operacional; D-212, D-217. |
+| **Spec Ready** | `specs/PLAN-AUTHOR-001-autoria-do-plano.md` — integridade do rascunho na autoria; D-217. |
 | **⚠ Pendência operacional** | **Aplicar `supabase/migrations/20260813210000_profiles_auth_fk.sql`** (D-175). Limpa 9 perfis de teste vazios e cria a FK que impede a recorrência. Para com erro se encontrar órfão com dado. |
 | **Migrações aplicadas** | `locations`, `holdings`, `kits`, `requirements`, `checklists.status` — todas verificadas por REST. |
 | **Migrações aplicadas** | As duas de Preparedness State **aplicadas em 2026-08-13** e verificadas por REST: `locations`, `holdings`, `kits`, `requirements` → 200. Nenhuma pendência operacional. |
 | **Last Completed Task** | **D-188 / COMMS-T12 — lista, thread e conversa individual (2026-08-15)** |
+| | **AUTHOR-T02 / D-217 — confirmar ponto deixa de ser bloqueado por precisão (2026-08-19)** |
 | | **D-216 / PLAN follow-up — excluir plano arquiva, com trava de execução em curso (2026-08-19)** |
 | | **EXEC-T06 — Promoção de ponto do dia + basemap persistente (2026-08-19)** |
 | | **EXEC-T05 — Estado compartilhado e encerramento (2026-08-19)** |
@@ -250,6 +252,7 @@ rota ou UI foi alterado.**
 | **Build** | ✅ D-205 validado em 2026-08-16 com `npm run type-check`, `git diff --check`, `npm run build` e Playwright mobile no Mundo: o antigo y=692 virou canvas, a lateral baixa virou canvas, a alça central ainda reabre o sheet e drags movem o MapLibre no primeiro gesto. |
 | | ✅ EXEC-T01 validado em 2026-08-19 com `npm test -- --runTestsByPath lib/__tests__/plan-places.test.ts lib/__tests__/offline-family-plan-cache.test.ts lib/__tests__/plan-execution.test.ts`, `npm run type-check` e `git diff --check`. `supabase migration list --local` não rodou porque o Postgres local não estava ativo em `127.0.0.1:54322`. |
 | | ✅ EXEC-T02 validado em 2026-08-19 com `npm test -- --runTestsByPath lib/__tests__/plan-session.test.ts`, `npm run type-check`, `git diff --check` e `npm run build`. |
+| | ✅ AUTHOR-T02 validado em 2026-08-19 com `npm test` (46 suítes / 501 testes, incluindo `lib/__tests__/plan-author.test.ts`), `npm run type-check`, `npm run build` e `git diff --check`. Sem migration. |
 | | ✅ D-216 (excluir plano) validado em 2026-08-19 com `npm run type-check`, `npm test` (45 suítes / 497 testes), `npm run build` e `git diff --check`. Sem migration: usa `status = 'archived'`, que já existe no schema. |
 | | ✅ EXEC-T06 follow-up (basemap transversal) validado em 2026-08-19 com `npm run type-check`, `npm test` (45 suítes / 497 testes), `npm run build` e `git diff --check`. |
 | | ✅ EXEC-T00 validado em 2026-08-19 com `npm test -- --runTestsByPath lib/__tests__/offline-family-plan-cache.test.ts` e `npm run type-check`. |

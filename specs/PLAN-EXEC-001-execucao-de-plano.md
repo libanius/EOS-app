@@ -1,5 +1,5 @@
 # SPEC — PLAN-EXEC-001: Execução de Plano (arquétipo Encontrar)
-Version: 1.0 | Status: **Ready** | Author: Paulo Neto
+Version: 1.1 | Status: **Ready** | Author: Paulo Neto
 
 > Regra 1: nenhum código antes de Ready. Este spec está Ready.
 > Regra 4: se a implementação revelar algo que este spec não cobriu, **pare** e
@@ -192,6 +192,45 @@ O aparelho sabe quem é o usuário. Portanto:
 > Estrutura antes de pele, na ordem que `docs/35` §9 pede. Os tokens são os do
 > `EOS-Design-System-v1`; nenhum vocabulário visual novo é introduzido.
 
+### 4.0 As duas cenas
+
+A feature tem duas cenas, e elas não se parecem. A v1.0 deste spec descreveu
+princípios só para a execução e deixou a autoria sem nenhum — sem declarar por
+quê. A omissão produziu duas metades da mesma feature desenhadas por filosofias
+diferentes, e é corrigida aqui.
+
+| | Autoria | Execução |
+|---|---|---|
+| Quando | 23h, véspera, cansado, cônjuge ouvindo pela metade | Em pé, andando, com medo |
+| Tarefa | Chegar a um acordo e registrá-lo | Fazer a próxima coisa certa |
+| Unidade | O documento inteiro | Uma ação |
+| Falha típica | Perder o que foi digitado | Ler a coisa errada |
+
+**Os princípios da execução (§4.1) não valem na autoria, e isso é deliberado.**
+"Uma ação por vez" seria errado em cima de um documento que precisa ser revisado
+como um todo antes de virar compromisso: esconder seções de quem está combinando
+com a família piora a compreensão em vez de melhorar. O que a autoria tem são
+princípios próprios (§4.0.1), não a ausência deles.
+
+#### 4.0.1 Princípios da superfície de autoria
+
+1. **Nada digitado se perde.** O rascunho é persistido localmente a cada
+   alteração e sobrevive a navegação, troca de plano, troca de círculo e
+   fechamento do app. Nenhum controle da própria página descarta trabalho em
+   silêncio. Ver `PLAN-AUTHOR-001`.
+2. **Progressão por estado do plano, nunca amputação.** Um plano vazio mostra o
+   caminho mínimo que `planGaps` já calcula — um ponto de encontro e um papel.
+   Um plano completo mostra tudo, porque quem volta em março para conferir
+   precisa das dez seções. O que muda é a ordem de revelação, não o conteúdo
+   disponível.
+3. **Alarme só quando existe o que fazer.** Nenhuma sugestão automática sobre
+   rascunho vazio: "Revisão do Pilot · 3" num plano em branco ensina que o
+   produto reclama sem motivo, e treina a pessoa a rolar por cima do único aviso
+   que importa.
+4. **O compromisso é alcançável sem rolar.** A ação de salvar não pode viver
+   depois de catorze cartas.
+5. **Contraste é requisito funcional, não acabamento.** Ver §4.3.
+
 ### 4.1 Princípios da superfície de execução
 
 1. **Uma ação por vez no primeiro nível.** O defeito da tela atual é empilhar tudo
@@ -231,8 +270,13 @@ futuros**; a PWA não controla o brilho do sistema. Não se cria variante de tem
 clara nesta versão — a decisão fica registrada como possível evolução, e depende
 de os tokens ganharem uma variante em vez de hex solto.
 
-O token mais frágil sob sol é `--mu #6B6B8A`. No modo execução, nenhum texto
-essencial usa `--mu`; ele fica restrito a metadado descartável.
+Os tokens mais frágeis são `--mu #6B6B8A` e `--ink-3 rgba(235,235,245,0.38)`
+(≈3.0:1 sobre `--bg`). **A proibição vale nas duas superfícies, não só na
+execução**: quem preenche o plano às 23h cansado é a mesma pessoa que o executa
+com medo. Nenhum texto essencial — rótulo de seção, frase de porquê, rótulo de
+precisão, linha de distância/rumo/minutos — usa `--mu` ou `--ink-3`. Esses
+tokens ficam restritos a metadado descartável. Texto abaixo de 18 px cumpre
+4.5:1; acima, 3:1.
 
 ### 4.4 As quatro telas
 
@@ -380,6 +424,32 @@ profiles
 Uma preferência para o app inteiro. `MapPointPicker`, `RouteDraw`, Mundo e as
 superfícies de execução leem daqui em vez de manter estado local próprio.
 
+### 5.7 Gatilho aponta para o lugar (alterado)
+
+```
+family_plan_triggers
+  …
+  destination_place_id uuid null → circle_places   -- NOVO
+  destination_kind text null                       -- MANTIDO, só para gatilhos legados
+```
+
+`destination_kind` guarda **categoria**, não identidade. Um plano com "Casa da
+vovó" e "Praça do Cruzeiro" — ambos `custom` — gera duas opções de mesmo valor,
+e o select resolve sempre para a primeira. Como o playbook de execução deriva o
+destino ativo daí, o sintoma é a família indo para o lugar errado no momento em
+que ninguém confere.
+
+`place_id` é identidade e resolve a colisão. A migração converte
+`destination_kind` em `destination_place_id` quando a resolução for única, e
+deixa `null` quando for ambígua — **nunca escolhe a primeira**. Gatilho com
+destino ambíguo aparece no editor pedindo que o usuário escolha.
+
+Isto é escopo da **EXEC-T07**, não da EXEC-T01. A EXEC-T01 fechou em 2026-08-19
+com a migração aplicada, e T02 a T06 foram construídas sobre ela; acrescentar
+critério a uma fase encerrada tornaria retroativamente ilegítimo tudo que veio
+depois, pela regra da §9. O defeito é real e grave — o lugar dele é uma fase
+nova.
+
 ---
 
 ## 6. Regras de Negócio
@@ -419,6 +489,14 @@ superfícies de execução leem daqui em vez de manter estado local próprio.
     exibidos, mas a tela marca o ponto como não confirmado e oferece `Confirmar
     no mapa`. Confirmar sem mover o ponto altera só a precisão e **não** versiona
     o plano nem invalida acks; mover mais de 50 m cai na D-g.
+17. **Gatilho aponta para o lugar, não para a categoria.** Nenhuma superfície
+    resolve destino por `kind`. Destino ambíguo é declarado como ambíguo e
+    pedido ao usuário; nunca resolvido por ordem de lista.
+18. **Precisão nunca bloqueia a confirmação de uma coordenada que existe.** Um
+    ponto marcado no mapa é confirmável independentemente do valor de
+    `precision`. Ver `PLAN-AUTHOR-001` §3.2 — que também fixa o valor gravado
+    como `'address'`, nunca `'gps'`: marcar no mapa confirma a coordenada, não
+    atesta presença física no local.
 
 ---
 
@@ -474,9 +552,16 @@ Binários. Sem "parcialmente implementado".
 - [ ] Ao encerrar, o EOS oferece promover cada ponto do dia.
 - [ ] Recusar a promoção não perde o registro da execução.
 
+**EXEC-T07 — destino por identidade**
+- [ ] Um plano com dois lugares `custom` distintos gera duas opções de destino
+      que resolvem para lugares diferentes.
+- [ ] Gatilho legado com destino ambíguo migra para `null` e aparece no editor
+      pedindo escolha — nenhum é resolvido por ordem de lista.
+
 **Transversal**
 - [ ] A preferência de basemap persiste entre sessões e vale em todas as superfícies de mapa.
 - [ ] Marcadores e traçados permanecem legíveis sobre imagem clara e sobre imagem escura.
+- [ ] Nenhum texto essencial usa `--mu` ou `--ink-3`, na autoria ou na execução.
 
 ---
 
@@ -513,6 +598,16 @@ Binários. Sem "parcialmente implementado".
 | **EXEC-T04** | Playbook por papel, offline-first, carta do dependente, protocolo como primeiro passo |
 | **EXEC-T05** | Estado compartilhado, escalonamento por tempo, encerramento |
 | **EXEC-T06** | Promoção de ponto do dia + preferência de basemap persistente |
+| **EXEC-T07** | Destino do gatilho por `destination_place_id` + migração que recusa ambiguidade |
 
 Uma fase por vez. Nenhuma fase começa antes de a anterior passar todos os seus
-critérios da seção 7.
+critérios da seção 7. **A EXEC-T01 não é reaberta**: ela fechou em 2026-08-19 com
+a migração aplicada, e reabri-la invalidaria retroativamente T02 a T06. O que a
+v1.1 acrescentou entra como EXEC-T07 (§5.7).
+
+**Dívida aberta pela EXEC-T01, a pagar antes da T07**: a migração marcou todo
+waypoint legado como `precision: 'unknown'`, e a UI de autoria desabilita
+`Confirmar` nesse estado — o acervo inteiro de pontos do usuário está hoje num
+estado que a tela se recusa a confirmar, pelo caminho que ela mesma indica. Não
+é risco a evitar; é defeito vivo. `PLAN-AUTHOR-001` AUTHOR-T02 é o conserto e
+tem prioridade sobre a T07.

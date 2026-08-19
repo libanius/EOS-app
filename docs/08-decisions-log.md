@@ -4,6 +4,45 @@
 
 ---
 
+## D-217 — A autoria tem princípios próprios, e a EXEC-T01 não é reaberta
+
+**Date**: 2026-08-19
+**Status**: DECIDED
+**Roadmap**: PLAN-AUTHOR-001, EXEC-T07
+**Spec**: `specs/PLAN-EXEC-001-execucao-de-plano.md` v1.1, `specs/PLAN-AUTHOR-001-autoria-do-plano.md`
+
+**Context**: a crítica de 2026-08-19 (Design Health 22/40) mostrou que o
+PLAN-EXEC-001 v1.0 declarava princípios só para a execução e deixava a autoria
+sem nenhum, sem dizer por quê — duas metades da mesma feature desenhadas por
+filosofias diferentes. O patch proposto corrigia isso, mas trazia três defeitos.
+
+**Decision**: v1.1 acrescenta §4.0 (as duas cenas) e §4.0.1 (princípios da
+autoria), estende a proibição de `--mu`/`--ink-3` às duas superfícies, e cria a
+§5.7 (`destination_place_id`). As três correções sobre o patch original:
+
+1. **A premissa estava invertida.** O patch tratava o beco sem saída da precisão
+   como risco futuro a sequenciar antes da EXEC-T01. A EXEC-T01 fechou em
+   2026-08-19 com a migração aplicada pelo dono, e T02 a T06 foram construídas
+   sobre ela: todo waypoint legado **já está** `precision: 'unknown'`, e o picker
+   já desabilita `Confirmar` nesse estado. Não é prevenção, é defeito vivo. Por
+   isso AUTHOR-T02 é a primeira fase de autoria, à frente do rascunho
+   persistente.
+2. **`onPick` grava `'address'`, não `'gps'`.** `precisionLabel` renderiza
+   `'gps'` como "marcado no local". Quem solta um pino no mapa do sofá não
+   estava no local; gravar `'gps'` faria a carta afirmar presença física que não
+   houve, que é a procedência falsa que a §5.2 existe para impedir.
+3. **A EXEC-T01 não é reaberta.** Acrescentar critério a uma fase encerrada
+   tornaria retroativamente ilegítimo tudo que veio depois, pela regra da §9. O
+   trabalho de destino por identidade entra como **EXEC-T07**.
+
+**Consequence**: ordem de execução é AUTHOR-T02 → AUTHOR-T01 → AUTHOR-T03 →
+AUTHOR-T04 → EXEC-T07. A numeração das fases é a de origem e não muda.
+
+**Não autorizado por D-217**: reabrir a EXEC-T01, gravar `'gps'` para ponto
+marcado no mapa, ou resolver destino ambíguo por ordem de lista.
+
+---
+
 ## D-216 — Excluir um plano arquiva; a memória da execução não é destruída
 
 **Date**: 2026-08-19

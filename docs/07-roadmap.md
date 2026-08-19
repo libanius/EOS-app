@@ -243,6 +243,26 @@ offline-first, com playbook por papel e disparo explícito.*
 | EXEC-T05 | Estado compartilhado e encerramento | ✅ COMPLETE | 2026-08-19 — Estado é derivado de `family_plan_execution_events`: adultos marcam `no local/a caminho/procurando/sem sinal` com idade, dependentes aparecem como `sem aparelho`, escalonamento usa `family_plan_triggers.escalation_minutes` (D-215) e encerramento `resolved/cancelled` desliga o modo em aparelhos alcançáveis. Migration `20260819142746_exec_t05_trigger_escalation_minutes.sql` aplicada e verificada por REST. |
 | EXEC-T06 | Promoção de ponto do dia + basemap persistente | ✅ COMPLETE | 2026-08-19 — Encerramento oferece promover pontos do dia para `circle_places` com `precision: unknown`, recusar não perde o registro da execução, e `profiles.map_base_mode` vira preferência única de basemap para Mundo, `MapPointPicker` e `RouteDraw`. Migration aplicada pelo dono e verificada por REST service-role. **Follow-up 2026-08-19:** o critério transversal não fechava — `/dashboard-world` (HWD v1) guardava base própria em `useState('hybrid')` e persistia numa chave isolada (`eos-world-map-base`), sem satélite e sem chegar ao perfil. Agora lê `useMapBaseMode()` como as demais superfícies, oferece os três modos e a chave antiga saiu. Teste de guarda em `lib/__tests__/map-base-mode.test.ts`. |
 
+| EXEC-T07 | Destino do gatilho por identidade | PENDING | Spec v1.1 §5.7. `destination_kind` guarda categoria, não identidade: dois lugares `custom` geram duas opções de mesmo valor e o select resolve sempre para a primeira — o playbook manda a família para o lugar errado. Migra para `destination_place_id`, deixando `null` quando ambíguo. **Não reabre a EXEC-T01**, que fechou com migração aplicada. Vem depois de AUTHOR-T02. |
+
+---
+
+## Autoria do Plano — integridade do rascunho (PLAN-AUTHOR)
+
+*Goal: fazer a superfície de autoria cumprir a tese da própria feature — o plano
+precisa funcionar exatamente quando o EOS não funciona.*
+
+> Decisão: **D-217**. Spec Ready: `specs/PLAN-AUTHOR-001-autoria-do-plano.md`.
+> Origem: crítica de 2026-08-19 (Design Health 22/40). Ordem de execução começa
+> pela AUTHOR-T02, que é defeito vivo, não a AUTHOR-T01.
+
+| Task ID | Task | Status | Notes |
+|---|---|---|---|
+| AUTHOR-T02 | Confirmação de ponto desbloqueada | ✅ COMPLETE | 2026-08-19 — A migração da EXEC-T01 marcou todo waypoint legado como `precision: 'unknown'`, e o picker desabilita `Confirmar` nesse estado — o acervo inteiro do usuário está num estado que a tela recusa, pelo caminho que ela mesma indica. `onPick` grava `'address'` (nunca `'gps'`: o rótulo de `'gps'` é "marcado no local"), e nenhum valor de precisão bloqueia confirmação. Controle desabilitado declara o motivo. |
+| AUTHOR-T01 | Rascunho persistente | PENDING | IndexedDB por `(circleId, planId)`, sobrevive a navegação, troca de plano/círculo, `+ Novo plano` e recarga. Reabrir com rascunho mais novo oferece continuar/descartar. Cabeçalho distingue `salvo` de `alterações não salvas`. |
+| AUTHOR-T03 | Ack persistente + guarda de versão | PENDING | `needsAck` deixa de depender de `!dirty`. `save()` envia versão esperada; servidor à frente recusa com conflito e mostra o que mudou. |
+| AUTHOR-T04 | Taxonomia de erro de gravação | PENDING | 403/404/409/500 produzem quatro mensagens distintas; a mensagem real da API não é descartada. |
+
 ---
 
 ## Unified Profile & Pilot Personalization (UPP)

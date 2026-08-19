@@ -98,6 +98,7 @@ const COPY = {
     unconfirmedPlace: 'Ponto não confirmado',
     confirmOnMap: 'Confirmar no mapa',
     precisionConfidence: 'Confiança da coordenada',
+    confirmNeedsPoint: 'Escolha um ponto no mapa, use sua posição ou busque um endereço para confirmar.',
     precisionGps: 'Estou no local / GPS',
     precisionAddress: 'Endereço buscado',
     precisionCity: 'Centro da cidade',
@@ -224,6 +225,7 @@ const COPY = {
     unconfirmedPlace: 'Unconfirmed point',
     confirmOnMap: 'Confirm on map',
     precisionConfidence: 'Coordinate confidence',
+    confirmNeedsPoint: 'Pick a point on the map, use your position, or search an address to confirm.',
     precisionGps: 'I am on site / GPS',
     precisionAddress: 'Searched address',
     precisionCity: 'City centre',
@@ -1785,11 +1787,24 @@ function PointPicker({
               </select>
             </label>
 
+            {/*
+              AUTHOR-T02 / regra 18: precisão NUNCA bloqueia a confirmação de
+              uma coordenada que existe. O portão antigo (`precision ===
+              'unknown'`) desabilitava Confirmar em silêncio — e como a migração
+              da EXEC-T01 marcou todo ponto legado como `unknown`, o acervo
+              inteiro do usuário caía no caminho que a própria tela indicava com
+              `Confirmar no mapa`. O único motivo legítimo para o botão estar
+              cinza é não haver coordenada, e agora ele diz isso.
+            */}
+            {!point && (
+              <p className="t-foot ink-2" id="wv2-picker-why">{copy.confirmNeedsPoint}</p>
+            )}
             <div className="wv2-picker-acts">
               <Pill onClick={onClose}>{copy.cancel}</Pill>
               <Pill
                 primary
-                disabled={!point || !target || precision === 'unknown'}
+                aria-describedby={!point ? 'wv2-picker-why' : undefined}
+                disabled={!point || !target}
                 onClick={() => {
                   if (!point || !target) return
                   onConfirm({
@@ -1818,6 +1833,16 @@ function PointPicker({
               setPoint(picked)
               setAccuracy(null)
               setGeoError(null)
+              /*
+               * AUTHOR-T02: marcar no mapa declara a procedência, e declara a
+               * VERDADEIRA. `address` — "endereço buscado" — e nunca `gps`, que
+               * o `precisionLabel` renderiza como "marcado no local": quem
+               * solta um pino do sofá não estava no local, e a carta do ponto
+               * de encontro não pode afirmar que estava. É a mesma recusa da
+               * §5.2 do spec, que existe para a família não concluir que dá
+               * para ir a pé até onde não dá.
+               */
+              setPrecision('address')
               nameIfEmpty()
               setOnMap(false)
             }}
