@@ -1,7 +1,14 @@
 # PENDÊNCIAS DO DONO — ações que só você pode executar
 
 > Status geral: **Stripe Live ativo; providers opcionais pendentes**. O código está pronto e no ar (auto-deploy). As pendências restantes são rotação de segredos expostos e providers opcionais de hazard.
-> Última atualização: 2026-07-21.
+> Última atualização: 2026-08-19.
+
+> **Atualização 2026-08-19**: pendências antigas de migration D-135 foram
+> rechecadas por REST service-role e estão resolvidas: `family_plan_roles.for_member_id`
+> responde 200; `household_invites` tem 2 convites em `joined`; `conversations`,
+> `conversation_members` e `circle_messages.conversation_id` respondem 200. A
+> migration EXEC-T02 `20260819050556_exec_t02_plan_sessions.sql` também foi
+> aplicada e verificada.
 
 > **Migrations resolvidas** (2026-07-17), **Stripe Test mode validado ponta-a-ponta** (2026-07-20) e **Stripe Live cutover concluído** (2026-07-21). O que ainda depende do dono: rotacionar segredos expostos durante a operação, chaves opcionais de provider (WeatherKit/Xweather/etc.) e autorizações externas (ShakeAlert/FEMA). O Personal Access Token Supabase usado em 2026-07-17 deve ser **revogado/rotacionado** pelo dono após o uso (Dashboard → Account → Tokens).
 > Histórico: o `supabase` CLI logado neste ambiente pertence a outra conta (só enxerga BrightScaleWeb / bolt-native / Abre-USA); por isso o CLI não alcança o projeto EOS. A via que funcionou foi o PAT + Management API.
@@ -24,9 +31,11 @@
 
 ---
 
-## 1-D. Migration PENDENTE — `for_member_id` nos papéis do plano (D-135)
+## 1-D. Migration RESOLVIDA — `for_member_id` nos papéis do plano (D-135)
 
-**Aplique `supabase/migrations/20260808210000_plan_role_dependent.sql`.**
+`supabase/migrations/20260808210000_plan_role_dependent.sql` está aplicada.
+Verificado em 2026-08-19: `family_plan_roles?select=id,for_member_id&limit=0`
+responde 200.
 
 A seção "Quem busca quem" do plano só sabia dizer QUEM BUSCA — a lista era de
 contas do círculo. Quem é buscado normalmente não tem conta: é a criança, é a
@@ -39,10 +48,11 @@ fica no `error_log` como `api/plans:for_member_id`.
 
 ---
 
-## 1-C. Migration PENDENTE — `joined` nos convites (D-135)
+## 1-C. Migration RESOLVIDA — `joined` nos convites (D-135)
 
-**Aplique `supabase/migrations/20260808200000_invite_joined.sql`.** Uma linha:
-acrescenta `joined` aos status possíveis de `household_invites`.
+`supabase/migrations/20260808200000_invite_joined.sql` está aplicada. Verificado
+em 2026-08-19: `household_invites` responde 200 e os 2 convites existentes estão
+com `status = joined`.
 
 Por que importa agora: sua conta tem dois convites marcados como *enviados*
 para a **Daniela** e a **Paola** — que já moram com você no círculo há semanas.
