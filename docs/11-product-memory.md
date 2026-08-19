@@ -158,8 +158,8 @@ min, e a faixa salva é 5–120 min. `Fiz isso` e `Ainda não` só gravam evento
 reiniciam/adiam o relógio local; nenhum botão liga, notifica terceiros ou aciona
 autoridade. Encerrar como `resolved` ou `cancelled` muda
 `family_plan_executions.status`; aparelhos alcançáveis limpam o modo ao buscar a
-execução novamente. Migration pendente enquanto T05 não fecha:
-`20260819142746_exec_t05_trigger_escalation_minutes.sql`.
+execução novamente. Migration `20260819142746_exec_t05_trigger_escalation_minutes.sql`
+aplicada pelo dono em 2026-08-19 e verificada por REST.
 
 **Plano é envelope; protocolo é execução (D-207 / PLAN-T11).** O executor não
 deve despejar o documento inteiro. Primeiro escolhe o plano salvo; depois escolhe

@@ -10,12 +10,13 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Execução de Plano (EXEC) sobre Web/PWA |
-| **Current Task** | **EXEC-T05 — Estado compartilhado e encerramento.** IMPLEMENTED — MIGRATION PENDING. Código e testes locais prontos; aplicar `supabase/migrations/20260819142746_exec_t05_trigger_escalation_minutes.sql` antes de marcar COMPLETE. |
+| **Current Task** | **EXEC-T06 — Promoção de ponto do dia + basemap persistente.** NOT STARTED — EXEC-T05 aplicada e verificada; não iniciar sem ler `specs/PLAN-EXEC-001-execucao-de-plano.md` seção EXEC-T06. |
 | **Spec Ready** | `specs/PLAN-EXEC-001-execucao-de-plano.md` — execução de plano como modo operacional; D-212. |
 | **⚠ Pendência operacional** | **Aplicar `supabase/migrations/20260813210000_profiles_auth_fk.sql`** (D-175). Limpa 9 perfis de teste vazios e cria a FK que impede a recorrência. Para com erro se encontrar órfão com dado. |
 | **Migrações aplicadas** | `locations`, `holdings`, `kits`, `requirements`, `checklists.status` — todas verificadas por REST. |
 | **Migrações aplicadas** | As duas de Preparedness State **aplicadas em 2026-08-13** e verificadas por REST: `locations`, `holdings`, `kits`, `requirements` → 200. Nenhuma pendência operacional. |
 | **Last Completed Task** | **D-188 / COMMS-T12 — lista, thread e conversa individual (2026-08-15)** |
+| | **EXEC-T05 — Estado compartilhado e encerramento (2026-08-19)** |
 | | **EXEC-T04 — Playbook por papel offline-first (2026-08-19)** |
 | | **EXEC-T03 — `family_plan_executions` + disparo por gesto (2026-08-19)** |
 | | **EXEC-T02 — `plan_sessions` + armar/desarmar (2026-08-19)** |
