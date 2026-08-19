@@ -173,8 +173,9 @@ o registro compartilhado continua em `family_plan_executions`.
 `RouteDraw` leem a mesma preferência `profiles.map_base_mode`, com default
 `satellite`; `localStorage` fica só como cache local até a rede responder. O QR
 público da ficha não expõe essa preferência. Migration
-`20260819144004_exec_t06_map_base_mode.sql` precisa estar aplicada para
-persistência em produção; antes disso a rota degrada sem quebrar a ficha.
+`20260819144004_exec_t06_map_base_mode.sql` aplicada pelo dono em 2026-08-19 e
+verificada por REST service-role; a rota ainda degrada sem quebrar a ficha em
+ambientes que não tenham a coluna.
 
 **Plano é envelope; protocolo é execução (D-207 / PLAN-T11).** O executor não
 deve despejar o documento inteiro. Primeiro escolhe o plano salvo; depois escolhe

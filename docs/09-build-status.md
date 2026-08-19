@@ -10,14 +10,13 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Execução de Plano (EXEC) sobre Web/PWA |
-| **Current Task** | **EXEC-T06 — Promoção de ponto do dia + basemap persistente.** Implementada em código; aplicar `supabase/migrations/20260819144004_exec_t06_map_base_mode.sql` antes de verificar persistência REST em produção. Próxima tarefa ainda não iniciada. |
+| **Current Task** | **EXEC-T06 — Promoção de ponto do dia + basemap persistente.** COMPLETE — migration aplicada pelo dono e verificada por REST service-role. Próxima tarefa ainda não iniciada. |
 | **Spec Ready** | `specs/PLAN-EXEC-001-execucao-de-plano.md` — execução de plano como modo operacional; D-212. |
 | **⚠ Pendência operacional** | **Aplicar `supabase/migrations/20260813210000_profiles_auth_fk.sql`** (D-175). Limpa 9 perfis de teste vazios e cria a FK que impede a recorrência. Para com erro se encontrar órfão com dado. |
-| **⚠ Pendência operacional** | **Aplicar `supabase/migrations/20260819144004_exec_t06_map_base_mode.sql`** (EXEC-T06). Adiciona `profiles.map_base_mode` com default `satellite` e check `satellite/hybrid/dark`. |
 | **Migrações aplicadas** | `locations`, `holdings`, `kits`, `requirements`, `checklists.status` — todas verificadas por REST. |
 | **Migrações aplicadas** | As duas de Preparedness State **aplicadas em 2026-08-13** e verificadas por REST: `locations`, `holdings`, `kits`, `requirements` → 200. Nenhuma pendência operacional. |
 | **Last Completed Task** | **D-188 / COMMS-T12 — lista, thread e conversa individual (2026-08-15)** |
-| | **EXEC-T06 — Promoção de ponto do dia + basemap persistente (2026-08-19; migration pendente)** |
+| | **EXEC-T06 — Promoção de ponto do dia + basemap persistente (2026-08-19)** |
 | | **EXEC-T05 — Estado compartilhado e encerramento (2026-08-19)** |
 | | **EXEC-T04 — Playbook por papel offline-first (2026-08-19)** |
 | | **EXEC-T03 — `family_plan_executions` + disparo por gesto (2026-08-19)** |
@@ -200,6 +199,7 @@ rota ou UI foi alterado.**
 | **Migration** | ✅ `20260819045025_exec_t01_circle_places.sql` aplicada pelo dono em 2026-08-19. Libera catálogo de lugares e waypoints por referência. |
 | **Migration** | ✅ `20260819050556_exec_t02_plan_sessions.sql` aplicada pelo dono em 2026-08-19 e verificada por REST service-role: `plan_sessions`, `plan_session_members`, `plan_session_dependents`, `plan_session_places` → 200. |
 | **Migration** | ✅ `20260819124613_exec_t03_family_plan_executions.sql` aplicada pelo dono em 2026-08-19 e verificada por REST service-role: `family_plan_executions`, `family_plan_execution_events` → 200. |
+| **Migration** | ✅ `20260819144004_exec_t06_map_base_mode.sql` aplicada pelo dono em 2026-08-19 e verificada por REST service-role (`profiles?select=id,map_base_mode&limit=1` → 200; exemplo retornou `satellite`). |
 | **Migration** | ✅ `20260804014000_inbox_eos_notifications.sql` aplicada pelo dono em 2026-08-04. Evolui `circle_notifications` para Inbox EOS app-level (`scope`, `severity`, `source_key`, `circle_id` nullable). |
 | **Migration** | ✅ `20260804180000_rate_limit_and_error_log.sql` aplicada pelo dono em 2026-08-04 e verificada com `/api/health` + `node scripts/guardrails-test.mjs` (5/5). Adiciona `rate_limit_buckets`, RPC `consume_rate_limit` e `error_log`. |
 | **Migration** | ✅ `20260804015000_edu_view_count.sql` aplicada pelo dono e verificada em 2026-08-04 via REST service-role (`edu_content?select=id,view_count` responde 200). Adiciona `edu_content.view_count` para destaque do vídeo mais clicado. |
