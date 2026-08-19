@@ -142,9 +142,10 @@ fica em `family_plan_executions.protocol_index` e também atualiza localmente
 quando offline. A lista numerada nunca inclui avisos do sistema nem carta do
 dependente; a carta só aparece para quem tem papel com `for_member_id`
 correspondente. T04 não cria editor de cartas: a tabela
-`family_plan_dependent_briefs` é só contrato/renderização desta fase e depende
-da migration `20260819131113_exec_t04_dependent_briefs.sql`. D-214: PWA aplica
-legibilidade e números maiores; brilho máximo real fica para Native futuro.
+`family_plan_dependent_briefs` é só contrato/renderização desta fase.
+Migration `20260819131113_exec_t04_dependent_briefs.sql` aplicada pelo dono em
+2026-08-19 e verificada por REST. D-214: PWA aplica legibilidade e números
+maiores; brilho máximo real fica para Native futuro.
 
 **Plano é envelope; protocolo é execução (D-207 / PLAN-T11).** O executor não
 deve despejar o documento inteiro. Primeiro escolhe o plano salvo; depois escolhe
