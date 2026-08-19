@@ -12,6 +12,8 @@ import SimulationInvite from '@/components/SimulationInvite'
 import SimulationDebrief from '@/components/SimulationDebrief'
 import PlanSessionProvider from '@/components/PlanSessionProvider'
 import PlanSessionBanner from '@/components/PlanSessionBanner'
+import PlanExecutionProvider from '@/components/PlanExecutionProvider'
+import PlanExecutionBanner from '@/components/PlanExecutionBanner'
 import NotificationInbox from '@/components/NotificationInbox'
 
 // NOTE: V2Shell (components/v2 — the "Prévia Viva" risk state machine) is WIP and
@@ -28,6 +30,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         montada aqui, também evita o refetch a cada navegação.
       */}
       <PlanSessionProvider>
+      <PlanExecutionProvider>
       <RiskProvider>
       {/*
         D-137: a CONVERSA do Pilot também é estado do app.
@@ -40,6 +43,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <PilotProvider>
       <SimulationBanner />
       <PlanSessionBanner />
+      <PlanExecutionBanner />
       {/* D-071: a família é convidada, nunca colocada no treino sem aceitar. */}
       <SimulationInvite />
       {/* SIM-T05: o que o treino ensinou, em números. */}
@@ -68,6 +72,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <PilotDock />
       </PilotProvider>
       </RiskProvider>
+      </PlanExecutionProvider>
       </PlanSessionProvider>
     </SimulationProvider>
   )

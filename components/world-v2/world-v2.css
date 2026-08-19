@@ -2606,6 +2606,10 @@
   text-align: left;
   cursor: pointer;
 }
+.wv2-member .plan-choices button.highlighted {
+  border-color: rgba(var(--accent-rgb), 0.48);
+  background: rgba(var(--accent-rgb), 0.16);
+}
 .wv2-member .plan-choices strong,
 .wv2-member .plan-choices em {
   display: block;
@@ -2692,6 +2696,54 @@
   color: #ff9f0a;
   border-color: rgba(255, 159, 10, 0.32);
 }
+.wv2-member .hold-execute {
+  --hold-progress: 0%;
+  width: 148px;
+  height: 148px;
+  min-width: 148px;
+  min-height: 148px;
+  display: grid;
+  place-items: center;
+  margin: var(--s4) auto var(--s3);
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(14, 17, 18, 0.96) 0 58%, transparent 59%),
+    conic-gradient(var(--accent) var(--hold-progress), rgba(255, 255, 255, 0.14) 0);
+  color: var(--ink);
+  box-shadow:
+    0 0 0 1px rgba(var(--accent-rgb), 0.22),
+    0 18px 44px -28px rgba(var(--accent-rgb), 1);
+  font: inherit;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+}
+.wv2-member .hold-execute:active {
+  transform: scale(0.985);
+}
+.wv2-member .hold-execute:disabled {
+  opacity: 0.64;
+  cursor: progress;
+}
+.wv2-member .hold-execute span,
+.wv2-member .hold-execute strong,
+.wv2-member .hold-execute em {
+  display: block;
+  text-align: center;
+}
+.wv2-member .hold-execute strong {
+  font-size: 1rem;
+  font-weight: 800;
+}
+.wv2-member .hold-execute em {
+  margin-top: 3px;
+  color: var(--accent);
+  font-size: 0.875rem;
+  font-style: normal;
+  font-weight: 800;
+}
 .wv2-member .execution-steps {
   display: grid;
   gap: var(--s2);
@@ -2748,7 +2800,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .wv2-member .go > *:active,
-  .wv2-member .presets button:active:not(:disabled) { transform: none; }
+  .wv2-member .presets button:active:not(:disabled),
+  .wv2-member .hold-execute:active { transform: none; }
 }
 
 /* ═══ PLAN — o plano de voo da família (D-066 / doc 18) ════════════════════ */

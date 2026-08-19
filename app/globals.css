@@ -723,8 +723,22 @@ hr { border: none; border-top: 1px solid var(--bd); }
   background: linear-gradient(90deg, #047857, #10b981);
   box-shadow: 0 6px 18px -8px rgba(16, 185, 129, 0.9);
 }
+.sim-banner.plan-execution-banner {
+  top: var(--plan-execution-banner-top, 0px);
+  background: linear-gradient(90deg, #064e3b, #10b981);
+  box-shadow: 0 6px 18px -8px rgba(16, 185, 129, 0.95);
+}
 body:has(.sim-banner:not(.plan-session-banner)):has(.plan-session-banner) {
   --plan-session-banner-top: 46px;
+}
+body:has(.plan-session-banner):has(.plan-execution-banner) {
+  --plan-execution-banner-top: 46px;
+}
+body:has(.sim-banner:not(.plan-session-banner):not(.plan-execution-banner)):has(.plan-execution-banner) {
+  --plan-execution-banner-top: 46px;
+}
+body:has(.sim-banner:not(.plan-session-banner):not(.plan-execution-banner)):has(.plan-session-banner):has(.plan-execution-banner) {
+  --plan-execution-banner-top: 92px;
 }
 .sim-banner.plan-session-banner.expired {
   background: linear-gradient(90deg, #b45309, #f59e0b);
@@ -761,6 +775,13 @@ body:has(.sim-banner:not(.plan-session-banner)):has(.plan-session-banner) {
 /* Everything else moves down so the banner never covers real chrome. */
 body:has(.sim-banner) .wv2 { top: 46px; }
 body:has(.sim-banner:not(.plan-session-banner)):has(.plan-session-banner) .wv2 { top: 92px; }
+body:has(.plan-session-banner):has(.plan-execution-banner) .wv2,
+body:has(.sim-banner:not(.plan-session-banner):not(.plan-execution-banner)):has(.plan-execution-banner) .wv2 {
+  top: 92px;
+}
+body:has(.sim-banner:not(.plan-session-banner):not(.plan-execution-banner)):has(.plan-session-banner):has(.plan-execution-banner) .wv2 {
+  top: 138px;
+}
 body:has(.sim-banner) .wv2-search,
 body:has(.sim-banner) .wv2-mapcontrols { top: 12px; }
 
@@ -929,6 +950,18 @@ body:has(.wv2-pilotbar) {
   flex: none;
   font-size: 12px;
   opacity: 0.86;
+}
+.sim-banner .plan-execution-controls strong,
+.sim-banner .plan-execution-controls em {
+  flex: none;
+  font-size: 12px;
+  font-style: normal;
+}
+.sim-banner .plan-execution-controls strong {
+  font-weight: 800;
+}
+.sim-banner .plan-execution-msg {
+  opacity: 0.9;
 }
 
 /* ─── DEBRIEF ─────────────────────────────────────────────────────────────

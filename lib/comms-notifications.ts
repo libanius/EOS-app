@@ -16,6 +16,8 @@ export type CommsNotificationKind =
   | 'weather_alert'
   // D-119: aviso ao dono de que apareceu erro novo em produção.
   | 'error_alert'
+  | 'plan_execution'
+  | 'plan_execution_cancelled'
   /*
    * D-186: a mensagem predefinida de uma pessoa para outra do círculo.
    *

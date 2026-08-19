@@ -11,14 +11,17 @@
  * pick — and a fixed vocabulary is recognised instantly by whoever receives it.
  */
 
-import { useMemo, useState } from 'react'
+import { useRef, useState, type CSSProperties } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { distanceKm } from '@/lib/world/shelters'
 import { directionsUrl, formatDistance, walkingMinutes } from '@/lib/world/navigation'
 import { FADE, SPRING, haptic } from './motion'
 import { PING_PRESETS, type PingPreset } from '@/lib/family-ping'
-import type { PlanDocument, PlanSummary } from '@/lib/family-plan'
-import { buildPlanExecutionProtocols, buildPlanExecutionSteps } from '@/lib/plan-execution'
+import type { PlanSummary } from '@/lib/family-plan'
+import { getFamilyPlanList } from '@/lib/offline-storage'
+import { HOLD_TO_EXECUTE_MS, planExecutionEntryState } from '@/lib/plan-execution-mode'
+import { usePlanExecution } from '@/components/PlanExecutionProvider'
+import { usePlanSession } from '@/components/PlanSessionProvider'
 
 export type MapMember = {
   id: string
@@ -40,7 +43,8 @@ type ExecutionState =
   | { status: 'idle' }
   | { status: 'loading' }
   | { status: 'selecting'; circle: CircleRow; plans: PlanSummary[] }
-  | { status: 'ready'; circle: CircleRow; doc: PlanDocument }
+  | { status: 'holding'; circle: CircleRow; plan: PlanSummary; sessionId: string | null }
+  | { status: 'started'; message?: string }
   | { status: 'empty'; message: string }
   | { status: 'error'; message: string }
 
@@ -63,28 +67,15 @@ export default function MemberSheet({
   const [conversa, setConversa] = useState<string | null>(null)
   const [execution, setExecution] = useState<ExecutionState>({ status: 'idle' })
   const [broadcast, setBroadcast] = useState<string | null>(null)
-  const [doneSteps, setDoneSteps] = useState<Set<string>>(new Set())
-  const [selectedProtocolId, setSelectedProtocolId] = useState<string | null>(null)
+  const [holdProgress, setHoldProgress] = useState(0)
+  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const holdFrame = useRef<ReturnType<typeof setInterval> | null>(null)
+  const holdStartedAt = useRef<number | null>(null)
+  const firingRef = useRef(false)
+  const planSession = usePlanSession()
+  const planExecution = usePlanExecution()
 
   const away = member && myCoords ? distanceKm(myCoords, member) : null
-  const executionProtocols = useMemo(
-    () => execution.status === 'ready' ? buildPlanExecutionProtocols(execution.doc, pt) : [],
-    [execution, pt],
-  )
-  const selectedProtocol = useMemo(
-    () => {
-      if (execution.status !== 'ready') return null
-      if (!execution.doc.triggers.length) return executionProtocols[0] ?? null
-      return executionProtocols.find(protocol => protocol.id === selectedProtocolId) ?? null
-    },
-    [execution, executionProtocols, selectedProtocolId],
-  )
-  const executionSteps = useMemo(
-    () => execution.status === 'ready' && selectedProtocol
-      ? buildPlanExecutionSteps(execution.doc, pt, selectedProtocol)
-      : [],
-    [execution, pt, selectedProtocol],
-  )
 
   /*
    * A conversa direta com esta pessoa (COMMS-T13 / D-193).
@@ -134,14 +125,19 @@ export default function MemberSheet({
     haptic.impact()
     setExecution({ status: 'loading' })
     setBroadcast(null)
-    setDoneSteps(new Set())
-    setSelectedProtocolId(null)
 
     const circlesResponse = await fetch('/api/circles').catch(() => null)
     const circlesData = circlesResponse?.ok
       ? ((await circlesResponse.json().catch(() => null)) as { circles?: CircleRow[] } | null)
       : null
-    const circle = circlesData?.circles?.find(c => (c.members ?? []).some(m => !m.is_me)) ?? circlesData?.circles?.[0] ?? null
+    const activeSession = planSession.active ? planSession.session : null
+    const circle = activeSession
+      ? circlesData?.circles?.find(c => c.id === activeSession.circleId) ?? {
+          id: activeSession.circleId,
+          name: activeSession.circleName ?? (pt ? 'Círculo' : 'Circle'),
+          members: [],
+        }
+      : circlesData?.circles?.find(c => (c.members ?? []).some(m => !m.is_me)) ?? circlesData?.circles?.[0] ?? null
     if (!circle) {
       setExecution({
         status: 'empty',
@@ -152,7 +148,8 @@ export default function MemberSheet({
 
     const listResponse = await fetch(`/api/plans?circleId=${circle.id}&all=1`, { cache: 'no-store' }).catch(() => null)
     const listData = listResponse?.ok ? ((await listResponse.json().catch(() => null)) as { plans?: PlanSummary[] } | null) : null
-    const plans = listData?.plans ?? []
+    const cachedList = listData?.plans?.length ? null : await getFamilyPlanList(circle.id).catch(() => null)
+    const plans = listData?.plans?.length ? listData.plans : cachedList?.plans ?? []
     if (!plans.length) {
       setExecution({
         status: 'empty',
@@ -160,79 +157,61 @@ export default function MemberSheet({
       })
       return
     }
-    if (plans.length > 1) {
-      setExecution({ status: 'selecting', circle, plans })
-      return
-    }
-    await loadPlanForExecution(circle, plans[0].id)
+    const highlightedPlanId = activeSession?.circleId === circle.id ? activeSession.planId : null
+    const entry = planExecutionEntryState(plans, highlightedPlanId)
+    if (entry.kind === 'select') setExecution({ status: 'selecting', circle, plans: entry.plans })
+    else if (entry.kind === 'hold') preparePlanForExecution(circle, entry.plan)
   }
 
-  const loadPlanForExecution = async (circle: CircleRow, planId: string) => {
-    setExecution({ status: 'loading' })
-    const planResponse = await fetch(`/api/plans?circleId=${circle.id}&planId=${planId}`, { cache: 'no-store' }).catch(() => null)
-    const doc = planResponse?.ok ? ((await planResponse.json().catch(() => null)) as PlanDocument | null) : null
-    if (!doc?.plan) {
-      setExecution({
-        status: 'empty',
-        message: pt ? 'Este círculo ainda não tem um plano salvo.' : 'This circle does not have a saved plan yet.',
-      })
-      return
-    }
-
-    setExecution({ status: 'ready', circle, doc })
-    setSelectedProtocolId(null)
-  }
-
-  const sendCirclePreset = async (preset: 'execute_plan' | 'false_alarm') => {
-    if (execution.status !== 'ready') return
-    haptic.impact()
-    setBroadcast(pt ? 'Enviando aviso...' : 'Sending notice...')
-    const targets = (execution.circle.members ?? []).filter(m => !m.is_me)
-    if (!targets.length) {
-      setBroadcast(pt ? 'Nenhum outro membro neste círculo.' : 'No other member in this circle.')
-      return
-    }
-
-    const results = await Promise.all(
-      targets.map(target =>
-        fetch('/api/family/ping', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ toUserId: target.user_id, preset, pt }),
-        })
-          .then(r => r.json())
-          .catch(() => null),
-      ),
-    )
-    const delivered = results.filter(r => r?.ok).length
-    setBroadcast(
-      delivered
-        ? pt
-          ? `Alerta entregue a ${delivered}/${targets.length}.`
-          : `Alert delivered to ${delivered}/${targets.length}.`
-        : pt
-          ? 'Nenhum aparelho recebeu o push agora.'
-          : 'No device received the push right now.',
-    )
-  }
-
-  const cancelExecution = async (notify: boolean) => {
-    const current = execution
-    if (notify && current.status === 'ready') await sendCirclePreset('false_alarm')
-    setExecution({ status: 'idle' })
-    setDoneSteps(new Set())
-    setSelectedProtocolId(null)
-    setBroadcast(pt ? 'Execução cancelada.' : 'Execution cancelled.')
-  }
-
-  const toggleStep = (id: string) => {
+  const preparePlanForExecution = (circle: CircleRow, plan: PlanSummary) => {
     haptic.selection()
-    setDoneSteps(current => {
-      const next = new Set(current)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
+    setHoldProgress(0)
+    const activeSession = planSession.active && planSession.session?.circleId === circle.id && planSession.session?.planId === plan.id
+      ? planSession.session
+      : null
+    setExecution({ status: 'holding', circle, plan, sessionId: activeSession?.id ?? null })
+  }
+
+  const clearHold = () => {
+    if (holdTimer.current) clearTimeout(holdTimer.current)
+    if (holdFrame.current) clearInterval(holdFrame.current)
+    holdTimer.current = null
+    holdFrame.current = null
+    holdStartedAt.current = null
+    setHoldProgress(0)
+  }
+
+  const fireExecution = async () => {
+    if (execution.status !== 'holding' || firingRef.current) return
+    firingRef.current = true
+    clearHold()
+    setBroadcast(pt ? 'Disparando plano...' : 'Starting plan...')
+    const result = await planExecution.start({
+      circleId: execution.circle.id,
+      circleName: execution.circle.name,
+      plan: execution.plan,
+      sessionId: execution.sessionId,
     })
+    firingRef.current = false
+    if (!result.ok) {
+      setExecution({ status: 'error', message: result.message ?? (pt ? 'Não foi possível executar.' : 'Could not start.') })
+      return
+    }
+    setExecution({ status: 'started', message: result.message })
+    setBroadcast(result.message ?? (pt ? 'Plano em execução.' : 'Plan running.'))
+    window.setTimeout(onClose, 350)
+  }
+
+  const beginHold = () => {
+    if (execution.status !== 'holding' || firingRef.current) return
+    haptic.selection()
+    clearHold()
+    holdStartedAt.current = Date.now()
+    holdFrame.current = setInterval(() => {
+      const elapsed = holdStartedAt.current ? Date.now() - holdStartedAt.current : 0
+      setHoldProgress(Math.min(1, elapsed / HOLD_TO_EXECUTE_MS))
+    }, 50)
+    holdTimer.current = setTimeout(() => { void fireExecution() }, HOLD_TO_EXECUTE_MS)
   }
 
   return (
@@ -361,8 +340,8 @@ export default function MemberSheet({
                   <>
                     <p className="t-foot ink-3 note">
                       {pt
-                        ? 'O Pilot vira host: carrega um plano escolhido, alerta o círculo e guia a ordem de ação.'
-                        : 'Pilot becomes the host: it loads a selected plan, alerts the circle and guides the action order.'}
+                        ? 'Segure para executar: o EOS cria a execução e avisa o círculo no mesmo ato.'
+                        : 'Hold to run: EOS creates the execution and notifies the circle in one action.'}
                     </p>
                     {broadcast && <p className="t-foot ink-3 note">{broadcast}</p>}
                   </>
@@ -375,15 +354,25 @@ export default function MemberSheet({
                 {execution.status === 'selecting' && (
                   <div className="plan-choices">
                     {execution.plans.map(plan => (
-                      <button key={plan.id} type="button" onClick={() => loadPlanForExecution(execution.circle, plan.id)}>
+                      <button
+                        key={plan.id}
+                        type="button"
+                        className={planSession.active && planSession.session?.planId === plan.id ? 'highlighted' : ''}
+                        onClick={() => preparePlanForExecution(execution.circle, plan)}
+                      >
                         <strong>{plan.name}</strong>
-                        <em>v{plan.version}</em>
+                        <em>
+                          v{plan.version}
+                          {planSession.active && planSession.session?.planId === plan.id
+                            ? ` · ${pt ? 'plano da sessão' : 'session plan'}`
+                            : ''}
+                        </em>
                       </button>
                     ))}
                   </div>
                 )}
 
-                {execution.status === 'ready' && (
+                {execution.status === 'holding' && (
                   <>
                     <p className="system-note t-foot ink-3">
                       {pt
@@ -391,93 +380,39 @@ export default function MemberSheet({
                         : 'EOS notice, not editable in the plan: under immediate human threat, follow authorities/school/emergency services and do not approach the risk zone without official instruction.'}
                     </p>
                     <div className="execution-head">
-                      <strong className="t-title2">{execution.doc.plan?.name ?? (pt ? 'Plano da família' : 'Family plan')}</strong>
+                      <strong className="t-title2">{execution.plan.name}</strong>
                       <span className="t-foot ink-3">
-                        {pt ? 'Host local' : 'Local host'} · v{execution.doc.plan?.version ?? '—'}
+                        {execution.sessionId ? (pt ? 'sessão armada' : 'armed session') : (pt ? 'sem sessão' : 'no session')} · v{execution.plan.version}
                       </span>
                     </div>
 
-                    {execution.doc.triggers.length > 0 && !selectedProtocol && (
-                      <>
-                        <p className="t-caps ink-3 label">{pt ? 'Protocolos' : 'Protocols'}</p>
-                        <p className="t-foot ink-3 note compact">
-                          {pt
-                            ? 'Escolha o que está acontecendo agora. O host mostra só o caminho desse protocolo.'
-                            : 'Choose what is happening now. The host shows only that protocol path.'}
-                        </p>
-                        <div className="plan-choices protocol-choices">
-                          {executionProtocols.map(protocol => (
-                            <button
-                              key={protocol.id}
-                              type="button"
-                              onClick={() => {
-                                haptic.selection()
-                                setDoneSteps(new Set())
-                                setSelectedProtocolId(protocol.id)
-                              }}
-                            >
-                              <strong>{protocol.label}</strong>
-                              <em>{protocol.trigger?.action ?? (pt ? 'Executar o plano geral' : 'Run the general plan')}</em>
-                            </button>
-                          ))}
-                        </div>
-                        <button type="button" className="false-alarm" onClick={() => cancelExecution(false)}>
-                          {pt ? 'Cancelar' : 'Cancel'}
-                        </button>
-                      </>
-                    )}
-
-                    {selectedProtocol && (
-                      <>
-                        {execution.doc.triggers.length > 0 && (
-                          <button
-                            type="button"
-                            className="selected-protocol"
-                            onClick={() => {
-                              haptic.selection()
-                              setSelectedProtocolId(null)
-                              setDoneSteps(new Set())
-                            }}
-                          >
-                            <strong>{selectedProtocol.label}</strong>
-                            <em>{pt ? 'Trocar protocolo' : 'Change protocol'}</em>
-                          </button>
-                        )}
-                        <div className="execution-actions">
-                          <button type="button" className="broadcast" onClick={() => sendCirclePreset('execute_plan')}>
-                            {pt ? 'Alertar círculo: executar agora' : 'Alert circle: run now'}
-                          </button>
-                          <button type="button" className="cancel" onClick={() => cancelExecution(false)}>
-                            {pt ? 'Cancelar' : 'Cancel'}
-                          </button>
-                        </div>
-                        <button type="button" className="false-alarm" onClick={() => cancelExecution(true)}>
-                          {pt ? 'Falso alarme: avisar e cancelar' : 'False alarm: notify and cancel'}
-                        </button>
-                        {broadcast && <p className="t-foot ink-3 note">{broadcast}</p>}
-
-                        <div className="execution-steps">
-                          {executionSteps.map((step, index) => {
-                            const done = doneSteps.has(step.id)
-                            return (
-                              <button
-                                key={step.id}
-                                type="button"
-                                className={done ? 'done' : ''}
-                                onClick={() => toggleStep(step.id)}
-                              >
-                                <span className="num">{done ? '✓' : index + 1}</span>
-                                <span>
-                                  <strong>{step.title}</strong>
-                                  <em>{step.body}</em>
-                                </span>
-                              </button>
-                            )
-                          })}
-                        </div>
-                      </>
-                    )}
+                    <button
+                      type="button"
+                      className="hold-execute"
+                      style={{ '--hold-progress': `${Math.round(holdProgress * 100)}%` } as CSSProperties}
+                      onPointerDown={beginHold}
+                      onPointerUp={clearHold}
+                      onPointerCancel={clearHold}
+                      onPointerLeave={clearHold}
+                      disabled={planExecution.loading}
+                      aria-label={pt ? 'Segurar para executar plano' : 'Hold to run plan'}
+                    >
+                      <span>
+                        <strong>{pt ? 'Segure' : 'Hold'}</strong>
+                        <em>{pt ? '1,5 s' : '1.5 s'}</em>
+                      </span>
+                    </button>
+                    <button type="button" className="false-alarm" onClick={() => setExecution({ status: 'idle' })}>
+                      {pt ? 'Cancelar' : 'Cancel'}
+                    </button>
+                    {broadcast && <p className="t-foot ink-3 note">{broadcast}</p>}
                   </>
+                )}
+
+                {execution.status === 'started' && (
+                  <p className="t-foot ink-3 note">
+                    {execution.message ?? (pt ? 'Plano em execução.' : 'Plan running.')}
+                  </p>
                 )}
               </section>
             )}

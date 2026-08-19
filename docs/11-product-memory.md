@@ -124,6 +124,16 @@ topo como o modo Simulação, mas em verde de execução real. Ponto do dia fica
 não envia push e não pede ack. Expiração pergunta antes de desarmar; não há
 desarme silencioso.
 
+**Disparo do plano é gesto único (EXEC-T03).** `MemberSheet` só escolhe o plano e
+mostra o alvo circular de segurar por 1,5 s; protocolo e passos não ficam mais
+ali. Completar o gesto chama `/api/plan-executions`, que cria
+`family_plan_executions`, grava evento `started` e registra o aviso do círculo no
+mesmo request; push continua best-effort. O modo global é `PlanExecutionProvider`
++ `PlanExecutionBanner`: a janela de falso alarme dura 30 s e é faixa não modal;
+depois disso o banner permanece como modo ativo até uma fase de encerramento
+resolver/cancelar. Migration pendente:
+`20260819124613_exec_t03_family_plan_executions.sql`.
+
 **Plano é envelope; protocolo é execução (D-207 / PLAN-T11).** O executor não
 deve despejar o documento inteiro. Primeiro escolhe o plano salvo; depois escolhe
 o protocolo/gatilho ativo. No MVP, cada `family_plan_triggers` salvo é uma

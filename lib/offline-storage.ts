@@ -22,6 +22,7 @@
 
 import type { IDBPDatabase } from 'idb'
 import type { PlanDocument, PlanSummary } from './family-plan'
+import type { PlanExecutionSnapshot } from './plan-execution-mode'
 import type { PlanSessionSnapshot } from './plan-session'
 
 const DB_NAME = 'eos'
@@ -186,6 +187,7 @@ export const familyPlanDocumentKey = (circleId: string, planId: string) =>
   `family-plan:${circleId}:${planId}`
 export const familyPlanListKey = (circleId: string) => `family-plan-list:${circleId}`
 export const activePlanSessionKey = 'active-plan-session'
+export const activePlanExecutionKey = 'active-plan-execution'
 
 function planFromDocument(document: unknown): PlanDocument['plan'] | null {
   const maybePlan = (document as { plan?: PlanDocument['plan'] } | null)?.plan
@@ -311,6 +313,31 @@ export async function clearPlanSession(): Promise<void> {
   const db = await getDB()
   if (!db) return
   await db.delete('kv', activePlanSessionKey)
+}
+
+export interface StoredPlanExecution {
+  execution: PlanExecutionSnapshot
+  syncedAt: string
+  pendingSync?: boolean
+}
+
+export async function savePlanExecution(execution: StoredPlanExecution): Promise<void> {
+  const db = await getDB()
+  if (!db) return
+  await db.put('kv', execution, activePlanExecutionKey)
+}
+
+export async function getPlanExecution(): Promise<StoredPlanExecution | null> {
+  const db = await getDB()
+  if (!db) return null
+  const v = await db.get('kv', activePlanExecutionKey)
+  return (v as StoredPlanExecution | undefined) ?? null
+}
+
+export async function clearPlanExecution(): Promise<void> {
+  const db = await getDB()
+  if (!db) return
+  await db.delete('kv', activePlanExecutionKey)
 }
 
 export async function saveInventory(i: StoredInventory): Promise<void> {

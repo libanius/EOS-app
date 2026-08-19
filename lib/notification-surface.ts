@@ -26,7 +26,12 @@ export function notificationSurface(input: SurfaceInput): NotificationSurface {
    * o ping NÃO TINHA conversa: chegava e acabava, sem onde responder. Agora ele
    * é mensagem num thread, e o badge aponta para onde se RESPONDE.
    */
-  if (input.kind === 'message' || input.kind === 'family_ping') return 'comms'
+  if (
+    input.kind === 'message' ||
+    input.kind === 'family_ping' ||
+    input.kind === 'plan_execution' ||
+    input.kind === 'plan_execution_cancelled'
+  ) return 'comms'
   if (
     input.kind === 'join_request_approved' ||
     input.kind === 'member_joined' ||
