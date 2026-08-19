@@ -42,7 +42,7 @@ function routeSummary(route: PlanRoute, pt: boolean) {
     : mode
 }
 
-function inferRendezvousKind(trigger: PlanTrigger | null): WaypointKind | null {
+export function inferRendezvousKind(trigger: PlanTrigger | null): WaypointKind | null {
   if (trigger?.destination_kind) return trigger.destination_kind
 
   const text = `${trigger?.condition ?? ''} ${trigger?.action ?? ''}`

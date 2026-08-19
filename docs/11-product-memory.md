@@ -134,6 +134,18 @@ depois disso o banner permanece como modo ativo até uma fase de encerramento
 resolver/cancelar. Migration `20260819124613_exec_t03_family_plan_executions.sql`
 aplicada pelo dono em 2026-08-19 e verificada por REST.
 
+**Playbook de execução é por papel e cache-first (EXEC-T04).** O banner global
+monta o playbook a partir de `PlanDocument` cacheado por `(circleId, planId)` e
+só depois tenta atualizar pela rede; sem rede, o usuário ainda vê passos, carta
+offline, rumo, distância e minutos até o ponto ativo. A seleção de protocolo
+fica em `family_plan_executions.protocol_index` e também atualiza localmente
+quando offline. A lista numerada nunca inclui avisos do sistema nem carta do
+dependente; a carta só aparece para quem tem papel com `for_member_id`
+correspondente. T04 não cria editor de cartas: a tabela
+`family_plan_dependent_briefs` é só contrato/renderização desta fase e depende
+da migration `20260819131113_exec_t04_dependent_briefs.sql`. D-214: PWA aplica
+legibilidade e números maiores; brilho máximo real fica para Native futuro.
+
 **Plano é envelope; protocolo é execução (D-207 / PLAN-T11).** O executor não
 deve despejar o documento inteiro. Primeiro escolhe o plano salvo; depois escolhe
 o protocolo/gatilho ativo. No MVP, cada `family_plan_triggers` salvo é uma

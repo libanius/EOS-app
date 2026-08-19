@@ -23,6 +23,7 @@ type PlanExecutionCtx = {
   refresh: () => Promise<void>
   start: (input: StartExecutionInput) => Promise<{ ok: boolean; message?: string }>
   cancel: () => Promise<{ ok: boolean; message?: string }>
+  setProtocol: (protocolIndex: number) => Promise<{ ok: boolean; message?: string }>
   clearLocal: () => void
 }
 
@@ -37,6 +38,7 @@ export function usePlanExecution(): PlanExecutionCtx {
       refresh: async () => {},
       start: async () => ({ ok: false, message: 'Execução indisponível.' }),
       cancel: async () => ({ ok: false, message: 'Execução indisponível.' }),
+      setProtocol: async () => ({ ok: false, message: 'Execução indisponível.' }),
       clearLocal: () => {},
     }
   )
@@ -148,6 +150,32 @@ export default function PlanExecutionProvider({ children }: { children: ReactNod
     }
   }, [execution, remember])
 
+  const setProtocol = useCallback(async (protocolIndex: number) => {
+    const current = execution
+    if (!current) return { ok: false, message: 'Nenhuma execução ativa.' }
+    const localUpdate = { ...current, protocolIndex }
+    if (current.id.startsWith('local:')) {
+      remember(localUpdate, true)
+      return { ok: true }
+    }
+    try {
+      const response = await fetch(`/api/plan-executions/${current.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'set_protocol', protocolIndex }),
+      })
+      const data = await response.json().catch(() => null)
+      if (!response.ok || data?.error) {
+        return { ok: false, message: data?.message ?? data?.error ?? 'Não foi possível escolher o protocolo.' }
+      }
+      remember((data.execution as PlanExecutionSnapshot | undefined) ?? localUpdate)
+      return { ok: true }
+    } catch {
+      remember(localUpdate, true)
+      return { ok: true, message: 'Protocolo escolhido neste aparelho; sincronização pendente de rede.' }
+    }
+  }, [execution, remember])
+
   const clearLocal = useCallback(() => remember(null), [remember])
 
   const value = useMemo<PlanExecutionCtx>(() => ({
@@ -157,8 +185,9 @@ export default function PlanExecutionProvider({ children }: { children: ReactNod
     refresh,
     start,
     cancel,
+    setProtocol,
     clearLocal,
-  }), [cancel, clearLocal, execution, loading, refresh, start])
+  }), [cancel, clearLocal, execution, loading, refresh, setProtocol, start])
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

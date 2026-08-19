@@ -964,6 +964,209 @@ body:has(.wv2-pilotbar) {
   opacity: 0.9;
 }
 
+.sim-banner .plan-execution-controls {
+  align-items: stretch;
+  padding-top: 8px;
+}
+
+.plan-playbook {
+  width: 100%;
+  max-height: min(68dvh, 620px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  display: grid;
+  gap: 12px;
+  padding: 4px 2px 8px;
+  color: var(--tx);
+  touch-action: pan-y;
+}
+
+.plan-playbook-head,
+.plan-playbook-nav,
+.plan-dependent-briefs,
+.plan-other-roles,
+.plan-system-notice {
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+  padding-top: 10px;
+}
+
+.plan-playbook-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.plan-playbook-head span,
+.plan-next-action > span,
+.plan-dependent-briefs > span {
+  flex: none;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.plan-playbook-head strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+}
+
+.plan-playbook-head em,
+.plan-playbook-nav em,
+.plan-next-action em {
+  color: rgba(255, 255, 255, 0.74);
+  font-size: 12px;
+  font-style: normal;
+}
+
+.plan-protocol-choices {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.sim-banner .plan-protocol-choices button {
+  min-width: 180px;
+  min-height: 40px;
+  justify-content: flex-start;
+  text-align: left;
+  white-space: normal;
+}
+
+.plan-playbook-nav {
+  display: grid;
+  gap: 2px;
+}
+
+.plan-playbook-nav span {
+  font-size: 12px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.plan-playbook-nav strong {
+  font-family: 'DM Mono', ui-monospace, 'SF Mono', monospace;
+  font-size: 32px;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+
+.plan-system-notice {
+  margin: 0;
+  color: #ffe08a;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.plan-next-action {
+  display: grid;
+  gap: 8px;
+}
+
+.plan-next-action ol {
+  list-style: none;
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+}
+
+.plan-next-action li button {
+  width: 100%;
+  height: auto;
+  min-height: 58px;
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  padding: 10px;
+  text-align: left;
+}
+
+.plan-next-action li b {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: rgba(255, 214, 10, 0.18);
+  color: #ffd60a;
+  font-family: 'DM Mono', ui-monospace, 'SF Mono', monospace;
+  font-size: 14px;
+}
+
+.plan-next-action li span {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.plan-next-action li strong {
+  color: #fff;
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+.plan-next-action li em {
+  white-space: normal;
+  line-height: 1.35;
+}
+
+.plan-next-action li.done button {
+  opacity: 0.58;
+}
+
+.plan-dependent-briefs {
+  display: grid;
+  gap: 8px;
+}
+
+.plan-dependent-briefs blockquote {
+  margin: 0;
+  padding: 10px 12px;
+  border-left: 3px solid #ffd60a;
+  background: rgba(255, 214, 10, 0.08);
+  color: #fff7cf;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.plan-other-roles summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.plan-other-roles ul {
+  list-style: none;
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+.plan-other-roles li {
+  display: grid;
+  gap: 2px;
+  font-size: 12px;
+}
+
+.plan-other-roles li span {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+body.plan-execution-readable .plan-playbook-nav strong,
+body.plan-execution-readable .val {
+  text-shadow: 0 0 18px rgba(255, 214, 10, 0.2);
+}
+
 /* ─── DEBRIEF ─────────────────────────────────────────────────────────────
    Numbers, not adjectives. "Faltaram 40 L" is actionable; "melhore suas
    reservas" is noise, and a family that hears it twice stops listening. */

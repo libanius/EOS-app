@@ -1,8 +1,10 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { EXECUTION_UNDO_WINDOW_MS, executionUndoRemainingMs } from '@/lib/plan-execution-mode'
+import { executionUndoRemainingMs } from '@/lib/plan-execution-mode'
+import { PLAN_EXECUTION_LEGIBILITY_CLASS } from '@/lib/plan-playbook'
 import { useLanguage } from '@/lib/i18n'
+import PlanExecutionPlaybook from './PlanExecutionPlaybook'
 import { usePlanExecution } from './PlanExecutionProvider'
 
 function useNow(active: boolean) {
@@ -30,6 +32,12 @@ export default function PlanExecutionBanner() {
     () => execution ? executionUndoRemainingMs(execution.startedAt, now) : 0,
     [execution, now],
   )
+
+  useEffect(() => {
+    if (!active || typeof document === 'undefined') return
+    document.body.classList.add(PLAN_EXECUTION_LEGIBILITY_CLASS)
+    return () => document.body.classList.remove(PLAN_EXECUTION_LEGIBILITY_CLASS)
+  }, [active])
 
   if (!active || !execution) return null
 
@@ -70,13 +78,7 @@ export default function PlanExecutionBanner() {
 
       {open && (
         <div className="sim-controls plan-execution-controls">
-          <span>{pt ? 'Playbook' : 'Playbook'}</span>
-          <strong>{execution.circleName ?? (pt ? 'Círculo' : 'Circle')}</strong>
-          <em>
-            {pt
-              ? `Iniciado ${Math.min(EXECUTION_UNDO_WINDOW_MS, Math.max(0, now - Date.parse(execution.startedAt))) >= EXECUTION_UNDO_WINDOW_MS ? 'há 30s+' : 'agora'}`
-              : `Started ${Math.min(EXECUTION_UNDO_WINDOW_MS, Math.max(0, now - Date.parse(execution.startedAt))) >= EXECUTION_UNDO_WINDOW_MS ? '30s+ ago' : 'now'}`}
-          </em>
+          <PlanExecutionPlaybook execution={execution} />
           {message && <em className="plan-execution-msg">{message}</em>}
         </div>
       )}

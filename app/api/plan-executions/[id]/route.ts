@@ -64,9 +64,11 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 })
 
-  let body: { action?: string }
+  let body: { action?: string; protocolIndex?: number }
   try { body = await request.json() } catch { return NextResponse.json({ error: 'Corpo inválido.' }, { status: 400 }) }
-  if (body.action !== 'cancel') return NextResponse.json({ error: 'Ação inválida.' }, { status: 400 })
+  if (body.action !== 'cancel' && body.action !== 'set_protocol') {
+    return NextResponse.json({ error: 'Ação inválida.' }, { status: 400 })
+  }
 
   const admin = createAdminClient()
   if (!admin) return NextResponse.json({ error: 'Indisponível.' }, { status: 503 })
@@ -85,6 +87,45 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     return NextResponse.json({ error: 'Não é membro deste círculo.' }, { status: 403 })
   }
   if (row.status !== 'running') return NextResponse.json({ execution: await snapshotFor(admin, row) })
+
+  if (body.action === 'set_protocol') {
+    const protocolIndex = body.protocolIndex
+    if (!Number.isInteger(protocolIndex) || protocolIndex === undefined || protocolIndex < 0 || protocolIndex > 99) {
+      return NextResponse.json({ error: 'Protocolo inválido.' }, { status: 400 })
+    }
+
+    const { count, error: triggerCountError } = await admin
+      .from('family_plan_triggers')
+      .select('*', { count: 'exact', head: true })
+      .eq('plan_id', row.plan_id)
+    if (triggerCountError && !tableMissing(triggerCountError)) {
+      return NextResponse.json({ error: triggerCountError.message }, { status: 500 })
+    }
+    const protocolCount = Math.max(1, count ?? 0)
+    if (protocolIndex >= protocolCount) {
+      return NextResponse.json({ error: 'Protocolo não existe neste plano.' }, { status: 400 })
+    }
+
+    const { data: updated, error } = await admin
+      .from('family_plan_executions')
+      .update({ protocol_index: protocolIndex })
+      .eq('id', params.id)
+      .select('*')
+      .single()
+
+    if (error || !updated) {
+      return NextResponse.json({ error: error?.message ?? 'Falha ao escolher protocolo.' }, { status: 500 })
+    }
+
+    await admin.from('family_plan_execution_events').insert({
+      execution_id: params.id,
+      actor_user_id: user.id,
+      kind: 'protocol_set',
+      payload: { protocol_index: protocolIndex },
+    })
+
+    return NextResponse.json({ execution: await snapshotFor(admin, updated as ExecutionRow) })
+  }
 
   const startedMs = Date.parse(row.started_at)
   if (!Number.isFinite(startedMs) || Date.now() - startedMs >= EXECUTION_UNDO_WINDOW_MS) {

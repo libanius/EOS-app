@@ -10,7 +10,7 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Execução de Plano (EXEC) sobre Web/PWA |
-| **Current Task** | **EXEC-T04 — Playbook por papel offline-first.** NOT STARTED — EXEC-T03 aplicada e verificada; não iniciar sem ler `specs/PLAN-EXEC-001-execucao-de-plano.md` seção EXEC-T04. |
+| **Current Task** | **EXEC-T04 — Playbook por papel offline-first.** IMPLEMENTED — MIGRATION PENDING. Código e testes locais prontos; aplicar `supabase/migrations/20260819131113_exec_t04_dependent_briefs.sql` antes de marcar COMPLETE. |
 | **Spec Ready** | `specs/PLAN-EXEC-001-execucao-de-plano.md` — execução de plano como modo operacional; D-212. |
 | **⚠ Pendência operacional** | **Aplicar `supabase/migrations/20260813210000_profiles_auth_fk.sql`** (D-175). Limpa 9 perfis de teste vazios e cria a FK que impede a recorrência. Para com erro se encontrar órfão com dado. |
 | **Migrações aplicadas** | `locations`, `holdings`, `kits`, `requirements`, `checklists.status` — todas verificadas por REST. |

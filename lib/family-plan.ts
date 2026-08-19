@@ -42,6 +42,13 @@ export type PlanRole = {
   responsibility: string
 }
 
+export type PlanDependentBrief = {
+  id?: string
+  member_id: string
+  instruction: string
+  updated_at?: string
+}
+
 /** Uma pessoa da casa que depende de alguém para sair. */
 export type DependenteDoPlano = {
   id: string
@@ -78,6 +85,7 @@ export type PlanDocument = {
   waypoints: PlanWaypoint[]
   routes: PlanRoute[]
   roles: PlanRole[]
+  dependentBriefs?: PlanDependentBrief[]
   triggers: PlanTrigger[]
   acknowledgedBy: string[]
   myAck: number | null

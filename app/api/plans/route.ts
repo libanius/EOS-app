@@ -50,6 +50,7 @@ type Waypoint = {
 }
 type Route = { label: string; geometry: unknown; mode?: string; notes?: string | null }
 type Role = { member_user_id: string; for_member_id?: string | null; responsibility: string }
+type DependentBrief = { member_id?: string; instruction?: string }
 type Trigger = {
   condition: string
   action: string
@@ -178,13 +179,14 @@ async function readPlanDocument(
   plan: PlanRow,
   userId: string,
 ) {
-  const [{ data: waypoints, error: waypointError }, { data: routes }, { data: roles }, { data: acks }, triggerResult] =
+  const [{ data: waypoints, error: waypointError }, { data: routes }, { data: roles }, { data: acks }, triggerResult, briefResult] =
     await Promise.all([
       admin.from('family_plan_waypoints').select('*').eq('plan_id', plan.id).order('sort_order'),
       admin.from('family_plan_routes').select('*').eq('plan_id', plan.id),
       admin.from('family_plan_roles').select('*').eq('plan_id', plan.id),
       admin.from('family_plan_acks').select('member_user_id, acked_version, acked_at').eq('plan_id', plan.id),
       admin.from('family_plan_triggers').select('*').eq('plan_id', plan.id).order('sort_order'),
+      admin.from('family_plan_dependent_briefs').select('id, member_id, instruction, updated_at').eq('plan_id', plan.id),
     ])
 
   if (waypointError) throw waypointError
@@ -206,6 +208,7 @@ async function readPlanDocument(
   })
   const places = await readCirclePlaces(admin, plan.circle_id)
   const acknowledged = (acks ?? []).filter(a => a.acked_version === plan.version).map(a => a.member_user_id)
+  if (briefResult.error && !tableMissing(briefResult.error)) throw briefResult.error
 
   return {
     plan,
@@ -213,6 +216,7 @@ async function readPlanDocument(
     waypoints: documentWaypoints,
     routes: routes ?? [],
     roles: roles ?? [],
+    dependentBriefs: tableMissing(briefResult.error) ? [] : briefResult.data ?? [],
     triggers: triggerResult.data ?? [],
     triggersPending: tableMissing(triggerResult.error),
     acknowledgedBy: acknowledged,
@@ -284,6 +288,7 @@ export async function PUT(request: NextRequest) {
     waypoints?: Waypoint[]
     routes?: Route[]
     roles?: Role[]
+    dependentBriefs?: DependentBrief[]
     triggers?: Trigger[]
   }
   try { body = await request.json() } catch { return NextResponse.json({ error: 'Corpo inválido.' }, { status: 400 }) }
@@ -387,6 +392,7 @@ export async function PUT(request: NextRequest) {
     admin.from('family_plan_waypoints').delete().eq('plan_id', planId),
     admin.from('family_plan_routes').delete().eq('plan_id', planId),
     admin.from('family_plan_roles').delete().eq('plan_id', planId),
+    admin.from('family_plan_dependent_briefs').delete().eq('plan_id', planId),
   ])
 
   const incomingWaypoints = body.waypoints ?? []
@@ -460,6 +466,19 @@ export async function PUT(request: NextRequest) {
     } else if (erroPapeis) {
       throw erroPapeis
     }
+  }
+
+  const dependentBriefs = (body.dependentBriefs ?? [])
+    .filter(brief => brief?.member_id && brief?.instruction?.trim())
+    .map(brief => ({
+      plan_id: planId,
+      member_id: brief.member_id,
+      instruction: brief.instruction!.trim().slice(0, 300),
+      updated_at: new Date().toISOString(),
+    }))
+  if (dependentBriefs.length) {
+    const { error: briefError } = await admin.from('family_plan_dependent_briefs').insert(dependentBriefs)
+    if (briefError && !tableMissing(briefError)) throw briefError
   }
 
   // Triggers degrade on their own: a database without the migration saves the
