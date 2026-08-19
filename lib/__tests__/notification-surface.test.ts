@@ -9,6 +9,7 @@ describe('notificationSurface', () => {
     expect(notificationSurface({ scope: 'circle', kind: 'message' })).toBe('comms')
     expect(notificationSurface({ scope: 'circle', kind: 'plan_execution' })).toBe('comms')
     expect(notificationSurface({ scope: 'circle', kind: 'plan_execution_cancelled' })).toBe('comms')
+    expect(notificationSurface({ scope: 'circle', kind: 'plan_execution_resolved' })).toBe('comms')
     expect(notificationSurface({ scope: 'circle', kind: 'family_invite' })).toBe('family')
     expect(notificationSurface({ scope: 'circle', kind: 'member_joined' })).toBe('family')
   })

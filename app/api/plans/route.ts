@@ -58,12 +58,20 @@ type Trigger = {
   destination_kind?: string | null
   route_label?: string | null
   notify_circle?: boolean | null
+  escalation_minutes?: number | null
   sort_order?: number
 }
 type PlanRow = { id: string; circle_id: string; name: string; version: number; status: string; updated_at: string }
 
 const KINDS = ['rendezvous_1', 'rendezvous_2', 'rendezvous_3', 'home', 'school', 'work', 'custom']
 const ACTION_TYPES = ['meet', 'evacuate', 'shelter', 'communicate', 'wait', 'custom']
+
+function escalationMinutes(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric)) return null
+  return Math.max(5, Math.min(120, Math.round(numeric)))
+}
 
 function tableMissing(error: { code?: string } | null) {
   return error?.code === '42P01'
@@ -496,6 +504,7 @@ export async function PUT(request: NextRequest) {
         destination_kind: t.destination_kind && KINDS.includes(t.destination_kind) ? t.destination_kind : null,
         route_label: t.route_label?.trim() ? t.route_label.trim().slice(0, 80) : null,
         notify_circle: t.notify_circle !== false,
+        escalation_minutes: escalationMinutes(t.escalation_minutes),
         sort_order: t.sort_order ?? index,
       }))
     if (triggers.length) {
@@ -504,7 +513,14 @@ export async function PUT(request: NextRequest) {
       if (columnMissing(error)) {
         await logError('api/plans:trigger_protocol_fields', error, { userId: user.id })
         const { error: legacyError } = await admin.from('family_plan_triggers').insert(
-          triggers.map(({ action_type: _tipo, destination_kind: _destino, route_label: _rota, notify_circle: _aviso, ...legacy }) => legacy),
+          triggers.map(({
+            action_type: _tipo,
+            destination_kind: _destino,
+            route_label: _rota,
+            notify_circle: _aviso,
+            escalation_minutes: _escalonamento,
+            ...legacy
+          }) => legacy),
         )
         triggersPending = tableMissing(legacyError)
         if (legacyError && !triggersPending) throw legacyError

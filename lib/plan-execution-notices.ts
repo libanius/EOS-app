@@ -25,7 +25,7 @@ type NoticeInput = {
   actorId: string
   executionId: string
   planName: string
-  kind: 'started' | 'cancelled'
+  kind: 'started' | 'cancelled' | 'resolved'
 }
 
 export async function notifyPlanExecution({
@@ -45,13 +45,22 @@ export async function notifyPlanExecution({
   if (!recipients.length) return { recipients: 0, push: 'no_recipients' }
 
   const started = kind === 'started'
+  const resolved = kind === 'resolved'
   const title = started
     ? `${actorName} executou um plano`
-    : `${actorName} cancelou o plano`
+    : resolved
+      ? `${actorName} encerrou o plano`
+      : `${actorName} cancelou o plano`
   const body = started
     ? `${circleName}: ${planName} está em execução.`
-    : `${circleName}: falso alarme, ${planName} foi cancelado.`
-  const notificationKind = started ? 'plan_execution' : 'plan_execution_cancelled'
+    : resolved
+      ? `${circleName}: ${planName} foi marcado como resolvido.`
+      : `${circleName}: falso alarme, ${planName} foi cancelado.`
+  const notificationKind = started
+    ? 'plan_execution'
+    : resolved
+      ? 'plan_execution_resolved'
+      : 'plan_execution_cancelled'
 
   await createCommsNotifications({
     admin,
@@ -88,7 +97,7 @@ export async function notifyPlanExecution({
 
   webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE)
   const payload = JSON.stringify({
-    title: `EOS · ${started ? 'Plano em execução' : 'Falso alarme'}`,
+    title: `EOS · ${started ? 'Plano em execução' : resolved ? 'Plano resolvido' : 'Falso alarme'}`,
     body,
     url: `/dashboard?execution=${encodeURIComponent(executionId)}`,
   })

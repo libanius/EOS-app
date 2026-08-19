@@ -30,7 +30,8 @@ export function notificationSurface(input: SurfaceInput): NotificationSurface {
     input.kind === 'message' ||
     input.kind === 'family_ping' ||
     input.kind === 'plan_execution' ||
-    input.kind === 'plan_execution_cancelled'
+    input.kind === 'plan_execution_cancelled' ||
+    input.kind === 'plan_execution_resolved'
   ) return 'comms'
   if (
     input.kind === 'join_request_approved' ||

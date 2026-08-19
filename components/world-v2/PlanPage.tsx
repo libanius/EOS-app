@@ -171,6 +171,8 @@ const COPY = {
     noDestination: 'Sem destino específico',
     routeOptional: 'Rota',
     noRoute: 'Sem rota específica',
+    escalation: 'Sugerir escalonamento',
+    escalationMinutes: 'min',
     notifyCircle: 'Alertar círculo ao executar',
     suggestions: 'Sugestões prontas',
     customTrigger: 'Escrever o meu',
@@ -287,6 +289,8 @@ const COPY = {
     noDestination: 'No specific destination',
     routeOptional: 'Route',
     noRoute: 'No specific route',
+    escalation: 'Suggest escalation',
+    escalationMinutes: 'min',
     notifyCircle: 'Alert circle when running',
     suggestions: 'Ready-made suggestions',
     customTrigger: 'Write my own',
@@ -1242,6 +1246,26 @@ export default function PlanPage() {
                     <option key={route.label} value={route.label}>{route.label}</option>
                   ))}
                 </select>
+                <label className="wv2-plan-trigger-minutes">
+                  <span className="t-caps ink-3">{c.escalation}</span>
+                  <input
+                    className="wv2-input"
+                    type="number"
+                    min={5}
+                    max={120}
+                    step={5}
+                    value={trigger.escalation_minutes ?? 15}
+                    aria-label={c.escalation}
+                    onChange={e => {
+                      const value = Number(e.target.value)
+                      setDirty(true)
+                      setTriggers(list => list.map((t, i) => (i === index
+                        ? { ...t, escalation_minutes: Number.isFinite(value) ? Math.max(5, Math.min(120, Math.round(value))) : null }
+                        : t)))
+                    }}
+                  />
+                  <em className="t-foot ink-3">{c.escalationMinutes}</em>
+                </label>
                 <label className="wv2-plan-check">
                   <input
                     type="checkbox"
@@ -1261,7 +1285,7 @@ export default function PlanPage() {
                 <Pill
                   onClick={() => {
                     setDirty(true)
-                    setTriggers(list => [...list, { condition: '', action: '', action_type: 'custom', notify_circle: true }])
+                    setTriggers(list => [...list, { condition: '', action: '', action_type: 'custom', notify_circle: true, escalation_minutes: 15 }])
                   }}
                 >
                   + {c.customTrigger}
@@ -1284,7 +1308,7 @@ export default function PlanPage() {
                         disabled={already}
                         onClick={() => {
                           setDirty(true)
-                          setTriggers(list => [...list, { ...item }])
+                          setTriggers(list => [...list, { ...item, escalation_minutes: item.escalation_minutes ?? 15 }])
                         }}
                       >
                         <strong className="t-sub">{already ? '✓ ' : '+ '}{item.condition}</strong>

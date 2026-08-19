@@ -37,6 +37,10 @@ export type PlanExecutionSnapshot = {
   }
 }
 
+export function isPlanExecutionActive(execution: PlanExecutionSnapshot | null): boolean {
+  return execution?.status === 'running'
+}
+
 export type PlanExecutionEntryState =
   | { kind: 'empty' }
   | { kind: 'hold'; plan: PlanSummary; highlightedPlanId: string | null }

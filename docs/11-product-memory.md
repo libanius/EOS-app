@@ -147,6 +147,20 @@ Migration `20260819131113_exec_t04_dependent_briefs.sql` aplicada pelo dono em
 2026-08-19 e verificada por REST. D-214: PWA aplica legibilidade e números
 maiores; brilho máximo real fica para Native futuro.
 
+**Estado da execução continua evento-first (EXEC-T05 / D-215).** Não existe
+coluna de estado por pessoa: a tela deriva de `family_plan_execution_events`.
+`arrived/status` alimentam adultos com idade em minutos; dependentes aparecem
+sempre como `sem aparelho`, vindos da sessão do dia quando existe ou dos
+dependentes sem conta do círculo quando não existe sessão. Escalonamento é
+configurado no planejamento por protocolo em
+`family_plan_triggers.escalation_minutes`; nulo significa padrão explícito de 15
+min, e a faixa salva é 5–120 min. `Fiz isso` e `Ainda não` só gravam eventos e
+reiniciam/adiam o relógio local; nenhum botão liga, notifica terceiros ou aciona
+autoridade. Encerrar como `resolved` ou `cancelled` muda
+`family_plan_executions.status`; aparelhos alcançáveis limpam o modo ao buscar a
+execução novamente. Migration pendente enquanto T05 não fecha:
+`20260819142746_exec_t05_trigger_escalation_minutes.sql`.
+
 **Plano é envelope; protocolo é execução (D-207 / PLAN-T11).** O executor não
 deve despejar o documento inteiro. Primeiro escolhe o plano salvo; depois escolhe
 o protocolo/gatilho ativo. No MVP, cada `family_plan_triggers` salvo é uma

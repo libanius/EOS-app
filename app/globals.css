@@ -1162,6 +1162,98 @@ body:has(.wv2-pilotbar) {
   color: rgba(255, 255, 255, 0.72);
 }
 
+.plan-execution-state {
+  display: grid;
+  gap: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+  padding-top: 10px;
+}
+
+.plan-state-actions,
+.plan-close-actions,
+.plan-escalation div {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.sim-banner .plan-state-actions button,
+.sim-banner .plan-close-actions button,
+.sim-banner .plan-escalation button {
+  min-height: 36px;
+}
+
+.plan-state-list {
+  display: grid;
+  gap: 6px;
+}
+
+.plan-state-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
+  align-items: baseline;
+  padding: 8px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.plan-state-row strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.plan-state-row span {
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.plan-state-row em {
+  color: rgba(255, 255, 255, 0.7);
+  font-family: 'DM Mono', ui-monospace, 'SF Mono', monospace;
+  font-size: 12px;
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+}
+
+.plan-state-row.dependent span {
+  color: #ffd60a;
+}
+
+.plan-escalation {
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid rgba(255, 214, 10, 0.22);
+  background: rgba(255, 214, 10, 0.07);
+}
+
+.plan-escalation > span {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.plan-escalation strong {
+  font-size: 14px;
+}
+
+.plan-escalation em {
+  color: rgba(255, 255, 255, 0.74);
+  font-size: 12px;
+  font-style: normal;
+}
+
+.plan-escalation.due {
+  border-color: #ffd60a;
+  background: rgba(255, 214, 10, 0.12);
+}
+
 body.plan-execution-readable .plan-playbook-nav strong,
 body.plan-execution-readable .val {
   text-shadow: 0 0 18px rgba(255, 214, 10, 0.2);

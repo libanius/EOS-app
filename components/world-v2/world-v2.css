@@ -2996,6 +2996,24 @@
   height: 18px;
   accent-color: var(--accent);
 }
+.wv2-plan-page .wv2-plan-trigger-minutes {
+  min-height: 44px;
+  display: grid;
+  grid-template-columns: 1fr 72px auto;
+  align-items: center;
+  gap: var(--s2);
+  padding: 8px 10px;
+  border: 1px solid var(--sep);
+  border-radius: var(--r-tile);
+  background: var(--fill-2);
+}
+.wv2-plan-page .wv2-plan-trigger-minutes .wv2-input {
+  min-width: 0;
+  padding: 8px 10px;
+}
+.wv2-plan-page .wv2-plan-trigger-minutes em {
+  font-style: normal;
+}
 @media (max-width: 520px) {
   .wv2-plan-page .wv2-plan-role,
   .wv2-plan-page .wv2-plan-trigger,
@@ -3005,6 +3023,7 @@
   .wv2-plan-page .wv2-plan-session-grid label,
   .wv2-plan-page .wv2-plan-role > .wv2-input:first-child,
   .wv2-plan-page .wv2-plan-trigger > .wv2-input,
+  .wv2-plan-page .wv2-plan-trigger-minutes,
   .wv2-plan-page .wv2-plan-check {
     grid-column: 1 / -1;
   }

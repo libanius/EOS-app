@@ -76,6 +76,7 @@ export type PlanTrigger = {
   destination_kind?: WaypointKind | null
   route_label?: string | null
   notify_circle?: boolean | null
+  escalation_minutes?: number | null
   sort_order?: number
 }
 

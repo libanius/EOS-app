@@ -4,6 +4,13 @@ import { useEffect, useMemo, useState } from 'react'
 import type { PlanDocument } from '@/lib/family-plan'
 import type { PlanExecutionSnapshot } from '@/lib/plan-execution-mode'
 import { buildPlanPlaybook, type PlanCoordinate } from '@/lib/plan-playbook'
+import {
+  buildPlanExecutionSharedState,
+  type PlanExecutionAdult,
+  type PlanExecutionDependent,
+  type PlanExecutionMemberStatusValue,
+  type PlanExecutionStateEvent,
+} from '@/lib/plan-execution-state'
 import { getFamilyPlan, getProfile, saveFamilyPlan } from '@/lib/offline-storage'
 import { useLanguage } from '@/lib/i18n'
 import PlanChart from './world-v2/PlanChart'
@@ -22,16 +29,35 @@ type FichaResponse = {
   }
 }
 
+type ExecutionStateSeed = {
+  members: PlanExecutionAdult[]
+  dependents: PlanExecutionDependent[]
+  events: PlanExecutionStateEvent[]
+  escalationMinutes: number | null
+}
+
+function useNow(active: boolean) {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    if (!active) return
+    const timer = window.setInterval(() => setNow(Date.now()), 30000)
+    return () => window.clearInterval(timer)
+  }, [active])
+  return now
+}
+
 export default function PlanExecutionPlaybook({ execution }: { execution: PlanExecutionSnapshot }) {
   const { language } = useLanguage()
   const pt = language === 'pt'
-  const { setProtocol } = usePlanExecution()
+  const { setProtocol, setStatus, recordEscalation, resolve, cancel, refresh } = usePlanExecution()
   const [doc, setDoc] = useState<PlanDocument | null>(null)
   const [profile, setProfile] = useState<ProfileState>({ id: null, origin: null })
+  const [stateSeed, setStateSeed] = useState<ExecutionStateSeed | null>(null)
   const [source, setSource] = useState<'cache' | 'network' | null>(null)
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState<string | null>(null)
   const [done, setDone] = useState<Set<string>>(() => new Set())
+  const now = useNow(true)
 
   useEffect(() => {
     let cancelled = false
@@ -103,6 +129,35 @@ export default function PlanExecutionPlaybook({ execution }: { execution: PlanEx
     return () => { cancelled = true }
   }, [execution.circleId, execution.planId, pt])
 
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadState() {
+      if (execution.id.startsWith('local:')) return
+      try {
+        const response = await fetch(`/api/plan-executions/${encodeURIComponent(execution.id)}`, { cache: 'no-store' })
+        const data = response.ok ? await response.json().catch(() => null) : null
+        if (cancelled) return
+        if (data?.execution) {
+          if (data.execution.status !== 'running') {
+            await refresh()
+            return
+          }
+        }
+        if (data?.state) setStateSeed(data.state as ExecutionStateSeed)
+      } catch {
+        /* Sem rede: mantemos a última leitura de estado na tela. */
+      }
+    }
+
+    void loadState()
+    const timer = window.setInterval(() => { void loadState() }, 30000)
+    return () => {
+      cancelled = true
+      window.clearInterval(timer)
+    }
+  }, [execution.id, execution.protocolIndex, refresh])
+
   const playbook = useMemo(() => doc
     ? buildPlanPlaybook({
         doc,
@@ -119,6 +174,82 @@ export default function PlanExecutionPlaybook({ execution }: { execution: PlanEx
     const result = await setProtocol(index)
     if (!result.ok || result.message) {
       setMessage(result.message ?? (pt ? 'Não foi possível escolher o protocolo.' : 'Could not choose protocol.'))
+    }
+  }
+
+  const fallbackStateSeed = useMemo<ExecutionStateSeed>(() => ({
+    members: [{ userId: profile.id ?? execution.startedBy, name: execution.startedByName ?? null }],
+    dependents: [],
+    events: [],
+    escalationMinutes: playbook?.activeProtocol?.trigger?.escalation_minutes ?? null,
+  }), [execution.startedBy, execution.startedByName, playbook?.activeProtocol?.trigger?.escalation_minutes, profile.id])
+
+  const sharedState = useMemo(() => buildPlanExecutionSharedState({
+    ...(stateSeed ?? fallbackStateSeed),
+    escalationMinutes: stateSeed?.escalationMinutes ?? fallbackStateSeed.escalationMinutes,
+    startedAt: execution.startedAt,
+    nowMs: now,
+    pt,
+  }), [execution.startedAt, fallbackStateSeed, now, pt, stateSeed])
+
+  const handleStatus = async (status: PlanExecutionMemberStatusValue) => {
+    setMessage(null)
+    const result = await setStatus(status)
+    const actorUserId = profile.id ?? execution.startedBy
+    setStateSeed(current => ({
+      ...(current ?? fallbackStateSeed),
+      events: [
+        ...((current ?? fallbackStateSeed).events),
+        {
+          actorUserId,
+          kind: status === 'at_place' ? 'arrived' : 'status',
+          payload: { status },
+          createdAt: new Date().toISOString(),
+        },
+      ],
+    }))
+    if (!result.ok || result.message) {
+      setMessage(result.message ?? (pt ? 'Não foi possível atualizar seu estado.' : 'Could not update your status.'))
+    }
+  }
+
+  const handleEscalation = async (decision: 'taken' | 'deferred') => {
+    setMessage(null)
+    const result = await recordEscalation(decision, sharedState.escalation.stepIndex, sharedState.escalation.stepLabel)
+    setStateSeed(current => ({
+      ...(current ?? fallbackStateSeed),
+      events: [
+        ...((current ?? fallbackStateSeed).events),
+        {
+          actorUserId: profile.id ?? execution.startedBy,
+          kind: decision === 'taken' ? 'escalation_taken' : 'escalation_suggested',
+          payload: {
+            decision,
+            step_index: sharedState.escalation.stepIndex,
+            step_label: sharedState.escalation.stepLabel,
+          },
+          createdAt: new Date().toISOString(),
+        },
+      ],
+    }))
+    if (!result.ok || result.message) {
+      setMessage(result.message ?? (pt ? 'Não foi possível registrar.' : 'Could not record.'))
+    }
+  }
+
+  const handleResolve = async () => {
+    setMessage(null)
+    const result = await resolve()
+    if (!result.ok || result.message) {
+      setMessage(result.message ?? (pt ? 'Não foi possível encerrar.' : 'Could not close.'))
+    }
+  }
+
+  const handleFalseAlarm = async () => {
+    setMessage(null)
+    const result = await cancel()
+    if (!result.ok || result.message) {
+      setMessage(result.message ?? (pt ? 'Não foi possível cancelar.' : 'Could not cancel.'))
     }
   }
 
@@ -199,6 +330,67 @@ export default function PlanExecutionPlaybook({ execution }: { execution: PlanEx
           ))}
         </section>
       )}
+
+      <section className="plan-execution-state" aria-label={pt ? 'Estado da execução' : 'Execution status'}>
+        <div className="plan-state-actions">
+          {([
+            ['at_place', pt ? 'No local' : 'At place'],
+            ['on_the_way', pt ? 'A caminho' : 'On the way'],
+            ['searching', pt ? 'Procurando' : 'Searching'],
+            ['no_signal', pt ? 'Sem sinal' : 'No signal'],
+          ] as Array<[PlanExecutionMemberStatusValue, string]>).map(([status, label]) => (
+            <button key={status} type="button" onClick={() => { void handleStatus(status) }}>
+              {label}
+            </button>
+          ))}
+        </div>
+
+        <div className="plan-state-list">
+          {sharedState.members.map(member => (
+            <div key={member.userId} className="plan-state-row">
+              <strong>{member.name}</strong>
+              <span>{member.label}</span>
+              <em>{member.ageMinutes === null ? (pt ? 'sem leitura' : 'no reading') : `${member.ageMinutes} min`}</em>
+            </div>
+          ))}
+          {sharedState.dependents.map(dependent => (
+            <div key={dependent.memberId} className="plan-state-row dependent">
+              <strong>{dependent.name}</strong>
+              <span>{dependent.label}</span>
+              <em>{dependent.guardianName ?? (pt ? 'responsável pendente' : 'guardian pending')}</em>
+            </div>
+          ))}
+        </div>
+
+        <div className={`plan-escalation${sharedState.escalation.due ? ' due' : ''}`}>
+          <span>{pt ? 'Escalonamento' : 'Escalation'}</span>
+          <strong>
+            {sharedState.escalation.due
+              ? (pt ? `Sugerido: ${sharedState.escalation.stepLabel}` : `Suggested: ${sharedState.escalation.stepLabel}`)
+              : (pt
+                ? `Próxima sugestão em ${Math.max(0, sharedState.escalation.intervalMinutes - sharedState.escalation.ageMinutes)} min`
+                : `Next suggestion in ${Math.max(0, sharedState.escalation.intervalMinutes - sharedState.escalation.ageMinutes)} min`)}
+          </strong>
+          <em>{pt ? `Intervalo do protocolo: ${sharedState.escalation.intervalMinutes} min` : `Protocol interval: ${sharedState.escalation.intervalMinutes} min`}</em>
+          <div>
+            <button type="button" onClick={() => { void handleEscalation('taken') }}>
+              {pt ? 'Fiz isso' : 'Did it'}
+            </button>
+            <button type="button" onClick={() => { void handleEscalation('deferred') }}>
+              {pt ? 'Ainda não' : 'Not yet'}
+            </button>
+          </div>
+        </div>
+
+        <div className="plan-close-actions">
+          <button type="button" onClick={() => { void handleResolve() }}>
+            {pt ? 'Encontrada — encerrar' : 'Found — close'}
+          </button>
+          <button type="button" onClick={() => { void handleFalseAlarm() }}>
+            {pt ? 'Falso alarme' : 'False alarm'}
+          </button>
+        </div>
+      </section>
 
       <PlanChart waypoints={doc.waypoints ?? []} routes={doc.routes ?? []} pt={pt} />
 

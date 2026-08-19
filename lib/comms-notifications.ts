@@ -18,6 +18,7 @@ export type CommsNotificationKind =
   | 'error_alert'
   | 'plan_execution'
   | 'plan_execution_cancelled'
+  | 'plan_execution_resolved'
   /*
    * D-186: a mensagem predefinida de uma pessoa para outra do círculo.
    *
