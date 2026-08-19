@@ -1,7 +1,7 @@
 # 11 — Product Memory
 
 > Non-obvious facts that don't belong in code comments but must survive across sessions.
-> Last updated: 2026-08-18
+> Last updated: 2026-08-19
 
 ---
 
@@ -92,6 +92,14 @@ perfil; ao criar plano, o cartão deve oferecer dois caminhos diretos:
 `Selecionar Casa` e `Selecionar ponto no mapa`. O modal "Onde fica?" continua
 útil para escola/trabalho/pontos, mas para Casa ele era uma etapa redundante e,
 quando falhava, bloqueava o plano inteiro.
+
+**Executar plano virou MODO, não tela (D-212 / PLAN-EXEC-001).** A execução
+deixa de morar dentro do `MemberSheet`; ele mantém só a entrada. O modo precisa
+ter banner global permanente, superfície própria e saída explícita, como o Modo
+Simulação. Push é reforço, não gatilho: o playbook renderiza do plano em
+IndexedDB e nunca espera servidor. O protocolo passa a ser primeiro passo do
+playbook, não menu antes de agir. MVP é só arquétipo `meet`; evacuar fica para
+spec própria. **EXEC-T00 é bloqueante:** cache offline por `(circleId, planId)`.
 
 **Plano é envelope; protocolo é execução (D-207 / PLAN-T11).** O executor não
 deve despejar o documento inteiro. Primeiro escolhe o plano salvo; depois escolhe

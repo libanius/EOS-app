@@ -4,6 +4,91 @@
 
 ---
 
+## D-212 — Executar plano é um MODO, não uma tela
+
+**Date**: 2026-08-18
+**Status**: DECIDED
+**Roadmap**: EXEC-T00 … EXEC-T06
+**Spec**: `specs/PLAN-EXEC-001-execucao-de-plano.md` (Ready)
+**Pedido do dono**: *"o produto está complexo para o usuário e não funcional (…)
+eu aperto um botão para executar o plano escolhido e na tela dos familiares que
+estão no nosso círculo um playbook começa a rodar."*
+
+**Context**: `/preparedness/plano` acumula autoria e execução na mesma rolagem de
+1409 linhas. Os critérios do `docs/18` §13 descrevem uma família **lendo** o plano
+com o avião no chão; o que existe são vinte campos editáveis. O caso de teste do
+dono — filha se separa numa Parade, multidão, sinal congestionado — quebra o
+desenho atual em quatro pontos: o cache é por círculo e não por plano, a execução
+mora dentro do `MemberSheet` e morre ao fechar a folha, o aviso ao círculo é um
+botão manual separado do disparo, e o protocolo é um portão antes da ação.
+
+`docs/35` §7 já previa esta decisão e a deixou pendente: *"Modo emergência (…) não
+é para agora — fica registrado como evolução possível depois que Model C estiver
+de pé."* Model C fechou em 2026-08-14.
+
+**Decision**:
+
+1. **Execução é o segundo MODO do EOS**, com a mecânica do Modo Simulação
+   (D-184): banner global permanente, superfície própria, saída explícita.
+   `MemberSheet` mantém só a entrada.
+
+2. **A entrega da mensagem não é o que faz o plano funcionar.** Cada aparelho já
+   tem o plano em IndexedDB; executar acende localmente um roteiro que aquele
+   aparelho já podia rodar sozinho. Push é reforço. Consequência dura: nenhuma
+   tela do playbook espera resposta de servidor para renderizar.
+
+3. **Três ciclos de vida separados.** Lugar (`circle_places`, do círculo) · Plano
+   (o compromisso, versionado) · Sessão (`plan_sessions`, o dia). O ack não existe
+   porque um lugar mudou — existe porque um compromisso mudou.
+
+4. **Waypoint aponta para o lugar**, não copia. Mover um lugar mais de 50 m
+   versiona todos os planos que o usam e dispara ack; mudar nome ou nota, não.
+   Apagar lugar em uso é bloqueado.
+
+5. **Ponto do dia é efêmero e promovível em dois estágios.** Marcado durante a
+   sessão não versiona nem notifica; no encerramento o EOS oferece guardá-lo no
+   catálogo; adotá-lo num plano, em tempo de calma, aí sim versiona.
+
+6. **Disparar é um ato só**: segurar 1,5 s cria a execução, envia o aviso e abre o
+   playbook, com janela de desfazer de 30 s em faixa — nunca modal. O aviso sai
+   imediatamente; o cancelamento emite um segundo aviso.
+
+7. **O protocolo passa a ser o primeiro passo do playbook**, não um portão antes
+   do disparo. Corrige D-207 no ponto de execução sem revogá-lo: plano continua
+   sendo envelope e protocolo continua sendo a execução — muda **quando** se
+   escolhe.
+
+8. **O dependente entra por carta, não por tela.** `family_plan_dependent_briefs`
+   guarda por plano o que foi combinado com ele; aparece na tela de quem procura
+   como citação, fora da numeração, e nunca em superfície pública (`docs/18` §8).
+
+9. **MVP é só o arquétipo `meet`.** `action_type` passa a determinar a forma da
+   tela; `evacuate`, `shelter`, `communicate` e `wait` continuam salvando e caem
+   em `meet` na execução até terem spec própria.
+
+10. **Satélite vira preferência persistente do app** (`profiles.map_base_mode`,
+    padrão `satellite`), válida em todas as superfícies de mapa em vez de estado
+    local por componente. Halo e scrim viram token obrigatório: sobre imagem, o
+    marcador que lê bem na mata some no estacionamento.
+
+11. **Legibilidade ao sol sem variante de tema**: o modo execução força brilho
+    máximo e amplia o corpo dos números. Nenhum texto essencial usa `--mu`.
+
+**Consequence**: sete fases (EXEC-T00…T06), uma por vez, cada uma com critérios
+binários na seção 7 do spec. **EXEC-T00 é bloqueante**: enquanto o cache offline
+for chaveado por círculo e não por `(circleId, planId)`, "executar o plano certo
+sem rede" é promessa que o app não cumpre — e é justamente o caso da multidão.
+
+Fica de fora, registrado: o arquétipo **Evacuar**. O incêndio doméstico provou que
+ele não cabe aqui — começa depois do evento, na calçada, e sua primeira tela é uma
+conferência de presença, não uma lista de passos. Spec própria.
+
+Download de tiles continua fora, e agora por motivo corrigido: não é falta de
+chave — o satélite já é keyless via ESRI (D-199) — são os termos do provedor, que
+não autorizam cache em massa, como os da CARTO.
+
+---
+
 ## D-207 — Plano não executa documento; executa protocolo
 
 **Date**: 2026-08-17

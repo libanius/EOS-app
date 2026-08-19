@@ -224,6 +224,27 @@ product phase sequenced.
 
 ---
 
+## Execução de Plano (EXEC)
+
+*Goal: transformar o plano da família de documento editável em modo operacional
+offline-first, com playbook por papel e disparo explícito.*
+
+> Decisão: **D-212**. Spec Ready: `specs/PLAN-EXEC-001-execucao-de-plano.md`.
+> Escopo do primeiro ciclo: arquétipo `meet`. Execução é modo global do EOS, não
+> folha dentro do `MemberSheet`. Uma fase por vez; EXEC-T00 é bloqueante.
+
+| Task ID | Task | Status | Notes |
+|---|---|---|---|
+| EXEC-T00 | Cache offline por `(circleId, planId)` | PENDING | Bloqueante. Critérios: cache chaveado por plano e, com N planos sem rede, seletor lista os N e abre o escolhido. |
+| EXEC-T01 | `circle_places` + waypoint por referência | NOT STARTED | Criar catálogo do círculo, migrar waypoints, dedupe por proximidade/nome, travar exclusão de lugar em uso e versionar planos só quando coordenada mover > 50 m. |
+| EXEC-T02 | `plan_sessions` + armar/desarmar | NOT STARTED | Sessão local-first com banner permanente, pessoas presentes, dependentes, pontos do dia e desarme perguntado quando expirar/sair do raio. |
+| EXEC-T03 | `family_plan_executions` + disparo por gesto | NOT STARTED | Segurar 1,5 s cria execução, envia aviso no mesmo ato, abre playbook e oferece desfazer por 30 s em faixa. |
+| EXEC-T04 | Playbook por papel offline-first | NOT STARTED | Próxima ação do usuário no topo, protocolo como primeiro passo, carta do dependente como citação, rumo/distância/minutos sem tiles. |
+| EXEC-T05 | Estado compartilhado e encerramento | NOT STARTED | Estados com idade, dependentes `sem aparelho`, escalonamento sugerido e encerrar como resolvida/cancelada. |
+| EXEC-T06 | Promoção de ponto do dia + basemap persistente | NOT STARTED | Oferecer promover pontos no encerramento e persistir preferência de basemap para todas as superfícies de mapa. |
+
+---
+
 ## Unified Profile & Pilot Personalization (UPP)
 
 *Goal: make the Ficha Master the authenticated source of long-term user context for EOS Pilot, without exposing private preferences through the public emergency QR.*
