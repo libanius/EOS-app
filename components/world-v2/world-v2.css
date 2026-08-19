@@ -3049,6 +3049,53 @@
 }
 .wv2-plan-page .wv2-plan-save { margin-top: var(--s4); display: grid; gap: var(--s2); }
 
+/*
+  Saída do plano. Separada do salvar por uma linha e por espaço: é a única ação
+  desta página que remove algo que a família combinou, e não pode ser alcançada
+  no mesmo impulso de salvar. Alvos em 44px como o resto do sistema — a ação
+  mais destrutiva não pode ser o menor botão da tela.
+*/
+.wv2-plan-page .wv2-plan-danger {
+  margin-top: var(--s5);
+  padding-top: var(--s4);
+  border-top: 1px solid var(--sep);
+  display: grid;
+  gap: var(--s2);
+  justify-items: start;
+}
+.wv2-plan-page .wv2-plan-danger .acts { display: flex; gap: var(--s2); flex-wrap: wrap; }
+.wv2-plan-page .wv2-plan-danger-open,
+.wv2-plan-page .wv2-plan-danger-go {
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 15px;
+  cursor: pointer;
+  transition: transform 120ms ease, background 160ms ease;
+}
+.wv2-plan-page .wv2-plan-danger-open {
+  background: transparent;
+  border: 1px solid rgba(255, 69, 58, 0.36);
+  color: #ff8b80;
+}
+.wv2-plan-page .wv2-plan-danger-go {
+  background: rgba(255, 69, 58, 0.16);
+  border: 1px solid rgba(255, 69, 58, 0.52);
+  color: #ff9f93;
+  font-weight: 600;
+}
+.wv2-plan-page .wv2-plan-danger-open:active,
+.wv2-plan-page .wv2-plan-danger-go:active { transform: scale(0.97); }
+.wv2-plan-page .wv2-plan-danger-go[disabled] { opacity: 0.6; cursor: default; }
+
+@media (prefers-reduced-motion: reduce) {
+  .wv2-plan-page .wv2-plan-danger-open,
+  .wv2-plan-page .wv2-plan-danger-go { transition: none; }
+  .wv2-plan-page .wv2-plan-danger-open:active,
+  .wv2-plan-page .wv2-plan-danger-go:active { transform: none; }
+}
+
 /* ── inputs: 44px minimum target, no zoom-on-focus on iOS (16px floor) ── */
 .wv2 .wv2-input {
   width: 100%;

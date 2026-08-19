@@ -4,6 +4,43 @@
 
 ---
 
+## D-216 — Excluir um plano arquiva; a memória da execução não é destruída
+
+**Date**: 2026-08-19
+**Status**: DECIDED
+**Roadmap**: PLAN follow-up (pedido do dono)
+**Spec**: `docs/18-family-plans.md`, `specs/PLAN-EXEC-001-execucao-de-plano.md`
+
+**Context**: o dono pediu o que faltava desde PLAN-T01: não havia como excluir um
+plano. `app/api/plans/route.ts` tinha só GET e PUT. Dava para criar e nunca
+desfazer, então plano de teste e plano duplicado ficavam para sempre no seletor
+disputando espaço com o plano de verdade — e escolher entre "Furacão" e
+"Furacão (teste)" na hora da execução é exatamente a hesitação que o EOS existe
+para remover.
+
+**Decision**: `DELETE /api/plans/:id` **arquiva** (`status = 'archived'`), não
+remove a linha. `family_plan_executions.plan_id` é `ON DELETE CASCADE`: um
+DELETE de verdade levaria junto o registro de que a família executou aquele
+plano, que é histórico de emergência real. `status = 'archived'` já é estado de
+primeira classe no schema e toda listagem filtra `.neq('status', 'archived')`,
+então para quem usa o app o plano some. Ficar com zero planos é estado legítimo:
+a tela volta ao rascunho em branco em vez de exigir que sempre exista um plano.
+
+Duas travas: só Admin ou Editor exclui — Viewer lê o plano, não decide o que a
+família perde; e plano com execução `running` é recusado com motivo na tela, pela
+mesma razão que EXEC-T01 recusa apagar um lugar em uso. Some para todos, então
+avisa todos por push, como salvar já avisa (doc 18 §6.3).
+
+**Consequence**: a UI usa dois toques — o primeiro abre a confirmação que declara
+o que se perde, o segundo executa. Nunca um `×`: a crítica de 2026-08-19 registrou
+que esta página já tem dois `×` idênticos, um reversível e outro não, e a ação que
+apaga o plano inteiro não pode parecer a que tira uma linha de uma lista.
+
+**Não autorizado por D-216**: apagar a linha de `family_plans`, remover execuções
+passadas, ou expor exclusão a Viewer.
+
+---
+
 ## D-215 — Escalonamento é configurado por protocolo no planejamento
 
 **Date**: 2026-08-19

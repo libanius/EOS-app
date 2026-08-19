@@ -161,6 +161,14 @@ const COPY = {
     notesPlaceholder: 'Ex.: entrar pelo portão de trás',
     confirm: 'Confirmar',
     cancel: 'Cancelar',
+    deletePlan: 'Excluir plano',
+    deletePlanAsk: (name: string) => `Excluir "${name}"?`,
+    deletePlanWhat: 'O plano sai do seletor e da lista da família. Se ele já foi executado alguma vez, esse registro é preservado.',
+    deletePlanLast: 'É o último plano do círculo. A família fica sem nenhum plano até você criar outro.',
+    deletePlanGo: 'Excluir',
+    deletingPlan: 'Excluindo…',
+    deletePlanError: 'Não foi possível excluir o plano.',
+    planDeleted: 'Plano excluído',
     who: 'Quem',
     responsibility: 'Faz o quê',
     responsibilityPlaceholder: 'Ex.: pega a Isadora na escola',
@@ -279,6 +287,14 @@ const COPY = {
     notesPlaceholder: 'e.g. use the back gate',
     confirm: 'Confirm',
     cancel: 'Cancel',
+    deletePlan: 'Delete plan',
+    deletePlanAsk: (name: string) => `Delete "${name}"?`,
+    deletePlanWhat: 'The plan leaves the switcher and the family list. If it was ever executed, that record is kept.',
+    deletePlanLast: 'This is the circle\u2019s last plan. The family will have no plan until you create another one.',
+    deletePlanGo: 'Delete',
+    deletingPlan: 'Deleting\u2026',
+    deletePlanError: 'Could not delete the plan.',
+    planDeleted: 'Plan deleted',
     who: 'Who',
     responsibility: 'Does what',
     responsibilityPlaceholder: 'e.g. picks up Isadora at school',
@@ -340,6 +356,8 @@ export default function PlanPage() {
   const [dirty, setDirty] = useState(false)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [placeMessage, setPlaceMessage] = useState<string | null>(null)
   const [picker, setPicker] = useState<PickerTarget | null>(null)
   const [drawing, setDrawing] = useState<{ index: number | null } | null>(null)
@@ -672,6 +690,44 @@ export default function PlanPage() {
     } catch (error) {
       setPlaceMessage(error instanceof Error ? error.message : c.saveError)
       return false
+    }
+  }
+
+  /*
+   * Excluir o plano inteiro. Faltava a saída: dava para criar e nunca desfazer,
+   * então plano de teste e plano duplicado ficavam para sempre no seletor
+   * disputando espaço com o plano de verdade.
+   *
+   * Dois toques, de propósito. O primeiro abre a confirmação que DIZ o que se
+   * perde; só o segundo executa. É o oposto do `×` do catálogo logo acima, que
+   * apaga um lugar de todos os planos sem perguntar nada — comportamento que
+   * não vou copiar para uma ação maior ainda.
+   */
+  const deletePlan = async () => {
+    if (!planId || !circleId) return
+    setDeleting(true)
+    setMessage(null)
+    try {
+      const response = await fetch(`/api/plans/${planId}`, { method: 'DELETE' })
+      const data = await response.json().catch(() => null)
+      if (!response.ok || data?.error) throw new Error(data?.error ?? c.deletePlanError)
+      haptic.impact()
+      setConfirmingDelete(false)
+
+      /*
+       * Ficar sem nenhum plano é um estado legítimo, não um erro: é o que
+       * acontece quando a família apaga o único plano que tinha. A tela volta
+       * para o rascunho em branco em vez de tentar carregar um plano que não
+       * existe mais.
+       */
+      const remaining = await loadPlanList(circleId)
+      if (remaining.length) await load(circleId, remaining[0].id)
+      else clearDocument(pt ? 'Novo plano' : 'New plan')
+      setMessage(c.planDeleted)
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : c.deletePlanError)
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -1362,6 +1418,47 @@ export default function PlanPage() {
               {saving ? c.saving : c.save}
             </Pill>
           </div>
+
+          {/*
+            A saída fica DEPOIS do salvar e separada por uma linha, porque não
+            compete com ele: quem chega aqui quase sempre veio salvar. Nunca é
+            um `×` — a ação que apaga o plano inteiro não pode parecer a ação
+            que tira uma linha de uma lista.
+          */}
+          {planId && (
+            <div className="wv2-plan-danger">
+              {confirmingDelete ? (
+                <>
+                  <strong className="t-sub">{c.deletePlanAsk(planName || c.eyebrow)}</strong>
+                  <p className="t-foot ink-2">{c.deletePlanWhat}</p>
+                  {planSummaries.length <= 1 && (
+                    <p className="t-foot warn">{c.deletePlanLast}</p>
+                  )}
+                  <div className="acts">
+                    <Pill onClick={() => setConfirmingDelete(false)} disabled={deleting}>
+                      {c.cancel}
+                    </Pill>
+                    <button
+                      type="button"
+                      className="wv2-plan-danger-go"
+                      onClick={() => { void deletePlan() }}
+                      disabled={deleting}
+                    >
+                      {deleting ? c.deletingPlan : c.deletePlanGo}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  className="wv2-plan-danger-open"
+                  onClick={() => setConfirmingDelete(true)}
+                >
+                  {c.deletePlan}
+                </button>
+              )}
+            </div>
+          )}
         </>
       )}
 
