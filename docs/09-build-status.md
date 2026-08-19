@@ -10,12 +10,13 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Execução de Plano (EXEC) sobre Web/PWA |
-| **Current Task** | **EXEC-T00 — Cache offline por `(circleId, planId)`.** PENDING — bloqueante para `PLAN-EXEC-001`. |
+| **Current Task** | **EXEC-T01 — `circle_places` + waypoint por referência.** NOT STARTED — próxima fase de `PLAN-EXEC-001`; não iniciada. |
 | **Spec Ready** | `specs/PLAN-EXEC-001-execucao-de-plano.md` — execução de plano como modo operacional; D-212. |
 | **⚠ Pendência operacional** | **Aplicar `supabase/migrations/20260813210000_profiles_auth_fk.sql`** (D-175). Limpa 9 perfis de teste vazios e cria a FK que impede a recorrência. Para com erro se encontrar órfão com dado. |
 | **Migrações aplicadas** | `locations`, `holdings`, `kits`, `requirements`, `checklists.status` — todas verificadas por REST. |
 | **Migrações aplicadas** | As duas de Preparedness State **aplicadas em 2026-08-13** e verificadas por REST: `locations`, `holdings`, `kits`, `requirements` → 200. Nenhuma pendência operacional. |
 | **Last Completed Task** | **D-188 / COMMS-T12 — lista, thread e conversa individual (2026-08-15)** |
+| | **EXEC-T00 — cache offline por `(circleId, planId)` para múltiplos planos (2026-08-19)** |
 | | **D-211 / PLAN follow-up — Casa usa perfil ou mapa direto, sem modal intermediário (2026-08-18)** |
 | | **D-210 / PLAN follow-up — picker de endereço não embaça a tela (2026-08-18)** |
 | | **D-209 / PLAN follow-up — casa pode ser confirmada sem digitar nome manual (2026-08-18)** |
@@ -234,8 +235,9 @@ rota ou UI foi alterado.**
 | **In Progress** | — |
 | **Platform Alignment** | ✅ D-084: EOS é plataforma multi-superfície com um único core operacional. Web/PWA segue como superfície primária; iOS/Android serão adapters nativos futuros; Automotive é companion mode restrito; Mesh/LoRa segue bloqueado por G-05. `/mobile/` é template/conceitual, não app inicializado. |
 | **Fases pedidas pelo dono (2026-07-31)** | ✅ 1. Camadas de clima + rastreio de ciclone (D-078). 2. Reinventar a aba Família no design system da v2, com componentes dinâmicos. 3. WV2-T05 (a11y/perf), PLAN-T07 (Pilot propõe plano). |
-| **Next Task** | **EXEC-T00 — Cache offline por `(circleId, planId)`.** Critério binário: com N planos e sem rede, o seletor lista os N e abre o escolhido. |
+| **Next Task** | **EXEC-T01 — `circle_places` + waypoint por referência.** Criar catálogo do círculo, migrar waypoints e travar exclusão de lugar em uso; não iniciar sem escopo explícito. |
 | **Build** | ✅ D-205 validado em 2026-08-16 com `npm run type-check`, `git diff --check`, `npm run build` e Playwright mobile no Mundo: o antigo y=692 virou canvas, a lateral baixa virou canvas, a alça central ainda reabre o sheet e drags movem o MapLibre no primeiro gesto. |
+| | ✅ EXEC-T00 validado em 2026-08-19 com `npm test -- --runTestsByPath lib/__tests__/offline-family-plan-cache.test.ts` e `npm run type-check`. |
 | | ✅ D-211 validado em 2026-08-18 com `npm run type-check`, `git diff --check` e `npm run build`. |
 | | ✅ D-210 validado em 2026-08-18 com `npm run type-check`, `git diff --check` e `npm run build`. |
 | | ✅ D-209 validado em 2026-08-18 com `npm run type-check`, `git diff --check` e `npm run build`. |

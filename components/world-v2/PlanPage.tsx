@@ -24,7 +24,13 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useLanguage } from '@/lib/i18n'
 import { distanceKm, bearing, compassPoint } from '@/lib/world/shelters'
 import { formatDistance, googleMapsRouteUrlFromLineString, walkingMinutes } from '@/lib/world/navigation'
-import { getFamilyPlan, saveFamilyPlan } from '@/lib/offline-storage'
+import {
+  getFamilyPlan,
+  getFamilyPlanList,
+  saveFamilyPlan,
+  saveFamilyPlanList,
+  selectOfflineFamilyPlan,
+} from '@/lib/offline-storage'
 import { planEnvelope } from '@/lib/plan-envelope'
 import { reviewPlanWithPilot, type PlanPilotProposal } from '@/lib/plan-pilot-review'
 import {
@@ -421,8 +427,19 @@ export default function PlanPage() {
   const loadPlanList = useCallback(async (id: string) => {
     const response = await fetch(`/api/plans?circleId=${id}&all=1`, { cache: 'no-store' }).catch(() => null)
     const data = response?.ok ? ((await response.json().catch(() => null)) as { plans?: PlanSummary[] } | null) : null
-    setPlanSummaries(data?.plans ?? [])
-    return data?.plans ?? []
+    if (data?.plans) {
+      setPlanSummaries(data.plans)
+      void saveFamilyPlanList({
+        circleId: id,
+        plans: data.plans,
+        syncedAt: new Date().toISOString(),
+      })
+      return data.plans
+    }
+
+    const cached = await getFamilyPlanList(id).catch(() => null)
+    setPlanSummaries(cached?.plans ?? [])
+    return cached?.plans ?? []
   }, [])
 
   // ── the plan, network first, device second ─────────────────────────────────
@@ -437,18 +454,34 @@ export default function PlanPage() {
       const doc = (await response.json()) as PlanDocument
       applyDocument(doc)
       setFromCache(null)
+      const serverPlans = (doc as PlanDocument & { plans?: PlanSummary[] }).plans
+      if (serverPlans) {
+        void saveFamilyPlanList({
+          circleId: id,
+          plans: serverPlans,
+          syncedAt: new Date().toISOString(),
+        })
+      }
       // PLAN-T05: every successful read refreshes the copy that has to work
       // when this fetch is the thing that fails.
-      void saveFamilyPlan({
-        circleId: id,
-        document: doc,
-        version: doc.plan?.version ?? 0,
-        syncedAt: new Date().toISOString(),
-      })
+      if (doc.plan?.id) {
+        void saveFamilyPlan({
+          circleId: id,
+          planId: doc.plan.id,
+          document: doc,
+          version: doc.plan.version ?? 0,
+          syncedAt: new Date().toISOString(),
+        })
+      }
     } catch {
-      const cached = await getFamilyPlan(id).catch(() => null)
+      const cachedList = await getFamilyPlanList(id).catch(() => null)
+      const plans = cachedList?.plans ?? []
+      const selection = selectOfflineFamilyPlan(plans, [], targetPlanId)
+      const selectedPlanId = selection.planId ?? plans[0]?.id ?? null
+      const cached = selectedPlanId ? await getFamilyPlan(id, selectedPlanId).catch(() => null) : null
+      setPlanSummaries(selection.plans)
       if (cached?.document) {
-        applyDocument(cached.document as PlanDocument)
+        applyDocument(cached.document)
         setFromCache(cached.syncedAt)
       } else {
         setFailed(true)

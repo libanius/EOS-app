@@ -235,7 +235,7 @@ offline-first, com playbook por papel e disparo explícito.*
 
 | Task ID | Task | Status | Notes |
 |---|---|---|---|
-| EXEC-T00 | Cache offline por `(circleId, planId)` | PENDING | Bloqueante. Critérios: cache chaveado por plano e, com N planos sem rede, seletor lista os N e abre o escolhido. |
+| EXEC-T00 | Cache offline por `(circleId, planId)` | ✅ COMPLETE | 2026-08-19 — Documento cacheado por plano, lista do círculo cacheada para seletor offline, migração do cache legado por círculo e teste automatizado do caso N planos sem rede. |
 | EXEC-T01 | `circle_places` + waypoint por referência | NOT STARTED | Criar catálogo do círculo, migrar waypoints, dedupe por proximidade/nome, travar exclusão de lugar em uso e versionar planos só quando coordenada mover > 50 m. |
 | EXEC-T02 | `plan_sessions` + armar/desarmar | NOT STARTED | Sessão local-first com banner permanente, pessoas presentes, dependentes, pontos do dia e desarme perguntado quando expirar/sair do raio. |
 | EXEC-T03 | `family_plan_executions` + disparo por gesto | NOT STARTED | Segurar 1,5 s cria execução, envia aviso no mesmo ato, abre playbook e oferece desfazer por 30 s em faixa. |

@@ -101,6 +101,12 @@ IndexedDB e nunca espera servidor. O protocolo passa a ser primeiro passo do
 playbook, não menu antes de agir. MVP é só arquétipo `meet`; evacuar fica para
 spec própria. **EXEC-T00 é bloqueante:** cache offline por `(circleId, planId)`.
 
+**Cache offline do plano agora é por plano, não por círculo (EXEC-T00).** A lista
+de planos do círculo também fica em IndexedDB, então sem rede o seletor ainda
+mostra os N planos conhecidos e abre o escolhido. O cache legado
+`family-plan:{circleId}` é migrado por leitura para `family-plan:{circleId}:{planId}`
+e a regra D-075 continua: `GET /api/plans` é `NetworkOnly` no service worker.
+
 **Plano é envelope; protocolo é execução (D-207 / PLAN-T11).** O executor não
 deve despejar o documento inteiro. Primeiro escolhe o plano salvo; depois escolhe
 o protocolo/gatilho ativo. No MVP, cada `family_plan_triggers` salvo é uma
