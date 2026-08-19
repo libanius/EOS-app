@@ -85,6 +85,7 @@ reversível por 30 s; escolher duas vezes em menu antes de agir não é.
 | D-h | Preferência de basemap **persiste**, é única para o app, e o padrão é satélite. |
 | D-i | Modo execução amplia corpo dos números e melhora contraste na PWA; **brilho máximo** fica para Native futuro. Sem variante de tema. |
 | D-j | Ordem da lista de planos: sessão armada → proximidade → hora do dia → `updated_at`. |
+| D-k | Intervalo de escalonamento é configurado por **protocolo** no planejamento; padrão 15 min, faixa 5–120 min. |
 
 ---
 
@@ -167,10 +168,11 @@ O aparelho sabe quem é o usuário. Portanto:
   que não vem.
 - Encerramento é **ação humana**: `resolvida` (avisa todos, desliga o modo) ou
   `cancelada` (falso alarme).
-- **Escalonamento**: relógio local determinístico. Ao expirar o intervalo, o EOS
-  **sugere** o próximo passo (segurança do evento → achados e perdidos → polícia),
-  com dois botões que não executam nada: `Fiz isso` registra evento e reinicia o
-  relógio; `Ainda não` adia.
+- **Escalonamento**: relógio local determinístico. O intervalo vem do protocolo
+  (`escalation_minutes`); quando vazio, usa 15 min. Ao expirar, o EOS **sugere**
+  o próximo passo (segurança do evento → achados e perdidos → polícia), com dois
+  botões que não executam nada: `Fiz isso` registra evento e reinicia o relógio;
+  `Ainda não` adia.
 - Ao encerrar, e só então, o EOS pergunta se os pontos do dia devem virar lugares
   do círculo.
 
@@ -363,6 +365,10 @@ family_plan_execution_events
 O estado de cada pessoa é **derivado** do último evento `status`/`arrived` dela.
 Não há coluna de estado por membro — evento é a fonte, e é o que permite retomada
 em outro aparelho.
+
+`family_plan_triggers.escalation_minutes int null` pertence ao planejamento do
+protocolo (D-k). Valor nulo significa padrão explícito de 15 min; valores salvos
+precisam ficar entre 5 e 120 min.
 
 ### 5.6 Preferência de basemap (D-h)
 

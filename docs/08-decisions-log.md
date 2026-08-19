@@ -4,6 +4,30 @@
 
 ---
 
+## D-215 — Escalonamento é configurado por protocolo no planejamento
+
+**Date**: 2026-08-19
+**Status**: DECIDED
+**Roadmap**: EXEC-T05
+**Spec**: `specs/PLAN-EXEC-001-execucao-de-plano.md`
+
+**Context**: EXEC-T05 exigia escalonamento por tempo, mas o spec não definia o
+intervalo. Um valor fixo global seria errado: incêndio em casa, criança perdida
+num evento e evacuação regional têm tempos de resposta diferentes.
+
+**Decision**: o intervalo de escalonamento pertence ao protocolo/gatilho do
+plano. O planejamento grava `family_plan_triggers.escalation_minutes`; a UI
+oferece valor editável por protocolo. Quando vazio, o padrão explícito é 15
+minutos. Valores válidos ficam entre 5 e 120 minutos para evitar tanto ruído
+quanto atraso operacional.
+
+**Consequence**: a execução usa esse valor para sugerir o próximo passo local e
+determinístico. `Fiz isso` e `Ainda não` só registram evento e reiniciam/adiam o
+relógio; nenhum botão executa ligação, aviso externo ou acionamento de
+autoridade.
+
+---
+
 ## D-214 — Brilho máximo é responsabilidade Native, não PWA
 
 **Date**: 2026-08-19
