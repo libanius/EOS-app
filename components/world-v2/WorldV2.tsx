@@ -28,7 +28,8 @@ import PilotBar from './PilotBar'
 import MemberSheet from './MemberSheet'
 import type { PilotContext } from './pilot-engine'
 import type { ShelterSnapshot } from '@/lib/world/shelters'
-import type { MapBaseMode } from '@/lib/world/providers'
+import { type MapBaseMode } from '@/lib/map-base-mode'
+import { useMapBaseMode } from '@/lib/use-map-base-mode'
 import { DEFAULT_LAYERS, type MapLayerState } from '@/components/world-dashboard/WorldMap'
 import { headingLabel, isRelevant, stormBounds } from '@/lib/world/cyclones'
 import { windMeaning } from '@/lib/world/wind'
@@ -79,6 +80,7 @@ const COPY = {
     layersLabel: 'Camadas',
     base: 'Base do mapa',
     darkBase: 'Escuro',
+    hybridBase: 'Híbrido',
     satCap: 'Satélite',
     windBase: 'Vento',
     darkCap: 'Camadas',
@@ -161,6 +163,7 @@ const COPY = {
     layersLabel: 'Layers',
     base: 'Map base',
     darkBase: 'Dark',
+    hybridBase: 'Hybrid',
     satCap: 'Satellite',
     windBase: 'Wind',
     darkCap: 'Layers',
@@ -320,11 +323,10 @@ export default function WorldV2() {
    * Vento é um FENÔMENO sobre o mundo, não uma forma de desenhar o mundo. Ele
    * volta a ser camada, e compõe sobre a base que a pessoa escolheu.
    */
-  const [mapBase, setMapBase] = useState<MapBaseMode>('dark')
+  const { mapBase, setMapBase } = useMapBaseMode()
   useEffect(() => {
     try {
       const stored = localStorage.getItem('eos-map-base')
-      if (stored === 'dark' || stored === 'satellite') setMapBase(stored)
       /*
        * Quem tinha 'wind' salvo volta para escuro COM o vento ligado — que é
        * exatamente o que aquela base fazia. Ninguém perde o vento na virada.
@@ -332,10 +334,9 @@ export default function WorldV2() {
       if (stored === 'wind') {
         setMapBase('dark')
         setLayers(current => ({ ...current, wind: true }))
-        localStorage.setItem('eos-map-base', 'dark')
       }
     } catch { /* private mode */ }
-  }, [])
+  }, [setMapBase])
 
   const setBase = (next: MapBaseMode) => {
     haptic.selection()
@@ -766,6 +767,7 @@ export default function WorldV2() {
               <p className="t-caps ink-3">{c.base}</p>
               <div className="row">
                 <button type="button" className={`wv2-chip${mapBase === 'dark' ? ' on' : ''}`} onClick={() => setBase('dark')}>{c.darkBase}</button>
+                <button type="button" className={`wv2-chip${mapBase === 'hybrid' ? ' on' : ''}`} onClick={() => setBase('hybrid')}>{c.hybridBase}</button>
                 <button type="button" className={`wv2-chip${mapBase === 'satellite' ? ' on' : ''}`} onClick={() => setBase('satellite')}>{c.satCap}</button>
               </div>
 

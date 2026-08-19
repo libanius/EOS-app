@@ -161,6 +161,21 @@ autoridade. Encerrar como `resolved` ou `cancelled` muda
 execução novamente. Migration `20260819142746_exec_t05_trigger_escalation_minutes.sql`
 aplicada pelo dono em 2026-08-19 e verificada por REST.
 
+**Encerramento oferece promover pontos do dia (EXEC-T06).** Ao tocar
+`Encontrada — encerrar`, se a execução tem `session_id` e a sessão tem
+`plan_session_places` ainda não promovidos, o playbook mostra cada ponto antes
+de desligar o modo. Promover cria `circle_places` como `kind: 'custom'` e
+`precision: 'unknown'`, marca `plan_session_places.promoted_place_id` e não mexe
+em `family_plans.version`, push ou ack. Recusar promoção só encerra a execução:
+o registro compartilhado continua em `family_plan_executions`.
+
+**Basemap é preferência do perfil (EXEC-T06 / D-h).** Mundo, `MapPointPicker` e
+`RouteDraw` leem a mesma preferência `profiles.map_base_mode`, com default
+`satellite`; `localStorage` fica só como cache local até a rede responder. O QR
+público da ficha não expõe essa preferência. Migration
+`20260819144004_exec_t06_map_base_mode.sql` precisa estar aplicada para
+persistência em produção; antes disso a rota degrada sem quebrar a ficha.
+
 **Plano é envelope; protocolo é execução (D-207 / PLAN-T11).** O executor não
 deve despejar o documento inteiro. Primeiro escolhe o plano salvo; depois escolhe
 o protocolo/gatilho ativo. No MVP, cada `family_plan_triggers` salvo é uma

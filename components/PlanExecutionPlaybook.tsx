@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { PlanDocument } from '@/lib/family-plan'
 import type { PlanExecutionSnapshot } from '@/lib/plan-execution-mode'
 import { buildPlanPlaybook, type PlanCoordinate } from '@/lib/plan-playbook'
+import { promotableSessionPlaces, type PlanSessionPlace, type PlanSessionSnapshot } from '@/lib/plan-session'
 import {
   buildPlanExecutionSharedState,
   type PlanExecutionAdult,
@@ -15,6 +16,7 @@ import { getFamilyPlan, getProfile, saveFamilyPlan } from '@/lib/offline-storage
 import { useLanguage } from '@/lib/i18n'
 import PlanChart from './world-v2/PlanChart'
 import { usePlanExecution } from './PlanExecutionProvider'
+import { usePlanSession } from './PlanSessionProvider'
 
 type ProfileState = {
   id: string | null
@@ -50,6 +52,7 @@ export default function PlanExecutionPlaybook({ execution }: { execution: PlanEx
   const { language } = useLanguage()
   const pt = language === 'pt'
   const { setProtocol, setStatus, recordEscalation, resolve, cancel, refresh } = usePlanExecution()
+  const { refresh: refreshPlanSession } = usePlanSession()
   const [doc, setDoc] = useState<PlanDocument | null>(null)
   const [profile, setProfile] = useState<ProfileState>({ id: null, origin: null })
   const [stateSeed, setStateSeed] = useState<ExecutionStateSeed | null>(null)
@@ -57,6 +60,9 @@ export default function PlanExecutionPlaybook({ execution }: { execution: PlanEx
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState<string | null>(null)
   const [done, setDone] = useState<Set<string>>(() => new Set())
+  const [closingPlaces, setClosingPlaces] = useState<PlanSessionPlace[] | null>(null)
+  const [closingReviewed, setClosingReviewed] = useState(false)
+  const [promotingIds, setPromotingIds] = useState<Set<string>>(() => new Set())
   const now = useNow(true)
 
   useEffect(() => {
@@ -237,11 +243,71 @@ export default function PlanExecutionPlaybook({ execution }: { execution: PlanEx
     }
   }
 
-  const handleResolve = async () => {
+  const finishResolve = async () => {
     setMessage(null)
     const result = await resolve()
     if (!result.ok || result.message) {
       setMessage(result.message ?? (pt ? 'Não foi possível encerrar.' : 'Could not close.'))
+    }
+  }
+
+  const handleResolve = async () => {
+    setMessage(null)
+    if (!closingReviewed && execution.sessionId && !execution.sessionId.startsWith('local:')) {
+      try {
+        const response = await fetch(`/api/plan-sessions/${encodeURIComponent(execution.sessionId)}`, { cache: 'no-store' })
+        const data = response.ok ? await response.json().catch(() => null) : null
+        const session = data?.session as PlanSessionSnapshot | undefined
+        const places = session ? promotableSessionPlaces(session) : []
+        if (places.length > 0) {
+          setClosingPlaces(places)
+          return
+        }
+      } catch {
+        setMessage(pt
+          ? 'Não consegui carregar os pontos do dia agora. O registro da execução será mantido.'
+          : 'Could not load day points now. The execution record will be kept.')
+      }
+      setClosingReviewed(true)
+    }
+    await finishResolve()
+  }
+
+  const handleSkipPromotions = async () => {
+    setClosingReviewed(true)
+    setClosingPlaces(null)
+    await finishResolve()
+  }
+
+  const handlePromotePlace = async (place: PlanSessionPlace) => {
+    if (!execution.sessionId || place.id.startsWith('local:')) {
+      setMessage(pt ? 'Este ponto ainda não sincronizou.' : 'This point is not synced yet.')
+      return
+    }
+    setMessage(null)
+    setPromotingIds(current => new Set(current).add(place.id))
+    try {
+      const response = await fetch(`/api/plan-sessions/${encodeURIComponent(execution.sessionId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'promote_place', placeId: place.id }),
+      })
+      const data = await response.json().catch(() => null)
+      if (!response.ok || data?.error || !data?.place) {
+        setMessage(data?.message ?? data?.error ?? (pt ? 'Não foi possível promover.' : 'Could not promote.'))
+        return
+      }
+      const promoted = data.place as PlanSessionPlace
+      setClosingPlaces(current => (current ?? []).map(item => item.id === promoted.id ? promoted : item))
+      await refreshPlanSession()
+    } catch {
+      setMessage(pt ? 'Sem rede para promover este ponto agora.' : 'Offline; cannot promote this point now.')
+    } finally {
+      setPromotingIds(current => {
+        const next = new Set(current)
+        next.delete(place.id)
+        return next
+      })
     }
   }
 
@@ -262,6 +328,7 @@ export default function PlanExecutionPlaybook({ execution }: { execution: PlanEx
   }
 
   const nav = playbook.navigation
+  const openPromotionPlaces = (closingPlaces ?? []).filter(place => !place.promotedPlaceId)
 
   return (
     <div className="plan-playbook">
@@ -382,14 +449,58 @@ export default function PlanExecutionPlaybook({ execution }: { execution: PlanEx
           </div>
         </div>
 
-        <div className="plan-close-actions">
-          <button type="button" onClick={() => { void handleResolve() }}>
-            {pt ? 'Encontrada — encerrar' : 'Found — close'}
-          </button>
-          <button type="button" onClick={() => { void handleFalseAlarm() }}>
-            {pt ? 'Falso alarme' : 'False alarm'}
-          </button>
-        </div>
+        {closingPlaces && (
+          <div className="plan-promotion-panel" aria-label={pt ? 'Promover pontos do dia' : 'Promote day points'}>
+            <span>{pt ? 'Pontos do dia' : 'Day points'}</span>
+            <strong>{pt ? 'Guardar algum no catálogo do círculo?' : 'Save any to the circle catalog?'}</strong>
+            <em>{pt
+              ? 'Isso não muda a versão do plano. Recusar não apaga o registro da execução.'
+              : 'This does not change the plan version. Refusing does not erase the execution record.'}</em>
+            {closingPlaces.map(place => {
+              const promoted = Boolean(place.promotedPlaceId)
+              const localOnly = place.id.startsWith('local:')
+              return (
+                <div key={place.id} className="plan-promotion-row">
+                  <span>
+                    <b>{place.name}</b>
+                    <small>{place.lat.toFixed(5)}, {place.lng.toFixed(5)}</small>
+                  </span>
+                  <button
+                    type="button"
+                    disabled={promoted || localOnly || promotingIds.has(place.id)}
+                    onClick={() => { void handlePromotePlace(place) }}
+                  >
+                    {promoted
+                      ? (pt ? 'Guardado' : 'Saved')
+                      : localOnly
+                        ? (pt ? 'Pendente' : 'Pending')
+                        : promotingIds.has(place.id)
+                          ? (pt ? 'Guardando...' : 'Saving...')
+                          : (pt ? 'Guardar' : 'Save')}
+                  </button>
+                </div>
+              )
+            })}
+            <div className="plan-promotion-actions">
+              <button type="button" onClick={() => { void handleSkipPromotions() }}>
+                {openPromotionPlaces.length > 0
+                  ? (pt ? 'Encerrar sem guardar' : 'Close without saving')
+                  : (pt ? 'Encerrar' : 'Close')}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {!closingPlaces && (
+          <div className="plan-close-actions">
+            <button type="button" onClick={() => { void handleResolve() }}>
+              {pt ? 'Encontrada — encerrar' : 'Found — close'}
+            </button>
+            <button type="button" onClick={() => { void handleFalseAlarm() }}>
+              {pt ? 'Falso alarme' : 'False alarm'}
+            </button>
+          </div>
+        )}
       </section>
 
       <PlanChart waypoints={doc.waypoints ?? []} routes={doc.routes ?? []} pt={pt} />

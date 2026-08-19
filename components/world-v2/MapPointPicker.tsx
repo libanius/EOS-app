@@ -17,7 +17,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Map as MLMap } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
-import { getMapConfig, type MapBaseMode } from '@/lib/world/providers'
+import { useMapBaseMode } from '@/lib/use-map-base-mode'
+import { getMapConfig } from '@/lib/world/providers'
 import { Pill } from './primitives'
 import { haptic } from './motion'
 
@@ -26,6 +27,7 @@ const COPY = {
     title: 'Escolher no mapa',
     hint: 'Arraste o mapa até a mira ficar em cima do lugar exato. Aproxime para ver o prédio certo.',
     satellite: 'Satélite',
+    hybrid: 'Híbrido',
     dark: 'Mapa escuro',
     use: 'Usar este ponto',
     cancel: 'Cancelar',
@@ -36,6 +38,7 @@ const COPY = {
     title: 'Pick on the map',
     hint: 'Drag the map until the crosshair sits on the exact spot. Zoom in to find the right building.',
     satellite: 'Satellite',
+    hybrid: 'Hybrid',
     dark: 'Dark map',
     use: 'Use this point',
     cancel: 'Cancel',
@@ -67,7 +70,7 @@ export default function MapPointPicker({
   const c = COPY[pt ? 'pt' : 'en']
   const holder = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<MLMap | null>(null)
-  const [base, setBase] = useState<MapBaseMode>('satellite')
+  const { mapBase: base, setMapBase: setBase } = useMapBaseMode()
   const [zoom, setZoom] = useState(17)
   const [locating, setLocating] = useState(false)
   const [centre, setCentre] = useState(start ?? fallback)
@@ -194,6 +197,13 @@ export default function MapPointPicker({
             onClick={() => { haptic.selection(); setBase('satellite') }}
           >
             {c.satellite}
+          </button>
+          <button
+            type="button"
+            className={`wv2-chip${base === 'hybrid' ? ' on' : ''}`}
+            onClick={() => { haptic.selection(); setBase('hybrid') }}
+          >
+            {c.hybrid}
           </button>
           <button
             type="button"

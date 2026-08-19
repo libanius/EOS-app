@@ -10,6 +10,7 @@
 | id | uuid | PK, references auth.users |
 | name | text | |
 | location | text | |
+| map_base_mode | text | App-wide map base preference: `satellite` (default), `hybrid`, or `dark`. Added by `20260819144004_exec_t06_map_base_mode.sql`. |
 | created_at | timestamptz | |
 | updated_at | timestamptz | |
 

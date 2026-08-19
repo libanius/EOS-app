@@ -23,6 +23,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Map as MLMap, Marker as MLMarker } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
+import { useMapBaseMode } from '@/lib/use-map-base-mode'
 import { getMapConfig } from '@/lib/world/providers'
 import { distanceKm } from '@/lib/world/shelters'
 import { formatDistance, walkingMinutes } from '@/lib/world/navigation'
@@ -108,6 +109,7 @@ export default function RouteDraw({
   const holder = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<MLMap | null>(null)
   const markersRef = useRef<MLMarker[]>([])
+  const { mapBase } = useMapBaseMode()
 
   const [fromIndex, setFromIndex] = useState(0)
   const [toIndex, setToIndex] = useState(1)
@@ -150,7 +152,7 @@ export default function RouteDraw({
     void (async () => {
       const maplibregl = (await import('maplibre-gl')).default
       if (cancelled || !holder.current) return
-      const cfg = getMapConfig('dark')
+      const cfg = getMapConfig(mapBase)
 
       const map = new maplibregl.Map({
         container: holder.current,
@@ -205,7 +207,7 @@ export default function RouteDraw({
     // `from` só é lido para a centralização inicial; recriar o mapa ao trocar de
     // ponto perderia o traçado em andamento.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open])
+  }, [mapBase, open])
 
   // ── keep the drawing on screen ─────────────────────────────────────────────
   useEffect(() => {

@@ -22,6 +22,7 @@
 
 import type { IDBPDatabase } from 'idb'
 import type { PlanDocument, PlanSummary } from './family-plan'
+import type { MapBaseMode } from './map-base-mode'
 import type { PlanExecutionSnapshot } from './plan-execution-mode'
 import type { PlanSessionSnapshot } from './plan-session'
 
@@ -35,6 +36,7 @@ export interface StoredProfile {
   name: string
   location?: string | null
   family_size?: number
+  map_base_mode?: MapBaseMode | null
 }
 
 export interface StoredInventory {

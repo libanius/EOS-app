@@ -6,6 +6,9 @@
  */
 
 import type { StyleSpecification } from 'maplibre-gl'
+import { DEFAULT_MAP_BASE_MODE, type MapBaseMode } from '@/lib/map-base-mode'
+
+export type { MapBaseMode } from '@/lib/map-base-mode'
 
 export type MapProviderConfig = {
   /**
@@ -32,8 +35,6 @@ export type MapProviderConfig = {
  * de desenhar o mundo, e virou camada. Tirar do tipo impede que ele volte por
  * distração.
  */
-export type MapBaseMode = 'hybrid' | 'dark' | 'satellite'
-
 // Keyless, MapLibre-compatible dark vector basemap (CARTO). Good enough for the
 // automotive-grade dark instrument look without any API key.
 const CARTO_DARK = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json'
@@ -92,7 +93,7 @@ function esriSatelliteStyle(): StyleSpecification {
 // Parkland, FL — the reference operating area (doc 16 §8.1).
 const PARKLAND: [number, number] = [-80.237, 26.31]
 
-export function getMapConfig(base: MapBaseMode = 'hybrid'): MapProviderConfig {
+export function getMapConfig(base: MapBaseMode = DEFAULT_MAP_BASE_MODE): MapProviderConfig {
   const key = process.env.NEXT_PUBLIC_MAPTILER_KEY
   const styleOverride = process.env.NEXT_PUBLIC_MAP_STYLE_URL
 

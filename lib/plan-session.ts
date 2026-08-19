@@ -49,7 +49,31 @@ export type PlanSessionMutationEffects = {
   asksAcknowledgement: boolean
 }
 
+export type PlanSessionPromotionEffects = PlanSessionMutationEffects & {
+  createsCirclePlace: boolean
+  marksSessionPlacePromoted: boolean
+  keepsExecutionRecord: boolean
+}
+
 export const PLAN_SESSION_PLACE_EFFECTS: PlanSessionMutationEffects = {
+  incrementsPlanVersion: false,
+  sendsPush: false,
+  asksAcknowledgement: false,
+}
+
+export const PLAN_SESSION_PROMOTION_EFFECTS: PlanSessionPromotionEffects = {
+  createsCirclePlace: true,
+  marksSessionPlacePromoted: true,
+  keepsExecutionRecord: true,
+  incrementsPlanVersion: false,
+  sendsPush: false,
+  asksAcknowledgement: false,
+}
+
+export const PLAN_SESSION_PROMOTION_REFUSAL_EFFECTS: PlanSessionPromotionEffects = {
+  createsCirclePlace: false,
+  marksSessionPlacePromoted: false,
+  keepsExecutionRecord: true,
   incrementsPlanVersion: false,
   sendsPush: false,
   asksAcknowledgement: false,
@@ -57,6 +81,14 @@ export const PLAN_SESSION_PLACE_EFFECTS: PlanSessionMutationEffects = {
 
 export function planSessionPlaceEffects(): PlanSessionMutationEffects {
   return PLAN_SESSION_PLACE_EFFECTS
+}
+
+export function planSessionPromotionEffects(promote: boolean): PlanSessionPromotionEffects {
+  return promote ? PLAN_SESSION_PROMOTION_EFFECTS : PLAN_SESSION_PROMOTION_REFUSAL_EFFECTS
+}
+
+export function promotableSessionPlaces(session: Pick<PlanSessionSnapshot, 'places'>): PlanSessionPlace[] {
+  return session.places.filter(place => !place.promotedPlaceId)
 }
 
 export function isPlanSessionExpired(
