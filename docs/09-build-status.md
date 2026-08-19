@@ -10,12 +10,13 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Execução de Plano (EXEC) sobre Web/PWA |
-| **Current Task** | **EXEC-T01 — `circle_places` + waypoint por referência.** NOT STARTED — próxima fase de `PLAN-EXEC-001`; não iniciada. |
+| **Current Task** | **EXEC-T02 — `plan_sessions` + armar/desarmar.** NOT STARTED — próxima fase de `PLAN-EXEC-001`; não iniciada. |
 | **Spec Ready** | `specs/PLAN-EXEC-001-execucao-de-plano.md` — execução de plano como modo operacional; D-212. |
 | **⚠ Pendência operacional** | **Aplicar `supabase/migrations/20260813210000_profiles_auth_fk.sql`** (D-175). Limpa 9 perfis de teste vazios e cria a FK que impede a recorrência. Para com erro se encontrar órfão com dado. |
 | **Migrações aplicadas** | `locations`, `holdings`, `kits`, `requirements`, `checklists.status` — todas verificadas por REST. |
 | **Migrações aplicadas** | As duas de Preparedness State **aplicadas em 2026-08-13** e verificadas por REST: `locations`, `holdings`, `kits`, `requirements` → 200. Nenhuma pendência operacional. |
 | **Last Completed Task** | **D-188 / COMMS-T12 — lista, thread e conversa individual (2026-08-15)** |
+| | **EXEC-T01 — `circle_places` + waypoints por referência (2026-08-19)** |
 | | **EXEC-T00 — cache offline por `(circleId, planId)` para múltiplos planos (2026-08-19)** |
 | | **D-211 / PLAN follow-up — Casa usa perfil ou mapa direto, sem modal intermediário (2026-08-18)** |
 | | **D-210 / PLAN follow-up — picker de endereço não embaça a tela (2026-08-18)** |
@@ -190,6 +191,7 @@ rota ou UI foi alterado.**
 | | D-064 / FAM-T01→T04 — localização familiar ao vivo, consentimento próprio e remoção dos mocks do mapa (2026-07-27) |
 | **Migration** | ✅ `20260730000000_family_plan_triggers.sql` aplicada pelo dono em 2026-07-30 e verificada. Gatilho gravando ponta a ponta no teste de navegador. |
 | **Migration** | ✅ `20260817000000_family_plan_protocol_fields.sql` aplicada pelo dono em 2026-08-17. Libera persistência de tipo de ação, destino, rota e aviso ao círculo nos protocolos do plano. |
+| **Migration** | ⏳ `20260819045025_exec_t01_circle_places.sql` criada em 2026-08-19. Pendente aplicar pelo dono no Supabase antes de validar catálogo de lugares em produção. |
 | **Migration** | ✅ `20260804014000_inbox_eos_notifications.sql` aplicada pelo dono em 2026-08-04. Evolui `circle_notifications` para Inbox EOS app-level (`scope`, `severity`, `source_key`, `circle_id` nullable). |
 | **Migration** | ✅ `20260804180000_rate_limit_and_error_log.sql` aplicada pelo dono em 2026-08-04 e verificada com `/api/health` + `node scripts/guardrails-test.mjs` (5/5). Adiciona `rate_limit_buckets`, RPC `consume_rate_limit` e `error_log`. |
 | **Migration** | ✅ `20260804015000_edu_view_count.sql` aplicada pelo dono e verificada em 2026-08-04 via REST service-role (`edu_content?select=id,view_count` responde 200). Adiciona `edu_content.view_count` para destaque do vídeo mais clicado. |
@@ -235,8 +237,9 @@ rota ou UI foi alterado.**
 | **In Progress** | — |
 | **Platform Alignment** | ✅ D-084: EOS é plataforma multi-superfície com um único core operacional. Web/PWA segue como superfície primária; iOS/Android serão adapters nativos futuros; Automotive é companion mode restrito; Mesh/LoRa segue bloqueado por G-05. `/mobile/` é template/conceitual, não app inicializado. |
 | **Fases pedidas pelo dono (2026-07-31)** | ✅ 1. Camadas de clima + rastreio de ciclone (D-078). 2. Reinventar a aba Família no design system da v2, com componentes dinâmicos. 3. WV2-T05 (a11y/perf), PLAN-T07 (Pilot propõe plano). |
-| **Next Task** | **EXEC-T01 — `circle_places` + waypoint por referência.** Criar catálogo do círculo, migrar waypoints e travar exclusão de lugar em uso; não iniciar sem escopo explícito. |
+| **Next Task** | **EXEC-T02 — `plan_sessions` + armar/desarmar.** Sessão local-first com banner permanente, pessoas presentes, dependentes, pontos do dia e desarme perguntado; não iniciar sem escopo explícito. |
 | **Build** | ✅ D-205 validado em 2026-08-16 com `npm run type-check`, `git diff --check`, `npm run build` e Playwright mobile no Mundo: o antigo y=692 virou canvas, a lateral baixa virou canvas, a alça central ainda reabre o sheet e drags movem o MapLibre no primeiro gesto. |
+| | ✅ EXEC-T01 validado em 2026-08-19 com `npm test -- --runTestsByPath lib/__tests__/plan-places.test.ts lib/__tests__/offline-family-plan-cache.test.ts lib/__tests__/plan-execution.test.ts`, `npm run type-check` e `git diff --check`. `supabase migration list --local` não rodou porque o Postgres local não estava ativo em `127.0.0.1:54322`. |
 | | ✅ EXEC-T00 validado em 2026-08-19 com `npm test -- --runTestsByPath lib/__tests__/offline-family-plan-cache.test.ts` e `npm run type-check`. |
 | | ✅ D-211 validado em 2026-08-18 com `npm run type-check`, `git diff --check` e `npm run build`. |
 | | ✅ D-210 validado em 2026-08-18 com `npm run type-check`, `git diff --check` e `npm run build`. |

@@ -107,6 +107,15 @@ mostra os N planos conhecidos e abre o escolhido. O cache legado
 `family-plan:{circleId}` é migrado por leitura para `family-plan:{circleId}:{planId}`
 e a regra D-075 continua: `GET /api/plans` é `NetworkOnly` no service worker.
 
+**Lugares do plano pertencem ao círculo (EXEC-T01).** `circle_places` é o
+catálogo compartilhado; `family_plan_waypoints.place_id` aponta para ele e mantém
+`name/lat/lng/notes` só como legado/snapshot. Waypoints migrados recebem
+`precision: 'unknown'` sem inferência. `unknown` continua calculando rumo e
+distância, mas a UI marca como não confirmado e exige promoção explícita para
+`gps/address/city`. Confirmar precisão sem mover coordenada não versiona; mover
+um lugar > 50 m versiona todos os planos ativos que o usam. Apagar lugar usado
+por plano ativo é recusado com motivo.
+
 **Plano é envelope; protocolo é execução (D-207 / PLAN-T11).** O executor não
 deve despejar o documento inteiro. Primeiro escolhe o plano salvo; depois escolhe
 o protocolo/gatilho ativo. No MVP, cada `family_plan_triggers` salvo é uma

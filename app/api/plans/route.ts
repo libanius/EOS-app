@@ -3,6 +3,9 @@ import webpush from 'web-push'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { logError } from '@/lib/error-log'
+import type { CirclePlace, PlanWaypoint, WaypointKind } from '@/lib/family-plan'
+import { normalizePointPrecision, placeKindForWaypoint } from '@/lib/plan-places'
+import { distanceKm } from '@/lib/world/shelters'
 
 /**
  * /api/plans — the family's emergency plan (D-066 / doc 18, PLAN-T01).
@@ -34,7 +37,17 @@ const VAPID_PUBLIC = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? ''
 const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY ?? ''
 const VAPID_SUBJECT = process.env.VAPID_SUBJECT ?? 'mailto:brightscalegroup@gmail.com'
 
-type Waypoint = { kind: string; name: string; lat: number; lng: number; notes?: string | null; sort_order?: number }
+type Waypoint = {
+  id?: string
+  place_id?: string | null
+  kind: WaypointKind
+  name: string
+  lat: number
+  lng: number
+  precision?: string | null
+  notes?: string | null
+  sort_order?: number
+}
 type Route = { label: string; geometry: unknown; mode?: string; notes?: string | null }
 type Role = { member_user_id: string; for_member_id?: string | null; responsibility: string }
 type Trigger = {
@@ -59,6 +72,97 @@ function columnMissing(error: { code?: string } | null) {
   return error?.code === '42703' || error?.code === 'PGRST204'
 }
 
+function waypointKind(value: string): WaypointKind | null {
+  return KINDS.includes(value) ? value as WaypointKind : null
+}
+
+function legacyWaypointFromPlace(
+  waypoint: PlanWaypoint,
+  place: CirclePlace,
+): PlanWaypoint {
+  return {
+    ...waypoint,
+    place_id: place.id,
+    name: place.name,
+    lat: place.lat,
+    lng: place.lng,
+    precision: place.precision,
+    notes: place.notes ?? waypoint.notes ?? null,
+  }
+}
+
+async function readCirclePlaces(
+  admin: NonNullable<ReturnType<typeof createAdminClient>>,
+  circleId: string,
+): Promise<CirclePlace[]> {
+  const { data, error } = await admin
+    .from('circle_places')
+    .select('id, circle_id, name, lat, lng, kind, precision, notes, created_by, created_at, updated_at, archived_at')
+    .eq('circle_id', circleId)
+    .is('archived_at', null)
+    .order('updated_at', { ascending: false })
+
+  if (tableMissing(error)) return []
+  if (error) throw error
+  return (data ?? []) as CirclePlace[]
+}
+
+async function findOrCreateCirclePlace(
+  admin: NonNullable<ReturnType<typeof createAdminClient>>,
+  circleId: string,
+  userId: string,
+  waypoint: Waypoint,
+): Promise<CirclePlace | null> {
+  if (waypoint.place_id) {
+    const { data, error } = await admin
+      .from('circle_places')
+      .select('id, circle_id, name, lat, lng, kind, precision, notes, created_by, created_at, updated_at, archived_at')
+      .eq('id', waypoint.place_id)
+      .eq('circle_id', circleId)
+      .is('archived_at', null)
+      .maybeSingle()
+
+    if (tableMissing(error)) return null
+    if (error) throw error
+    return data as CirclePlace | null
+  }
+
+  const precision = normalizePointPrecision(waypoint.precision)
+  if (!precision) return null
+
+  const { data: candidates, error: matchError } = await admin
+    .from('circle_places')
+    .select('id, circle_id, name, lat, lng, kind, precision, notes, created_by, created_at, updated_at, archived_at')
+    .eq('circle_id', circleId)
+    .is('archived_at', null)
+    .ilike('name', waypoint.name.trim())
+
+  if (tableMissing(matchError)) return null
+  if (matchError) throw matchError
+  const existing = ((candidates ?? []) as CirclePlace[])
+    .find(place => distanceKm(place, waypoint) * 1000 < 25)
+  if (existing) return existing
+
+  const { data, error } = await admin
+    .from('circle_places')
+    .insert({
+      circle_id: circleId,
+      name: waypoint.name.trim().slice(0, 80),
+      lat: waypoint.lat,
+      lng: waypoint.lng,
+      kind: placeKindForWaypoint(waypoint.kind),
+      precision,
+      notes: waypoint.notes?.slice(0, 300) ?? null,
+      created_by: userId,
+    })
+    .select('id, circle_id, name, lat, lng, kind, precision, notes, created_by, created_at, updated_at, archived_at')
+    .single()
+
+  if (tableMissing(error)) return null
+  if (error) throw error
+  return data as CirclePlace
+}
+
 async function assertMember(admin: NonNullable<ReturnType<typeof createAdminClient>>, circleId: string, userId: string) {
   const { data } = await admin
     .from('circle_members')
@@ -74,7 +178,7 @@ async function readPlanDocument(
   plan: PlanRow,
   userId: string,
 ) {
-  const [{ data: waypoints }, { data: routes }, { data: roles }, { data: acks }, triggerResult] =
+  const [{ data: waypoints, error: waypointError }, { data: routes }, { data: roles }, { data: acks }, triggerResult] =
     await Promise.all([
       admin.from('family_plan_waypoints').select('*').eq('plan_id', plan.id).order('sort_order'),
       admin.from('family_plan_routes').select('*').eq('plan_id', plan.id),
@@ -83,11 +187,30 @@ async function readPlanDocument(
       admin.from('family_plan_triggers').select('*').eq('plan_id', plan.id).order('sort_order'),
     ])
 
+  if (waypointError) throw waypointError
+  const rawWaypoints = (waypoints ?? []) as PlanWaypoint[]
+  const placeIds = rawWaypoints.map(w => w.place_id).filter((id): id is string => Boolean(id))
+  let placesById = new Map<string, CirclePlace>()
+  if (placeIds.length) {
+    const { data: places, error } = await admin
+      .from('circle_places')
+      .select('id, circle_id, name, lat, lng, kind, precision, notes, created_by, created_at, updated_at, archived_at')
+      .in('id', placeIds)
+      .is('archived_at', null)
+    if (!tableMissing(error) && error) throw error
+    placesById = new Map(((places ?? []) as CirclePlace[]).map(place => [place.id, place]))
+  }
+  const documentWaypoints = rawWaypoints.map(waypoint => {
+    const place = waypoint.place_id ? placesById.get(waypoint.place_id) : null
+    return place ? legacyWaypointFromPlace(waypoint, place) : waypoint
+  })
+  const places = await readCirclePlaces(admin, plan.circle_id)
   const acknowledged = (acks ?? []).filter(a => a.acked_version === plan.version).map(a => a.member_user_id)
 
   return {
     plan,
-    waypoints: waypoints ?? [],
+    places,
+    waypoints: documentWaypoints,
     routes: routes ?? [],
     roles: roles ?? [],
     triggers: triggerResult.data ?? [],
@@ -266,18 +389,39 @@ export async function PUT(request: NextRequest) {
     admin.from('family_plan_roles').delete().eq('plan_id', planId),
   ])
 
-  const waypoints = (body.waypoints ?? [])
-    .filter(w => w?.name?.trim() && Number.isFinite(w.lat) && Number.isFinite(w.lng) && KINDS.includes(w.kind))
-    .map((w, index) => ({
+  const incomingWaypoints = body.waypoints ?? []
+  const waypoints = []
+  for (let index = 0; index < incomingWaypoints.length; index += 1) {
+    const w = incomingWaypoints[index]
+    const kind = waypointKind(w.kind)
+    if (!kind || !w?.name?.trim() || !Number.isFinite(w.lat) || !Number.isFinite(w.lng)) continue
+
+    const place = await findOrCreateCirclePlace(admin, body.circleId, user.id, { ...w, kind }).catch(error => {
+      if (tableMissing(error) || columnMissing(error)) return null
+      throw error
+    })
+
+    waypoints.push({
       plan_id: planId,
-      kind: w.kind,
-      name: w.name.trim().slice(0, 80),
-      lat: w.lat,
-      lng: w.lng,
-      notes: w.notes?.slice(0, 300) ?? null,
+      place_id: place?.id ?? null,
+      kind,
+      name: (place?.name ?? w.name).trim().slice(0, 80),
+      lat: place?.lat ?? w.lat,
+      lng: place?.lng ?? w.lng,
+      notes: (place?.notes ?? w.notes)?.slice(0, 300) ?? null,
       sort_order: w.sort_order ?? index,
-    }))
-  if (waypoints.length) await admin.from('family_plan_waypoints').insert(waypoints)
+    })
+  }
+  if (waypoints.length) {
+    const { error } = await admin.from('family_plan_waypoints').insert(waypoints)
+    if (columnMissing(error)) {
+      await admin.from('family_plan_waypoints').insert(
+        waypoints.map(({ place_id: _placeId, ...legacy }) => legacy),
+      )
+    } else if (error) {
+      throw error
+    }
+  }
 
   const routes = (body.routes ?? [])
     .filter(r => r?.label?.trim() && r.geometry)

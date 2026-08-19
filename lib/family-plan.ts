@@ -17,10 +17,13 @@ export type WaypointKind =
   | 'custom'
 
 export type PlanWaypoint = {
+  id?: string
+  place_id?: string | null
   kind: WaypointKind
   name: string
   lat: number
   lng: number
+  precision?: PointPrecision | null
   notes?: string | null
   sort_order?: number
 }
@@ -71,6 +74,7 @@ export type PlanTrigger = {
 
 export type PlanDocument = {
   plan: { id: string; name: string; version: number; status: string; updated_at: string } | null
+  places?: CirclePlace[]
   waypoints: PlanWaypoint[]
   routes: PlanRoute[]
   roles: PlanRole[]
@@ -165,12 +169,28 @@ export const PLACE_KINDS: Array<{ kind: WaypointKind; pt: string; en: string }> 
  * duas coisas com a mesma cara é como uma família conclui que consegue chegar
  * num lugar aonde não consegue.
  */
-export type PointPrecision = 'gps' | 'address' | 'city'
+export type PointPrecision = 'gps' | 'address' | 'city' | 'unknown'
+
+export type CirclePlace = {
+  id: string
+  circle_id: string
+  name: string
+  lat: number
+  lng: number
+  kind: 'home' | 'school' | 'work' | 'rendezvous' | 'custom'
+  precision: PointPrecision
+  notes: string | null
+  created_by?: string
+  created_at?: string
+  updated_at?: string
+  archived_at?: string | null
+}
 
 export function precisionLabel(precision: PointPrecision, pt: boolean): string {
   if (precision === 'gps') return pt ? 'marcado no local' : 'marked on site'
   if (precision === 'address') return pt ? 'endereço buscado' : 'searched address'
-  return pt ? 'centro da cidade — impreciso' : 'city centre — imprecise'
+  if (precision === 'city') return pt ? 'centro da cidade — impreciso' : 'city centre — imprecise'
+  return pt ? 'não confirmado' : 'unconfirmed'
 }
 
 /**

@@ -43,12 +43,15 @@ import {
   isRendezvous,
   planGaps,
   planWarnings,
+  precisionLabel,
+  type CirclePlace,
   type PlanDocument,
   type PlanRole,
   type PlanRoute,
   type PlanSummary,
   type PlanTrigger,
   type PlanWaypoint,
+  type PointPrecision,
   type WaypointKind,
 } from '@/lib/family-plan'
 import MapPointPicker from './MapPointPicker'
@@ -87,6 +90,16 @@ const COPY = {
     rendezvous: 'Pontos de encontro',
     places: 'Lugares importantes',
     placesHint: 'Escola, trabalho, casa de parente. É de onde alguém pode estar quando o plano começar.',
+    placeCatalog: 'Catálogo do círculo',
+    chooseExistingPlace: 'Usar lugar salvo',
+    deletePlace: 'Apagar lugar',
+    placeInUse: 'Este lugar está em uso por pelo menos um plano ativo. Remova-o dos planos antes de apagar.',
+    unconfirmedPlace: 'Ponto não confirmado',
+    confirmOnMap: 'Confirmar no mapa',
+    precisionConfidence: 'Confiança da coordenada',
+    precisionGps: 'Estou no local / GPS',
+    precisionAddress: 'Endereço buscado',
+    precisionCity: 'Centro da cidade',
     roles: 'Quem busca quem',
     fetches: 'busca',
     warnings: 'Alguém pode ficar para trás',
@@ -193,6 +206,16 @@ const COPY = {
     rendezvous: 'Meeting points',
     places: 'Important places',
     placesHint: 'School, work, a relative’s house. It is where someone might be when the plan starts.',
+    placeCatalog: 'Circle catalog',
+    chooseExistingPlace: 'Use saved place',
+    deletePlace: 'Delete place',
+    placeInUse: 'This place is used by at least one active plan. Remove it from plans before deleting it.',
+    unconfirmedPlace: 'Unconfirmed point',
+    confirmOnMap: 'Confirm on map',
+    precisionConfidence: 'Coordinate confidence',
+    precisionGps: 'I am on site / GPS',
+    precisionAddress: 'Searched address',
+    precisionCity: 'City centre',
     roles: 'Who fetches whom',
     fetches: 'fetches',
     warnings: 'Someone could be left behind',
@@ -307,12 +330,13 @@ export default function PlanPage() {
   const [routes, setRoutes] = useState<PlanRoute[]>([])
   const [roles, setRoles] = useState<PlanRole[]>([])
   const [triggers, setTriggers] = useState<PlanTrigger[]>([])
+  const [circlePlaces, setCirclePlaces] = useState<CirclePlace[]>([])
 
   const [dirty, setDirty] = useState(false)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+  const [placeMessage, setPlaceMessage] = useState<string | null>(null)
   const [picker, setPicker] = useState<PickerTarget | null>(null)
-  const [homeMapOpen, setHomeMapOpen] = useState(false)
   const [drawing, setDrawing] = useState<{ index: number | null } | null>(null)
   const [profilePlace, setProfilePlace] = useState<{ label: string; lat: number; lng: number } | null>(null)
 
@@ -393,6 +417,7 @@ export default function PlanPage() {
     // `plans` é a lista que o servidor passou a devolver (D-080). Mantém o nome
     // que o componente já usava para não existirem dois vocabulários.
     if (doc.plans) setPlanSummaries(doc.plans)
+    if (doc.places) setCirclePlaces(doc.places)
     setPlanId(doc.plan?.id ?? null)
     setPlanName(doc.plan?.name ?? '')
     setPlanName(doc.plan?.name ?? '')
@@ -567,6 +592,7 @@ export default function PlanPage() {
       name: defaultPlaceName('home', pt),
       lat: profilePlace.lat,
       lng: profilePlace.lng,
+      precision: 'city',
       notes: pt
         ? 'Endereço da Casa salvo no perfil — ajuste no mapa se precisar ser mais preciso'
         : 'Home address from the profile — refine on the map if it needs to be more precise',
@@ -603,6 +629,57 @@ export default function PlanPage() {
     } finally {
       setSaving(false)
     }
+  }
+
+  const confirmCirclePlace = async (point: PlanWaypoint) => {
+    if (!circleId || !point.place_id) return false
+    setPlaceMessage(null)
+    try {
+      const response = await fetch(`/api/circle-places/${point.place_id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: point.name,
+          lat: point.lat,
+          lng: point.lng,
+          precision: point.precision,
+          notes: point.notes ?? null,
+        }),
+      })
+      const data = await response.json().catch(() => null)
+      if (!response.ok || data?.error) throw new Error(data?.message ?? data?.error ?? 'place')
+      haptic.impact()
+      setPicker(null)
+      await load(circleId, planId)
+      return true
+    } catch (error) {
+      setPlaceMessage(error instanceof Error ? error.message : c.saveError)
+      return false
+    }
+  }
+
+  const deleteCirclePlace = async (place: CirclePlace) => {
+    setPlaceMessage(null)
+    try {
+      const response = await fetch(`/api/circle-places/${place.id}`, { method: 'DELETE' })
+      const data = await response.json().catch(() => null)
+      if (!response.ok || data?.error) throw new Error(data?.message ?? c.placeInUse)
+      haptic.impact()
+      if (circleId) await load(circleId, planId)
+    } catch (error) {
+      setPlaceMessage(error instanceof Error ? error.message : c.placeInUse)
+    }
+  }
+
+  const confirmWaypoint = async (point: PlanWaypoint) => {
+    if (!picker) return
+    const existingPoint = waypoints.find(w => w.kind === picker.kind)
+    if (existingPoint?.place_id && point.place_id === existingPoint.place_id) {
+      await confirmCirclePlace(point)
+      return
+    }
+    setWaypoint(picker.kind, picker.index, point)
+    setPicker(null)
   }
 
   const applyPilotProposal = (proposal: PlanPilotProposal) => {
@@ -850,9 +927,17 @@ export default function PlanPage() {
                 <p className="t-body point">{home.name}</p>
                 {home.notes && <p className="t-foot ink-2">{home.notes}</p>}
                 <p className="t-foot ink-3">{home.lat.toFixed(5)}, {home.lng.toFixed(5)}</p>
+                {home.precision && (
+                  <p className={`t-foot ${home.precision === 'unknown' ? 'warn' : 'ink-3'}`}>
+                    {precisionLabel(home.precision, pt)}
+                  </p>
+                )}
                 <div className="acts">
                   {profilePlace && <Pill onClick={selectProfileHome}>{c.homeFromProfile}</Pill>}
-                  <Pill onClick={() => setHomeMapOpen(true)}>{c.homeSet}</Pill>
+                  <Pill onClick={() => setPicker({ kind: 'home', index: null })}>{c.homeSet}</Pill>
+                  {home.precision === 'unknown' && (
+                    <Pill onClick={() => setPicker({ kind: 'home', index: null })}>{c.confirmOnMap}</Pill>
+                  )}
                 </div>
               </>
             ) : (
@@ -860,7 +945,7 @@ export default function PlanPage() {
                 <p className="t-foot warn">{c.homeNone}</p>
                 <div className="acts">
                   {profilePlace && <Pill primary onClick={selectProfileHome}>{c.homeFromProfile}</Pill>}
-                  <Pill primary={!profilePlace} onClick={() => setHomeMapOpen(true)}>{c.homeSet}</Pill>
+                  <Pill primary={!profilePlace} onClick={() => setPicker({ kind: 'home', index: null })}>{c.homeSet}</Pill>
                 </div>
                 {profilePlace && <p className="t-foot ink-3">{c.homeProfileWarn}</p>}
               </>
@@ -887,6 +972,11 @@ export default function PlanPage() {
                   <>
                     <p className="t-body point">{point.name}</p>
                     {point.notes && <p className="t-foot ink-2">{point.notes}</p>}
+                    {point.precision && (
+                      <p className={`t-foot ${point.precision === 'unknown' ? 'warn' : 'ink-3'}`}>
+                        {precisionLabel(point.precision, pt)}
+                      </p>
+                    )}
                     {info ? (
                       <p className={`t-foot ${info.far ? 'warn' : 'ink-3'}`}>
                         {info.distance} {c.from} · {info.course} · ~{info.minutes} min {c.onFoot}
@@ -900,6 +990,9 @@ export default function PlanPage() {
                     )}
                     <div className="acts">
                       <Pill onClick={() => setPicker({ kind: step.kind, index: null })}>{c.change}</Pill>
+                      {point.precision === 'unknown' && (
+                        <Pill onClick={() => setPicker({ kind: step.kind, index: null })}>{c.confirmOnMap}</Pill>
+                      )}
                       <Pill onClick={() => setWaypoint(step.kind, null, null)}>{c.remove}</Pill>
                     </div>
                   </>
@@ -917,16 +1010,32 @@ export default function PlanPage() {
           <SectionLabel trailing={places.length ? String(places.length) : undefined}>{c.places}</SectionLabel>
           <Card>
             <p className="t-foot ink-3">{c.placesHint}</p>
+            {placeMessage && <p className="t-foot warn" role="status">{placeMessage}</p>}
             {places.map((place, index) => {
               const kindLabel = PLACE_KINDS.find(k => k.kind === place.kind)?.[pt ? 'pt' : 'en'] ?? place.kind
               return (
                 <div key={`${place.kind}-${index}`} className="wv2-plan-row">
                   <span className="t-caps ink-3">{kindLabel}</span>
-                  <span className="t-body">{place.name}</span>
+                  <span className="t-body">
+                    {place.name}
+                    {place.precision === 'unknown' && <em className="t-foot warn route-meta">{c.unconfirmedPlace}</em>}
+                  </span>
                   <button type="button" className="wv2-plan-x" onClick={() => setWaypoint(place.kind, index, null)} aria-label={c.remove}>×</button>
                 </div>
               )
             })}
+            {circlePlaces.length > 0 && (
+              <>
+                <p className="t-caps ink-3 sugg-label">{c.placeCatalog}</p>
+                {circlePlaces.map(place => (
+                  <div key={place.id} className="wv2-plan-row">
+                    <span className="t-caps ink-3">{precisionLabel(place.precision, pt)}</span>
+                    <span className="t-body">{place.name}</span>
+                    <button type="button" className="wv2-plan-x" onClick={() => { void deleteCirclePlace(place) }} aria-label={c.deletePlace}>×</button>
+                  </div>
+                ))}
+              </>
+            )}
             <div className="wv2-plan-addrow">
               {PLACE_KINDS.map(k => (
                 <Pill key={k.kind} onClick={() => setPicker({ kind: k.kind, index: null })}>
@@ -1221,36 +1330,15 @@ export default function PlanPage() {
         }}
       />
 
-      <MapPointPicker
-        open={homeMapOpen}
-        pt={pt}
-        start={home ? { lat: home.lat, lng: home.lng } : null}
-        fallback={profilePlace}
-        onClose={() => setHomeMapOpen(false)}
-        onPick={point => {
-          setWaypoint('home', null, {
-            kind: 'home',
-            name: defaultPlaceName('home', pt),
-            lat: point.lat,
-            lng: point.lng,
-            notes: pt ? 'Marcado no mapa' : 'Marked on the map',
-          })
-          setHomeMapOpen(false)
-        }}
-      />
-
       <PointPicker
         target={picker}
         pt={pt}
         copy={c}
+        places={circlePlaces}
         fallback={home ? { lat: home.lat, lng: home.lng } : profilePlace}
         existing={picker ? waypoints.find(w => w.kind === picker.kind) ?? null : null}
         onClose={() => setPicker(null)}
-        onConfirm={point => {
-          if (!picker) return
-          setWaypoint(picker.kind, picker.index, point)
-          setPicker(null)
-        }}
+        onConfirm={point => { void confirmWaypoint(point) }}
       />
       </div>
     </main>
@@ -1267,6 +1355,7 @@ function PointPicker({
   target,
   pt,
   copy,
+  places,
   existing,
   fallback,
   onClose,
@@ -1275,6 +1364,7 @@ function PointPicker({
   target: PickerTarget | null
   pt: boolean
   copy: typeof COPY['pt'] | typeof COPY['en']
+  places: CirclePlace[]
   existing: PlanWaypoint | null
   /** Onde enquadrar o mapa quando ainda não há ponto: casa, ou perfil. */
   fallback: { lat: number; lng: number } | null
@@ -1289,6 +1379,7 @@ function PointPicker({
   const [point, setPoint] = useState<{ lat: number; lng: number } | null>(null)
   const [name, setName] = useState('')
   const [notes, setNotes] = useState('')
+  const [precision, setPrecision] = useState<PointPrecision>('unknown')
   const [geoBusy, setGeoBusy] = useState(false)
   const [geoError, setGeoError] = useState<string | null>(null)
   const [accuracy, setAccuracy] = useState<number | null>(null)
@@ -1302,6 +1393,7 @@ function PointPicker({
     setPoint(existing ? { lat: existing.lat, lng: existing.lng } : null)
     setName(existing?.name ?? defaultPlaceName(target.kind, pt))
     setNotes(existing?.notes ?? '')
+    setPrecision(existing?.precision ?? 'unknown')
     setGeoBusy(false)
     setGeoError(null)
     setAccuracy(null)
@@ -1379,6 +1471,7 @@ function PointPicker({
       }
       setPoint({ lat: position.coords.latitude, lng: position.coords.longitude })
       setAccuracy(Number.isFinite(acc) ? acc : null)
+      setPrecision('gps')
       nameIfEmpty()
     }
 
@@ -1446,6 +1539,35 @@ function PointPicker({
             <p className="t-foot ink-3">{copy.positionHint}</p>
             {geoError && <p className="t-foot warn" role="status">{geoError}</p>}
 
+            {places.length > 0 && (
+              <div className="wv2-plan-suggestions">
+                <p className="t-caps ink-3 sugg-label">{copy.chooseExistingPlace}</p>
+                {places.map(place => (
+                  <button
+                    key={place.id}
+                    type="button"
+                    onClick={() => {
+                      haptic.selection()
+                      onConfirm({
+                        place_id: place.id,
+                        kind: target.kind,
+                        name: place.name,
+                        lat: place.lat,
+                        lng: place.lng,
+                        precision: place.precision,
+                        notes: place.notes,
+                      })
+                    }}
+                  >
+                    <strong className="t-sub">{place.name}</strong>
+                    <span className={`t-foot ${place.precision === 'unknown' ? 'warn' : 'ink-3'}`}>
+                      {precisionLabel(place.precision, pt)}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+
             <form
               className="wv2-picker-search"
               onSubmit={e => { e.preventDefault(); void runSearch() }}
@@ -1469,6 +1591,7 @@ function PointPicker({
                       onClick={() => {
                         haptic.selection()
                         setPoint({ lat: r.lat, lng: r.lng })
+                        setPrecision('address')
                         if (!name) setName(r.name)
                       }}
                     >
@@ -1501,18 +1624,34 @@ function PointPicker({
               <input className="wv2-input" value={notes} onChange={e => setNotes(e.target.value)} placeholder={copy.notesPlaceholder} />
             </label>
 
+            <label className="wv2-field">
+              <span className="t-caps ink-3">{copy.precisionConfidence}</span>
+              <select
+                className="wv2-input"
+                value={precision}
+                onChange={event => setPrecision(event.target.value as PointPrecision)}
+              >
+                <option value="unknown">{copy.unconfirmedPlace}</option>
+                <option value="gps">{copy.precisionGps}</option>
+                <option value="address">{copy.precisionAddress}</option>
+                <option value="city">{copy.precisionCity}</option>
+              </select>
+            </label>
+
             <div className="wv2-picker-acts">
               <Pill onClick={onClose}>{copy.cancel}</Pill>
               <Pill
                 primary
-                disabled={!point || !target}
+                disabled={!point || !target || precision === 'unknown'}
                 onClick={() => {
                   if (!point || !target) return
                   onConfirm({
+                    place_id: existing?.place_id ?? null,
                     kind: target.kind,
                     name: finalName,
                     lat: point.lat,
                     lng: point.lng,
+                    precision,
                     notes: notes.trim() || null,
                   })
                 }}
