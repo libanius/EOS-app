@@ -718,6 +718,17 @@ hr { border: none; border-top: 1px solid var(--bd); }
   box-shadow: 0 6px 18px -8px rgba(124, 58, 237, 0.9);
 }
 .sim-banner.aborted { background: linear-gradient(90deg, #b91c1c, #ef4444); }
+.sim-banner.plan-session-banner {
+  top: var(--plan-session-banner-top, 0px);
+  background: linear-gradient(90deg, #047857, #10b981);
+  box-shadow: 0 6px 18px -8px rgba(16, 185, 129, 0.9);
+}
+body:has(.sim-banner:not(.plan-session-banner)):has(.plan-session-banner) {
+  --plan-session-banner-top: 46px;
+}
+.sim-banner.plan-session-banner.expired {
+  background: linear-gradient(90deg, #b45309, #f59e0b);
+}
 .sim-banner .sim-dot {
   flex: none;
   width: 9px; height: 9px;
@@ -749,6 +760,7 @@ hr { border: none; border-top: 1px solid var(--bd); }
 
 /* Everything else moves down so the banner never covers real chrome. */
 body:has(.sim-banner) .wv2 { top: 46px; }
+body:has(.sim-banner:not(.plan-session-banner)):has(.plan-session-banner) .wv2 { top: 92px; }
 body:has(.sim-banner) .wv2-search,
 body:has(.sim-banner) .wv2-mapcontrols { top: 12px; }
 
@@ -901,6 +913,22 @@ body:has(.wv2-pilotbar) {
   background: #fff;
   color: #6d28d9;
   border-color: #fff;
+}
+.sim-banner .plan-session-controls input {
+  flex: 0 1 180px;
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(0, 0, 0, 0.18);
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+}
+.sim-banner .plan-session-msg {
+  flex: none;
+  font-size: 12px;
+  opacity: 0.86;
 }
 
 /* ─── DEBRIEF ─────────────────────────────────────────────────────────────

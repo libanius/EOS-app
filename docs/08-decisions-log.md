@@ -4,6 +4,26 @@
 
 ---
 
+## D-213 — Uma sessão armada por círculo
+
+**Date**: 2026-08-19
+**Status**: DECIDED
+**Roadmap**: EXEC-T02
+**Spec**: `specs/PLAN-EXEC-001-execucao-de-plano.md`
+
+**Context**: EXEC-T02 cria `plan_sessions` e um banner global permanente. A spec
+definia o que é uma sessão armada, mas não o conflito de duas sessões `armed` no
+mesmo círculo.
+
+**Decision**: um círculo pode ter no máximo uma sessão `armed`. Se alguém tentar
+armar outra, a API recusa com motivo. O EOS não substitui nem desarma a sessão
+anterior em silêncio.
+
+**Consequence**: a migration usa índice parcial por `circle_id WHERE status =
+'armed'`, e a UI trata conflito como estado explícito para a família resolver.
+
+---
+
 ## D-212 — Executar plano é um MODO, não uma tela
 
 **Date**: 2026-08-18

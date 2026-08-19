@@ -22,6 +22,7 @@
 
 import type { IDBPDatabase } from 'idb'
 import type { PlanDocument, PlanSummary } from './family-plan'
+import type { PlanSessionSnapshot } from './plan-session'
 
 const DB_NAME = 'eos'
 const DB_VERSION = 1
@@ -184,6 +185,7 @@ const legacyPlanKey = (circleId: string) => `family-plan:${circleId}`
 export const familyPlanDocumentKey = (circleId: string, planId: string) =>
   `family-plan:${circleId}:${planId}`
 export const familyPlanListKey = (circleId: string) => `family-plan-list:${circleId}`
+export const activePlanSessionKey = 'active-plan-session'
 
 function planFromDocument(document: unknown): PlanDocument['plan'] | null {
   const maybePlan = (document as { plan?: PlanDocument['plan'] } | null)?.plan
@@ -284,6 +286,31 @@ export async function getFamilyPlanList(circleId: string): Promise<StoredFamilyP
   await migrateLegacyFamilyPlan(db, circleId)
   const migrated = await db.get('kv', familyPlanListKey(circleId))
   return (migrated as StoredFamilyPlanList | undefined) ?? null
+}
+
+export interface StoredPlanSession {
+  session: PlanSessionSnapshot
+  syncedAt: string
+  pendingSync?: boolean
+}
+
+export async function savePlanSession(session: StoredPlanSession): Promise<void> {
+  const db = await getDB()
+  if (!db) return
+  await db.put('kv', session, activePlanSessionKey)
+}
+
+export async function getPlanSession(): Promise<StoredPlanSession | null> {
+  const db = await getDB()
+  if (!db) return null
+  const v = await db.get('kv', activePlanSessionKey)
+  return (v as StoredPlanSession | undefined) ?? null
+}
+
+export async function clearPlanSession(): Promise<void> {
+  const db = await getDB()
+  if (!db) return
+  await db.delete('kv', activePlanSessionKey)
 }
 
 export async function saveInventory(i: StoredInventory): Promise<void> {

@@ -59,6 +59,7 @@ import PlanChart from './PlanChart'
 import RouteDraw, { routeSummary } from './RouteDraw'
 import { Card, Pill, SectionLabel } from './primitives'
 import PreparednessNav from './PreparednessNav'
+import PlanSessionArmCard from './PlanSessionArmCard'
 import { FADE, SPRING, haptic } from './motion'
 import './world-v2.css'
 
@@ -557,6 +558,18 @@ export default function PlanPage() {
   // dois endereços diferentes.
   const places = waypoints.filter(w => !isRendezvous(w.kind) && w.kind !== 'home')
   const needsAck = Boolean(planId) && version > 0 && myAck !== version && !dirty
+  const currentPlanSummary = useMemo<PlanSummary | null>(
+    () => planId
+      ? planSummaries.find(plan => plan.id === planId) ?? {
+          id: planId,
+          name: planName || c.eyebrow,
+          version,
+          status: 'active',
+          updated_at: updatedAt ?? new Date().toISOString(),
+        }
+      : null,
+    [c.eyebrow, planId, planName, planSummaries, updatedAt, version],
+  )
 
   // ── mutations ──────────────────────────────────────────────────────────────
   /**
@@ -857,6 +870,19 @@ export default function PlanPage() {
               }}
             />
           </Card>
+
+          {planId && (
+            <>
+              <SectionLabel>{pt ? 'Armar sessão' : 'Arm session'}</SectionLabel>
+              <PlanSessionArmCard
+                circleId={circleId}
+                plan={currentPlanSummary}
+                members={members}
+                dependents={dependentes}
+                dirty={dirty}
+              />
+            </>
+          )}
 
           {avisos.length > 0 && (
             <Card className="wv2-plan-note gaps">

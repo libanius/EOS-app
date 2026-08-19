@@ -237,7 +237,7 @@ offline-first, com playbook por papel e disparo explícito.*
 |---|---|---|---|
 | EXEC-T00 | Cache offline por `(circleId, planId)` | ✅ COMPLETE | 2026-08-19 — Documento cacheado por plano, lista do círculo cacheada para seletor offline, migração do cache legado por círculo e teste automatizado do caso N planos sem rede. |
 | EXEC-T01 | `circle_places` + waypoint por referência | ✅ COMPLETE | 2026-08-19 — Catálogo por círculo, migration de waypoints legados com `precision: unknown`, waypoint por `place_id`, trava de arquivo para lugar usado em plano ativo e versionamento só quando coordenada move > 50 m. |
-| EXEC-T02 | `plan_sessions` + armar/desarmar | NOT STARTED | Sessão local-first com banner permanente, pessoas presentes, dependentes, pontos do dia e desarme perguntado quando expirar/sair do raio. |
+| EXEC-T02 | `plan_sessions` + armar/desarmar | ✅ COMPLETE (migração pendente) | 2026-08-19 — Sessão local-first com banner permanente, pessoas presentes, dependentes, pontos do dia e desarme perguntado quando expirar. D-213 fecha uma sessão armada por círculo; saída por raio fica fora dos critérios automatizados desta fase. |
 | EXEC-T03 | `family_plan_executions` + disparo por gesto | NOT STARTED | Segurar 1,5 s cria execução, envia aviso no mesmo ato, abre playbook e oferece desfazer por 30 s em faixa. |
 | EXEC-T04 | Playbook por papel offline-first | NOT STARTED | Próxima ação do usuário no topo, protocolo como primeiro passo, carta do dependente como citação, rumo/distância/minutos sem tiles. |
 | EXEC-T05 | Estado compartilhado e encerramento | NOT STARTED | Estados com idade, dependentes `sem aparelho`, escalonamento sugerido e encerrar como resolvida/cancelada. |

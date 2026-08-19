@@ -116,6 +116,14 @@ distância, mas a UI marca como não confirmado e exige promoção explícita pa
 um lugar > 50 m versiona todos os planos ativos que o usam. Apagar lugar usado
 por plano ativo é recusado com motivo.
 
+**Sessão do plano é o dia, não o documento (EXEC-T02 / D-213).** `plan_sessions`
+tem no máximo uma linha `armed` por círculo. Tentar armar outra é recusado; o
+sistema não substitui nem desarma a anterior em silêncio. A faixa global fica no
+topo como o modo Simulação, mas em verde de execução real. Ponto do dia fica em
+`plan_session_places`, pode ser salvo localmente quando sem rede e não versiona,
+não envia push e não pede ack. Expiração pergunta antes de desarmar; não há
+desarme silencioso.
+
 **Plano é envelope; protocolo é execução (D-207 / PLAN-T11).** O executor não
 deve despejar o documento inteiro. Primeiro escolhe o plano salvo; depois escolhe
 o protocolo/gatilho ativo. No MVP, cada `family_plan_triggers` salvo é uma

@@ -115,6 +115,10 @@ Ao armar, o usuário declara:
 Enquanto armada: banner permanente com saída explícita (padrão `SimulationBanner`),
 e o disparo a um toque de qualquer tela.
 
+Há no máximo **uma sessão armada por círculo**. Se uma sessão `armed` já existir,
+armar outra é recusado com motivo na tela; o sistema não substitui nem desarma a
+sessão anterior em silêncio.
+
 **Pontos do dia** são marcados a qualquer momento durante a sessão, no local. Não
 versionam nada, não notificam ninguém, não pedem ack. Funcionam no playbook
 exatamente como pontos do plano.
