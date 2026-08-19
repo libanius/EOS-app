@@ -4,6 +4,29 @@
 
 ---
 
+## D-214 — Brilho máximo é responsabilidade Native, não PWA
+
+**Date**: 2026-08-19
+**Status**: DECIDED
+**Roadmap**: EXEC-T04
+**Spec**: `specs/PLAN-EXEC-001-execucao-de-plano.md`
+
+**Context**: EXEC-T04 pedia que entrar em execução aplicasse brilho máximo. Na
+Web/PWA o EOS não controla o brilho do sistema; o máximo disponível é manter a
+tela acordada quando a plataforma suporta, e melhorar a legibilidade dentro do
+próprio DOM. Dizer que a PWA ajustou brilho seria uma promessa falsa.
+
+**Decision**: brilho máximo fica para adaptadores Native futuros. Na Web/PWA,
+EXEC-T04 aplica apenas o modo de legibilidade de execução: contraste próprio e
+números ampliados. Wake Lock pode ser usado como reforço quando suportado, mas
+não é critério de aceite da PWA.
+
+**Consequence**: o critério de EXEC-T04 deixa de exigir brilho máximo no Web/PWA.
+Quando iOS/Android nativos existirem, eles podem implementar brilho real como
+capacidade de plataforma.
+
+---
+
 ## D-213 — Uma sessão armada por círculo
 
 **Date**: 2026-08-19

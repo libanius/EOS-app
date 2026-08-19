@@ -83,7 +83,7 @@ reversível por 30 s; escolher duas vezes em menu antes de agir não é.
 | D-f | Círculo com **um** plano: não pergunta — **mostra** o nome na tela de segurar. |
 | D-g | Editar lugar do catálogo só versiona os planos se a coordenada mover **> 50 m**. |
 | D-h | Preferência de basemap **persiste**, é única para o app, e o padrão é satélite. |
-| D-i | Modo execução força **brilho máximo** e amplia o corpo dos números. Sem variante de tema. |
+| D-i | Modo execução amplia corpo dos números e melhora contraste na PWA; **brilho máximo** fica para Native futuro. Sem variante de tema. |
 | D-j | Ordem da lista de planos: sessão armada → proximidade → hora do dia → `updated_at`. |
 
 ---
@@ -220,12 +220,14 @@ mata some sobre o estacionamento.
 A imagem tem idade de um a dois anos. Pela regra de `docs/18` §7 (*nada é
 inventado*), a tela declara a data da imagem quando o provedor a fornece.
 
-### 4.3 Legibilidade ao sol (D-i)
+### 4.3 Legibilidade ao sol (D-i / D-214)
 
 O EOS é dark-only (`--bg #0A0A0F`) e este modo roda ao ar livre. Ao entrar em
-execução: brilho da tela ao máximo e corpo dos números ampliado (§4.1.5). Não se
-cria variante de tema clara nesta versão — a decisão fica registrada como possível
-evolução, e depende de os tokens ganharem uma variante em vez de hex solto.
+execução na Web/PWA: corpo dos números ampliado (§4.1.5) e contraste de leitura
+elevado dentro da superfície. **Brilho máximo real fica para adaptadores Native
+futuros**; a PWA não controla o brilho do sistema. Não se cria variante de tema
+clara nesta versão — a decisão fica registrada como possível evolução, e depende
+de os tokens ganharem uma variante em vez de hex solto.
 
 O token mais frágil sob sol é `--mu #6B6B8A`. No modo execução, nenhum texto
 essencial usa `--mu`; ele fica restrito a metadado descartável.
@@ -453,7 +455,8 @@ Binários. Sem "parcialmente implementado".
       diferentes na mesma execução.
 - [ ] A carta do dependente aparece na tela de quem procura, fora da numeração.
 - [ ] Avisos do sistema nunca aparecem numerados junto aos passos do plano.
-- [ ] Entrar em execução aplica brilho máximo e o corpo ampliado dos números.
+- [ ] Entrar em execução aplica o modo de legibilidade da PWA e o corpo ampliado
+      dos números; brilho máximo fica para Native futuro.
 
 **EXEC-T05 — estado e encerramento**
 - [ ] Estado de cada membro exibe idade em minutos.
