@@ -80,10 +80,33 @@ export function buildPlanExecutionProtocols(doc: PlanDocument, pt: boolean): Pla
 
   return triggers.map((trigger, index) => ({
     id: `trigger-${index}`,
-    label: trigger.condition,
+    label: protocolLabel(trigger, index, pt),
     trigger,
     triggerIndex: index,
   }))
+}
+
+/**
+ * O rótulo do protocolo nunca pode sair vazio.
+ *
+ * `condition` é texto livre e o planejamento não a exige: `planGaps` só bloqueia
+ * o salvamento por falta de ponto de encontro e de papel. Um plano salvo com
+ * condição em branco chegava aqui como `label: ''`, e a tela de execução
+ * oferecia botões SEM TEXTO — a família escolhendo o protocolo às cegas, no
+ * único momento em que escolher errado custa caro.
+ *
+ * A queda é por ordem de utilidade: a condição é o que a pessoa reconhece
+ * ("sem contato há 2 horas"); a ação é o que ela vai fazer; o número é o último
+ * recurso, e existe só para que dois botões nunca fiquem indistinguíveis.
+ */
+function protocolLabel(trigger: PlanTrigger, index: number, pt: boolean): string {
+  const condition = trigger.condition?.trim()
+  if (condition) return condition
+
+  const action = trigger.action?.trim()
+  if (action) return action
+
+  return pt ? `Protocolo ${index + 1}` : `Protocol ${index + 1}`
 }
 
 /**

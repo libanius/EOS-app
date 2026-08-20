@@ -18,6 +18,7 @@
 | **Migrações aplicadas** | As duas de Preparedness State **aplicadas em 2026-08-13** e verificadas por REST: `locations`, `holdings`, `kits`, `requirements` → 200. Nenhuma pendência operacional. |
 | **Last Completed Task** | **D-188 / COMMS-T12 — lista, thread e conversa individual (2026-08-15)** |
 | | **AUTHOR-T02 / D-217 — confirmar ponto deixa de ser bloqueado por precisão (2026-08-19)** |
+| | **Correções da tela de execução, vistas em uso (2026-08-19)** — rótulo de protocolo nunca sai vazio; faixa de execução deixa de apagar o texto na ponta direita. |
 | | **D-216 / PLAN follow-up — excluir plano arquiva, com trava de execução em curso (2026-08-19)** |
 | | **EXEC-T06 — Promoção de ponto do dia + basemap persistente (2026-08-19)** |
 | | **EXEC-T05 — Estado compartilhado e encerramento (2026-08-19)** |
@@ -252,6 +253,7 @@ rota ou UI foi alterado.**
 | **Build** | ✅ D-205 validado em 2026-08-16 com `npm run type-check`, `git diff --check`, `npm run build` e Playwright mobile no Mundo: o antigo y=692 virou canvas, a lateral baixa virou canvas, a alça central ainda reabre o sheet e drags movem o MapLibre no primeiro gesto. |
 | | ✅ EXEC-T01 validado em 2026-08-19 com `npm test -- --runTestsByPath lib/__tests__/plan-places.test.ts lib/__tests__/offline-family-plan-cache.test.ts lib/__tests__/plan-execution.test.ts`, `npm run type-check` e `git diff --check`. `supabase migration list --local` não rodou porque o Postgres local não estava ativo em `127.0.0.1:54322`. |
 | | ✅ EXEC-T02 validado em 2026-08-19 com `npm test -- --runTestsByPath lib/__tests__/plan-session.test.ts`, `npm run type-check`, `git diff --check` e `npm run build`. |
+| | ✅ Correções da execução validadas em 2026-08-19 com `npm run type-check`, `npm test` e `npm run build`. **(1)** `buildPlanExecutionProtocols` gravava `label: trigger.condition` cru, e `condition` é texto livre que o planejamento não exige — um plano salvo com condição em branco renderizava botões SEM TEXTO na escolha de protocolo, com a família escolhendo às cegas na execução. O rótulo agora cai para a ação e depois para `Protocolo N`. **(2)** O gradiente da faixa terminava em `#10b981` (~2,6:1 com branco) e o estado de cada pessoa é alinhado à direita, então o texto menos legível caía na ponta mais clara; agora para em `#047857` (~5,5:1) e a idade da leitura subiu para 88% de opacidade — spec v1.1 §4.3. |
 | | ✅ AUTHOR-T02 validado em 2026-08-19 com `npm test` (46 suítes / 501 testes, incluindo `lib/__tests__/plan-author.test.ts`), `npm run type-check`, `npm run build` e `git diff --check`. Sem migration. |
 | | ✅ D-216 (excluir plano) validado em 2026-08-19 com `npm run type-check`, `npm test` (45 suítes / 497 testes), `npm run build` e `git diff --check`. Sem migration: usa `status = 'archived'`, que já existe no schema. |
 | | ✅ EXEC-T06 follow-up (basemap transversal) validado em 2026-08-19 com `npm run type-check`, `npm test` (45 suítes / 497 testes), `npm run build` e `git diff --check`. |

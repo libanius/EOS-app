@@ -114,3 +114,46 @@ describe('buildPlanExecutionSteps', () => {
     expect(steps.map(step => step.title)).not.toContain('Rota evacuação')
   })
 })
+
+/**
+ * Visto em uso em 2026-08-19: um plano com três protocolos de condição vazia
+ * renderizou três botões SEM TEXTO na tela de execução. Escolher protocolo às
+ * cegas é o pior lugar possível para um rótulo faltando.
+ */
+describe('rótulo de protocolo nunca sai vazio', () => {
+  const docWith = (triggers: Array<{ condition: string; action: string }>) => ({
+    plan: { id: 'p1', name: 'Plano', version: 1, status: 'active', updated_at: '2026-08-19T00:00:00Z' },
+    waypoints: [],
+    routes: [],
+    roles: [],
+    triggers,
+  })
+
+  it('cai para a ação quando a condição está vazia', () => {
+    const [protocol] = buildPlanExecutionProtocols(
+      docWith([{ condition: '   ', action: 'Ir para a escola' }]) as never,
+      true,
+    )
+    expect(protocol.label).toBe('Ir para a escola')
+  })
+
+  it('cai para o número quando condição e ação estão vazias', () => {
+    const protocols = buildPlanExecutionProtocols(
+      docWith([
+        { condition: '', action: '' },
+        { condition: '', action: '' },
+      ]) as never,
+      true,
+    )
+    expect(protocols.map(p => p.label)).toEqual(['Protocolo 1', 'Protocolo 2'])
+    expect(protocols.every(p => p.label.trim().length > 0)).toBe(true)
+  })
+
+  it('preserva a condição quando ela existe', () => {
+    const [protocol] = buildPlanExecutionProtocols(
+      docWith([{ condition: 'Sem contato por 2 horas', action: 'Ir ao ponto 1' }]) as never,
+      true,
+    )
+    expect(protocol.label).toBe('Sem contato por 2 horas')
+  })
+})
