@@ -247,6 +247,24 @@ offline-first, com playbook por papel e disparo explícito.*
 
 ---
 
+## Mapa e rota offline (OFFMAP)
+
+*Goal: a execução renderiza mapa e rota sem rede, com stack aberta e licença que
+permite cache.*
+
+> Decisão: **D-218**. Google, ArcGIS e CARTO recusados por licença. A rota
+> desenhada pela família continua sendo a verdade do plano; o motor só calcula
+> onde não há rota desenhada, e o resultado é rotulado como `rota calculada`.
+
+| Task ID | Task | Status | Notes |
+|---|---|---|---|
+| OFFMAP-T01 | Basemap offline por PMTiles | PENDING | Pacote OSM/Protomaps recortado pela área do círculo, servido ao MapLibre que já existe. Atribuição `© OpenStreetMap` em toda superfície. Critério: tamanho do pacote cabe no aparelho e o recorte cobre os pontos do plano. |
+| OFFMAP-T02 | Selo de estado do mapa | PENDING | Toda superfície declara se está lendo tile offline ou da rede — a tela nunca deixa a pessoa achar que tem mapa quando não tem. |
+| OFFMAP-T03 | Roteamento local com Valhalla | PENDING | Valhalla (MIT) sobre tiles locais. Só calcula quando não há rota desenhada para o par de pontos. |
+| OFFMAP-T04 | Procedência da rota na tela | PENDING | `rota da família` vs `rota calculada` visualmente distintas, na mesma lógica de `precision` nos pontos. Rota calculada nunca se apresenta como combinada. |
+
+---
+
 ## Autoria do Plano — integridade do rascunho (PLAN-AUTHOR)
 
 *Goal: fazer a superfície de autoria cumprir a tese da própria feature — o plano

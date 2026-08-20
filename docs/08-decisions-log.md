@@ -4,6 +4,59 @@
 
 ---
 
+## D-218 — Mapa e rota offline saem de OSM, não do Google
+
+**Date**: 2026-08-19
+**Status**: DECIDED
+**Roadmap**: OFFMAP-T01..T04
+**Spec**: `docs/18-family-plans.md` §5 e §10, `specs/PLAN-EXEC-001-execucao-de-plano.md` §8
+
+**Context**: o dono pediu navegação offline "tipo Google Maps" para a execução.
+Duas coisas bloqueavam isso, e as duas são registradas aqui em vez de ficarem no
+verbal.
+
+A primeira é licença. Os termos do Google Maps proíbem cache e armazenamento
+local de tiles e de rotas; é a mesma barreira que a `docs/18` §10 já registra
+para ArcGIS Online e CARTO. Um mapa que não pode ser guardado não é um mapa
+offline — e a execução acontece exatamente quando a rede não está lá.
+
+A segunda é arquitetura. O `PLAN-EXEC-001` §8 põe "motor de roteamento em tempo
+de execução" fora de escopo **por escolha**, e a `docs/18` §5 dá a razão: a rota
+que a família desenha carrega conhecimento local que motor nenhum tem — o
+atalho pelo condomínio, a rua que alaga, o portão que fecha às 22h.
+
+**Decision**: EOS ganha mapa e rota offline, com stack aberta e sem trocar o que
+já funciona.
+
+- **Base cartográfica**: dados **OpenStreetMap** (ODbL) empacotados como
+  **PMTiles/Protomaps** — arquivo único, auto-hospedado, cacheável sem violar
+  termos — renderizados pelo **MapLibre**, que o EOS já usa. Atribuição
+  `© OpenStreetMap` visível em toda superfície de mapa.
+- **Roteamento**: **Valhalla** (MIT) rodando sobre tiles locais. GraphHopper
+  fica como alternativa; a API hospedada dele é comercial e não entra.
+- **Google Maps é recusado** como fonte de tiles ou de rotas, por licença. Segue
+  válido apenas como *handoff* — abrir o app externo por link, que é o que a
+  tela de rota já faz hoje.
+
+**A rota desenhada pela família continua sendo a verdade do plano.** O motor não
+a substitui e não a reescreve: ele só produz rota quando **não existe** rota
+desenhada para aquele par de pontos, e o resultado é marcado na tela como
+`rota calculada` em oposição a `rota da família`. A distinção é do mesmo tipo que
+a de `precision` nos pontos — procedência visível, nunca inferida em silêncio.
+Isto preserva a razão da `docs/18` §5 em vez de revogá-la.
+
+**Consequence**: `PLAN-EXEC-001` §8 deixa de listar roteamento como fora de
+escopo e passa a apontar para esta decisão; a pendência de provedor de tiles da
+`docs/18` §10 é **fechada** por PMTiles. Custo de armazenamento no aparelho e
+recorte geográfico do pacote de tiles viram critério de aceitação, não detalhe
+de implementação: um pacote que não cabe no celular da família não serve.
+
+**Não autorizado por D-218**: usar tiles ou rotas do Google, ArcGIS ou CARTO em
+cache; deixar rota calculada passar por rota da família; publicar mapa sem a
+atribuição OSM.
+
+---
+
 ## D-217 — A autoria tem princípios próprios, e a EXEC-T01 não é reaberta
 
 **Date**: 2026-08-19
