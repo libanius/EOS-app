@@ -4,6 +4,24 @@
 
 ---
 
+## D-219 — Enter vazio não abre o Pilot; e submeter devolve a tela
+
+**Date**: 2026-08-24
+**Status**: DECIDED / IMPLEMENTADO
+
+**Context**: A PilotBar abria o Pilot no `onFocus` do campo — tocar na barra, que é o gesto de quem vai **digitar**, já subia a folha da conversa sobre o mapa antes de existir um caractere. Isso foi corrigido no `main` por outro caminho. Sobraram dois resíduos do mesmo desenho:
+
+1. **Enter com o campo vazio abria o Pilot.** Um Enter sem texto é escorregão, não pedido.
+2. **O campo continuava com foco depois de submeter.** No celular o teclado ficava de pé, cobrindo a resposta que a pessoa acabou de pedir.
+
+**Decision**:
+1. **Enter vazio é no-op.** O orb ao lado continua sendo a porta de entrada para quem quer o Pilot sem ter pergunta pronta — abrir sem pergunta é o caso raro e merece um gesto explícito, não um acidente.
+2. **Submeter dá `blur()` no campo**, devolvendo a tela para a resposta.
+
+**Consequence**: a barra só interrompe a tela quando existe de fato uma pergunta para responder. Regra que fica: **foco não é submit**; superfície que cobre a tela abre no Enter ou num toque explícito, nunca no foco — e submeter num campo de celular exige `blur()`, senão o teclado esconde o resultado.
+
+---
+
 ## D-220 — O EOS avisa com o app fechado; e avisa sobre MUDANÇA, não sobre estado
 
 **Date**: 2026-08-24
