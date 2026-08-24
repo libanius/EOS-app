@@ -5,6 +5,15 @@
 
 ---
 
+**Foco não é submit; e submeter num celular exige `blur()` (D-219).** Superfície
+que cobre a tela — folha, modal, conversa — abre no Enter ou num toque
+explícito, nunca no `onFocus` de um campo: tocar numa barra é o gesto de quem
+vai digitar, e subir a folha ali cobre o mapa antes de existir um caractere.
+E ao submeter, dar `blur()`: sem isso o teclado do celular continua de pé
+escondendo exatamente a resposta que a pessoa acabou de pedir.
+
+---
+
 **"Casa" tem UMA definição: contas confirmadas + dependentes delas
 (D-129/D-179).** Círculos mostrava "SUA CASA (3)" e o cadastro dizia "ninguém
 cadastrado", porque um lia contas e o outro só dependentes. `/family/cadastro`
