@@ -43,3 +43,38 @@ describe('campo escalar do vento não amostra por pixel', () => {
     expect(step * step).toBeGreaterThanOrEqual(32)
   })
 })
+
+/**
+ * D-221 — relatos do dono em uso: (1) o vento voltava ligado ao reabrir o app,
+ * e (2) o menu de controles do vento "às vezes aparece, na maioria das vezes
+ * não".
+ */
+describe('D-221 — vento começa desligado e o controle não some sozinho', () => {
+  const worldV2 = readFileSync(join(process.cwd(), 'components/world-v2/WorldV2.tsx'), 'utf8')
+  const worldMap = readFileSync(join(process.cwd(), 'components/world-dashboard/WorldMap.tsx'), 'utf8')
+
+  it('não restaura o vento a partir do armazenamento', () => {
+    expect(worldV2).not.toContain('storedLayersRef.current?.wind')
+    // a montagem continua forçando desligado
+    expect(worldV2).toContain('setLayers(current => ({ ...current, ...parsed, wind: false }))')
+  })
+
+  it('plano desconhecido não manda o assinante para o muro de pagamento', () => {
+    const toggle = worldV2.slice(worldV2.indexOf('const toggleWind ='))
+    const body = toggle.slice(0, toggle.indexOf('setLayers('))
+    // a guarda de plano indefinido vem ANTES do redirecionamento
+    expect(body.indexOf('if (plan === null) return')).toBeGreaterThan(-1)
+    expect(body.indexOf('if (plan === null) return')).toBeLessThan(body.indexOf("'/mais'"))
+  })
+
+  it('o controle nasce com a camada, não com a chegada da grade', () => {
+    expect(worldMap).not.toContain('if (windForMap?.readings.length) setWindControlsVisible(true)')
+  })
+
+  it('o que esconde no arrasto devolve no fim do gesto', () => {
+    expect(worldMap).toContain("map.on('moveend', settle)")
+    expect(worldMap).toContain("map.on('zoomend', settle)")
+    expect(worldMap).toContain("map.off('moveend', settle)")
+    expect(worldMap).toContain("map.off('zoomend', settle)")
+  })
+})

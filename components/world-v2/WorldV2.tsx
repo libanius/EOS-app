@@ -267,10 +267,19 @@ export default function WorldV2() {
   const windAllowed = canAccess('animated_wind', plan ?? 'free')
   useEffect(() => {
     if (plan === null) return
-    if (windAllowed && storedLayersRef.current?.wind) {
-      setLayers(current => ({ ...current, wind: true }))
-      return
-    }
+    /*
+     * ── O VENTO SEMPRE COMEÇA DESLIGADO (D-221) ──────────────────────────
+     *
+     * Aqui existia a restauração: se a pessoa saísse com o vento ligado, ele
+     * voltava ligado na abertura seguinte. Decisão do dono de revogar isso.
+     *
+     * A razão é o custo. O vento é a camada mais cara do app — grade remota,
+     * campo escalar e 1.400 partículas animadas — e abrir o app já pagando
+     * esse preço, sem ter pedido, é o oposto do que a primeira tela precisa
+     * fazer. Ligar é um toque; herdar ligado é uma conta que ninguém escolheu.
+     *
+     * As demais camadas continuam persistindo: só o vento tem esse custo.
+     */
     if (!windAllowed) {
       setLayers(current => {
         if (!current.wind) return current
@@ -356,6 +365,17 @@ export default function WorldV2() {
   /** Liga e desliga o vento — com o muro de plano, que era o único motivo de ele ser base. */
   const toggleWind = () => {
     haptic.selection()
+    /*
+     * `plan` começa `null` e só resolve quando `/api/profile/plan` responde.
+     * Como `windAllowed` lê `plan ?? 'free'`, tocar no Vento antes disso
+     * mandava um assinante para o muro de pagamento — e a D-221, que faz o
+     * vento sempre começar desligado, obriga a pessoa a tocar TODA sessão,
+     * o que tornaria essa corrida rotina em vez de acidente.
+     *
+     * Desconhecido não é grátis: enquanto o plano não chega, o toque não faz
+     * nada em vez de fazer a coisa errada.
+     */
+    if (plan === null) return
     if (!windAllowed) { window.location.href = '/mais'; return }
     setLayers(current => {
       const nextLayers = { ...current, wind: !current.wind }

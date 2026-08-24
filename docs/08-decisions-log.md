@@ -4,6 +4,54 @@
 
 ---
 
+## D-221 — O vento sempre começa desligado, e seu controle não some sozinho
+
+**Date**: 2026-08-19
+**Status**: DECIDED
+**Roadmap**: MAP follow-up (relatos do dono em uso)
+**Spec**: `docs/16-hybrid-world-dashboard.md`
+
+**Context**: dois relatos do dono depois da D-219. O vento voltava ligado ao
+reabrir o app, e o menu de controles do vento *"às vezes aparece, na maioria das
+vezes não"*.
+
+**Decision (1) — o vento não é herdado.** A restauração a partir de
+`eos-map-layers` foi **revogada**. O vento é a camada mais cara do app — grade
+remota, campo escalar e 1.400 partículas — e abrir o app já pagando esse preço,
+sem ter pedido, é o oposto do que a primeira tela deve fazer. Ligar custa um
+toque; herdar ligado é uma conta que ninguém escolheu. As demais camadas
+continuam persistindo: só o vento tem esse custo.
+
+Isto **não** toca `profiles.map_base_mode` (D-h) nem reacopla vento e base
+(D-199): é o estado inicial de uma camada, não a escolha de como o mundo é
+desenhado.
+
+**Decision (2) — o controle aparece com a camada, não com o dado.** A D-206
+tirou `readings.length` da condição de render, mas ele continuou governando
+quando `windControlsVisible` virava `true`. O defeito que a D-206 declarou
+corrigido sobreviveu: o controle só nascia quando a grade chegava, e a grade
+global levava até 20 segundos.
+
+**Decision (3) — quem esconde no arrasto devolve no fim do gesto.** Sair da
+frente durante o arrasto é intencional e fica. O que faltava era a volta:
+`move` e `zoom` escondiam, e **nada** reexibia. Como o mapa emite `move`
+sozinho — carga inicial, `easeTo`, terreno assentando, `resize` —, bastava abrir
+a tela para o controle sumir e não voltar. `moveend` e `zoomend` agora
+restauram.
+
+**Consequence**: fechar a decisão (1) obriga a pessoa a tocar no Vento toda
+sessão, o que transformou uma corrida rara em rotina: `windAllowed` lê
+`plan ?? 'free'`, e `plan` começa `null`, então tocar antes de
+`/api/profile/plan` responder mandava um **assinante** para o muro de pagamento.
+Corrigido junto: plano desconhecido não é plano grátis — enquanto não se sabe, o
+toque não faz nada em vez de fazer a coisa errada.
+
+**Não autorizado por D-221**: restaurar o vento ligado na abertura; condicionar
+a visibilidade do controle à chegada de leituras; esconder o controle sem um
+caminho de volta; tratar `plan === null` como `free` em decisão de acesso.
+
+---
+
 ## D-220 — O EOS avisa com o app fechado; e avisa sobre MUDANÇA, não sobre estado
 
 **Date**: 2026-08-24

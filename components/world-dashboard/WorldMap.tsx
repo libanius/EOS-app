@@ -1600,16 +1600,33 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
       setWindControlsOpen(false)
       setWindControlsVisible(false)
     }
+    /*
+     * ── ESCONDER AO ARRASTAR SÓ VALE SE ALGUÉM DEVOLVER (D-221) ──────────
+     *
+     * Sair da frente durante o arrasto é intencional. O que faltava era a
+     * volta: nada reexibia o controle quando o gesto terminava, e o mapa
+     * emite `move` sozinho — carga inicial, `easeTo`, terreno assentando,
+     * resize. Bastava isso para o controle sumir e não voltar, que é o
+     * "às vezes aparece, na maioria das vezes não" relatado pelo dono.
+     */
     const update = () => {
       layer.updateViewport()
       if (!windControlsOpen) setWindControlsVisible(false)
     }
+    const settle = () => {
+      layer.updateViewport()
+      setWindControlsVisible(true)
+    }
     map.on('move', update)
     map.on('zoom', update)
+    map.on('moveend', settle)
+    map.on('zoomend', settle)
     window.addEventListener('resize', update)
     return () => {
       map.off('move', update)
       map.off('zoom', update)
+      map.off('moveend', settle)
+      map.off('zoomend', settle)
       window.removeEventListener('resize', update)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1633,8 +1650,16 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
       setWindControlsVisible(false)
       return
     }
-    if (windForMap?.readings.length) setWindControlsVisible(true)
-  }, [layers?.wind, windForMap?.readings.length])
+    /*
+     * ── O CONTROLE APARECE COM A CAMADA, NÃO COM O DADO (D-221) ───────────
+     *
+     * A D-206 tirou `readings.length` da CONDIÇÃO DE RENDER, mas ele continuou
+     * aqui, governando quando a visibilidade vira `true`. O efeito prático era
+     * o mesmo defeito que a D-206 dizia ter corrigido: o controle só nascia
+     * quando a grade chegava — e a grade global levava até 20 segundos.
+     */
+    setWindControlsVisible(true)
+  }, [layers?.wind])
 
   useEffect(() => {
     const map = mapRef.current

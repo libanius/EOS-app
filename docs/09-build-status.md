@@ -21,6 +21,7 @@
 | **Last Completed Task** | **ALERT-T01→T04 / D-220 — alertas por mudança com push real na tela de bloqueio (2026-08-24)** |
 | | **D-188 / COMMS-T12 — lista, thread e conversa individual (2026-08-15)** |
 | | **AUTHOR-T02 / D-217 — confirmar ponto deixa de ser bloqueado por precisão (2026-08-19)** |
+| | **D-221 — vento sempre começa desligado; controle do vento para de sumir sozinho (2026-08-19)** |
 | | **D-219 — campo escalar do vento amostra em rede, não por pixel (2026-08-19)** — ligar o Vento congelava a página em qualquer navegador, pior no híbrido por causa do terreno 3D. |
 | | **Correções da tela de execução, vistas em uso (2026-08-19)** — rótulo de protocolo nunca sai vazio; faixa de execução deixa de apagar o texto na ponta direita. |
 | | **D-216 / PLAN follow-up — excluir plano arquiva, com trava de execução em curso (2026-08-19)** |
