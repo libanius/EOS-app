@@ -79,6 +79,25 @@ export type PilotContext = {
   family?: Array<{ name: string; lat: number; lng: number; freshness: string; isMe?: boolean }>
   /** Official open shelters with coordinates. */
   shelters?: Array<{ name: string; lat: number; lng: number; distanceKm: number }>
+  /**
+   * Ciclones tropicais ativos (D-078).
+   *
+   * O dono perguntou ao Pilot sobre um evento climático em andamento e ouviu que
+   * ele não enxergava — enquanto o mapa ao lado desenhava o cone. O dado existia
+   * e simplesmente não era enviado: a mesma armadilha de estender uma ponta e
+   * esquecer a outra que já custou cinco bugs neste projeto.
+   */
+  cyclones?: Array<{
+    name: string
+    classification: string
+    windKmh: number
+    distanceKm: number | null
+    headingDeg: number | null
+    speedKmh: number | null
+    relevant: boolean
+  }>
+  /** Vento medido no ponto da pessoa, com rajada. */
+  wind?: { speedKmh: number; gustKmh: number | null; fromDeg: number } | null
   /** The place the user just searched on the map — their current point of interest. */
   searchedPlace?: { label: string; lat: number; lng: number } | null
 }
@@ -223,8 +242,7 @@ function answerNow(ctx: PilotContext): PilotAnswer {
         ...weatherFactors(ctx, pt),
       ].slice(0, 4),
       actions: [
-        { label: 'Checklist', href: '/checklist', primary: true },
-        { label: pt ? 'Ver inventário' : 'View inventory', href: '/inventory' },
+        { label: pt ? 'Preparação' : 'Preparedness', href: '/preparedness', primary: true },
       ],
       caveat: rosterCaveat(ctx, pt),
     }
@@ -245,9 +263,51 @@ function answerNow(ctx: PilotContext): PilotAnswer {
         { label: 'Checklist', value: `${ctx.checklistPct}%` },
       ],
       actions: [
-        { label: 'Checklist', href: '/checklist', primary: true },
-        { label: pt ? 'Inventário' : 'Inventory', href: '/inventory' },
+        { label: pt ? 'Preparação' : 'Preparedness', href: '/preparedness', primary: true },
       ],
+      caveat: rosterCaveat(ctx, pt),
+    }
+  }
+
+  /*
+   * "Tudo certo" tem PRÉ-REQUISITO (D-126).
+   *
+   * Este era o `return` de queda livre: se o risco não fosse crítico nem alto,
+   * o Pilot dizia "Nada exige ação agora" — **sem nunca olhar a autonomia**. O
+   * dono mandou a captura: TUDO CERTO, autonomia 0 dias, e logo abaixo a
+   * própria ressalva admitindo que a ficha da família não tinha sido lida.
+   *
+   * Três frases que se contradizem na mesma tela. É a mesma falha otimista que
+   * o D-125 travou no servidor, e ela vale igual aqui: **o erro caro é o
+   * otimista**. Quem lê "tudo certo" não vai olhar a despensa.
+   */
+  if (!ctx.household.known) {
+    return {
+      intent: 'now',
+      verdict: 'hold',
+      headline: pt ? 'Não sei o suficiente para dizer que está tudo certo' : 'I do not know enough to say all is clear',
+      body: pt
+        ? 'Falta a ficha da família. Sem saber quem mora aí, a conta de água, comida e rota fica errada — para mais ou para menos.'
+        : 'The family record is missing. Without knowing who lives there, water, food and route maths are wrong — too high or too low.',
+      factors: [{ label: 'Checklist', value: `${ctx.checklistPct}%` }],
+      actions: [{ label: pt ? 'Cadastrar a família' : 'Record the family', href: '/family/cadastro', primary: true }],
+      caveat: rosterCaveat(ctx, pt),
+    }
+  }
+
+  if (ctx.autonomyDays < 1) {
+    return {
+      intent: 'now',
+      verdict: 'act',
+      headline: pt ? 'A casa não tem um dia de autonomia' : 'The household has less than a day of autonomy',
+      body: pt
+        ? `Com o que está registrado, a família aguenta ${days(ctx.autonomyDays)} dias. Isso é o item mais urgente da lista.`
+        : `On what is recorded, the household lasts ${days(ctx.autonomyDays)} days. That is the most urgent item on the list.`,
+      factors: [
+        { label: pt ? 'Autonomia' : 'Autonomy', value: `${days(ctx.autonomyDays)} ${pt ? 'dias' : 'days'}` },
+        { label: 'Checklist', value: `${ctx.checklistPct}%` },
+      ],
+      actions: [{ label: pt ? 'Preparação' : 'Preparedness', href: '/preparedness', primary: true }],
       caveat: rosterCaveat(ctx, pt),
     }
   }
@@ -357,7 +417,7 @@ function answerStayOrGo(ctx: PilotContext): PilotAnswer {
       { label: pt ? 'Combustível' : 'Fuel', value: `${days(ctx.fuelDays)}d` },
     ],
     actions: [
-      { label: pt ? 'Inventário' : 'Inventory', href: '/inventory', primary: !canSustain },
+      { label: pt ? 'Preparação' : 'Preparedness', href: '/preparedness', primary: !canSustain },
       { label: pt ? 'Ver plano' : 'View plan', href: '/scenario' },
     ],
     caveat: rosterCaveat(ctx, pt),
@@ -386,7 +446,7 @@ function answerEndurance(ctx: PilotContext): PilotAnswer {
       { label: pt ? 'Energia' : 'Power', value: `${days(ctx.powerDays)}d` },
       { label: pt ? 'Combustível' : 'Fuel', value: `${days(ctx.fuelDays)}d` },
     ],
-    actions: [{ label: pt ? 'Ajustar inventário' : 'Adjust inventory', href: '/inventory', primary: short }],
+    actions: [{ label: pt ? 'Ajustar preparação' : 'Adjust preparedness', href: '/preparedness', primary: short }],
     caveat: rosterCaveat(ctx, pt),
   }
 }
@@ -404,7 +464,7 @@ function answerGaps(ctx: PilotContext): PilotAnswer {
         ? 'Sem inventário eu não consigo dizer o que falta sem inventar. Preencha e eu respondo na hora.'
         : 'Without an inventory I cannot say what is missing without making it up. Fill it in and I answer instantly.',
       factors: [],
-      actions: [{ label: pt ? 'Preencher inventário' : 'Fill inventory', href: '/inventory', primary: true }],
+      actions: [{ label: pt ? 'Preencher preparação' : 'Fill preparedness', href: '/preparedness', primary: true }],
     }
   }
 
@@ -417,7 +477,7 @@ function answerGaps(ctx: PilotContext): PilotAnswer {
         ? `Nenhuma regra do EOS disparou. O checklist está em ${ctx.checklistPct}%.`
         : `No EOS rule fired. The checklist is at ${ctx.checklistPct}%.`,
       factors: [{ label: 'Checklist', value: `${ctx.checklistPct}%` }],
-      actions: [{ label: 'Checklist', href: '/checklist' }],
+      actions: [{ label: pt ? 'Preparação' : 'Preparedness', href: '/preparedness' }],
       caveat: rosterCaveat(ctx, pt),
     }
   }
@@ -431,8 +491,7 @@ function answerGaps(ctx: PilotContext): PilotAnswer {
     body: gaps.items[0],
     factors: gaps.items.slice(1, 4).map(item => ({ label: pt ? 'Também' : 'Also', value: item })),
     actions: [
-      { label: pt ? 'Inventário' : 'Inventory', href: '/inventory', primary: true },
-      { label: 'Checklist', href: '/checklist' },
+      { label: pt ? 'Preparação' : 'Preparedness', href: '/preparedness', primary: true },
     ],
     caveat: rosterCaveat(ctx, pt),
   }

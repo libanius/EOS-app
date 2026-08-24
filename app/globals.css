@@ -247,57 +247,372 @@ textarea.input { resize: vertical; min-height: 100px; line-height: 1.6; }
 /* ─── NAV ────────────────────────────────────────────────── */
 .nav {
   position: fixed;
-  bottom: 0; left: 0; right: 0;
-  background: var(--sf);
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: color-mix(in srgb, var(--sf) 94%, transparent);
   border-top: 1px solid var(--bd);
   display: flex;
-  flex-direction: column;
-  padding-bottom: env(safe-area-inset-bottom, 0);
+  justify-content: center;
+  padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0));
   z-index: 100;
+  backdrop-filter: blur(18px) saturate(1.2);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
 }
 
-.nav-tabs { display: flex; flex-direction: row; }
+.nav-tabs {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  max-width: 720px;
+  min-height: 56px;
+  padding: 0;
+}
+
+.nb-shell {
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.nb-shell:has(.nb.on) {
+  flex-grow: 2.35;
+}
+
+@supports not selector(:has(*)) {
+  .nb-shell {
+    flex: 1 1 0;
+  }
+}
+
+.nb-shell,
+.nb {
+  min-width: 44px;
+}
 
 .nb {
   flex: 1;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 4px;
-  padding: 10px 4px;
-  min-height: 56px;
+  justify-content: center;
+  gap: 0;
+  width: auto;
+  min-width: 44px;
+  min-height: 44px;
+  max-height: 48px;
+  padding: 11px 10px;
+  border-radius: 14px;
   color: var(--mu);
-  font-size: 10px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
   cursor: pointer;
-  transition: color 0.15s;
+  transition: color 0.2s ease, background-color 0.2s ease;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
   text-decoration: none;
+  white-space: nowrap;
 }
 
-.nb.on { color: var(--ac); }
-.nb:active { opacity: 0.7; }
+/*
+ * A barra volta ao neutro (D-194).
+ *
+ * D-192 pintou os itens comuns de amarelo do Treino. Num app de emergência a
+ * cor **carrega significado**: âmbar é o `--warn` do EOS, o degrau entre estável
+ * e crítico. Uma navegação inteira em âmbar diz "atenção" o tempo todo, e um
+ * aviso permanente deixa de ser aviso.
+ *
+ * O ativo se marca por FUNDO e PESO, não por matiz — a mesma regra dos chips de
+ * domínio (D-131): daltonismo não pode custar a noção de onde se está.
+ */
+.nb.on {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f4f7fb;
+}
+.nb:active { opacity: 0.86; }
+.nb-icon {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+}
+.nb-label {
+  display: flex;
+  align-items: center;
+  max-width: 50px;
+  overflow: hidden;
+}
+.nb-label > span {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: inherit;
+  font-size: clamp(0.66rem, 0.63rem + 0.18vw, 0.75rem);
+  line-height: 1.9;
+}
+.nb-badge {
+  position: absolute;
+  top: -8px;
+  right: -12px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #ff3b30;
+  color: #fff;
+  border: 2px solid var(--sf);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0;
+  box-shadow: 0 8px 18px rgba(255, 59, 48, 0.35);
+  cursor: pointer;
+}
+.nb-badge::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 999px;
+}
+.nb-badge:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
 
-/* Raised home tab: the World dashboard. Bigger target, fixed position, and the
-   only filled control in the bar — so "where do I get back to" is never a
-   question the user has to answer twice. */
-.nb-home { justify-content: flex-end; }
+.inbox-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: grid;
+  place-items: center;
+  padding: 16px 16px calc(96px + env(safe-area-inset-bottom));
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(14px);
+}
+
+.inbox-panel {
+  width: min(620px, 100%);
+  max-height: min(82vh, 760px);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 24px;
+  background: rgba(18, 18, 22, 0.96);
+  box-shadow: 0 22px 70px rgba(0, 0, 0, 0.5);
+  color: var(--tx);
+}
+
+.inbox-head,
+.inbox-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px;
+}
+
+.inbox-head {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.inbox-head h2 {
+  margin: 2px 0 0;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.inbox-kicker {
+  margin: 0;
+  color: var(--mu);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+
+.inbox-close,
+.inbox-actions button {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--tx);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.inbox-close {
+  width: 38px;
+  height: 38px;
+  font-size: 18px;
+}
+
+.inbox-actions {
+  padding-top: 12px;
+  padding-bottom: 8px;
+  color: var(--mu);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.inbox-actions button {
+  padding: 8px 12px;
+  font-size: 12px;
+}
+
+.inbox-list {
+  display: grid;
+  gap: 18px;
+  max-height: calc(min(82vh, 760px) - 130px);
+  overflow-y: auto;
+  padding: 8px 12px 14px;
+}
+
+.inbox-section {
+  display: grid;
+  gap: 8px;
+}
+
+.inbox-section h3 {
+  margin: 0 4px 2px;
+  color: var(--tx);
+  font-size: 16px;
+  line-height: 1.1;
+}
+
+.inbox-empty {
+  margin: 0;
+  padding: 24px 18px 28px;
+  color: var(--mu);
+}
+
+.inbox-item {
+  display: grid;
+  grid-template-columns: 42px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 76px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--tx);
+  text-align: left;
+  cursor: pointer;
+}
+
+.inbox-item.read {
+  opacity: 0.72;
+}
+
+.inbox-item.weather {
+  border-color: rgba(255, 69, 58, 0.35);
+  background: rgba(255, 69, 58, 0.09);
+}
+
+.inbox-item.edu {
+  border-color: rgba(0, 229, 160, 0.28);
+  background: rgba(0, 229, 160, 0.07);
+}
+
+.inbox-item.simulation {
+  border-color: rgba(124, 107, 255, 0.32);
+  background: rgba(124, 107, 255, 0.09);
+}
+
+.inbox-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.09);
+  color: var(--ac);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.inbox-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.inbox-copy strong,
+.inbox-copy span,
+.inbox-copy em {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inbox-copy strong {
+  font-size: 15px;
+}
+
+.inbox-copy span {
+  color: var(--mu);
+  font-size: 13px;
+}
+
+.inbox-copy em {
+  color: #777783;
+  font-size: 11px;
+  font-style: normal;
+}
+
+.inbox-severity {
+  border-radius: 999px;
+  padding: 5px 8px;
+  background: rgba(255, 69, 58, 0.16);
+  color: #ff8c8c;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+/* World keeps its permanent green treatment inside the floating pill. */
+.nb-home {
+  background: rgba(0, 229, 160, 0.12);
+  color: var(--ac);
+}
 .nb-home:active { opacity: 1; }
 .nb-home-orb {
   display: grid;
   place-items: center;
-  width: 46px;
-  height: 46px;
-  margin-top: -20px;
+  /* NAV-T06/D-180: o orbe herdou o selo de alertas do ícone de Clima, que saiu
+     da barra. O selo é `position: absolute`, e sem esta âncora ele iria parar no
+     canto da barra inteira em vez do canto do orbe. */
+  position: relative;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
   border-radius: 999px;
   background: var(--ac);
   color: #06070b;
-  border: 3px solid var(--sf);
+  border: 0;
   box-shadow: 0 10px 22px -8px rgba(0, 229, 160, 0.55);
   transition: transform 110ms ease-out;
 }
+/* No orbe o selo encosta na borda do círculo, não no retângulo do ícone. */
+.nb-home-orb .nb-badge {
+  top: -4px;
+  right: -6px;
+  border-color: color-mix(in srgb, var(--sf) 88%, transparent);
+}
 .nb-home:active .nb-home-orb { transform: scale(0.92); }
+.nb-home.on {
+  background: rgba(0, 229, 160, 0.18);
+  color: var(--ac);
+}
 .nb-home.on .nb-home-orb { box-shadow: 0 0 0 4px rgba(0, 229, 160, 0.18), 0 10px 22px -8px rgba(0, 229, 160, 0.6); }
 
 @media (prefers-reduced-motion: reduce) {
@@ -403,6 +718,42 @@ hr { border: none; border-top: 1px solid var(--bd); }
   box-shadow: 0 6px 18px -8px rgba(124, 58, 237, 0.9);
 }
 .sim-banner.aborted { background: linear-gradient(90deg, #b91c1c, #ef4444); }
+.sim-banner.plan-session-banner {
+  top: var(--plan-session-banner-top, 0px);
+  background: linear-gradient(90deg, #047857, #10b981);
+  box-shadow: 0 6px 18px -8px rgba(16, 185, 129, 0.9);
+}
+/*
+  O gradiente terminava em #10b981, e texto branco sobre ele dá ~2,6:1 — abaixo
+  de qualquer mínimo legível. Como a faixa ocupa a largura inteira e o estado de
+  cada pessoa é alinhado à DIREITA, o texto menos legível caía justamente na
+  ponta mais clara: "sem leitura" e a idade em minutos, que são exatamente o que
+  se lê durante a execução.
+
+  A ponta clara agora para em #047857 (~5,5:1 com branco). O verde continua
+  sendo o verde da execução; ele só deixa de clarear até onde apaga o texto.
+  Spec §4.3: contraste aqui é requisito funcional, não acabamento.
+*/
+.sim-banner.plan-execution-banner {
+  top: var(--plan-execution-banner-top, 0px);
+  background: linear-gradient(90deg, #064e3b, #047857);
+  box-shadow: 0 6px 18px -8px rgba(4, 120, 87, 0.95);
+}
+body:has(.sim-banner:not(.plan-session-banner)):has(.plan-session-banner) {
+  --plan-session-banner-top: 46px;
+}
+body:has(.plan-session-banner):has(.plan-execution-banner) {
+  --plan-execution-banner-top: 46px;
+}
+body:has(.sim-banner:not(.plan-session-banner):not(.plan-execution-banner)):has(.plan-execution-banner) {
+  --plan-execution-banner-top: 46px;
+}
+body:has(.sim-banner:not(.plan-session-banner):not(.plan-execution-banner)):has(.plan-session-banner):has(.plan-execution-banner) {
+  --plan-execution-banner-top: 92px;
+}
+.sim-banner.plan-session-banner.expired {
+  background: linear-gradient(90deg, #b45309, #f59e0b);
+}
 .sim-banner .sim-dot {
   flex: none;
   width: 9px; height: 9px;
@@ -434,6 +785,14 @@ hr { border: none; border-top: 1px solid var(--bd); }
 
 /* Everything else moves down so the banner never covers real chrome. */
 body:has(.sim-banner) .wv2 { top: 46px; }
+body:has(.sim-banner:not(.plan-session-banner)):has(.plan-session-banner) .wv2 { top: 92px; }
+body:has(.plan-session-banner):has(.plan-execution-banner) .wv2,
+body:has(.sim-banner:not(.plan-session-banner):not(.plan-execution-banner)):has(.plan-execution-banner) .wv2 {
+  top: 92px;
+}
+body:has(.sim-banner:not(.plan-session-banner):not(.plan-execution-banner)):has(.plan-session-banner):has(.plan-execution-banner) .wv2 {
+  top: 138px;
+}
 body:has(.sim-banner) .wv2-search,
 body:has(.sim-banner) .wv2-mapcontrols { top: 12px; }
 
@@ -441,14 +800,35 @@ body:has(.sim-banner) .wv2-mapcontrols { top: 12px; }
   .sim-banner button:active { transform: none; }
 }
 
-/* AppActions is inline-styled and fixed at the top, so it needs !important to
-   clear the simulation banner. */
-body:has(.sim-banner) .app-actions { top: 56px !important; }
+/* ─── A COLUNA DO CANTO SUPERIOR DIREITO (D-127) ──────────────────────────
+   Três grupos flutuantes disputavam o mesmo canto: o chrome global (plano,
+   ajustes, ficha), os controles do mapa (bússola, atualizar, camadas) e o orbe
+   da PilotBar. Cada um escolhia o próprio `top` com um número mágico, e bastou
+   eu mexer em UM (D-126) para o chrome cair em cima dos controles do mapa.
 
-/* The Pilot conversation is a focused surface: the global AppActions buttons
-   would otherwise sit on top of its close button. */
-body:has(.wv2-pilot-chat) .app-actions { display: none; }
-
+   Empurrar de novo seria repetir o erro. Agora existe UMA fonte: o chrome
+   publica onde termina, e quem vem abaixo se posiciona a partir disso. Mover o
+   de cima passa a mover o de baixo junto, por construção. */
+:root {
+  --chrome-top: max(16px, calc(env(safe-area-inset-top, 0px) + 8px));
+  --chrome-h: 40px;
+  --chrome-gap: 10px;
+}
+/* NAV-T06/D-180: o chrome global ACABOU.
+   D-127 achou três círculos sem rótulo aqui; D-131 destilou os três num ☰; e
+   com Configurações virando o destino MAIS na barra, sobrou zero. O canto agora
+   tem dois grupos: a fileira de cima (busca ou PilotBar, largura inteira) e a
+   coluna do mapa embaixo.
+   As variáveis ficam — os controles do mapa ainda se penduram nelas para saber
+   onde a fileira de cima termina, e essa continua sendo a única fonte. */
+body:has(.wv2-pilotbar) {
+  /* A fileira do topo passa a ser a PilotBar, que é mais alta que um orbe. */
+  --chrome-h: 46px;
+}
+/* Quem vem abaixo calcula a partir de `--chrome-top`, e NÃO de uma variável
+   pré-calculada aqui: `--chrome-bottom` no `:root` não enxergaria o override
+   que o `body:has(...)` acabou de fazer — substituição de variável acontece no
+   elemento, e o `:root` é outro elemento. */
 /* ─── SHARED SIMULATION INVITE (D-071) ────────────────────────────────────
    Centre of screen and blocking: joining a drill changes every number the
    person sees for the next hour, so it earns a decision, not a banner. */
@@ -566,6 +946,398 @@ body:has(.wv2-pilot-chat) .app-actions { display: none; }
   color: #6d28d9;
   border-color: #fff;
 }
+.sim-banner .plan-session-controls input {
+  flex: 0 1 180px;
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(0, 0, 0, 0.18);
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+}
+.sim-banner .plan-session-msg {
+  flex: none;
+  font-size: 12px;
+  opacity: 0.86;
+}
+.sim-banner .plan-execution-controls strong,
+.sim-banner .plan-execution-controls em {
+  flex: none;
+  font-size: 12px;
+  font-style: normal;
+}
+.sim-banner .plan-execution-controls strong {
+  font-weight: 800;
+}
+.sim-banner .plan-execution-msg {
+  opacity: 0.9;
+}
+
+.sim-banner .plan-execution-controls {
+  align-items: stretch;
+  padding-top: 8px;
+}
+
+.plan-playbook {
+  width: 100%;
+  max-height: min(68dvh, 620px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  display: grid;
+  gap: 12px;
+  padding: 4px 2px 8px;
+  color: var(--tx);
+  touch-action: pan-y;
+}
+
+.plan-playbook-head,
+.plan-playbook-nav,
+.plan-dependent-briefs,
+.plan-other-roles,
+.plan-system-notice {
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+  padding-top: 10px;
+}
+
+.plan-playbook-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.plan-playbook-head span,
+.plan-next-action > span,
+.plan-dependent-briefs > span {
+  flex: none;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.plan-playbook-head strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+}
+
+.plan-playbook-head em,
+.plan-playbook-nav em,
+.plan-next-action em {
+  color: rgba(255, 255, 255, 0.74);
+  font-size: 12px;
+  font-style: normal;
+}
+
+.plan-protocol-choices {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.sim-banner .plan-protocol-choices button {
+  min-width: 180px;
+  min-height: 40px;
+  justify-content: flex-start;
+  text-align: left;
+  white-space: normal;
+}
+
+.plan-playbook-nav {
+  display: grid;
+  gap: 2px;
+}
+
+.plan-playbook-nav span {
+  font-size: 12px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.plan-playbook-nav strong {
+  font-family: 'DM Mono', ui-monospace, 'SF Mono', monospace;
+  font-size: 32px;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+
+.plan-system-notice {
+  margin: 0;
+  color: #ffe08a;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.plan-next-action {
+  display: grid;
+  gap: 8px;
+}
+
+.plan-next-action ol {
+  list-style: none;
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+}
+
+.plan-next-action li button {
+  width: 100%;
+  height: auto;
+  min-height: 58px;
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  padding: 10px;
+  text-align: left;
+}
+
+.plan-next-action li b {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: rgba(255, 214, 10, 0.18);
+  color: #ffd60a;
+  font-family: 'DM Mono', ui-monospace, 'SF Mono', monospace;
+  font-size: 14px;
+}
+
+.plan-next-action li span {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.plan-next-action li strong {
+  color: #fff;
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+.plan-next-action li em {
+  white-space: normal;
+  line-height: 1.35;
+}
+
+.plan-next-action li.done button {
+  opacity: 0.58;
+}
+
+.plan-dependent-briefs {
+  display: grid;
+  gap: 8px;
+}
+
+.plan-dependent-briefs blockquote {
+  margin: 0;
+  padding: 10px 12px;
+  border-left: 3px solid #ffd60a;
+  background: rgba(255, 214, 10, 0.08);
+  color: #fff7cf;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.plan-other-roles summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.plan-other-roles ul {
+  list-style: none;
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+.plan-other-roles li {
+  display: grid;
+  gap: 2px;
+  font-size: 12px;
+}
+
+.plan-other-roles li span {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.plan-execution-state {
+  display: grid;
+  gap: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+  padding-top: 10px;
+}
+
+.plan-state-actions,
+.plan-close-actions,
+.plan-escalation div {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.sim-banner .plan-state-actions button,
+.sim-banner .plan-close-actions button,
+.sim-banner .plan-escalation button {
+  min-height: 36px;
+}
+
+.plan-state-list {
+  display: grid;
+  gap: 6px;
+}
+
+.plan-state-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
+  align-items: baseline;
+  padding: 8px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.plan-state-row strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.plan-state-row span {
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+/* Idade da leitura não é metadado descartável durante a execução: é como se
+   sabe se "a caminho" foi há 2 ou há 40 minutos. Sai de 0.7 para 0.88. */
+.plan-state-row em {
+  color: rgba(255, 255, 255, 0.88);
+  font-family: 'DM Mono', ui-monospace, 'SF Mono', monospace;
+  font-size: 12px;
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+}
+
+.plan-state-row.dependent span {
+  color: #ffd60a;
+}
+
+.plan-escalation {
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid rgba(255, 214, 10, 0.22);
+  background: rgba(255, 214, 10, 0.07);
+}
+
+.plan-escalation > span {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.plan-escalation strong {
+  font-size: 14px;
+}
+
+.plan-escalation em {
+  color: rgba(255, 255, 255, 0.74);
+  font-size: 12px;
+  font-style: normal;
+}
+
+.plan-escalation.due {
+  border-color: #ffd60a;
+  background: rgba(255, 214, 10, 0.12);
+}
+
+.plan-promotion-panel {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid rgba(48, 209, 88, 0.28);
+  background: rgba(48, 209, 88, 0.08);
+}
+
+.plan-promotion-panel > span {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.plan-promotion-panel > strong {
+  font-size: 14px;
+}
+
+.plan-promotion-panel > em {
+  color: rgba(255, 255, 255, 0.74);
+  font-size: 12px;
+  font-style: normal;
+  line-height: 1.35;
+}
+
+.plan-promotion-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.plan-promotion-row span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.plan-promotion-row b {
+  overflow: hidden;
+  color: #fff;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plan-promotion-row small {
+  color: rgba(255, 255, 255, 0.7);
+  font-family: 'DM Mono', ui-monospace, 'SF Mono', monospace;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.plan-promotion-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.sim-banner .plan-promotion-row button,
+.sim-banner .plan-promotion-actions button {
+  min-height: 34px;
+}
+
+body.plan-execution-readable .plan-playbook-nav strong,
+body.plan-execution-readable .val {
+  text-shadow: 0 0 18px rgba(255, 214, 10, 0.2);
+}
 
 /* ─── DEBRIEF ─────────────────────────────────────────────────────────────
    Numbers, not adjectives. "Faltaram 40 L" is actionable; "melhore suas
@@ -635,8 +1407,47 @@ body:has(.wv2-pilot-chat) .app-actions { display: none; }
 .sim-debrief .gap[data-severity='important'] { border-left-color: #ff9f0a; }
 .sim-debrief .gap strong { display: block; font-size: 15px; font-weight: 700; }
 .sim-debrief .gap p { margin: 4px 0 0; font-size: 13px; line-height: 1.45; color: rgba(235,235,245,0.62); }
+.sim-debrief .proposal {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px 10px;
+  align-items: start;
+  margin-top: 12px;
+  padding: 10px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.sim-debrief .proposal-kind {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: rgba(48, 209, 88, 0.16);
+  color: #30d158;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.sim-debrief .proposal p {
+  margin: 0;
+  min-width: 0;
+}
+.sim-debrief .proposal p strong {
+  font-size: 13px;
+}
+.sim-debrief .proposal p em {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  font-style: normal;
+  color: rgba(235,235,245,0.48);
+}
 .sim-debrief .gap button {
-  margin-top: 10px;
+  grid-column: 1 / -1;
+  margin-top: 2px;
   min-height: 36px;
   padding: 0 14px;
   border: 0;
@@ -668,3 +1479,108 @@ body:has(.wv2-pilot-chat) .app-actions { display: none; }
   font-weight: 600;
   cursor: pointer;
 }
+
+/* Relógio do exercício: o tempo restante fica visível o tempo todo, porque é o
+   que impede um treino de virar estado permanente por esquecimento. */
+.sim-banner .sim-clock {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.28);
+  letter-spacing: 0.04em;
+}
+.sim-banner .sim-clock.urgent { background: rgba(0, 0, 0, 0.5); animation: sim-clock-pulse 2s ease-in-out infinite; }
+
+@keyframes sim-clock-pulse { 0%, 100% { opacity: 1 } 50% { opacity: 0.55 } }
+@media (prefers-reduced-motion: reduce) {
+  .sim-banner .sim-clock.urgent { animation: none; text-decoration: underline; }
+}
+
+/* ─── Endereço de casa e quem mora nele (D-130) ──────────────────────────────
+   Fica na ficha porque é ali que a pessoa já está pensando "minha casa". */
+.home-address { display: grid; gap: 14px; }
+.home-address .ha-field { display: grid; gap: 6px; }
+.home-address .ha-label {
+  font-size: 11px; font-weight: 700; letter-spacing: 1.2px;
+  text-transform: uppercase; color: var(--mu);
+}
+.home-address .ha-input {
+  width: 100%;
+  min-height: 48px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--bd);
+  background: var(--bg2, #0f0f17);
+  color: var(--tx);
+  font: inherit;
+  font-size: 16px;   /* abaixo disso o iOS dá zoom ao focar */
+}
+.home-address .ha-input:focus { outline: none; border-color: var(--ac); }
+.home-address .ha-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+.home-address .ha-row > .ha-field { flex: 1 1 140px; }
+.home-address .ha-narrow { flex: 0 1 110px !important; }
+.home-address .ha-hint { font-size: 12px; line-height: 1.45; color: var(--mu); }
+.home-address .ha-preview {
+  margin: 0; padding: 10px 12px;
+  border-radius: 12px; background: rgba(255,255,255,0.04);
+  font-size: 14px; color: var(--tx);
+}
+
+.home-address .ha-people {
+  display: grid; gap: 10px;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid var(--bd);
+  background: rgba(255,255,255,0.02);
+}
+.home-address .ha-title { font-size: 15px; }
+.home-address .ha-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.home-address .ha-list li {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.04);
+}
+.home-address .ha-name { font-size: 14px; }
+.home-address .ha-choice { display: flex; gap: 6px; }
+.home-address .ha-what {
+  grid-column: 1 / -1;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--mu);
+}
+.home-address .ha-chip {
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--bd);
+  background: transparent;
+  color: var(--mu);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.home-address .ha-chip.on { border-color: var(--ac); color: var(--ac); background: rgba(34,197,94,0.1); }
+.home-address .ha-remove {
+  min-width: 44px; min-height: 44px;
+  border: 0; background: transparent; color: var(--mu);
+  font-size: 15px; cursor: pointer;
+}
+.home-address .ha-btn {
+  min-height: 48px;
+  padding: 0 18px;
+  border-radius: 999px;
+  border: 1px solid var(--bd);
+  background: rgba(255,255,255,0.04);
+  color: var(--tx);
+  font: inherit; font-weight: 600; cursor: pointer;
+}
+.home-address .ha-btn.primary { background: var(--ac); border-color: transparent; color: #06120b; }
+.home-address .ha-btn:disabled { opacity: 0.45; cursor: default; }
+.home-address .ha-error { margin: 0; font-size: 13px; color: #fca5a5; }
+.home-address .ha-ok { margin: 0; font-size: 13px; color: var(--ac); }

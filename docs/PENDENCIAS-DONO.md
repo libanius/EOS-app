@@ -1,7 +1,14 @@
 # PENDÊNCIAS DO DONO — ações que só você pode executar
 
 > Status geral: **Stripe Live ativo; providers opcionais pendentes**. O código está pronto e no ar (auto-deploy). As pendências restantes são rotação de segredos expostos e providers opcionais de hazard.
-> Última atualização: 2026-07-21.
+> Última atualização: 2026-08-19.
+
+> **Atualização 2026-08-19**: pendências antigas de migration D-135 foram
+> rechecadas por REST service-role e estão resolvidas: `family_plan_roles.for_member_id`
+> responde 200; `household_invites` tem 2 convites em `joined`; `conversations`,
+> `conversation_members` e `circle_messages.conversation_id` respondem 200. A
+> migration EXEC-T02 `20260819050556_exec_t02_plan_sessions.sql` também foi
+> aplicada e verificada.
 
 > **Migrations resolvidas** (2026-07-17), **Stripe Test mode validado ponta-a-ponta** (2026-07-20) e **Stripe Live cutover concluído** (2026-07-21). O que ainda depende do dono: rotacionar segredos expostos durante a operação, chaves opcionais de provider (WeatherKit/Xweather/etc.) e autorizações externas (ShakeAlert/FEMA). O Personal Access Token Supabase usado em 2026-07-17 deve ser **revogado/rotacionado** pelo dono após o uso (Dashboard → Account → Tokens).
 > Histórico: o `supabase` CLI logado neste ambiente pertence a outra conta (só enxerga BrightScaleWeb / bolt-native / Abre-USA); por isso o CLI não alcança o projeto EOS. A via que funcionou foi o PAT + Management API.
@@ -21,6 +28,105 @@
 | FEMA IPAWS | Grátis, mas **exige autorização (COG) da FEMA** | Opcional (muitos CAP já chegam via NWS) |
 
 **Resumo:** dá para lançar **sem gastar nada** (fontes grátis já no ar + Stripe, que só cobra por venda). WeatherKit (US$99/ano) e raios (Xweather) são os únicos que custam dinheiro, e são opcionais.
+
+---
+
+## 1-D. Migration RESOLVIDA — `for_member_id` nos papéis do plano (D-135)
+
+`supabase/migrations/20260808210000_plan_role_dependent.sql` está aplicada.
+Verificado em 2026-08-19: `family_plan_roles?select=id,for_member_id&limit=0`
+responde 200.
+
+A seção "Quem busca quem" do plano só sabia dizer QUEM BUSCA — a lista era de
+contas do círculo. Quem é buscado normalmente não tem conta: é a criança, é a
+avó, é justamente quem não sai sozinho. A família contornava escrevendo "buscar
+a Avó Ana" no texto livre, o que funciona para um humano lendo e falha para todo
+o resto.
+
+Até aplicar, o plano salva **sem** o alvo em vez de falhar inteiro, e a falha
+fica no `error_log` como `api/plans:for_member_id`.
+
+---
+
+## 1-C. Migration RESOLVIDA — `joined` nos convites (D-135)
+
+`supabase/migrations/20260808200000_invite_joined.sql` está aplicada. Verificado
+em 2026-08-19: `household_invites` responde 200 e os 2 convites existentes estão
+com `status = joined`.
+
+Por que importa agora: sua conta tem dois convites marcados como *enviados*
+para a **Daniela** e a **Paola** — que já moram com você no círculo há semanas.
+Sem o `joined`, o app continua dizendo, para você e para o Pilot, que as duas
+"não estão no EOS". Estão.
+
+Até aplicar, nada quebra e nada mente: o código detecta, tenta gravar, falha, e
+**mantém o convite aberto na tela** em vez de fingir que fechou. A falha fica no
+`error_log` como `household:fechar-convite`.
+
+Depois de aplicar, rode `node scripts/duplicate-person-test.mjs`.
+
+---
+
+## 1-B. Play Store — o que só você pode fazer (D-133)
+
+O lado do código está pronto: manifest válido para TWA, ícone maskable de
+verdade, e a rota `/.well-known/assetlinks.json` já no ar. **Nada disso precisa
+de novo deploy** — o que falta são dois valores que só existem depois que você
+criar o app no Play Console.
+
+**Passo 1 — crie o app no Play Console** e escolha o nome do pacote, por
+exemplo `app.eos.familia`. Ele é permanente: não dá para trocar depois.
+
+**Passo 2 — pegue a impressão digital.** Play Console → *Release* → *Setup* →
+*App signing* → copie o **SHA-256 certificate fingerprint** (o do *App signing
+key*, não o do upload key). Vem no formato `AA:BB:CC:…`, 32 pares.
+
+**Passo 3 — cole na Vercel** (Settings → Environment Variables → Production):
+
+```
+TWA_PACKAGE_NAME=app.eos.familia
+TWA_SHA256_FINGERPRINTS=AA:BB:CC:…            (várias, separadas por vírgula)
+```
+
+Não precisa de commit. A rota lê a variável a cada pedido.
+
+**Passo 4 — confira**, abrindo `https://eos-app-fawn.vercel.app/.well-known/assetlinks.json`.
+Antes de preencher, ela devolve `[]` — que é a verdade: nenhum app autorizado.
+Depois, tem que aparecer o seu pacote. Se aparecer `[]` mesmo com a variável
+posta, a impressão digital está fora do formato e foi descartada de propósito
+(uma malformada faz o Chrome falhar em silêncio e a barra de endereço fica lá
+sem explicar por quê).
+
+**Passo 5 — gere o APK** com o Bubblewrap:
+`npx @bubblewrap/cli init --manifest https://eos-app-fawn.vercel.app/manifest.json`
+
+**O que o Play vai pedir e já existe**: política de privacidade
+(`/privacy`), termos (`/terms`), política de reembolso (`/refund`).
+
+**O que o Play vai pedir e ainda NÃO existe**: as capturas de tela da loja
+(mínimo 2 de celular), o ícone de 512 da ficha da loja e o gráfico de
+destaque 1024×500. Isso é material de listagem, não de código — me diga se
+quer que eu gere.
+
+---
+
+## 1-A. Migration PENDENTE — `pilot_events` (PILOT-T04 / D-132)
+
+**Aplique `supabase/migrations/20260808150000_pilot_events.sql`** (Dashboard →
+SQL Editor → cole e execute). É a telemetria do Pilot, o último portão de
+lançamento.
+
+Até você aplicar, **nada quebra**: a rota responde `migration_pending`, o Pilot
+abre e responde normal, o console fica limpo — isso foi verificado com a tabela
+ausente. O que não acontece é a coleta.
+
+Depois de aplicar, rode `node scripts/pilot-metrics-test.mjs` (9 checagens
+contra o Supabase real) e me avise.
+
+O que a tabela guarda: só enum e contador — qual evento, qual veredito, qual
+intenção, de onde partiu, quantos milissegundos. **Não existe coluna de texto
+livre**: a pergunta que a família faz ao Pilot, a resposta, a coordenada e a
+ficha médica não têm onde caber, e um teste reprova se alguém criar uma.
 
 ---
 

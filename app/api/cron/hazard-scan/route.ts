@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 export const maxDuration = 300
 
 /**
- * The scheduled hazard scan (D-074).
+ * The scheduled hazard scan (D-220).
  *
  * Deliberately scheduler-agnostic: it is a plain authenticated request, so
  * Vercel Cron, Supabase pg_cron + pg_net, a GitHub Action or any external

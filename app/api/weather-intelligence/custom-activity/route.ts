@@ -1,5 +1,8 @@
 import { type NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 import { getOpenAIClient, getOpenAIModel } from '@/lib/openai'
+import { enforceAiBudget, rateLimitHeaders } from '@/lib/rate-limit'
+import { logError } from '@/lib/error-log'
 import type { WeatherCurrent } from '@/lib/weather/types'
 
 interface RequestBody {
@@ -9,6 +12,24 @@ interface RequestBody {
 }
 
 export async function POST(req: NextRequest) {
+  /**
+   * Esta rota chama o modelo e não exigia sequer autenticação (D-118) — qualquer
+   * um podia gastar a fatura da OpenAI do dono a partir de um terminal.
+   * Autenticar e limitar são a mesma correção: sem identidade não há em quem
+   * aplicar limite.
+   */
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 })
+
+  const excedeu = await enforceAiBudget(`activity:${user.id}`, { perMinute: 6, perDay: 60 })
+  if (excedeu) {
+    return NextResponse.json(
+      { error: 'rate_limited', message: 'Muitas análises em sequência. Tente de novo em instantes.' },
+      { status: 429, headers: rateLimitHeaders(excedeu.result) },
+    )
+  }
+
   let body: RequestBody
   try { body = (await req.json()) as RequestBody }
   catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }) }
@@ -62,7 +83,7 @@ Respond ONLY with this JSON (no markdown, no extra text):
       headers: { 'Cache-Control': 'no-store' },
     })
   } catch (err) {
-    console.error('[EOS] custom-activity failed:', err)
+    await logError('api/weather-intelligence/custom-activity', err, { userId: user.id })
     return NextResponse.json({ error: 'Analysis failed' }, { status: 502 })
   }
 }

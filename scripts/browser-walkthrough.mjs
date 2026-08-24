@@ -140,8 +140,20 @@ async function main() {
   // busca
   const search = page.locator('.wv2-pilotbar input')
   if (await search.count()) {
+    await search.click()
+    await page.waitForTimeout(600)
+    const abriuNoFoco = await page.locator('.wv2-pilot-chat').isVisible().catch(() => false)
+    if (abriuNoFoco) throw new Error('Pilot abriu só ao focar/clicar na barra')
+    log('   barra focada sem abrir o Pilot: sim ✅')
+
     await search.fill('home depot mais perto de mim')
+    await page.waitForTimeout(600)
+    const abriuDigitando = await page.locator('.wv2-pilot-chat').isVisible().catch(() => false)
+    if (abriuDigitando) throw new Error('Pilot abriu enquanto o usuário ainda digitava na barra')
+    log('   usuário digitou na barra sem abrir o Pilot: sim ✅')
+
     await search.press('Enter')
+    await page.locator('.wv2-pilot-chat').waitFor({ state: 'visible', timeout: 5000 })
     await page.waitForTimeout(26000)
     await shot('04-barra-pilot')
     const reply = await page.locator('.chat-pilot').last().innerText().catch(() => '?')

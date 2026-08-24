@@ -12,8 +12,11 @@ import Link from 'next/link'
 import { useLanguage } from '@/lib/i18n'
 import { useRisk } from '@/components/v2/RiskProvider'
 import WorldMap from './WorldMap'
+// Só a régua: estas telas mostram água em DIAS, não em volume.
+import { WATER_LITERS_PER_PERSON_DAY } from '@/lib/units'
 import type { WorldFamilyMember, WorldGuidance } from './WorldMap'
-import type { MapBaseMode } from '@/lib/world/providers'
+import { MAP_BASE_MODES, type MapBaseMode } from '@/lib/map-base-mode'
+import { useMapBaseMode } from '@/lib/use-map-base-mode'
 import type { ProfilePersonalization } from '@/lib/profile-personalization'
 import type { WeatherSnapshot } from '@/lib/weather/types'
 import './world-dashboard.css'
@@ -41,7 +44,7 @@ const COPY = {
     alerts: 'Alertas ativos', clearBrief: 'Setor limpo — sem alertas', openScenario: 'Abrir cenário',
     yourArea: 'Sua área', mapSummary: 'Mapa da situação',
     temp: 'Temp', wind: 'Vento', aqi: 'AQI', uv: 'UV', hum: 'Umidade', vis: 'Visão',
-    mapBase: 'Base do mapa', hybrid: 'Híbrido', dark: 'Dark',
+    mapBase: 'Base do mapa', satellite: 'Satélite', hybrid: 'Híbrido', dark: 'Dark',
     focusRoute: 'Focar rota', notifyFamily: 'Notificar família', notified: 'Família notificada',
     notifyUnavailable: 'Notificação indisponível', openChecklist: 'Checklist',
     needLocation: 'Preciso da sua localização para compor o mundo.', useGps: 'Usar GPS',
@@ -58,7 +61,7 @@ const COPY = {
     alerts: 'Active alerts', clearBrief: 'Sector clear — no alerts', openScenario: 'Open scenario',
     yourArea: 'Your area', mapSummary: 'Situation map',
     temp: 'Temp', wind: 'Wind', aqi: 'AQI', uv: 'UV', hum: 'Humidity', vis: 'Visibility',
-    mapBase: 'Map base', hybrid: 'Hybrid', dark: 'Dark',
+    mapBase: 'Map base', satellite: 'Satellite', hybrid: 'Hybrid', dark: 'Dark',
     focusRoute: 'Focus route', notifyFamily: 'Notify family', notified: 'Family notified',
     notifyUnavailable: 'Notify unavailable', openChecklist: 'Checklist',
     needLocation: 'EOS needs your location to compose the world.', useGps: 'Use GPS',
@@ -113,7 +116,12 @@ export default function WorldDashboard() {
   const [radar, setRadar] = useState<RadarStatus | null>(null)
   const [mapFamily, setMapFamily] = useState<WorldFamilyMember[]>([])
   const [guidance, setGuidance] = useState<WorldGuidance | null>(null)
-  const [mapBase, setMapBase] = useState<MapBaseMode>('hybrid')
+  /*
+   * EXEC-T06 / D-h: a base do mapa e uma preferencia do APP, nao desta tela.
+   * O estado local aqui comecava sempre em 'hybrid' e escrevia numa chave que
+   * ninguem lia de volta — a escolha morria no reload e nao valia no Mundo.
+   */
+  const { mapBase, setMapBase } = useMapBaseMode()
   const [adminCircles, setAdminCircles] = useState<Array<{ id: string; name: string }>>([])
   const [personalization, setPersonalization] = useState<ProfilePersonalization | null>(null)
   const [routeFocusNonce, setRouteFocusNonce] = useState(0)
@@ -150,10 +158,6 @@ export default function WorldDashboard() {
       })
       .catch(() => { if (!cancelled) setPersonalization(null) })
     return () => { cancelled = true }
-  }, [])
-  useEffect(() => {
-    const saved = window.localStorage.getItem('eos-world-map-base')
-    if (saved === 'hybrid' || saved === 'dark') setMapBase(saved)
   }, [])
   useEffect(() => {
     let cancelled = false
@@ -249,7 +253,7 @@ export default function WorldDashboard() {
 
   const cur = snapshot?.current
   const metric = language === 'pt'
-  const waterDays = inv ? inv.water_liters / (3 * people) : 0
+  const waterDays = inv ? inv.water_liters / (WATER_LITERS_PER_PERSON_DAY * people) : 0
   const foodDays = inv?.food_days ?? 0
   const powerDays = inv ? (inv.battery_percent / 100) * 3 : 0
   const fuelDays = inv ? inv.fuel_liters / 10 : 0
@@ -268,7 +272,6 @@ export default function WorldDashboard() {
   const worldImage = WORLD_PLATES[state] ?? WORLD_PLATES.watch
   const chooseMapBase = (base: MapBaseMode) => {
     setMapBase(base)
-    window.localStorage.setItem('eos-world-map-base', base)
   }
   const collapseHudForMap = () => {
     if (mobileHud) setHudSnap('peek')
@@ -347,7 +350,7 @@ export default function WorldDashboard() {
         />
 
         {/* ── Alert Counter (tappable → weather/alerts) ── */}
-        <Link href="/weather" className="w-glass w-alerts tappable" aria-label={`${alertCount} ${c.alerts} — ${language === 'pt' ? 'ver detalhes' : 'view details'}`}>
+        <Link href="/dashboard/alertas" className="w-glass w-alerts tappable" aria-label={`${alertCount} ${c.alerts} — ${language === 'pt' ? 'ver detalhes' : 'view details'}`}>
           <div className="w-eyebrow" style={{ marginBottom: 4 }}>{c.alerts}</div>
           <div className="n">{alertCount}</div>
         </Link>
@@ -362,7 +365,7 @@ export default function WorldDashboard() {
           <div className="map-style-control" aria-label={c.mapBase}>
             <span>{c.mapBase}</span>
             <div className="map-style-toggle" role="group" aria-label={c.mapBase}>
-              {(['hybrid', 'dark'] as const).map(base => (
+              {MAP_BASE_MODES.map(base => (
                 <button
                   key={base}
                   type="button"
@@ -370,7 +373,7 @@ export default function WorldDashboard() {
                   aria-pressed={mapBase === base}
                   onClick={() => chooseMapBase(base)}
                 >
-                  {base === 'hybrid' ? c.hybrid : c.dark}
+                  {c[base]}
                 </button>
               ))}
             </div>
@@ -753,7 +756,7 @@ function MobileWorldSheet({
 
       <div className="sheet-scroll" onScroll={onScroll}>
         <div className="sheet-actions">
-          <Link href="/scenario" className="w-chip solid">{c.openScenario}</Link>
+          <Link href="/mais/treino" className="w-chip solid">{c.openScenario}</Link>
           <Link href="/checklist" className="w-chip">{c.openChecklist}</Link>
           <button className="w-chip" disabled={!guidance} onClick={onFocusRoute}>{c.focusRoute}</button>
           {!hasCoords && <button className="w-chip" onClick={requestGps}>{c.useGps}</button>}
@@ -780,7 +783,7 @@ function MobileWorldSheet({
           <div className="map-style-control sheet-map-style" aria-label={c.mapBase}>
             <span>{c.mapBase}</span>
             <div className="map-style-toggle" role="group" aria-label={c.mapBase}>
-              {(['hybrid', 'dark'] as const).map(base => (
+              {MAP_BASE_MODES.map(base => (
                 <button
                   key={base}
                   type="button"
@@ -788,7 +791,7 @@ function MobileWorldSheet({
                   aria-pressed={mapBase === base}
                   onClick={() => chooseMapBase(base)}
                 >
-                  {base === 'hybrid' ? c.hybrid : c.dark}
+                  {c[base]}
                 </button>
               ))}
             </div>
@@ -923,7 +926,7 @@ function PilotCapsule({
           {recommendation.factors.slice(0, 3).map(f => <span key={f}>{f}</span>)}
         </div>
         <div className="cap-actions">
-          <Link href="/scenario" className="w-chip solid">{override ? (pt ? 'Abrir resposta' : 'Open response') : c.openScenario}</Link>
+          <Link href="/mais/treino" className="w-chip solid">{override ? (pt ? 'Abrir resposta' : 'Open response') : c.openScenario}</Link>
           <Link href="/checklist" className="w-chip">{c.openChecklist}</Link>
           <button className="w-chip" disabled={!canFocusRoute} onClick={onFocusRoute}>{c.focusRoute}</button>
           <button className="w-chip" disabled={notifyState === 'sending'} onClick={notifyFamily}>

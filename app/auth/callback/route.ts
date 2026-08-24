@@ -6,6 +6,7 @@ export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
   const type = searchParams.get('type') // 'recovery' | 'signup' | undefined
+  const redirectTo = searchParams.get('redirectTo')
   const error = searchParams.get('error')
 
   // Handle Supabase error in URL (e.g. expired link)
@@ -37,8 +38,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(`${origin}/auth/update-password`)
     }
 
-    // OAuth or email confirmation → go to onboarding
-    return NextResponse.redirect(`${origin}/onboarding`)
+    // OAuth or email confirmation → go to onboarding, preserving invite context.
+    const suffix = redirectTo?.startsWith('/') ? `?redirectTo=${encodeURIComponent(redirectTo)}` : ''
+    return NextResponse.redirect(`${origin}/onboarding${suffix}`)
   }
 
   // No code and no error — shouldn't happen, send to login

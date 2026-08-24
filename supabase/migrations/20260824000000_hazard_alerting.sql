@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════════════
--- D-074 — Alertas automáticos por hazard (varredura agendada + transições)
+-- D-220 — Alertas automáticos por hazard (varredura agendada + transições)
 --
 -- Este script é IDEMPOTENTE e AUTOSSUFICIENTE. Pode ser colado no SQL Editor
 -- do Supabase quantas vezes for preciso, e funciona tanto se a migration
@@ -172,6 +172,14 @@ DROP POLICY IF EXISTS "user_hazard_preferences: owner only" ON user_hazard_prefe
 CREATE POLICY "user_hazard_preferences: owner only"
   ON user_hazard_preferences FOR ALL TO authenticated
   USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+
+-- ─── 7. Idioma do perfil ────────────────────────────────────────────────────
+-- O push é escrito no servidor, que nunca enxerga o localStorage do aparelho.
+-- Sem esta coluna, todo alerta sairia num idioma só. O padrão do app é inglês
+-- (D-206); quem escolhe português passa a ser respeitado também no push.
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS language text;
+COMMENT ON COLUMN profiles.language IS
+  'Idioma escolhido pelo usuário (pt|en). NULL = nunca escolheu, usa o padrão (en).';
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- OPCIONAL — agendar a varredura DENTRO do Supabase (pg_cron), custo zero.

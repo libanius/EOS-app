@@ -12,13 +12,26 @@
  * It also carries the exit, so leaving is always one tap from any screen.
  */
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useSimulation } from './SimulationProvider'
 import { useLanguage } from '@/lib/i18n'
 import { simulationLabel } from '@/lib/simulation'
 
+/** Segundos restantes do exercício, recalculados de segundo em segundo. */
+function useRemaining(endsAt: number | null): number | null {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    if (!endsAt) return
+    const timer = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(timer)
+  }, [endsAt])
+  if (!endsAt) return null
+  return Math.max(0, Math.round((endsAt - now) / 1000))
+}
+
 export default function SimulationBanner() {
-  const { config, active, abortedByRealAlert, stop, update, clearAbortNotice } = useSimulation()
+  const { config, active, abortedByRealAlert, stop, update, clearAbortNotice, endsAt, extend } = useSimulation()
+  const remaining = useRemaining(endsAt)
   const [open, setOpen] = useState(false)
   const { language } = useLanguage()
   const pt = language === 'pt'
@@ -54,12 +67,21 @@ export default function SimulationBanner() {
         <strong>{pt ? 'SIMULAÇÃO' : 'SIMULATION'}</strong>
         <em>{simulationLabel(config, pt)}</em>
       </button>
+      {/* O tempo restante fica visível o tempo todo: é o que impede o treino de
+          virar estado permanente por esquecimento. */}
+      {remaining !== null && (
+        <span className={`sim-clock${remaining <= 120 ? ' urgent' : ''}`} aria-label={pt ? 'Tempo restante' : 'Time left'}>
+          {String(Math.floor(remaining / 60)).padStart(2, '0')}:{String(remaining % 60).padStart(2, '0')}
+        </span>
+      )}
       <button type="button" onClick={stop}>
         {pt ? 'Encerrar' : 'End'}
       </button>
 
       {open && (
         <div className="sim-controls">
+          <span>{pt ? 'Tempo' : 'Time'}</span>
+          <button type="button" onClick={() => extend(15)}>+15 min</button>
           <span>{pt ? 'Avançar' : 'Advance'}</span>
           <button type="button" onClick={() => advance(3)}>+3h</button>
           <button type="button" onClick={() => advance(6)}>+6h</button>

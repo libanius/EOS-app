@@ -74,7 +74,7 @@ describe('detectTransitions', () => {
     const t = detectTransitions({ previous: new Map(), current: [iselle] })
     expect(t).toHaveLength(1)
     expect(t[0].kind).toBe('formed')
-    expect(t[0].toState).toBe('Tempestade Tropical')
+    expect(t[0].toState).toBe('Tropical Storm')
   })
 
   it('reports a depression becoming a storm as upgraded', () => {
@@ -86,8 +86,8 @@ describe('detectTransitions', () => {
     })
     expect(t).toHaveLength(1)
     expect(t[0].kind).toBe('upgraded')
-    expect(t[0].fromState).toBe('Depressão Tropical')
-    expect(t[0].toState).toBe('Tempestade Tropical')
+    expect(t[0].fromState).toBe('Tropical Depression')
+    expect(t[0].toState).toBe('Tropical Storm')
   })
 
   it('reports a category drop as downgraded', () => {
@@ -99,7 +99,7 @@ describe('detectTransitions', () => {
     })
     expect(t).toHaveLength(1)
     expect(t[0].kind).toBe('downgraded')
-    expect(t[0].toState).toBe('Furacão Categoria 1')
+    expect(t[0].toState).toBe('Hurricane Category 1')
   })
 
   it('says nothing when nothing changed — the whole point of scanning often', () => {
@@ -129,7 +129,7 @@ describe('detectTransitions', () => {
       id: 'eos:aqi:26.31,-80.24',
       severity: 'minor',
       eventType: 'air_quality_moderate',
-      title: 'Qualidade do ar: Moderada',
+      title: 'Air quality: Moderate',
       hazardType: 'air_quality',
       metrics: { aqi: 60 },
     }

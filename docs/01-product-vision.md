@@ -38,8 +38,8 @@ EOS works at three levels, in order of preference:
 
 | Mode | When | What |
 |---|---|---|
-| CONNECTED | Internet + auth available | Claude API + RAG from 3850 knowledge chunks |
-| LOCAL_AI | No internet, device has model | llama.rn on-device model (planned) |
+| CONNECTED | Internet + auth available | OpenAI API + RAG from the curated knowledge base |
+| LOCAL_AI | No internet, device has model | On-device model (planned; blocked by mobile readiness) |
 | SURVIVAL | Always | Rules Engine only — deterministic, instant |
 
 These are a **fallback chain**, not feature toggles.

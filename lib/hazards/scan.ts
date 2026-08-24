@@ -1,4 +1,4 @@
-// ─── Scheduled hazard scan (D-074) ────────────────────────────────────────────
+// ─── Scheduled hazard scan (D-220) ────────────────────────────────────────────
 //
 // The piece that makes the EOS speak while the app is closed.
 //
@@ -40,11 +40,13 @@ import type { Coordinates, HazardEvent } from './types'
 
 const A = HAZARD_CONFIG.alerting
 
-// The language a push is written in. It cannot be read per user yet: the choice
-// lives in the device's localStorage (lib/i18n.tsx), which the server never
-// sees. Portuguese matches the app's own default. Persisting the preference on
-// `profiles` is the fix, and it is a follow-up task, not a guess to make here.
-const DEFAULT_PT = true
+// The app's base language is English (D-206); Portuguese is honoured whenever
+// the person actually chose it. `profiles.language` is how that choice reaches
+// the server — the scan has no browser, so localStorage and the cookie are both
+// out of reach here.
+function prefersPt(language: unknown): boolean {
+  return language === 'pt'
+}
 
 export interface ScanSummary {
   locations: number
@@ -94,7 +96,7 @@ async function collectTargets(db: SupabaseClient): Promise<ScanTarget[]> {
   // alert a family about a city they left two weeks ago.
   const { data: profiles } = await db
     .from('profiles')
-    .select('id, plan, last_location_lat, last_location_lng, last_location_at')
+    .select('id, plan, language, last_location_lat, last_location_lng, last_location_at')
     .not('last_location_lat', 'is', null)
     .not('last_location_lng', 'is', null)
     .gte('last_location_at', since)
@@ -103,21 +105,25 @@ async function collectTargets(db: SupabaseClient): Promise<ScanTarget[]> {
     const lat = p.last_location_lat as number | null
     const lng = p.last_location_lng as number | null
     if (lat == null || lng == null) continue
-    add(lat, lng, { userId: p.id as string, plan: ((p.plan as Plan | null) ?? 'free'), pt: DEFAULT_PT })
+    add(lat, lng, {
+      userId: p.id as string,
+      plan: ((p.plan as Plan | null) ?? 'free'),
+      pt: prefersPt(p.language),
+    })
   }
 
   // Places explicitly watched (the grandparents' house, the kids' school).
   const { data: subs } = await db.from('hazard_subscriptions').select('user_id, lat, lng')
   if (subs?.length) {
     const ids = Array.from(new Set(subs.map(s => s.user_id as string)))
-    const { data: subProfiles } = await db.from('profiles').select('id, plan').in('id', ids)
+    const { data: subProfiles } = await db.from('profiles').select('id, plan, language').in('id', ids)
     const meta = new Map((subProfiles ?? []).map(p => [p.id as string, p]))
     for (const s of subs) {
       const p = meta.get(s.user_id as string)
       add(s.lat as number, s.lng as number, {
         userId: s.user_id as string,
         plan: ((p?.plan as Plan | null) ?? 'free'),
-        pt: DEFAULT_PT,
+        pt: prefersPt(p?.language),
       })
     }
   }

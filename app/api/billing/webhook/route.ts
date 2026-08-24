@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import type Stripe from 'stripe'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getStripe, planForPriceId, isActiveStatus } from '@/lib/stripe'
+import { commissionCents, type AffiliateCodeRow } from '@/lib/affiliate'
 import type { Plan } from '@/lib/feature-gates'
 
 export const runtime = 'nodejs'
@@ -46,7 +47,14 @@ export async function POST(req: Request) {
             typeof session.subscription === 'string' ? session.subscription : session.subscription.id,
           )
           await applySubscription(admin, sub)
+          await recordReferralCheckout(admin, session, sub)
         }
+        break
+      }
+      case 'invoice.payment_succeeded':
+      case 'invoice.paid': {
+        const invoice = event.data.object as Stripe.Invoice
+        await recordPaidInvoice(admin, invoice)
         break
       }
       case 'customer.subscription.created':
@@ -103,6 +111,93 @@ async function applySubscription(admin: Admin, sub: Stripe.Subscription) {
       plan_current_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
     })
     .eq('id', profileId)
+}
+
+async function recordReferralCheckout(admin: Admin, session: Stripe.Checkout.Session, sub: Stripe.Subscription) {
+  const affiliateCode = String(session.metadata?.affiliate_code ?? sub.metadata?.affiliate_code ?? '').toUpperCase()
+  if (!affiliateCode) return
+  const customerId = typeof sub.customer === 'string' ? sub.customer : sub.customer.id
+  const priceId = sub.items.data[0]?.price?.id
+  const plan = planForPriceId(priceId)
+  if (plan !== 'family' && plan !== 'premium') return
+
+  await admin.from('affiliate_referrals').upsert({
+    affiliate_code: affiliateCode,
+    profile_id: session.client_reference_id ?? sub.metadata?.user_id ?? null,
+    plan,
+    stripe_customer_id: customerId,
+    stripe_subscription_id: sub.id,
+    stripe_checkout_session_id: session.id,
+    status: 'pending',
+  }, { onConflict: 'stripe_checkout_session_id' })
+}
+
+async function recordPaidInvoice(admin: Admin, invoice: Stripe.Invoice) {
+  const amountPaid = Number(invoice.amount_paid ?? 0)
+  if (!Number.isFinite(amountPaid) || amountPaid <= 0) return
+
+  const subscriptionId = subscriptionIdFromInvoice(invoice)
+  if (!subscriptionId) return
+
+  const { data: referral } = await admin
+    .from('affiliate_referrals')
+    .select('*')
+    .eq('stripe_subscription_id', subscriptionId)
+    .maybeSingle()
+  if (!referral) return
+
+  const { data: existing } = await admin
+    .from('affiliate_conversions')
+    .select('id')
+    .eq('referral_id', referral.id)
+    .limit(1)
+  if (existing?.length) return
+
+  const { data: codeRow } = await admin
+    .from('affiliate_codes')
+    .select('*')
+    .eq('code', referral.affiliate_code)
+    .maybeSingle()
+  if (!codeRow) return
+
+  const affiliate = codeRow as AffiliateCodeRow
+  const commission = commissionCents(amountPaid, Number(affiliate.commission_percent))
+  const occurred = invoice.status_transitions?.paid_at
+    ? new Date(invoice.status_transitions.paid_at * 1000).toISOString()
+    : new Date().toISOString()
+  const invoiceId = invoice.id
+  if (!invoiceId) return
+
+  await admin.from('affiliate_conversions').insert({
+    affiliate_code: referral.affiliate_code,
+    referral_id: referral.id,
+    profile_id: referral.profile_id,
+    plan: referral.plan,
+    stripe_customer_id: typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id ?? referral.stripe_customer_id,
+    stripe_subscription_id: subscriptionId,
+    stripe_invoice_id: invoiceId,
+    amount_paid_cents: amountPaid,
+    currency: invoice.currency ?? 'usd',
+    commission_percent: affiliate.commission_percent,
+    commission_cents: commission,
+    status: 'owed',
+    occurred_at: occurred,
+  })
+
+  await admin
+    .from('affiliate_referrals')
+    .update({ status: 'converted', converted_at: occurred })
+    .eq('id', referral.id)
+}
+
+function subscriptionIdFromInvoice(invoice: Stripe.Invoice): string | null {
+  const value = (invoice as unknown as { subscription?: string | { id?: string } | null }).subscription
+  if (typeof value === 'string') return value
+  if (value?.id) return value.id
+  const parent = (invoice as unknown as {
+    parent?: { subscription_details?: { subscription?: string | null } }
+  }).parent
+  return parent?.subscription_details?.subscription ?? null
 }
 
 /** A subscription in a terminal state should drop the linkage. */

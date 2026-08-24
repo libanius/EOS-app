@@ -8,6 +8,7 @@
 
 # testing
 /coverage
+/artifacts/
 
 # next.js
 /.next/
@@ -57,3 +58,6 @@ public/sw 2.js
 # Skills tooling (installed locally per session — not part of the app)
 .agents/
 skills-lock.json
+
+# Certificado local do teste de push (gerado, nunca comitado)
+.push-test-cert/

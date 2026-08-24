@@ -17,8 +17,12 @@ import { createClient } from '@/lib/supabase/server'
 /** Below this, the browser is guessing from IP/wifi — not a usable family point. */
 const MAX_ACCURACY_M = 5000
 
-/** The client posts on a fixed cadence; anything faster is a bug or abuse. */
-const MIN_INTERVAL_MS = 15_000
+/**
+ * Floor between writes. The client posts on movement, so during a drive this is
+ * what bounds it — low enough to feel live (D-073), high enough that a jittery
+ * GPS cannot hammer the row.
+ */
+const MIN_INTERVAL_MS = 8_000
 
 function isFiniteCoord(lat: unknown, lng: unknown) {
   return (

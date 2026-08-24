@@ -2,6 +2,8 @@ import { type NextRequest, NextResponse } from 'next/server'
 import webpush from 'web-push'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { createCommsNotifications, getCircleName, getProfileName } from '@/lib/comms-notifications'
+import { simulationLabel, type SimulationConfig } from '@/lib/simulation'
 
 /**
  * Shared simulation drills (D-071 / SIM-T07).
@@ -158,14 +160,37 @@ export async function POST(request: NextRequest) {
   }))
   await admin.from('simulation_participants').insert(participants)
 
+  const invitedIds = uniqueMembers.filter(id => id !== user.id)
+  if (invitedIds.length) {
+    const [actorName, circleName] = await Promise.all([
+      getProfileName(admin, user.id),
+      getCircleName(admin, allowed[0]),
+    ])
+    await createCommsNotifications({
+      admin,
+      circleId: allowed[0],
+      actorId: user.id,
+      recipientIds: invitedIds,
+      scope: 'simulation',
+      kind: 'simulation_invite',
+      title: `${actorName} iniciou uma simulação`,
+      body: `${circleName}: ${simulationLabel(body.config as SimulationConfig, true)}`,
+      href: `/dashboard?simulationInvite=${encodeURIComponent(created.id)}`,
+      sourceKey: `simulation:${created.id}:invite`,
+      metadata: { session_id: created.id, circle_id: allowed[0], join_token: joinToken },
+    })
+  }
+
   // Push is best-effort: the in-app poll shows the invite even if it fails.
   if (VAPID_PUBLIC && VAPID_PRIVATE) {
-    const others = uniqueMembers.filter(id => id !== user.id)
+    const others = invitedIds
     if (others.length) {
       const { data: subs } = await admin
-        .from('push_subscriptions')
+        // A coluna é user_id. profile_id não existe — escrevi errado três vezes e
+    // todo push que eu adicionei falhava em silêncio.
+    .from('push_subscriptions')
         .select('endpoint, p256dh, auth')
-        .in('profile_id', others)
+        .in('user_id', others)
       if (subs?.length) {
         const { data: me } = await admin.from('profiles').select('name').eq('id', user.id).maybeSingle()
         webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE)

@@ -1,54 +1,1260 @@
 # 11 — Product Memory
 
 > Non-obvious facts that don't belong in code comments but must survive across sessions.
-> Last updated: 2026-07-29
+> Last updated: 2026-08-19
 
 ---
 
-## Um alerta é sobre MUDANÇA; um widget é sobre estado (2026-08-24)
+**"Casa" tem UMA definição: contas confirmadas + dependentes delas
+(D-129/D-179).** Círculos mostrava "SUA CASA (3)" e o cadastro dizia "ninguém
+cadastrado", porque um lia contas e o outro só dependentes. `/family/cadastro`
+lê `/api/household` — a mesma fonte do motor. Qualquer tela que responda "quem
+mora aqui" lendo outra coisa recria a divergência.
 
-O EOS tinha as fontes certas (NHC, NWS, USGS, AQI, nowcast) e mesmo assim não
-entregava nada que o concorrente entregava. A diferença não era dado, eram duas
-ausências: nada rodava com o app fechado, e nada guardava o estado anterior.
+**Juntar telas relacionadas revela contradição que a distância escondia.**
+Aconteceu duas vezes em 13–14/08: o Pilot dizendo zero contra o painel dizendo
+2,7 dias, e Círculos contra Cadastro. Aproximar é método de achado, não só
+arrumação.
 
-"Existe um Furacão Categoria 1" é widget. "Lala **foi rebaixado** para Categoria
-1" é alerta — e a segunda frase só é possível se a varredura anterior gravou que
-ontem era Categoria 2. **Sem memória persistida não existe alerta, só display.**
+## Navegação: Model C é canônico (D-177, 2026-08-13)
 
-Corolário que vale para qualquer canal novo: o silêncio é parte do produto. Uma
-varredura a cada 10 minutos sobre uma tempestade parada precisa notificar zero
-vezes. Se o motor não sabe ficar quieto, ele não pode ser ligado.
+`docs/35` saiu do papel. A barra global terá **cinco slots e nunca muda** —
+subdivisão acontece dentro do domínio, como PREP-T07 provou. `MUNDO` é
+invariante de produto: mesma posição, mesma função, em qualquer tela e modo.
 
-## Cron sub-diário no `vercel.json` derruba o deploy no plano Hobby (2026-08-24)
+**BottomNav visual é pílula expansível, mas a verdade continua sendo a rota
+(D-189).** Não copie componente externo para `/components/ui` criando segunda
+barra: a barra real carrega badges, i18n, deep-links e propriedade de
+notificação. O comportamento copiado foi só: spring de entrada, toque comprimido
+e rótulo ativo que expande. `MUNDO` participa da pílula, mas fica verde sempre.
+**Follow-up D-191:** a barra não é cápsula central; ocupa a largura inteira do
+rodapé como antes, com só os itens internos arredondados.
+**Follow-up D-192:** os itens comuns usam amarelo/âmbar do Treino, não
+roxo/azul; `MUNDO` continua verde. A faixa superior de domínio não pinta uma
+tira própria — deixa o fundo da página aparecer.
 
-Não é degradação silenciosa — é erro de validação que **falha a publicação
-inteira**: `Hobby accounts are limited to daily cron jobs`. O app parou de
-publicar por causa de uma feature que nem estava sendo usada ainda.
+**`components/ui/bottom-nav-bar.tsx` é exemplo shadcn, não shell do EOS
+(D-190).** Ele compila e preserva o prompt original, mas suas classes Tailwind
+não têm design system ativo neste repo. A navegação que o usuário vê continua
+em `components/BottomNav.tsx`.
 
-Por isso **não existe `vercel.json` neste repo**. O agendamento vive no
-`pg_cron` do Supabase, que roda a cada 10 min de graça e não amarra o alerta ao
-plano de hospedagem. Regra geral: configuração de plataforma que só funciona num
-plano pago não entra no repositório — ela quebra quem está no plano gratuito.
+**Mapa do Mundo vence o sheet (D-193).** Interação real no mapa manda o
+`DetentSheet` para `hidden`, não `peek`. O resumo volta só pela zona inferior:
+hover/foco no desktop, toque no mobile. Não troque ações programáticas
+("ver alerta no mapa", rota até membro) para `hidden` sem motivo: elas usam
+`peek` porque precisam preservar contexto.
+**Follow-up D-205:** essa zona inferior não é uma faixa invisível larga. Quando
+o sheet está escondido, só uma alça central pequena pode reabri-lo; o restante
+da parte baixa pertence ao pan do mapa. Faixa transparente de 148px faz o mapa
+parecer "insensível" porque rouba o primeiro gesto.
+**Follow-up D-196:** a coluna lateral do mapa não recolhe mais. `Você`,
+`Atualizar` e `Camadas` ficam sempre visíveis; o botão `.../x` saiu.
+**Follow-up D-197:** o painel de `Camadas` deve rolar dentro dele mesmo em
+qualquer device; não deixe conteúdo depender do scroll da página, porque o Mapa
+do Mundo é uma superfície fixa.
+**Follow-up D-200:** `Surge` não pode depender só de `/api/hazards` conter texto
+`storm surge`. O produto certo para o desenho operacional é o KML **Peak Storm
+Surge Forecast** do NHC/CPHC (`*_PeakStormSurge_*adv.kml`), convertido no
+servidor e desenhado como layer própria.
+**Follow-up D-201:** não abrir popup de vento ao clicar no mapa. A régua/sliders
+de vento ficam num controle colapsável perto do botão `Vento`; fechado ele é só
+um toggle compacto, aberto expõe escala/timeline/sliders, e fechado ele some ao
+mover/zoomar o mapa.
 
-## Nunca re-extraia número de texto que você mesmo formatou (2026-08-24)
+**Simulador D-204:** leitura numérica ajustável não pode ser só `-`/`+`.
+Temperatura, vento, rajada, chuva, umidade, UV, visibilidade e AQI usam o mesmo
+controle híbrido: stepper para ajuste fino e slider para varrer cenário rápido
+em mouse, trackpad ou toque.
 
-O filtro de relevância do USGS pegava a magnitude de volta do título com
-`/M(\d+\.\d+)/`. O título do USGS é `"M 4.3 - 10km SSW of…"` — **com espaço**. A
-regex nunca casou, toda magnitude virou `0`, e o filtro descartou **todo
-terremoto** como irrelevante. Ficou assim por semanas sem ninguém notar, porque
-a falha é silenciosa: uma lista vazia parece um dia tranquilo.
+**Ordem das fases: absorções primeiro.** São elas que liberam os slots — mexer
+na barra antes seria mudar o visível sem ter para onde mover o resto.
 
-Agora os números vivem em `HazardEvent.metrics` (vento, categoria, magnitude,
-AQI) e o texto é só apresentação. Mesma lição apareceu duas vezes seguidas na
-cópia das notificações: rótulo de estado congelado em português na detecção saía
-como "downgraded to Furacão Categoria 1" num telefone em inglês. **Guarde o
-dado estruturado; renderize no idioma de quem lê, na hora de ler.**
+**Tela com retorno antecipado precisa da navegação nos DOIS caminhos.** Um teste
+pegou: sem círculo, o Plano renderiza um ramo curto, e a faixa estava só no
+principal — a pessoa sem círculo chegaria numa tela sem saída. Justamente quem
+mais precisa de um caminho de volta.
 
-## `onFocus` numa barra que abre folha é armadilha no celular (2026-07-29)
+**No plano, coordenada vence nome digitado (D-209).** O modal "Onde fica?"
+dizia no comentário que nome não bloqueava confirmação, mas o botão ainda exigia
+`name.trim()`. Resultado: ao definir Casa por GPS/mapa, a pessoa precisava
+digitar um rótulo manual antes de confirmar. O nome padrão (`Casa`, `Ponto 1`,
+etc.) deve entrar automaticamente; o que torna o lugar salvável é ter
+coordenada.
 
-A PilotBar abria a conversa no foco do campo. Parecia atalho e era o contrário: tocar na barra é o gesto de quem vai **digitar**, e a folha subia sobre o mapa antes de existir texto. Pior no telefone — o campo em foco continuava embaixo da conversa recém-aberta, com o teclado por cima.
+**Picker de endereço não usa blur do Pilot (D-210).** O modal "Onde fica?"
+reutilizava `.wv2-pilot-scrim`, que aplica `backdrop-filter: blur(2px)`, e
+ainda entrava com `filter: blur(12px)`. Em formulário isso parece tela quebrada.
+O picker deve escurecer o fundo sem embaçar e entrar nítido; o efeito do Pilot
+fica no Pilot.
 
-Regra que fica (D-073): **foco não é submit**. Superfície que cobre a tela abre no Enter (ou num toque explícito, como o orb), nunca no foco. E ao submeter, dar `blur()` no campo: sem isso o teclado do celular fica de pé escondendo a resposta.
+**Casa não passa pelo modal genérico de lugar (D-211).** O app já tem a Casa no
+perfil; ao criar plano, o cartão deve oferecer dois caminhos diretos:
+`Selecionar Casa` e `Selecionar ponto no mapa`. O modal "Onde fica?" continua
+útil para escola/trabalho/pontos, mas para Casa ele era uma etapa redundante e,
+quando falhava, bloqueava o plano inteiro.
+
+**Executar plano virou MODO, não tela (D-212 / PLAN-EXEC-001).** A execução
+deixa de morar dentro do `MemberSheet`; ele mantém só a entrada. O modo precisa
+ter banner global permanente, superfície própria e saída explícita, como o Modo
+Simulação. Push é reforço, não gatilho: o playbook renderiza do plano em
+IndexedDB e nunca espera servidor. O protocolo passa a ser primeiro passo do
+playbook, não menu antes de agir. MVP é só arquétipo `meet`; evacuar fica para
+spec própria. **EXEC-T00 é bloqueante:** cache offline por `(circleId, planId)`.
+
+**Cache offline do plano agora é por plano, não por círculo (EXEC-T00).** A lista
+de planos do círculo também fica em IndexedDB, então sem rede o seletor ainda
+mostra os N planos conhecidos e abre o escolhido. O cache legado
+`family-plan:{circleId}` é migrado por leitura para `family-plan:{circleId}:{planId}`
+e a regra D-075 continua: `GET /api/plans` é `NetworkOnly` no service worker.
+
+**Lugares do plano pertencem ao círculo (EXEC-T01).** `circle_places` é o
+catálogo compartilhado; `family_plan_waypoints.place_id` aponta para ele e mantém
+`name/lat/lng/notes` só como legado/snapshot. Waypoints migrados recebem
+`precision: 'unknown'` sem inferência. `unknown` continua calculando rumo e
+distância, mas a UI marca como não confirmado e exige promoção explícita para
+`gps/address/city`. Confirmar precisão sem mover coordenada não versiona; mover
+um lugar > 50 m versiona todos os planos ativos que o usam. Apagar lugar usado
+por plano ativo é recusado com motivo.
+
+**Sessão do plano é o dia, não o documento (EXEC-T02 / D-213).** `plan_sessions`
+tem no máximo uma linha `armed` por círculo. Tentar armar outra é recusado; o
+sistema não substitui nem desarma a anterior em silêncio. A faixa global fica no
+topo como o modo Simulação, mas em verde de execução real. Ponto do dia fica em
+`plan_session_places`, pode ser salvo localmente quando sem rede e não versiona,
+não envia push e não pede ack. Expiração pergunta antes de desarmar; não há
+desarme silencioso.
+
+**Disparo do plano é gesto único (EXEC-T03).** `MemberSheet` só escolhe o plano e
+mostra o alvo circular de segurar por 1,5 s; protocolo e passos não ficam mais
+ali. Completar o gesto chama `/api/plan-executions`, que cria
+`family_plan_executions`, grava evento `started` e registra o aviso do círculo no
+mesmo request; push continua best-effort. O modo global é `PlanExecutionProvider`
++ `PlanExecutionBanner`: a janela de falso alarme dura 30 s e é faixa não modal;
+depois disso o banner permanece como modo ativo até uma fase de encerramento
+resolver/cancelar. Migration `20260819124613_exec_t03_family_plan_executions.sql`
+aplicada pelo dono em 2026-08-19 e verificada por REST.
+
+**Playbook de execução é por papel e cache-first (EXEC-T04).** O banner global
+monta o playbook a partir de `PlanDocument` cacheado por `(circleId, planId)` e
+só depois tenta atualizar pela rede; sem rede, o usuário ainda vê passos, carta
+offline, rumo, distância e minutos até o ponto ativo. A seleção de protocolo
+fica em `family_plan_executions.protocol_index` e também atualiza localmente
+quando offline. A lista numerada nunca inclui avisos do sistema nem carta do
+dependente; a carta só aparece para quem tem papel com `for_member_id`
+correspondente. T04 não cria editor de cartas: a tabela
+`family_plan_dependent_briefs` é só contrato/renderização desta fase.
+Migration `20260819131113_exec_t04_dependent_briefs.sql` aplicada pelo dono em
+2026-08-19 e verificada por REST. D-214: PWA aplica legibilidade e números
+maiores; brilho máximo real fica para Native futuro.
+
+**Estado da execução continua evento-first (EXEC-T05 / D-215).** Não existe
+coluna de estado por pessoa: a tela deriva de `family_plan_execution_events`.
+`arrived/status` alimentam adultos com idade em minutos; dependentes aparecem
+sempre como `sem aparelho`, vindos da sessão do dia quando existe ou dos
+dependentes sem conta do círculo quando não existe sessão. Escalonamento é
+configurado no planejamento por protocolo em
+`family_plan_triggers.escalation_minutes`; nulo significa padrão explícito de 15
+min, e a faixa salva é 5–120 min. `Fiz isso` e `Ainda não` só gravam eventos e
+reiniciam/adiam o relógio local; nenhum botão liga, notifica terceiros ou aciona
+autoridade. Encerrar como `resolved` ou `cancelled` muda
+`family_plan_executions.status`; aparelhos alcançáveis limpam o modo ao buscar a
+execução novamente. Migration `20260819142746_exec_t05_trigger_escalation_minutes.sql`
+aplicada pelo dono em 2026-08-19 e verificada por REST.
+
+**Encerramento oferece promover pontos do dia (EXEC-T06).** Ao tocar
+`Encontrada — encerrar`, se a execução tem `session_id` e a sessão tem
+`plan_session_places` ainda não promovidos, o playbook mostra cada ponto antes
+de desligar o modo. Promover cria `circle_places` como `kind: 'custom'` e
+`precision: 'unknown'`, marca `plan_session_places.promoted_place_id` e não mexe
+em `family_plans.version`, push ou ack. Recusar promoção só encerra a execução:
+o registro compartilhado continua em `family_plan_executions`.
+
+**Basemap é preferência do perfil (EXEC-T06 / D-h).** Mundo, `MapPointPicker` e
+`RouteDraw` leem a mesma preferência `profiles.map_base_mode`, com default
+`satellite`; `localStorage` fica só como cache local até a rede responder. O QR
+público da ficha não expõe essa preferência. Migration
+`20260819144004_exec_t06_map_base_mode.sql` aplicada pelo dono em 2026-08-19 e
+verificada por REST service-role; a rota ainda degrada sem quebrar a ficha em
+ambientes que não tenham a coluna.
+
+**Plano é envelope; protocolo é execução (D-207 / PLAN-T11).** O executor não
+deve despejar o documento inteiro. Primeiro escolhe o plano salvo; depois escolhe
+o protocolo/gatilho ativo. No MVP, cada `family_plan_triggers` salvo é uma
+opção acionável. O Pilot pode sugerir protocolo, mas só vira executável depois
+de aplicado ao rascunho e salvo. Sem migration nova: a execução local seleciona
+um gatilho, mostra sua ação, papéis, ponto provável por heurística textual e
+rotas/notas existentes.
+
+**Protocolo não volta a ser frase (D-208 / PLAN-T12).** `condition/action` é o
+legado mínimo. A forma correta tem `action_type`, `destination_kind`,
+`route_label` e `notify_circle`. Texto livre é instrução curta; não é onde se
+esconde destino, rota ou intenção operacional.
+`20260817000000_family_plan_protocol_fields.sql` foi aplicada pelo dono em
+2026-08-17; se um ambiente futuro não tiver essa migration, a API degrada para o
+legado e registra a perda dos campos estruturados.
+
+**O teste de navegador roda contra `.next`.** Editar componente e rodar o teste
+sem `npm run build` testa o build anterior. Perdi uma rodada com isso.
+
+**Preparedness State está em PAUSA CONSCIENTE, não abandonado (NAV-T00).**
+`holdings`, `lib/coverage.ts` e `lib/holdings-store.ts` são corretos, testados e
+sem consumidor **de propósito**: "onde está minha água de reserva?" só tem
+sentido para quem tem dois lugares. Enquanto todos tiverem um, `holdings` é
+redundante com os sete escalares. Não "termine" isso sem uma demanda real.
+
+---
+
+## Preparedness State — o que um agente futuro não pode redescobrir errado (2026-08-12)
+
+D-155 / PREP-T03. Spec completa em `docs/37-preparedness-state.md`. Aqui só o
+que não é dedutível lendo o código.
+
+**O laço fechado não é novo.** EDU→ação, simulação→ação e Pilot→ação já rodam em
+produção com confirmação obrigatória (D-119, D-092, D-093). Quem propuser
+"construir o laço de preparação" está descrevendo mal o repositório: o que falta
+é a quarta entrada (alerta) e o estado. Não reconstrua as três que existem.
+
+**Alertas são gatilhos, não conteúdo.** O cron `weather-notifications` já faz a
+parte difícil — filtra severidade ≥ WATCH e deduplica via `sourceKeyFor()` +
+`circle_notifications.source_key`. Ele só para cedo demais, num cartão. Ao ligar
+a reavaliação, **reutilize esse dedup**; não invente outro.
+
+**Pilot contextualiza; o determinístico manda.** `lib/pilot-guard.ts` +
+`lib/rules-engine.ts` estabelecem verdade de evento, autoridade, severidade e
+relevância. A LLM nunca decide se existe aviso oficial nem amolece regra
+crítica. Isso é código testado, não intenção.
+
+**Fato estruturado não mora na memória do Pilot.** Se o Pilot "sabe" que a
+família tem um gerador, isso tem que ser linha consultável — não frase lembrada.
+`app/api/pilot/chat/route.ts` já relê a casa no servidor via `getHousehold()`
+mesmo recebendo `context` do cliente; esse precedente virou regra.
+
+**RAG diz o que é recomendado, nunca o que a família possui.** Um trecho dizendo
+"1 galão por pessoa por dia" é entrada de requisito, jamais prova de que existe
+água.
+
+**Localização e Kit são dimensões independentes** — e Categoria e Procedência
+também. Localização responde *onde está*; Kit responde *para qual capacidade*.
+Juntar duas quaisquer reproduz o defeito de `checklists.kit_type`, que hoje
+mistura propósito (`BUG_OUT`) com procedência (`PILOT_RECOMMENDATION`) **dentro
+da chave única** `(profile_id, canonical_key, kit_type)` — por isso o mesmo item
+vindo de duas fontes nunca funde.
+
+**Contagem física sem almoxarifado: `CONSUMABLE` × `DURABLE`.** Consumível conta
+quantidade dentro de uma localização e é consumido; durável é presença e atende
+qualquer número de requisitos alcançáveis dali. Um torniquete serve Primeiros
+Socorros, Bug Out e Furacão — e não serve o kit do Veículo, porque não está no
+veículo. **A localização faz o trabalho que uma reserva faria.** Não construa
+sistema de reserva/alocação.
+
+**`resource_inventory` é uma linha por perfil com 7 escalares** (`UNIQUE
+(profile_id)`). Não representa objeto, quantidade por objeto nem lugar. É a
+origem de toda a frente de Preparedness State — e a razão pela qual "onde está
+minha água de reserva?" é hoje uma pergunta sem resposta possível.
+
+**Prontidão já é calculada de quatro formas** (`calcReadiness()` 0–100,
+`/api/ai/readiness`, `autonomyDays()`, `restingVerdict()`). **Uma quinta é
+defeito, não feature.** E `unknown` nunca sobe para `covered`: dado faltando não
+pode virar tranquilização.
+
+**Localizações e kits são dados do usuário, nunca navegação global.** "Fazenda"
+e "Pesca" são linhas; podem virar filtros e visões; não viram abas. Isso também
+corrige `docs/36`, que colocava `Em casa` (localização) e `Mochilas` (kits) como
+irmãos no mesmo eixo — o eixo correto é `o que eu tenho` × `o que falta`.
+
+**A evolução é aditiva.** `resource_inventory` e `checklists` continuam
+funcionando por adaptadores. Nenhum passo irreversível antes de um cutover
+explícito. Quem propuser reescrever inventário, plano, Pilot, EDU e simulação
+antes de mexer na UI está indo contra D-155.
+
+**"Não sabemos" e "você não tem nada" são afirmações OPOSTAS (D-174).** O Pilot
+disse que a autonomia estava em zero enquanto o painel mostrava 2,7 dias, porque
+o prompt recebia `Autonomia 0.0 dias` do CLIENTE quando os fatos ainda não
+tinham carregado. Zero não é ausência de informação — é um fato, e o pior
+possível. `householdDays()` devolve `null` para desconhecido, e o prompt tem
+regra explícita proibindo expressar dado faltante como número.
+
+**Estado estruturado se lê NO SERVIDOR** (`docs/37` §7). O cliente enriquece;
+não É o fato. Foi o que matou a corrida entre o orbe abrindo e a pessoa
+digitando.
+
+**Cálculo puro não mora ao lado de acesso a banco.** `lib/household.ts` importa
+`createAdminClient` e `error-log` (→ `node:crypto`); quando um componente
+CLIENTE importou de lá, o build quebrou. Cálculo compartilhado entre servidor e
+cliente vai para módulo puro — foi assim que nasceu `lib/household-days.ts`.
+
+**CUTOVER FEITO (D-176): `requirements` é a verdade; `checklists` está
+CONGELADA.** Não é mais escrita. As telas legadas que ainda a leem estão lendo
+um retrato do momento do cutover. Estágio 6 (remover `acquired`, aposentar a
+tabela) **não** foi feito — só depois do cutover provar-se em uso.
+
+**O cutover CONGELOU `checklists`; não a manteve em sincronia (D-173/D-176).** O
+espelho invertido é impossível por construção: `kit_type` guarda UMA dimensão, e
+um requisito com kit E procedência não cabe nele — é exatamente o defeito que
+D-161 desfez. Hoje há 0 casos, mas isso é sorte do dado atual: **o primeiro item
+da Bug Out sugerido pelo Pilot torna a volta lossy para sempre.** Portanto o
+cutover move os 18 leitores de uma vez, e `checklists` vira retrato para
+rollback. `npm run test:cutover-gate` é o portão e mede as duas coisas.
+
+**`catch` mudo esconde problema por dias — três vezes hoje.** No helper de
+limpeza (escondeu 9 perfis órfãos por seis dias), no meu `dual-write-test`
+(sujou produção) e no `usePilotFacts` (fatos vazios virando zero). Falha de
+limpeza e falha de leitura precisam RECLAMAR.
+
+**(resolvido em D-175) `profiles` NÃO tinha FK para `auth.users`.** `profiles.id` é
+`uuid PRIMARY KEY DEFAULT auth.uid()`, sem referência. Apagar a conta deixa o
+perfil e TUDO pendurado nele. Em 2026-08-13 havia 19 perfis para 9 contas.
+Qualquer script de teste que crie usuário precisa apagar o PERFIL, não só a
+conta — e não pode engolir a falha da limpeza, que foi como um perfil de teste
+meu chegou à produção e só apareceu na conferência do backfill.
+
+**Backfill roda a seco por padrão.** Modo perigoso como padrão é acidente
+esperando o dedo errado, e este roda contra produção com Stripe ao vivo.
+
+**Escrita nova nunca derruba escrita real (D-172).** Enquanto o legado for a
+verdade, o espelho falha em silêncio e vira linha no `error_log`. O contrário
+transformaria uma tabela que ninguém ainda lê num ponto único de falha para uma
+de que o app inteiro depende.
+
+**`on_conflict` do PostgREST não alcança índice de EXPRESSÃO.** A chave natural
+de `requirements` usa `COALESCE(kit_id, sentinela)`, então a conciliação é
+ler-então-escrever, com o índice único como rede e releitura na corrida. Não é
+preguiça: é a única forma que funciona com a chave que precisamos.
+
+**Teste unitário prova tradução; só o banco prova escrita.**
+`npm run test:dual-write` roda contra o Supabase real com perfil temporário e
+limpeza. Foi ele que provou o kit não duplicando, `NULL` tratado como valor na
+chave natural, e a procedência ATUALIZANDO em vez de duplicar.
+
+**Tabela sem consumidor não se cria (D-170).** `ReadinessAssessment` está
+prevista em `docs/37` §13 e **não** foi criada: hoje nada a leria. A spec
+continua certa sobre o destino; errado seria chegar lá antes de haver motivo.
+Ela entra junto do orçamento de interrupção por push, que é quem vai consultá-la.
+
+**"Já vi este aviso" ≠ "não me avise mais" (D-170).** A dispensa vale por
+GATILHO: outro evento, outra severidade ou outra validade têm chave diferente e
+o aviso volta. Silenciar para sempre transformaria preferência de exibição em
+risco de segurança. E dispensa mora no aparelho — o "não me mostre" de uma
+pessoa não pode calar o aviso para a família inteira.
+
+**Estado de "já fiz" nunca mora só no componente.** O `✓ na lista` vivia em
+`useState` e sumia ao recarregar, reoferecendo o que o banco já tinha. Agora é
+derivado do checklist real, comparado por `canonical_key` — a MESMA chave que o
+servidor grava. Comparar texto exibido erra em acento e maiúscula, e erra para
+mais.
+
+**Alerta reordena; não cria (D-168).** Um aviso de furacão não inventa que
+falta água — torna urgente a que já faltava. A reavaliação lê os MESMOS itens de
+`lib/attention` que a Visão mostra em repouso, para não existir uma segunda
+verdade sobre a casa. E alerta relevante **sem lacuna correspondente não
+interrompe**: dizer "atenção" quando a casa está pronta gasta a atenção que o
+próximo evento vai precisar.
+
+**Nenhuma chamada de modelo no cron.** A reavaliação roda quando o usuário
+chega, onde ele pode confirmar. No cron seria proposta gerada para milhares de
+casas que talvez nunca abram o app — custo, ruído, e escrita preparada sem
+ninguém para consentir.
+
+**Fronteira de palavra em padrão de alerta é obrigatória.** Sem `\b`, `neve`
+casa dentro de **nevoeiro** e um aviso de neblina passa a pressionar comida e
+água. Alarme por coincidência de letras é pior que alarme nenhum: parece
+fundamentado.
+
+**A tarefa sobrevive ao briefing (D-167).** O cartão some; a linha fica no
+checklist e será lida semanas depois, sozinha. Item que depende do contexto que
+já não está na tela é pior que nenhum — ocupa espaço prometendo memória que não
+tem. Por isso `next_steps` precisa citar O QUÊ, QUANTO e PARA QUEM, e o prompt
+diz isso ao modelo explicitamente.
+
+**A lista de verbos de ação precisa aceitar INFINITIVO.** Ela nasceu só com
+imperativos ("compre", "revise") e o modelo escreve "Garantir", "Comprar",
+"Separar" — forma dominante em lista de tarefa em pt-BR. O efeito era silencioso
+e perverso: `looksActionable` devolvia `false` para TODA prioridade real,
+descartando as específicas e deixando passar as genéricas. Vale para EDU e
+briefing, que compartilham a lista.
+
+**Diagnóstico não é ação (D-166).** "Água abaixo do mínimo" descreve estado;
+não há o que executar nem o que marcar como feito. Ao transformar saída de IA
+em tarefa, só entra o que começa com verbo de ação (`looksActionable`, exportado
+do EDU e não copiado). Uma lista cheia de diagnósticos disfarçados de tarefa
+ensina o usuário a ignorar a lista.
+
+**Nada é gravado por ter sido gerado.** Toda proposta de IA — Pilot, EDU,
+simulação, briefing — precisa de confirmação item a item. Vale igual quando o
+modelo acerta: a regra é sobre quem decide, não sobre qualidade da sugestão.
+
+**Desconhecido não pode virar conta silenciosa (D-165).** O app usa
+`max(size, 1)` para não dividir por zero ao calcular por pessoa. Isso é defesa
+correta e resposta errada: uma casa de quatro avaliada como se fosse uma parece
+quatro vezes mais preparada. `lib/attention.ts` transforma tamanho desconhecido
+num item próprio e rebaixa a severidade dos dependentes para `unknown`. Mesma
+família de regra do `unknown ≠ covered`.
+
+**Nada pendente se diz com palavras, não sumindo.** Uma seção vazia que
+desaparece é indistinguível de uma que falhou ao carregar — num app de
+emergência isso é a diferença entre "está tudo certo" e "não sei".
+
+**Extrair tela pode remover feature em silêncio — quase aconteceu (D-164).**
+Ao tirar o checklist da Visão, os diálogos de **editar item** e de
+**confirmação antes de excluir** (ambos de D-121) teriam ficado para trás sem
+que nada quebrasse: nenhum teste falharia, o build passaria, e duas
+funcionalidades entregues sumiriam. Ao mover um bloco, mover também o que ele
+abre. `components/world-v2/ChecklistDialogs.tsx` existe por isso.
+
+**A navegação local da Preparação usa `<nav>` + `aria-current`, não
+`role="tab"`.** Cada subtópico é rota real; sem painéis em memória, um
+`tablist` anunciaria ao leitor de tela uma troca de aba que é navegação.
+`npm run test:prep-nav` prova isso e — mais importante — prova que a BottomNav
+não se mexe em sub-rota: 7 destinos, PREPARAÇÃO acesa. Sub-rota de domínio não
+pode custar nada à navegação global.
+
+**`unknown` NUNCA sobe para `covered`, e conjunto vazio é `unknown` (D-162).**
+Um kit sem requisitos não está pronto — ninguém disse o que ele precisa. "Nada
+foi olhado" e "nada falta" não podem ter a mesma cor, e esse é o jeito mais
+fácil de quebrar a regra de segurança sem perceber (por isso tem teste próprio
+em `lib/__tests__/coverage.test.ts`). Unidade não conversível também vira
+`unknown`, nunca zero: tratar o desconhecido como ausente inventa uma falta,
+tratá-lo como presente inventa água.
+
+**Ordem do pior-vence: `missing > partial > unknown > covered`.** `partial`
+acima de `unknown` porque falta MEDIDA é acionável; `unknown` acima de
+`covered` porque é o que garante a regra acima.
+
+**Assimetria conhecida:** `CONSUMABLE`/`DURABLE` é propriedade do RECURSO, mas
+mora no `Holding`. `resourceIsConsumable()` infere — do holding quando existe,
+da unidade quando não. Está isolado numa função só, com teste, para ter um
+lugar único quando virar coluna ou tabela de recursos.
+
+**A nota 0–100 mede CINCO recursos da casa** e não mede plano, kits nem treino.
+Foi rebaixada no rótulo (D-162), não removida: "Linha de base da casa". Não a
+promova de volta a "prontidão" — ela não sabe o que isso significa.
+
+**`GERAL` não é kit — é a linha de base da casa (D-161).** `lib/checklist.ts`
+sempre o descreveu como "estoque e suprimentos para emergências em casa": isso
+não é uma mochila que se pega. No modelo novo vira requisito **sem `kit_id`**.
+Descoberto escrevendo o adaptador, e não é detalhe: com `GERAL` mapeado para um
+kit, um item vindo do Pilot (sem kit) e o mesmo item em `GERAL` teriam chaves
+naturais diferentes, e **a deduplicação prometida nunca dispararia sobre o dado
+real mais comum**. Kits de verdade são quatro: Bug Out, Acampamento, Pesca, Caça.
+
+**Procedência fica FORA da chave natural do requisito (D-155 §26.2 / D-161).**
+Chave = `(profile_id, resource_key, kit_id, scenario_id)`. Duas fontes achando
+a mesma lacuna **atualizam** a procedência; não criam segunda linha. Colocar
+procedência na chave recriaria, numa tabela nova, exatamente a duplicação de
+`checklists.kit_type`. E `NULL` na chave precisa de `COALESCE` com sentinela —
+no Postgres, `NULL` é distinto de `NULL` num índice único, e sem isso dois
+requisitos de linha de base do mesmo recurso passariam como linhas diferentes.
+
+**Holdings e Locations existem no código antes de existirem no banco
+(D-160, PREP-T04).** A migração
+`20260813000000_preparedness_holdings_locations.sql` está escrita e **o dono a
+aplica no SQL Editor** — o agente não tem credencial de banco (padrão D-038).
+Enquanto isso, `lib/holdings-store.ts` projeta o legado e nada muda na tela.
+**Só `42P01` degrada**; qualquer outro erro estoura. Mascarar falha de leitura
+aqui é o equivalente a dizer "pode ir" sem saber — e este projeto já acendeu um
+banner "migration pendente" falso por tratar erro de coluna como tabela ausente.
+
+**Item de checklist NÃO vira Holding.** Foi tentador e está errado: item marcado
+carrega quantidade **planejada** (não medida) e `kit_type` (não lugar). Ele é
+`Requirement` com estado `met`, e isso é PREP-T05. Projetá-lo como Holding
+reintroduziria, numa camada mais funda, o defeito que PREP-T11 removeu. *Este
+ponto corrigiu um critério de aceitação escrito no próprio roadmap antes de
+codificar — critério não é imune a revisão.*
+
+**A autonomia do modelo novo tem que dar EXATAMENTE a do antigo**, e há teste
+sobre seis cenários provando. Enquanto os dois modelos coexistirem, divergência
+não é evolução: é a quinta conta de prontidão, que `docs/37` §24.2 proíbe.
+
+**Todo kit é Preparação (D-157, decisão do dono).** Pesca, Caça, Acampamento,
+Bug Out, Geral e qualquer kit criado pelo usuário. `Kit` **não tem**
+discriminador de propósito — nada de `is_preparedness`, nada de separar kit
+"sério" de kit "de lazer". O equipamento que sustenta um fim de semana de pesca
+é o mesmo que sustenta três dias sem energia; separá-los criaria duas prontidões
+para o mesmo cobertor.
+
+**Água é exibida em GALÃO (D-158, decisão do dono).** As fontes do EOS são todas
+americanas e a FEMA publica 1 galão/pessoa/dia. Duas regras que vêm junto:
+**nenhum número é gravado em campo cujo nome contradiga a unidade** — por isso
+`resource_inventory.water_liters` continua em litros até a migração do PREP-T04
+renomeá-lo, e PREP-T11 muda só a exibição; e **no modelo novo unidade é dado**
+(`Holding.quantity` + `unit`), com a conversão para unidade-base acontecendo uma
+vez só, na matemática de cobertura.
+
+**A régua da água é a da FEMA, nos DOIS eixos: 1 galão por pessoa por dia
+(D-159) e mínimo de 3 dias (D-163).** Adequado = 3 dias/pessoa; crítico = menos
+de 1 dia; baixo entre os dois. Os limiares moram em `lib/units.ts`, derivados da
+régua — nenhum literal solto. **Racionamento é outro número:** "máximo 2 L por
+pessoa por dia" é piso de sobrevivência em emergência, não meta de estoque, e
+igualar os dois transformaria um mínimo de guerra em recomendação de despensa.
+
+**Literal em teste vira âncora do número errado — aconteceu DUAS vezes nesta
+frente.** Primeiro com `toBe(3)` na constante (D-159), depois com `6 L`/`20 L`
+nos casos do rules-engine (D-163). Pior: o fixture padrão do rules-engine tinha
+água abaixo do mínimo novo, e `WATER_LOW` passou a disparar em *todo* teste que
+usava o padrão, inclusive os que não eram sobre água — ruído silencioso capaz de
+mascarar regressão. **Teste sobre régua deriva da constante; fixture padrão fica
+confortavelmente acima do limiar.**
+
+**(histórico) A régua da água é a da FEMA: 1 galão americano (3,785 L) por
+pessoa por dia (D-159).** Implementado em PREP-T11. A constante mora em **`lib/units.ts`** e em
+lugar nenhum mais. Eram **cinco** cópias, não três: `lib/household.ts`,
+`lib/simulation-debrief.ts`, `components/world-v2/useWorldData.ts`,
+`components/world-v2/usePilotFacts.ts` e duas multiplicações inline `3 * people`
+nas telas legacy. Quem for procurar, procure por todas.
+
+**Litro é armazenamento; galão é exibição.** `resource_inventory.water_liters`
+guarda litros e continua guardando — a conversão acontece só na borda
+(`litersToGallons`/`gallonsToLiters`). O campo só é renomeado quando PREP-T04
+trouxer `Holding.quantity` + `unit`. **Combustível continua em litros**; só a
+água virou galão.
+
+**Três testes fixavam o número antigo e quebraram na troca da régua.** Foram
+reescritos para derivar de `WATER_LITERS_PER_PERSON_DAY` em vez de repetir o
+literal. Regra que vale para o resto: teste sobre régua deriva da constante;
+teste que repete o número vira âncora do erro.
+
+**A autonomia exibida cai ~21% e isso NÃO pode ser silencioso.** Ninguém ficou
+menos preparado — a régua é que estava curta. Mas num app de emergência um
+número de segurança que piora sozinho, sem explicação, é lido como perda de
+estoque ou como defeito, e o usuário conclui a coisa errada justamente sobre o
+número que mais precisa ser confiável. PREP-T11 mostra uma nota única
+explicando. **Lição geral: mudança de régua exige aviso; mudança de dado não.**
+
+**Um teste que trava um número errado é parte do erro.**
+`household.test.ts:73` afirmava `toBe(3)` e foi corrigido no mesmo commit que a
+constante — não em seguida.
+
+**Marcar item de checklist NÃO escreve no estoque (D-156, PREP-T11).** A regra e
+o porquê estão em `lib/checklist-inventory.ts`, com teste. **Cuidado com a
+história errada:** por um tempo isto foi descrito como "perda de dado — 20 L
+viram 4". **Não era.** Havia `Math.max` desde `f75a7c4` e o estoque nunca
+encolhia. Os defeitos reais eram outros dois: quantidade **planejada** virando
+quantidade **medida** (item de 20 gal marcado definia o estoque em 20), e água
+de **mochila** virando água de **casa** (a regra ignorava `kit_type`). Se
+alguém propuser "restaurar a sincronização com um Math.max seguro", é
+exatamente isso que foi removido — e o teste quebra.
+
+**Armadilha ainda aberta (PREP-T13):** os limiares da nota
+(`PreparednessPage.tsx:751`) são **absolutos por pessoa, não por dia** — 4 L
+equivale a ~1 dia de água, enquanto o mínimo FEMA é 3 dias. "Adequado" no EOS
+hoje significa um dia. Não corrija de passagem junto com a régua: são duas
+mudanças de severidade e elas não podem viajar na mesma entrega.
+
+**A autonomia da casa lê o que está EM CASA (D-156, decisão do dono).**
+Consumíveis cuja localização está sob CASA. Um item de checklist **nunca**
+sobrescreve o estoque — marcar registra aquisição; onde a coisa passa a existir
+é questão de localização. Água na mochila guardada em casa **conta** (está lá, e
+seria bebida numa emergência), contada **uma vez só**, com o conflito visível ao
+abrir o kit. Mochila movida para o carro sai da conta sozinha. **A localização é
+o discriminador — não existe marcação manual de "reservado".** Isso responde a
+pergunta que D-155 deixou aberta: os sete escalares e os itens de checklist não
+são o mesmo objeto, são a mesma realidade em duas granularidades.
+
+---
+
+## Camada de vento animado mora no WorldMap existente (2026-08-09)
+
+D-141 decidiu que vento animado não vira outro mapa. A camada `wind` da World v2
+é a superfície canônica: MapLibre continua sendo o mapa, e um canvas overlay
+imperativo desenha partículas quando, e somente quando, a camada premium está
+ativa.
+
+Regra de continuidade: usuário free não pode iniciar requisição/renderer pesado
+ao tocar em `Vento`; deve ver `PREMIUM` e ir para upgrade. A fonte v1 pode ser a
+grade pública Open-Meteo já existente, desde que o contrato interno seja vetor
+U/V. HRRR/NOAA e GFS entram depois como providers do mesmo contrato, não como
+novo produto.
+
+D-142 corrige a forma de implementar: vento animado deve viver num módulo
+imperativo `WindParticleLayer`, com `enable/disable/updateViewport`, pool próprio
+de partículas e interpolação bilinear quando a grade permite. React só liga e
+desliga a camada; não participa do frame loop. A camada não deve usar wash
+colorido em blocos se isso voltar a piscar.
+
+D-143 amplia a regra: `wind` premium não é raster tile layer. A leitura ampla do
+WorldMap deve vir de um canvas escalar gerado no cliente a partir de dados
+numéricos de grade, com interpolação bilinear por pixel e LUT/colormap própria.
+Esse canvas é independente do canvas de partículas: o campo escalar só redesenha
+quando dados ou viewport mudam; partículas continuam no `requestAnimationFrame`.
+Usuário sem Premium não deve iniciar fetch amplo, canvas ou loop.
+
+Follow-up de D-143: zoom <= 4.5 deve forçar modo global (`latSpan=170`,
+`lngSpan=360`, `grid=17`) e o renderer precisa normalizar longitudes quando o
+MapLibre mostra cópias do mundo. Campo escalar muito sutil não serve: usar blend
+normal/opacidade legível para que o mapa realmente mude quando `Vento` liga.
+
+D-144 substitui a UX: `Vento` não deve ser chip de camada sobreposto a
+`Escuro/Satélite`; ele é modo premium de mapa. O painel de base deve mostrar
+`Escuro`, `Satélite` e `Vento`. Clicar em `Vento` fecha o painel, remonta o mapa
+em câmera mundial plana e liga o renderer com grid global mais denso (`25x25`).
+Ao sair para `Escuro`/`Satélite`, o modo vento desliga. Durante troca de base,
+destruir o `WindParticleLayer` antigo; ele não pode ficar preso a um MapLibre
+removido. Campo escalar não redesenha durante `move/zoom` contínuo.
+
+D-145 sincroniza vento premium com Hurricane Tracker sem provider pago. A rota
+`/api/world/wind` agora pode entregar frames horários cacheados do Open-Meteo com
+`models=best_match`; o slider de tempo do modo Vento escolhe o frame, sem refetch
+por frame. O mesmo tempo interpola o alvo visual do ciclone entre pontos de
+previsão do NHC quando eles existirem. Perto do centro, o campo de fundo é
+misturado com um perfil paramétrico local baseado em posição, vento máximo
+sustentado, rumo e velocidade do tracker. Isto é coerência visual operacional,
+não previsão proprietária: cone/trilha oficiais continuam sendo os produtos do
+NHC e providers pagos seguem fora de escopo.
+
+D-146 corrige a legibilidade: se a API informa vento, o usuário precisa ver
+rastros circulando mesmo em vento fraco. O `WindParticleLayer` usa linha mínima
+em tela, paleta de maior contraste e partículas com opacidade total sobre o
+campo escalar. Não reduzir isso sem substituir por outra verificação visual,
+senão o modo Vento volta a parecer um mapa colorido estático.
+
+D-147 ajusta a semântica visual do rastro: não desenhar segmentos artificiais
+maiores que o deslocamento real da partícula. Isso cria ticks piscando. O passo
+mínimo deve avançar a posição da própria partícula, e o canvas deve reter frames
+anteriores com `fadeAlpha` alto para formar cauda contínua. Partículas também
+devem viver mais tempo antes de respawn.
+
+D-148 remove linhas retas artificiais: quando o mapa global repete o mundo, a
+partícula deve desenhar para a cópia horizontal mais próxima do ponto anterior.
+Se o segmento projetado ainda ultrapassar o limite visual (`maxSegmentPx`), o
+renderer descarta o desenho e respawna a partícula. Essas linhas são artefato de
+projeção/respawn, não vento.
+
+D-149 mantém densidade no zoom: partículas devem nascer prioritariamente dentro
+da viewport visível e partículas fora da tela devem ser recicladas para a área
+visível. Não voltar a distribuir o pool inteiro pela grade global, senão o zoom
+local fica com 1 ou 0 segmentos. O movimento visual também precisa ser
+proporcional à velocidade: o piso de passo é dependente de `speedMph`, não igual
+para vento fraco e forte.
+
+D-150 torna a poluição visual configurável pelo usuário. O padrão do vento deve
+ser mais limpo que WV2-T21 (`mobileParticleCount=520`, `globalParticleMultiplier=1.9`),
+e os sliders `Fluxo` e `Rastro` ajustam apenas o `WindParticleLayer` imperativo.
+Essas preferências ficam em `localStorage` (`eos-wind-renderer`) e não podem
+disparar novo fetch de vento nem remontar o mapa.
+
+D-151 corrige a ergonomia mobile: os sliders do vento não podem ficar presos
+atrás do bottom nav nem competir com a coluna de controles do mapa. No celular,
+o painel fica lateral/direito e colapsado por padrão em um botão `Vento`; ao
+abrir, mostra timeline, `Fluxo` e `Rastro`. No desktop, permanece aberto.
+
+D-152 muda o painel para flutuante/colapsável em todas as viewports. O botão
+`Vento` abre/fecha, e pointerdown fora do painel recolhe. No desktop, posicionar
+à esquerda e mais ao centro, deslocado do painel principal. O slider `Mapa`
+controla transparência do campo escalar e partículas via CSS vars +
+`WindParticleLayer.updateConfig`, sem novo fetch.
+
+D-153 separa as setas fallback (`eos-wind` e `eos-wind-label`) das partículas.
+O slider `Setas` controla apenas `icon-opacity` e `text-opacity`: 0 esconde
+totalmente as setas/números azuis, 1 restaura a tint/label. Não remover a camada,
+porque ela ainda é fallback/debug e continua útil quando partículas/canvas
+falham.
+
+---
+
+## EOS Platform: quatro camadas, não quatro produtos (2026-08-03)
+
+D-084 resolveu a pergunta de plataforma: levar EOS para Web, App Store, Google
+Play, CarPlay/Android Auto e Mesh não significa abrir produtos paralelos.
+Significa manter um **core operacional único** e adaptar somente as bordas.
+
+As quatro camadas são:
+
+1. Product Core — Pilot, Risk Engine, Family, Plans, Weather, Shelters, Routes,
+   Simulation, Preparedness, EDU e Comms.
+2. Domain Core — regras, decisão, risco, consentimento, offline, autoridade da
+   fonte, freshness e ordem de execução.
+3. Shared UI — design system, HUD, sheets, mapa, status, família, plano e
+   preparação.
+4. Platform Adapters — push nativo, background location, secure storage, loja,
+   widgets, Automotive, BLE e LoRa.
+
+Regra: **não abrir quatro produtos; estruturar quatro camadas**. Web/PWA continua
+sendo a superfície primária de validação. iOS/Android só começam depois de G-03.
+CarPlay/Android Auto só depois de G-06 e como companion mode restrito. Mesh/LoRa
+continua bloqueado por G-05.
+
+`/mobile/` contém template/código conceitual e experimentos LoRa/BLE. Não existe
+app React Native inicializado, nem Expo, nem Capacitor, nem pipeline de App
+Store/Google Play.
+
+Preparedness, EDU, Comms e onboarding por simulação pertencem primeiro ao Web/PWA
+core; não são justificativa para iniciar mobile.
+
+---
+
+## Preparedness Engine: conhecimento precisa virar ação confirmada (2026-08-03)
+
+D-085 define o próximo eixo do produto: EOS não é só monitoramento de hazard e
+weather. O core precisa ajudar a família a se preparar antes da crise.
+
+Regra: **conteúdo educativo, Pilot e simulação só entram no Preparedness Engine
+quando podem virar ação concreta** — tarefa, material, aquisição, papel, revisão
+de plano, treino ou melhoria de comunicação.
+
+Checklist e Recursos deixam de ser tratados como abas separadas no produto
+futuro; viram uma superfície de **Preparação**. Comms nasce como app-level core:
+chat do círculo, guia de rádio, frequências e referência rápida. Isso não libera
+Mesh/LoRa hardware; G-05 continua bloqueando BLE/LoRa.
+
+YouTube do dono pode alimentar EDU/RAG, mas não como busca genérica. O fluxo
+precisa capturar transcript, classificar por cenário, aprovar/versionar e manter
+fonte visível. Pilot/EDU/Simulação podem propor tarefas e recursos, mas escrita
+persistente exige confirmação explícita.
+
+Spec canônica: `docs/20-preparedness-engine.md`.
+
+---
+
+## Preparação substitui Recursos + Checklist na navegação (2026-08-03)
+
+D-086 fez a unificação prática do PREP-T01: `/preparedness` é a superfície única
+para prontidão, recursos reais, gaps, briefing OpenAI e checklist/tarefas.
+`/inventory` e `/checklist` redirecionam para ela.
+
+Regra de continuidade: não recriar duas abas. Se uma tela precisa mandar o
+usuário ajustar estoque, tarefa, checklist ou aquisição, o destino é
+`/preparedness`.
+
+A aba Comms existe na navegação e abre `/comms`.
+
+---
+
+## Comms v1 é chat do círculo, não canal de emergência garantido (2026-08-03)
+
+D-087 / COMMS-T01 cria Comms como uma superfície app-level do Web/PWA: chat do
+círculo, guia rápido de rádio e status de Mesh como referência. O contrato de
+dados é `circle_messages`, acessado só por `/api/comms/messages` depois de
+checar membership em `circle_members`.
+
+Regra: mensagem de Comms **não é alerta**, **não é SMS**, **não é dispatch** e
+**não é transmissão por rádio**. Alertas familiares, push e execução de plano
+continuam fluxos separados. Se no futuro o chat gerar push, isso precisa virar
+decisão e política própria, porque push de toda mensagem muda ruído, privacidade
+e expectativa de entrega.
+
+Mesh/LoRa continua bloqueado por G-05. A UI pode explicar como operar canais
+combinados no plano, mas não pode prometer rede mesh/off-grid enquanto não houver
+hardware, adapter e gate de prioridade aprovados.
+
+Migration `20260803000000_circle_messages.sql` aplicada pelo dono em 2026-08-03
+e verificada via service-role. A tela ainda deve degradar com estado
+indisponível se o endpoint falhar, porque Comms não pode fingir entrega.
+
+D-088 adicionou na própria `/comms` a referência familiar owner-provided de
+rádio: canais VHF/UHF 1-6, NOAA, chamadas nacionais, marítima, serviços para
+escuta, MURS/GMRS/FRS e guia rápido de Baofeng UV-5R. Isto é conteúdo
+operacional estático, não editor de frequências e não fonte legal definitiva.
+
+D-089 criou `circle_radio_profiles`: frequências configuráveis por círculo,
+editáveis por Admin/Editor e lidas por todos os membros. Não enfiar isso em
+`circle_messages`. A próxima evolução, se priorizada, é histórico/versionamento
+e perfis por cenário.
+
+Migration `20260803001000_circle_radio_profiles.sql` aplicada pelo dono em
+2026-08-03 e verificada via service-role. A edição de rádio agora tem tabela
+persistente em produção.
+
+D-109 / COMMS-T04 adiciona uma camada social persistente ao Comms:
+`circle_notifications`. O badge vermelho do ícone Comms vem da contagem não lida
+dessa tabela, e `/comms?view=notifications` abre a timeline das interações. Os
+eventos iniciais são mensagem de círculo, pedido de entrada aceito, novo membro
+no círculo, convite de Família íntima, e aceite/recusa de Família íntima. Isso
+continua sendo app-level timeline; não é push garantido, SMS, dispatch, nem
+alerta de emergência. Migration `20260804012000_circle_notifications.sql`
+precisa estar aplicada para persistir badge/timeline.
+
+D-110 / COMMS-T05 corrige a percepção de atraso: Comms deve ser realtime-first
+no Web/PWA. O polling existe apenas como fallback. Para isso, `circle_messages`
+e `circle_notifications` precisam estar na publicação realtime com RLS de SELECT
+controlada: membro autenticado recebe mensagens do próprio círculo; usuário
+autenticado recebe apenas notificações destinadas a ele. Escrita continua pelas
+APIs, não pelo cliente direto. Migration necessária:
+`20260804013000_comms_realtime.sql`.
+
+D-111 / COMMS-T06 muda o significado de Comms na navegação: quando houver badge,
+o clique abre o **Inbox EOS** global em janela expandida, não a página Comms.
+`circle_notifications` permanece o storage por compatibilidade, mas agora aceita
+`scope` (`circle`, `weather`, `edu`, `simulation`, `system`), `severity`,
+`source_key` e `circle_id=null`. EDU aprovado, convite de simulação, chat e
+weather WATCH+ entram no mesmo feed. Abrir o Inbox não marca como lido; clicar
+em item marca só aquele item e navega pelo `href`. Weather é cron servidor a
+cada 15 minutos, protegido por `CRON_SECRET`; não é SMS/push garantido/dispatch.
+
+D-112 / COMMS-T07 é polimento guiado por teste real: chat do círculo deve
+auto-enquadrar a última mensagem; timeline do Comms mostra 4 itens e expande
+histórico sob demanda; EDU mostra título/vídeo por padrão, detalhes só em
+"Mais"; o destaque do EDU usa `edu_content.view_count`; e EDU aprovado deve
+notificar também o admin publicador para validar o fluxo na própria conta.
+
+D-113 / COMMS-T08 esclarece o padrão do ícone Comms: com badge, ele abre Inbox
+EOS global estilo rede social, com seções Today / Last 7 days / Earlier. Não
+deve navegar direto para a timeline interna. O feed mostra notificações recentes
+lidas e não lidas; o badge conta só não lidas. Chat deve rolar o próprio
+container (`scrollTop = scrollHeight`), não depender só de `scrollIntoView`.
+
+D-114 / COMMS-T09 corrige a navegação real do Inbox: clicar no resumo deve
+transportar imediatamente para o `href` antes de esperar `mark_read`. `/comms`
+precisa reagir a mudanças de `view`, `circleId` e `messageId` via query, porque
+o usuário pode já estar dentro do App Router quando abre o Inbox. Mensagem focada
+usa scroll do container e o destaque expira, para novas mensagens voltarem ao
+auto-enquadramento no final do chat.
+
+D-115 / COMMS-T10 fecha a regressão observada em teste real: se a notificação de
+mensagem chega mas o realtime direto de `circle_messages` não acorda o chat, a
+própria notificação `kind='message'` força `/comms` a recarregar as mensagens do
+círculo aberto. O Inbox também voltou a usar navegação hard para o `href` depois
+de disparar `mark_read` com `keepalive`, reduzindo dependência do estado interno
+do App Router/PWA.
+
+D-116 / NAV-T01 fixa a ordem operacional do BottomNav: Clima é o primeiro ícone
+da esquerda para a direita; Cenário é o último. World continua central.
+
+D-117 / NOTIF-T01 separa badges por surface do app. A tabela continua única, mas
+`notificationSurface()` deriva `weather`, `family`, `comms`, `preparedness`,
+`scenario` ou `system` a partir de `metadata.surface`, `scope` e `kind`.
+`/api/comms/notifications` retorna `unread_by_surface`; BottomNav mostra badge
+por ícone.
+
+D-138 / NAV-T02 corrige a regressão gerada por D-117: ícone da BottomNav nunca
+deve ter navegação sequestrada por notificação. O clique principal navega para a
+tela; tocar especificamente no badge vermelho abre a Inbox filtrada pela surface.
+Abrir a Inbox não marca nada como lido.
+
+D-139 / NAV-T03 corrige a causa real do "cliquei e nada respondeu" no dashboard:
+`WorldV2` entrava em loop com o `PilotProvider` ao registrar o contexto do Pilot
+unificado. Registro de contexto de tela agora é imperativo via `ref`; registrar
+fatos do dashboard não pode redesenhar a app shell. `npm run test:nav` cria uma
+conta temporária, abre `/dashboard` e exige que Clima, Família, Preparação,
+Comms, Círculos e Cenário mudem a URL.
+
+D-140 / PILOT-T11 define o Pilot como superfície modal dismissible: o X continua,
+mas tocar fora da janela também fecha. O scrim precisa ser `fixed` e acima do
+app shell; a folha do Pilot fica acima do scrim. `node scripts/pilot-orb-test.mjs`
+prova o comportamento junto com a consistência/arraste do orbe.
+
+D-118 / LA-T04 fecha o draft antigo de rate-limit sem depender de Upstash:
+Supabase/Postgres é o guardrail distribuído v1 via `consume_rate_limit`; memória
+fica só como fallback de degradação. Rotas OpenAI caras (`/api/pilot/chat` e
+`/api/weather-intelligence/custom-activity`) têm orçamento por minuto e por dia.
+`custom-activity` exige login. Enquanto Sentry não tiver DSN, `error_log` guarda
+erro sanitizado; `/api/health` mostra rate limit, error log, Sentry, OpenAI,
+push e cron. Migration: `20260804180000_rate_limit_and_error_log.sql`.
+O dono aplicou a migration em 2026-08-04; `node scripts/guardrails-test.mjs`
+passou 5/5. O teste de rajada usa chamadas paralelas com JSON inválido de
+propósito para provar o rate limit antes do parse e antes de gastar OpenAI.
+
+`20260804015000_edu_view_count.sql` também está aplicado em produção: em
+2026-08-04, `edu_content?select=id,view_count` respondeu 200 via service-role.
+Isso libera o destaque v1 do vídeo EDU mais clicado.
+
+D-119 / EDU-T05 fecha o primeiro loop EDU → Preparação: `/edu` extrai propostas
+determinísticas de `summary + transcript`, mostra as ações ao usuário e só salva
+após clique. Persistência v1: `checklists.kit_type='EDU_CONTENT'`. Não há nova
+migration nem escrita automática; conteúdo link-only não gera ação.
+
+D-120 / EDU-T06 corrige a qualidade dessas ações: antes de mostrar/salvar,
+`/api/edu/actions` usa OpenAI para remover markdown, aspas decorativas,
+minutagem de vídeo e descrições longas, além de traduzir para o idioma da UI
+(`pt`/`en`). Se a IA falhar ou bater rate limit, o fallback local ainda limpa
+asteriscos/timestamps e devolve ações curtas o bastante para checklist.
+
+D-121 / PREP-T02 torna o checklist de `/preparedness` editável/removível. Regra:
+excluir usa `checklists.id` e remove só aquela linha; não usa `canonical_key`,
+porque o mesmo item pode existir em outra origem/kit. Editar nome recalcula
+`canonical_key` no servidor para manter dedupe e toggle coerentes. Correção UX:
+os controles precisam ser textuais e visíveis por linha (`Editar` / `Excluir`),
+não apenas ícones discretos na extrema direita.
+
+D-122 / EDU-T07 separa dois eventos de EDU no Inbox: `edu_content_saved` é
+feedback administrativo para quem salvou qualquer rascunho/versão; destino
+`/admin/edu?contentId=<id>`. `edu_content_approved` continua sendo a notificação
+de conteúdo aprovado para usuários elegíveis; destino `/edu?contentId=<id>`.
+Ambos caem na surface `preparedness`.
+
+---
+
+## EDU é catálogo aprovado antes de virar RAG (2026-08-03)
+
+D-090 / EDU-T01 criou o caminho correto para conteúdo educativo do dono: primeiro
+entra em `edu_content`, com fonte, URL, tags de cenário, resumo, transcript/notas,
+status, versão e `rag_enabled`. Usuários veem conteúdo aprovado em `/edu`; o dono
+alimenta e edita em `/admin/edu`.
+
+Regra: **YouTube não entra direto no RAG**. O vídeo precisa virar item aprovado,
+versionado e com transcript/summary antes de qualquer embedding. `rag_enabled`
+significa elegível para ingestão futura, não ingestão feita. A próxima etapa
+correta é um job que leia `edu_content` aprovado e grave `knowledge_base`
+mantendo `edu_content.id` + `version` como proveniência.
+
+Migration `20260803002000_edu_content.sql` aplicada pelo dono em 2026-08-03 e
+verificada via service-role (`edu_content` responde 200; count=0). `/edu` e
+`/admin/edu` podem persistir catálogo educativo; se a tabela ficar indisponível,
+o fallback de conteúdo padrão continua sendo apenas degradação operacional.
+
+D-101 / EDU-T02 adicionou consumo de vídeo no app: se um conteúdo aprovado tiver
+`source_type='youtube'` e `source_url` reconhecida, `/edu` renderiza um player
+embutido usando `youtube-nocookie.com` e mantém o link de fonte visível. Isso
+não captura transcript, não marca progresso, não cria tarefas e não escreve no
+RAG.
+
+D-103 / EDU-T03 permite ingestão explícita no RAG pelo Admin EDU. O item precisa
+estar `approved` e `rag_enabled=true`; o dono clica "Ingerir RAG". A rota
+`POST /api/admin/edu/ingest` gera embeddings OpenAI `text-embedding-3-small`,
+remove chunks antigos de `knowledge_base.source='edu:<id>'`, insere os novos e
+marca `rag_ingested_at`. A proveniência é `source='edu:<edu_content.id>'` e
+`source_version='v<edu_content.version>'`. Não há YouTube API nem transcript
+automático.
+
+D-104 adicionou o guardrail contra RAG vazio: título, URL e tags entram como
+metadados/proveniência, mas não contam para liberar ingestão. O admin precisa de
+pelo menos 160 caracteres instrucionais em `summary + transcript`; `/admin/edu`
+mostra essa contagem e a API bloqueia link-only mesmo se chamada manualmente.
+
+---
+
+## Memória do Pilot exige confirmação e evento de auditoria (2026-08-03)
+
+D-105 corrigiu uma lacuna importante: o Pilot conversacional não lia a ficha
+master; recebia só agregados do cliente (`people`, bebê, condição médica,
+mobilidade). Agora `/api/pilot/chat` busca server-side a ficha do usuário
+autenticado (`profiles`: alergias, medicamentos, tipo sanguíneo, contato,
+notas, local) e seus `family_members` detalhados antes de montar o prompt. Se um
+campo estiver vazio, o prompt diz "não consta" e manda não inventar.
+
+D-106 corrigiu a segunda metade da lacuna: membros reais do círculo não podem
+ser tratados como inexistentes pelo Pilot. D-107 refinou isso imediatamente:
+**membro do círculo não é membro da família íntima**. Círculo é coordenação ampla
+(chat, plano, simulação, recursos, localização consentida). Família íntima é uma
+camada dentro do círculo, registrada por
+`circle_members.family_access_status`.
+
+Regra D-107: o Pilot só lê ficha master médica/contato de outro usuário do
+círculo quando `family_access_status='approved'`. `shared_fields.medical` voltou
+a significar compartilhamento de recurso médico/estoque, não ficha master.
+`location` segue separado e explícito. Se Daniela está no círculo, mas ainda não
+foi aprovada como Família íntima, o Pilot deve dizer que ela está no círculo mas
+a ficha master dela não está autorizada para o Pilot da família.
+
+D-108 corrige a direção do fluxo: Paulo/Admin não "aprova" a ficha de Daniela.
+Paulo convida Daniela para a Família íntima na linha dela; Daniela aceita ou
+recusa na própria conta. O botão nunca deve aparecer como "Pedir Família íntima"
+na linha do próprio Paulo, porque isso sugere pedir autorização a si mesmo. Na
+linha do usuário logado, a UI deve comunicar controle da própria ficha; na linha
+do outro membro, Admin pode enviar convite; no login do convidado, o convite vira
+aceitar/recusar. Migration `20260804011000_circle_family_access_requested_by.sql`
+registra quem iniciou o convite.
+
+D-095 / UPP-03 criou o fluxo confirmado de memória. `/api/pilot/chat` pode
+retornar propostas `memory[]`; a UI mostra título, motivo e Markdown exato. Só
+depois do toque em "Salvar memória" a rota
+`POST /api/profile/personalization/memory` chama a RPC
+`confirm_pilot_memory(...)`.
+
+A RPC atualiza `profile_personalization.pilot_memory_md` e insere
+`pilot_memory_events` na mesma transação. Migration
+`20260803003000_pilot_memory_events.sql` aplicada pelo dono em 2026-08-03 e
+verificada via service-role (`pilot_memory_events` responde 200; count=0). Se a
+tabela ou RPC ficarem indisponíveis em outro ambiente, a rota retorna 503 e não
+altera a memória.
+
+---
+
+## Pilot revisa planos sem escrita silenciosa (2026-08-03)
+
+D-096 / PLAN-T07 implementou a Revisão do Pilot em `/plan`. O Pilot gera
+propostas pequenas de `trigger` e `role`, mostra motivo e conteúdo, e cada item
+precisa ser aplicado ao rascunho individualmente. Nada persiste nesse clique; o
+salvamento continua sendo o botão "Salvar plano", com versionamento, push e
+acknowledgement. A lógica vive em `lib/plan-pilot-review.ts` e é determinística
+para não inventar coordenadas, rotas ou membros. Se uma evolução usar modelo, o
+provider de AI permanece OpenAI e a confirmação elemento a elemento continua
+obrigatória.
+
+---
+
+## World v2 tem gate de produção reproduzível (2026-08-04)
+
+D-097 / WV2-T05 criou `scripts/world-v2-validation.mjs` e `npm run
+test:world-v2`. O teste sobe contra um app em execução, cria usuário Supabase
+temporário, audita `/dashboard` em mobile 390x844 e desktop 1440x960, mede
+load/recursos/bytes, valida equivalente textual, proveniência, `aria-hidden` do
+mapa visual, nomes acessíveis e target size dos controles EOS, depois remove o
+usuário. Última execução local: mobile 494ms/665KB, desktop 166ms/708KB, 0
+console errors, 0 controles sem nome e 0 alvos pequenos em controles EOS.
+
+Postura de custo registrada: dashboard load não chama OpenAI; OpenAI segue como
+único provider de AI em fluxos submit-driven. Sem `NEXT_PUBLIC_MAPTILER_KEY`, a
+base padrão é CARTO keyless e satélite usa ESRI com atribuição; weather/hazard
+atual usa fontes keyless, enquanto adapters pagos permanecem `not_configured`.
+
+---
+
+## WV2-T07 foi absorvida por tarefas específicas (2026-08-04)
+
+D-098 fechou WV2-T07 sem código novo. As features HWD v1 que ainda importavam já
+estão na World v2 ou migraram para fluxos mais precisos: camadas ao vivo e base
+dark/satellite vivem em `WorldV2.tsx`; notificar círculo não é mais botão
+genérico do HUD, mas ação contextual em `MemberSheet` e no executor de plano;
+marcadores de família pertencem à trilha FAM. Daqui para frente, não usar
+"copiar HWD v1" como tarefa aberta: cada necessidade de mapa deve virar tarefa
+específica no roadmap.
+
+O próximo item PENDING virou bloqueio operacional até o dono definir parâmetros
+de afiliado; isso foi resolvido em D-099.
+
+---
+
+## Afiliados são Stripe promotion codes + tracker (2026-08-04)
+
+D-099 / LA-T06 implementou os parâmetros do dono: primeiro código
+`EOSPARTNER`, tag `Teste Afiliado app`, válido para Family e Premium, limite
+ilimitado por padrão mas customizável no admin, 100% off uma vez e comissão de
+70% sobre o primeiro valor real pago. Gift code e afiliado não são a mesma
+coisa: gift code dá acesso sem Stripe; afiliado passa por Checkout, usa Stripe
+promotion code e só vira comissão quando o webhook recebe invoice com
+`amount_paid > 0`. O admin não faz payout automático; apenas calcula o valor
+owed para repasse manual. Migration `20260804000000_affiliate_codes.sql` precisa
+foi aplicada pelo dono em 2026-08-04 e verificada via service-role: as três
+tabelas respondem 200 e o seed `EOSPARTNER` está ativo. O próximo passo é o
+dono abrir `/admin/affiliates` e sincronizar/criar `EOSPARTNER` para gravar os
+IDs reais de Stripe coupon/promotion code.
+
+Admin default: `ADMIN_EMAILS` permite override por env var, mas o fallback do
+código inclui `eosoffgrid@gmail.com` e `paulolibanionetousa@gmail.com`.
+Settings consulta `/api/admin/status`; quando `isAdmin=true`, mostra links para
+`/admin/affiliates`, `/admin/gift-codes` e `/admin/edu`.
+D-102 endureceu isso no middleware: `/admin` e `/admin/*` exigem usuário logado
+e `isAdminEmail(user.email)`. Usuário autenticado comum é redirecionado para
+`/dashboard` antes de carregar a página admin. As APIs admin continuam mantendo
+403 próprio.
+
+---
+
+## Texto livre do simulador preenche painéis, não roda sozinho (2026-08-03)
+
+D-094 / SIM-T09 adicionou `POST /api/simulation/parse`. A rota usa OpenAI para
+converter a descrição livre em um patch validado de `SimulationConfig`.
+
+Regra: inferência de texto livre é **pré-configuração revisável**, não comando
+de execução. A tela aplica o patch nos painéis existentes, mostra notas de
+inferência e o usuário ainda precisa revisar e tocar em iniciar.
+
+Não usar output bruto do modelo como autoridade: o servidor valida threat,
+severidade, horários, booleanos, fontes e faixas numéricas antes de devolver.
+
+---
+
+## Pilot educador também usa preparação confirmável (2026-08-03)
+
+D-093 / PILOT-T08 aplicou ao Pilot o mesmo contrato de SIM-T11. As tasks vindas
+de `/api/pilot/chat` agora têm tipo (`resource`, `task`, `plan_review`,
+`comms_setup`), fonte definida pelo servidor e destino visível. A UI mostra isso
+antes do toque de confirmação.
+
+Persistência atual: `checklists.kit_type = PILOT_RECOMMENDATION`. A aba
+Preparação mostra "Fonte: Recomendação do Pilot" para esses itens. O provider de
+AI segue sendo OpenAI para Pilot/RAG.
+
+Não transformar resposta do Pilot em escrita automática. Ele pode educar,
+sequenciar, perguntar e propor; quem confirma é o usuário.
+
+---
+
+## Debrief vira preparação, mas só com confirmação (2026-08-03)
+
+D-092 / SIM-T11 criou o contrato v1 para transformar resultado de simulação em
+preparação persistente. O debrief classifica cada lacuna acionável como recurso,
+tarefa, revisão de plano ou setup de Comms, mostra a fonte do cenário e só salva
+quando o usuário confirma item a item.
+
+Persistência atual: `checklists.kit_type = SIMULATION_DEBRIEF`. Não existe tabela
+nova de Preparedness Items ainda. A aba Preparação mostra essa origem para que o
+item salvo não pareça um checklist genérico.
+
+Regra para próximas evoluções: Pilot/EDU/simulação podem propor, mas não podem
+escrever em checklist, inventário, plano ou Comms sem confirmação explícita e
+fonte visível.
+
+---
+
+## Onboarding por simulação preserva o motivo da chegada (2026-08-03)
+
+D-091 / ONB-T01 corrige a aquisição por cenário simulado. `/sim/[token]` agora
+carrega contexto antes de autenticar, salva o convite localmente e manda para
+login/signup com `redirectTo`. Login e confirmação de signup preservam esse
+destino. `/onboarding` mostra o cenário que trouxe a pessoa e, depois de salvar
+perfil, devolve para `/sim/[token]`.
+
+Regra: **convite é contexto, não autoridade**. O link nunca coloca ninguém em
+simulação sozinho. Depois do onboarding, `/sim/[token]` só registra o usuário
+como `invited`; o pop-up da simulação continua sendo a decisão explícita de
+participar.
+
+Não recolocar `/sim` no middleware protegido sem substituir essa ponte, senão o
+fluxo volta a perder o motivo da aquisição no login.
+
+---
+
+## Rota EOS é compromisso; Google Maps é navegador por ruas (2026-07-31)
+
+PLAN-T10 adicionou handoff multi-stop: a rota desenhada no plano (`LineString`)
+vira um Google Maps URL com `origin`, `destination` e `waypoints` na ordem do
+traçado. Isso resolve o caso "ponto 1 → ponto 2 → ponto 3" sem o EOS fingir que
+tem um motor de ruas.
+
+Regra: **o EOS guarda a intenção operacional e a sequência offline; o app de
+mapas calcula ruas quando houver rede.** O Google pode pedir o toque final em
+"Iniciar" e pode otimizar/ajustar ruas conforme trânsito/fechamentos. O EOS não
+deve prometer auto-start silencioso nem que cada vértice desenhado será uma rua
+exata.
+
+Para não transformar todo clique do desenho em parada e não estourar URL em
+mobile, o helper limita pontos intermediários e preserva a ordem. Se algum dia
+quisermos paradas nomeadas explícitas ("buscar esposa", "escola", "casa da
+tia"), isso deve virar modelo próprio de rota/etapas, não abuso dos vértices da
+polilinha.
+
+---
+
+## Direção de tornado só com movimento oficial, nunca por geometria (2026-07-31)
+
+WV2-T12 separou as camadas do mapa em Flood, Surge, Vento impacto e Tornado.
+Flood/surge usam os polígonos oficiais de alerta que já chegam do NWS por
+`/api/hazards`; impacto de vento é derivado do grid Open-Meteo existente e fica
+rotulado como leitura EOS, não como aviso oficial.
+
+A regra que importa: **não inferir direção provável de tornado pelo formato do
+polígono, centroide, IA ou extrapolação visual.** O mapa só desenha seta quando
+o próprio texto oficial do NWS traz movimento ("moving northeast at 40 mph").
+Sem esse texto, mostrar nada é a resposta correta. Uma seta inventada num aviso
+de tornado parece autoridade e pode colocar uma família indo para o lado errado.
+
+NFHL/FEMA e Potential Storm Surge/NHC continuam como evolução de camada estática
+de risco pré-evento. A primeira versão resolveu alertas ativos, que é o que
+responde a pergunta operacional nos primeiros minutos.
+
+---
+
+## Executar Plano não é chat — é orquestração da versão aprovada (2026-07-31)
+
+O dono colocou a lacuna correta: o Plano da Família só vira produto quando existe
+um botão de **executar**. Em crise, a pessoa não quer reler o documento nem
+conversar genericamente; quer que o EOS conduza a família, um passo por vez.
+
+Regra que fica: **o Pilot host lê o plano aprovado; ele não inventa plano no
+meio do evento.** A sequência do MVP é determinística: trava de segurança e
+autoridade → alertar círculo → gatilhos → papéis → pontos de encontro → rotas →
+encerramento com estado claro.
+
+Active shooting perto da escola é o caso que fixa a cautela: o EOS coordena
+comunicação, localização e responsabilidades, mas não improvisa instrução tática
+nem manda familiar se aproximar da zona de risco. A fala padrão é seguir
+escola/autoridades/emergência e bloquear deslocamento impulsivo.
+
+MVP entregue sem tabela nova: execução local no painel da própria foto no mapa,
+derivada de `/api/plans`, com push preset ao círculo. Próxima evolução real é
+`family_plan_executions` + `family_plan_execution_events`, para timeline
+compartilhada e retomada em outro aparelho. Antes disso, não fingir auditoria
+multiusuário.
+
+Correção D-080: a primeira versão colocou "Pare e confirme a fonte" como etapa
+1, mas isso não vinha do plano editável. Isso é errado. Aviso fixo do EOS pode
+existir, mas rotulado como aviso do sistema, fora da sequência numerada. A lista
+de passos executáveis precisa vir do que a família consegue editar: gatilhos,
+papéis, pontos, rotas e notas.
+
+Também ficou claro que **um círculo tem vários planos**. "Sem luz", "sem
+celular", "evento aglomerado" e "escola" são cenários diferentes, não seções de
+um único documento. A migration `20260731000000_multiple_family_plans.sql`
+remove o índice antigo de plano ativo único.
+
+---
+
+## Geolocalização: `maximumAge: 0` + alta precisão é pedir para expirar (2026-07-31)
+
+Essa combinação recusa **qualquer** posição que o aparelho já tenha e exige uma trava de GPS nova. Dentro de casa, ou em laptop sem GPS, ela expira — foi exatamente o que o dono viu no seletor de endereço.
+
+A referência certa estava no próprio repo: `RiskProvider` usa `enableHighAccuracy: false, timeout: 10000, maximumAge: 120000` e sempre funcionou.
+
+O padrão que ficou, em dois estágios: **rápido primeiro** (aceita fix recente, sem exigir precisão) para colocar um ponto na tela em segundos, e **refino em paralelo** com `watchPosition` de alta precisão que só substitui o ponto quando a leitura melhora. Falha só se os dois falharem — e a mensagem sempre aponta uma saída que não depende de GPS.
+
+## Erro calado esconde o bug de quem escreveu o código (2026-07-31)
+
+O botão "Usar minha posição" tinha `() => {}` como tratador de erro. Ao trocar isso por uma mensagem de verdade, o dono viu um timeout **em minutos** — e o timeout era um segundo defeito, meu, na configuração do GPS.
+
+Ou seja: engolir a falha não estava só escondendo o problema do usuário; estava escondendo de mim. Vale lembrar sempre que a tentação for silenciar um erro "para não poluir a tela".
+
+## "Mapa offline" quase nunca é sobre baixar tiles (2026-07-30)
+
+Baixar tiles de basemap parece o caminho óbvio e esbarra em duas paredes: o CARTO keyless (nosso padrão) não autoriza cache em massa nos termos, e o MapTiler, que tem oferta offline explícita, precisa de uma chave que não está configurada. Entregar um cache que viola o provedor seria pior que não entregar.
+
+O que resolve o caso de uso é mais simples e mais robusto: **desenhar o próprio plano** a partir das coordenadas que já estão no aparelho — `PlanChart.tsx`, SVG puro, sem rede, sem chave, sem WebGL, sem biblioteca de mapa.
+
+E a regra que ficou junto: **a carta não finge ser um mapa**. Sem ruas, sem prédios, sem rótulo de bairro. Tem norte, barra de escala e as distâncias escritas. Uma carta que insinuasse detalhe que não tem seria pior que nenhuma — a família seguiria um contorno inventado. É a mesma disciplina de [[Ausência de número parece "está tudo bem"]], do outro lado: não inventar o que não se sabe.
+
+O envelope (`lib/plan-envelope.ts`) fica pronto para recortar um download no dia em que houver provedor com direito a cache.
+
+## O endereço que o app tem é a CIDADE, não a casa (2026-07-30)
+
+`profiles.location` é texto livre com placeholder "Cidade, Estado", e `geocodeLocation` devolve o **centroide**. O do dono é `"Parkland, FL"` → `26.3101, -80.2373`, que é o centro de Parkland e não a casa dele.
+
+Isso serve para alerta meteorológico e para o mapa saber onde centralizar. **Não serve** para nada que afirme distância: "1,2 km até o ponto de encontro", "~16 min a pé". Apresentar as duas coisas com a mesma cara é como uma família conclui que chega num lugar aonde não chega — e é a mesma raiz de [[o centroide da cidade empilha todo mundo]].
+
+Por isso o plano tem endereço de casa próprio, marcado por GPS ou busca de endereço, e a UI que oferece o endereço do perfil diz na mesma frase que é o centro da cidade.
+
+## Ausência de número parece "está tudo bem" (2026-07-30)
+
+O dono perguntou como o app sabia onde ele mora — e a resposta era que não sabia. Pior: quando não sabia, a linha de distância **simplesmente não era renderizada**. Nenhum erro, nenhuma pergunta, nenhuma pista. Dava para montar um plano inteiro sem nunca ver uma distância e sem descobrir por quê.
+
+A regra que fica: **quando um cálculo não pode ser feito, a tela diz por que**, no lugar onde o número apareceria. Vale para o `plan-drill` também, que pula a checagem de alcance sem casa definida — o silêncio dele agora tem causa visível na tela do plano.
+
+Isto é o mesmo princípio de [[Cache de API não pode servir dado cuja idade a tela afirma]], por outro caminho: o que a UI não diz, o usuário preenche com otimismo.
+
+## `next-pwa` com `register: true` não registra nada no App Router (2026-07-30)
+
+Essa opção injeta o script de registro no `_app` do **Pages Router**. Num app App Router, ela não faz absolutamente nada — e a configuração passa a impressão contrária.
+
+Medido em navegador: `getRegistrations()` devolvia **0** em `/dashboard`, `/plan`, `/checklist`. O service worker só existia para quem tivesse aberto `/settings`, a única tela que registrava por conta própria (para o push). O app parecia PWA e não tinha cache offline nenhum, para ninguém.
+
+Hoje quem registra é `components/ServiceWorkerRegistrar.tsx`, montado no layout autenticado. Ver [[D-075]].
+
+## Cache de API não pode servir dado cuja idade a tela afirma (2026-07-30)
+
+Com o service worker finalmente ativo, o cache genérico de API (`NetworkFirst`, 2 min) passou a responder `GET /api/plans` mesmo offline. `response.ok` vinha `true`, o código nunca caía no fallback, e a tela mostrava um plano velho **sem dizer que era velho** — a falha exata que o doc 18 §6 existe para evitar.
+
+A regra que ficou: **sempre que a UI declarar frescor — posição da família, abrigos, plano — o dado tem que vir de um cache nosso, com carimbo, ou de uma rede que falhe de forma visível.** `/api/plans` é `NetworkOnly` de propósito; a cópia offline é a nossa, em IndexedDB, com versão e instante da sincronização, e rotulada na tela.
+
+Isto vale como aviso ao adicionar qualquer regra de `runtimeCaching` nova: um cache silencioso é indistinguível de dado ao vivo para o código que o consome.
+
+## Precache do Workbox é atômico: um 404 desliga o service worker inteiro (2026-07-29)
+
+O `next-pwa` varre `.next/` e coloca **todo** arquivo que encontra no manifesto de precache — inclusive metadados de build que o Next **não serve por HTTP**. Como o precache é atômico, um único 404 rejeita a promessa do `install`, o worker vira `redundant`, e o navegador tenta de novo para sempre.
+
+Efeito prático: `/_next/app-build-manifest.json` retornando 404 fez **todo o push do produto** nunca funcionar. Nada disso aparece como erro de push. Aparece como um botão em Ajustes que não muda de estado.
+
+Duas coisas para lembrar:
+
+1. **`buildExcludes` não é otimização, é correção.** Todo metadado de build tem que sair do precache. Ao subir a versão do Next ou do next-pwa, rodar `npm run test:push` — arquivos novos de metadado aparecem entre versões.
+2. **Bug de service worker não se depura pelo console da página.** O erro de install não aparece lá. Só apareceu com `ServiceWorker.workerErrorReported` do CDP num Chrome real. Eu errei três hipóteses antes de instrumentar.
+
+## `redundant` é estado normal de service worker — não é falha (2026-07-29)
+
+O helper de Ajustes vigiava `installing`/`waiting` e **rejeitava ao ver `redundant`**, mostrando "Service Worker ficou redundante". Mas `redundant` só significa *substituído*, em geral por um worker bom; e o worker que se está vigiando não é necessariamente o que vai servir a página. Havia portanto um segundo bug, reportando falha por cima de um worker saudável — que mascarou o primeiro.
+
+**Não escreva essa espera à mão.** `navigator.serviceWorker.ready` resolve com um registro que tem worker ativo, qualquer que seja a confusão no caminho. Ver [[D-074]].
+
+## Web push não é automatizável contra o FCM (2026-07-29)
+
+`pushManager.subscribe()` falha com `AbortError: Registration failed - permission denied` em **qualquer** Chrome ou Chromium automatizado — com permissão concedida e service worker ativo. No Chromium empacotado do Playwright é pior: `Notification.permission` fica `denied` mesmo com `grantPermissions`. Por isso `scripts/push-test.mjs` exige o **Google Chrome** instalado.
+
+O contorno que mantém o teste real: fabricar a inscrição com as mesmas primitivas do navegador (ECDH P-256 + 16 bytes de auth), apontar o endpoint para um serviço de push local, e entregar ao worker com `ServiceWorker.deliverPushMessage` do CDP. Duas armadilhas dentro disso:
+
+- O `web-push` **só fala HTTPS** — endpoint `http://` morre com `EPROTO`. O serviço falso precisa de TLS de verdade; o teste faz o `next start` confiar no CA por `NODE_EXTRA_CA_CERTS`, sem desligar verificação de certificado.
+- O teste sobe o próprio servidor justamente por causa disso, na porta 3010.
+
+## Um teste de regressão precisa do controle negativo (2026-07-29)
+
+Depois de o `push-test.mjs` passar 6/6, reverti o `buildExcludes`, reconstruí e rodei de novo: falhou apontando `404 /_next/app-build-manifest.json`. Só então o teste valia algo. Um teste escrito depois da correção passa por construção; o que ele precisa provar é que **falharia com o bug de volta**.
 
 ## iOS Safari não responde `navigator.permissions` para geolocation (2026-07-29)
 
@@ -89,6 +1295,8 @@ Depois da reconstrução, o mapa mental do app mudou. Para quem retomar:
 | Estado global da simulação | `components/SimulationProvider.tsx` | montado no layout `(app)` |
 | Debrief | `lib/simulation-debrief.ts` | modal pós-encerramento |
 | Checklist | `components/world-v2/ChecklistPage.tsx` | `/checklist` |
+| Plano da família | `components/world-v2/PlanPage.tsx` + `lib/family-plan.ts` | `/plan` |
+| Registro do service worker | `components/ServiceWorkerRegistrar.tsx` | layout `(app)` |
 | Mapa (compartilhado) | `components/world-dashboard/WorldMap.tsx` | usado por `/dashboard` e `/dashboard-world` |
 
 Telas antigas preservadas: `/dashboard-legacy`, `/scenario-legacy`,
@@ -112,15 +1320,17 @@ Também: `circles.invite_code` é `character(6)` — gerar 7 caracteres estoura 
 
 ## Armadilha recorrente: estender só um lado (2026-07-28)
 
-Três bugs desta sessão são o **mesmo erro**: adicionar um campo em uma ponta e esquecer a outra.
+Cinco bugs desta sessão são o **mesmo erro**: adicionar um campo em uma ponta e esquecer a outra.
 
 1. O Pilot respondia "não tenho acesso a dados em tempo real" — eu não mandava o clima no `context`.
 2. **`shared_fields` aceitava `location` na UI e no gate de leitura, mas o `VALID_FIELDS` do `PATCH /api/circles/[id]/share` filtrava a string fora.** Resultado: ninguém num círculo conseguia ver ninguém. O toggle ligava, o servidor descartava, e voltava desligado no reload — uma feature que parecia funcionar e era no-op.
 3. O campo de conversa do Pilot ficava sob o BottomNav (`fixed`, z-index 100).
+4. `.w-mapmarker` tinha estilo só em `world-dashboard.css`, que a v2 nunca importa.
+5. **Três endpoints de push liam `push_subscriptions.profile_id`; a coluna é `user_id`.** O `select` voltava vazio, o código concluía "nenhum dispositivo" e respondia `ok:false` sem erro nenhum no log. Escrevi o nome errado três vezes seguidas, em três arquivos.
 
 **Antes de dar por pronta qualquer feature com whitelist, gate ou contexto: procure TODAS as listas que mencionam os irmãos do campo novo.** `grep` pelo nome de um campo vizinho (ex.: `emergency_contact`) encontra as listas que precisam do novo.
 
-Teste de regressão: `scripts/circle-location-test.mjs` — dois navegadores, um círculo, prova que o toggle persiste e que o outro vê o pino.
+Teste de regressão: `scripts/circle-location-test.mjs` — dois navegadores, um círculo, prova que o toggle persiste e que o outro vê o pino. Para o caso 5: `scripts/push-test.mjs`, que lê a inscrição de volta do banco pelo mesmo caminho que os senders usam.
 
 ---
 
@@ -180,8 +1390,8 @@ Every feature decision must answer: "does this help in the next 15 minutes?"
 
 There are three intelligence modes, not two. They are a **fallback chain**, not a feature toggle:
 
-1. **CONNECTED** — Claude API + RAG from knowledge_base. Requires internet + auth.
-2. **LOCAL_AI** — llama.rn on-device model. Planned, not yet implemented.
+1. **CONNECTED** — OpenAI API + RAG from knowledge_base. Requires internet + auth.
+2. **LOCAL_AI** — on-device model. Planned, blocked by native mobile readiness.
 3. **SURVIVAL** — Rules Engine only. Always available. Cannot be disabled.
 
 The Rules Engine runs **before** the LLM on every request. The LLM **cannot downgrade** the urgency level set by the Rules Engine. This is a safety guarantee, not a UX choice.
@@ -260,8 +1470,9 @@ This bug existed in all previous versions of the ingest script and is the root c
 ## Platform Status
 
 - **Web PWA**: active, deployed on Vercel, auto-deploys on push to main
-- **React Native**: `/mobile/` folder has template files but `npx react-native init` has NOT been run
-- **LoRa firmware**: prototype exists, long-horizon, blocked on mobile app
+- **Native mobile**: blocked by G-03; `/mobile/` has template/conceptual React Native files but no initialized app
+- **Automotive**: blocked by G-06; future restricted companion mode only
+- **LoRa firmware**: prototype exists, long-horizon, blocked by G-05 and mobile readiness
 
 ---
 

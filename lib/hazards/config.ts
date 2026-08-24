@@ -49,7 +49,7 @@ export const HAZARD_CONFIG = {
     queryWindowHours: 24,
   },
 
-  // Automatic alerting (D-074) — the scheduled scan and what earns a push.
+  // Automatic alerting (D-220) — the scheduled scan and what earns a push.
   alerting: {
     // How far a tropical cyclone can be and still be YOUR problem. Beyond this
     // it is news, not an alert — a family in Florida does not need a push about

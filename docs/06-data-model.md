@@ -10,6 +10,7 @@
 | id | uuid | PK, references auth.users |
 | name | text | |
 | location | text | |
+| map_base_mode | text | App-wide map base preference: `satellite` (default), `hybrid`, or `dark`. Added by `20260819144004_exec_t06_map_base_mode.sql`. |
 | created_at | timestamptz | |
 | updated_at | timestamptz | |
 
@@ -51,6 +52,76 @@ be labelled `perfil`, never as a current position.
 This table is part of the authenticated Ficha Master experience but is not part
 of the public emergency QR contract.
 
+### pilot_memory_events
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid | PK |
+| profile_id | uuid | FK → profiles.id |
+| source | text | e.g. `pilot_chat` |
+| reason | text | Why the memory was useful enough to propose |
+| proposal_md | text | Exact Markdown the user confirmed |
+| previous_memory_md | text | Snapshot before confirmation |
+| next_memory_md | text | Snapshot after confirmation |
+| status | text | `confirmed` |
+| confirmed_at | timestamptz | |
+| created_at | timestamptz | |
+
+UPP-03 writes this table only through RPC `confirm_pilot_memory(...)`, which
+updates `profile_personalization.pilot_memory_md` and inserts the audit event in
+one database transaction. Browser clients have read-only RLS for their own
+events and no direct insert/update policy.
+
+### affiliate_codes
+| Column | Type | Notes |
+|---|---|---|
+| code | text | PK; customer-facing Stripe promotion code, e.g. `EOSPARTNER` |
+| tag | text | Admin label/campaign tag |
+| active | boolean | Whether checkout may use it |
+| eligible_plans | text[] | `family` and/or `premium` |
+| discount_percent_off | integer | Current D-099 default: 100 |
+| discount_duration | text | Current D-099 value: `once` |
+| commission_percent | numeric | Current `EOSPARTNER` default: 70 |
+| max_redemptions | integer | Nullable = unlimited |
+| stripe_coupon_id | text | Stripe coupon backing the discount |
+| stripe_promotion_code_id | text | Stripe promotion code ID used by Checkout `discounts` |
+| stripe_promotion_code | text | Human-facing code |
+| created_by | uuid | Admin user who created/synced it |
+| created_at / updated_at | timestamptz | |
+
+### affiliate_referrals
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid | PK |
+| affiliate_code | text | FK → `affiliate_codes.code` |
+| profile_id | uuid | User attributed to the checkout |
+| plan | text | `family` or `premium` |
+| stripe_customer_id | text | |
+| stripe_subscription_id | text | Unique when known |
+| stripe_checkout_session_id | text | Unique |
+| status | text | `pending`, `converted`, `canceled` |
+| created_at / converted_at | timestamptz | |
+
+### affiliate_conversions
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid | PK |
+| affiliate_code | text | FK → `affiliate_codes.code` |
+| referral_id | uuid | FK → `affiliate_referrals.id` |
+| profile_id | uuid | User who paid |
+| plan | text | `family` or `premium` |
+| stripe_customer_id / stripe_subscription_id | text | |
+| stripe_invoice_id | text | Unique; source of payment truth |
+| amount_paid_cents | integer | Stripe `amount_paid`; must be > 0 |
+| currency | text | |
+| commission_percent | numeric | Snapshot from code at conversion time |
+| commission_cents | integer | Calculated owed amount |
+| status | text | `owed`, `paid`, or `void` |
+| occurred_at / created_at | timestamptz | |
+
+Affiliate tables are RLS-enabled with no browser policies. Owner/admin routes and
+Stripe webhook use service-role access. No commission is recorded for zero-dollar
+invoices.
+
 ### Storage buckets
 
 | Bucket | Public | Contents | Access |
@@ -73,15 +144,52 @@ of the public emergency QR contract.
 | Column | Type | Notes |
 |---|---|---|
 | id | uuid | PK |
-| profile_id | uuid | FK → profiles.id |
+| profile_id | uuid | FK → profiles.id — **`UNIQUE`: one row per profile** |
 | fuel_liters | numeric | |
 | water_liters | numeric | |
 | food_days | numeric | |
 | battery_percent | numeric | |
-| cash | numeric | |
+| cash | numeric | ⚠️ **contradiction flagged 2026-08-12 (PREP-T03):** `supabase/schema.sql:118` declares `cash_amount numeric(14,2)`, and the code reads `cash_amount`. This doc's `cash` appears to be wrong. Not corrected here — needs its own decision, per AGENTS.md Rule 6 |
 | has_medical_kit | boolean | |
 | has_communication_device | boolean | |
-| updated_at | timestamptz | |
+| updated_at | timestamptz | ⚠️ **contradiction flagged 2026-08-12 (PREP-T03):** not present in `supabase/schema.sql:109-119`. Same treatment as above |
+
+> **Aggregate, not items.** This table holds one row per profile with seven
+> scalars. It cannot represent an object, a quantity per object, or a place.
+> That limitation is the origin of the Preparedness State work — see
+> [`37-preparedness-state.md`](37-preparedness-state.md) §3.
+
+### locations
+> Aplicada em produção em 2026-08-13 (PREP-T04 / D-160). Verificada por REST.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid | PK |
+| profile_id | uuid | FK → profiles.id |
+| parent_id | uuid | FK → locations.id (auto-referente, `ON DELETE CASCADE`). Árvore: Casa → Garagem → Armário |
+| name | text | não vazio |
+| kind | text | `HOME`, `FARM`, `WAREHOUSE`, `OFFICE`, `VEHICLE`, `RV`, `BOAT`, `STORAGE_UNIT`, `SECOND_RESIDENCE`, `CUSTOM`. **`HOME` é o único com efeito de cálculo** — a autonomia da casa lê consumíveis sob ele (D-156) |
+| is_default | boolean | A casa criada pelo sistema. Índice parcial único garante **uma** por perfil |
+| lat, lng | double precision | opcionais |
+| created_at | timestamptz | |
+
+### holdings
+> Aplicada em produção em 2026-08-13 (PREP-T04 / D-160). Nasce vazia: enquanto
+> estiver assim, `lib/holdings-store.ts` projeta `resource_inventory`.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid | PK |
+| profile_id | uuid | FK → profiles.id |
+| location_id | uuid | FK → locations.id (`ON DELETE CASCADE`) — coisa sem lugar não existe neste modelo |
+| resource_key | text | **Mesma identidade de `checklists.canonical_key`** — é a chave que liga precisar a ter |
+| label | text | como o usuário chama |
+| kind | text | `CONSUMABLE` (quantidade, contada uma vez por lugar) ou `DURABLE` (presença; cobre vários kits alcançáveis dali) |
+| quantity | numeric(12,3) | ≥ 0 |
+| unit | text | **Unidade é dado, não convenção** (D-158): `5` + `gal` |
+| created_at, updated_at | timestamptz | `updated_at` por trigger |
+
+Único: `(profile_id, location_id, resource_key)` — um recurso, um lugar, uma linha.
 
 ### scenarios
 | Column | Type | Notes |
@@ -111,9 +219,26 @@ of the public emergency QR contract.
 |---|---|---|
 | id | uuid | PK |
 | profile_id | uuid | FK → profiles.id |
-| title | text | |
-| items | jsonb | array of {text, checked} |
-| created_at | timestamptz | |
+| scenario_id | uuid | Optional FK → scenarios.id |
+| canonical_key | text | Dedup key generated from item name |
+| item_name | text | Display name |
+| tier | checklist_tier_enum | `ESSENTIAL`, `MODERATE`, `EXCELLENT` |
+| quantity | numeric | |
+| unit | text | Nullable |
+| acquired | boolean | |
+| acquired_at | timestamptz | Nullable |
+| kit_type | text | Source/grouping: `GERAL`, `BUG_OUT`, `EDU_CONTENT`, `SIMULATION_DEBRIEF`, etc. |
+
+`SIMULATION_DEBRIEF` is the v1 persistence marker for SIM-T11. It means the
+item was explicitly confirmed from a simulation debrief proposal.
+`PILOT_RECOMMENDATION` is the v1 persistence marker for PILOT-T08. It means the
+item was explicitly confirmed from a Pilot proposal. Neither is an automatic
+write; both should be displayed as source/provenance in Preparação.
+
+`PATCH /api/checklist/[id]` owns checklist edits. When `item_name` changes, the
+route recalculates `canonical_key`; clients should not patch `canonical_key`
+directly. `DELETE /api/checklist/[id]` deletes only that row id, not all rows
+with the same canonical key.
 
 ### circles
 | Column | Type | Notes |
@@ -133,6 +258,11 @@ of the public emergency QR contract.
 | joined_at | timestamptz | |
 | share_inventory | boolean | member shares resources with the circle |
 | shared_fields | text[] | which fields are shared |
+| family_access_status | text | `none`, `requested`, `approved`, `denied` |
+| family_access_requested_at | timestamptz | when the member requested inner-family access |
+| family_access_requested_by | uuid | Admin/head who invited this member into the intimate family layer |
+| family_access_approved_at | timestamptz | when an Admin approved/denied inner-family access |
+| family_access_approved_by | uuid | Admin who last approved/denied inner-family access |
 
 **`shared_fields` semantics (D-064):**
 
@@ -142,11 +272,87 @@ of the public emergency QR contract.
 | `emergency_contact` | emergency contact name/phone |
 | `location` | **both** the live point and the profile point on the map |
 
+**D-107 correction**: `medical` does **not** make another circle member part of
+the user's intimate family. It gates medical inventory/resource sharing only.
+Pilot access to another user's master medical ficha requires
+`family_access_status='approved'` on that member's `circle_members` row.
+
 An **empty array means "share all"** for the inventory/contact fields — that legacy
 default predates D-064. `location` is deliberately **excluded from that default**:
 it is only shared when the string `location` is explicitly present. Members who
 never touched the toggle must not start broadcasting position because of a legacy
 convention.
+
+**Family access semantics (D-107):**
+
+| Value | Meaning |
+|---|---|
+| `none` | member is in the broader circle only |
+| `requested` | Admin/head invited the member into the intimate family layer; member must accept |
+| `approved` | data owner accepted intimate-family access; Pilot may use master ficha fields |
+| `denied` | data owner denied the request; member remains in the broader circle |
+
+Family access does not replace `location` consent. Live/profile location remains
+visible only when `shared_fields` contains `location` or when viewing yourself.
+
+### circle_messages
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid | PK |
+| circle_id | uuid | FK → circles.id, cascade delete |
+| sender_id | uuid | FK → profiles.id, cascade delete |
+| body | text | User-authored message, 1–1000 characters after trim |
+| kind | text | `text`, `system`, or `alert`; COMMS-T01 writes only `text` |
+| created_at | timestamptz | Server timestamp |
+| deleted_at | timestamptz | Nullable soft delete marker |
+
+`circle_messages` is the v1 data contract for app-level Comms (D-087 /
+COMMS-T01). D-110 allows direct SELECT only for realtime delivery to authenticated
+members of the same circle. Writes still go through `/api/comms/messages`, which
+checks authenticated membership before service-role writes. Chat messages are not
+emergency alerts by default and do not imply SMS, dispatch, radio transmission,
+or guaranteed delivery.
+
+### circle_notifications
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid | PK |
+| circle_id | uuid | nullable FK → circles.id, cascade delete; null for app-level scopes |
+| recipient_id | uuid | FK → auth.users.id; badge/timeline owner |
+| actor_id | uuid | FK → auth.users.id; nullable actor who caused the event |
+| scope | text | `circle`, `weather`, `edu`, `simulation`, or `system` |
+| kind | text | compact event type, e.g. `message`, `weather_alert`, `edu_content_approved`, `simulation_invite` |
+| title | text | compact notification title |
+| body | text | timeline text |
+| href | text | app destination, default `/comms?view=notifications` |
+| severity | text | nullable `WATCH`, `HIGH`, `CRITICAL`, etc. |
+| source_key | text | nullable dedupe key; unique per recipient when present |
+| metadata | jsonb | optional structured context |
+| read_at | timestamptz | null means unread |
+| created_at | timestamptz | server timestamp |
+
+`circle_notifications` started as D-109 / COMMS-T04 for circle interactions.
+D-111 turns it into the app-level Inbox EOS while keeping the same table for
+compatibility. D-110 allows direct SELECT only for the row's recipient so
+Supabase Realtime can update the Web/PWA badge. Writes and read state still go
+through app APIs. It is not push, SMS, dispatch, emergency alert, or Mesh/LoRa
+delivery.
+
+### circle_radio_profiles
+| Column | Type | Notes |
+|---|---|---|
+| circle_id | uuid | PK/FK → circles.id, cascade delete |
+| config | jsonb | Normalized `RadioConfig` for PT/EN radio reference content |
+| updated_by | uuid | FK → profiles.id, nullable on delete |
+| updated_at | timestamptz | Last saved timestamp |
+
+`circle_radio_profiles` is the editable radio reference for Comms (D-089 /
+COMMS-T03). It is separate from `circle_messages`: chat messages are events,
+radio profile is configuration. RLS is enabled with no direct policies. Reads
+and writes go through `/api/comms/radio`; all circle members can read, but only
+`Admin` and `Editor` roles can write. The JSON stores operational reference
+content only; it is not a legal validation engine or proof of transmission
+rights.
 
 ### knowledge_base
 | Column | Type | Notes |
@@ -155,9 +361,72 @@ convention.
 | content | text | chunk text |
 | embedding | vector(1536) | text-embedding-3-small |
 | source | text | filename without extension |
+| source_version | text | For EDU ingestion: `v<edu_content.version>` |
 | scenario_type | scenario_type_enum | inferred from filename |
 | chunk_index | integer | position in source document |
 | created_at | timestamptz | |
+
+EDU-T03 also writes approved educational content into `knowledge_base` using
+`source='edu:<edu_content.id>'` and `source_version='v<edu_content.version>'`.
+This preserves provenance without a new table or schema change.
+
+### edu_content
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid | PK |
+| title | text | Required educational item title |
+| source_type | text | `youtube`, `manual`, `pdf`, or `external` |
+| source_url | text | Optional source URL |
+| scenario_tags | text[] | Scenario tags used by `/edu` filters |
+| summary | text | User-facing content summary |
+| transcript | text | Transcript, notes, or teaching body |
+| status | text | `draft`, `approved`, or `archived` |
+| version | integer | Increments on owner/admin update |
+| view_count | integer | D-112 lightweight platform click count for the featured video |
+| rag_enabled | boolean | Eligible for future RAG ingestion; not proof of ingestion |
+| rag_ingested_at | timestamptz | Null until a future explicit ingestion job writes embeddings |
+| created_by / updated_by | uuid | FK → profiles.id |
+| approved_at | timestamptz | Set when status becomes approved |
+| created_at / updated_at | timestamptz | |
+
+`edu_content` is the official EDU catalog (D-090 / EDU-T01). RLS is enabled
+with no direct policies. `/api/edu` returns approved content to authenticated
+users and lets only app owner/admin emails create/update content. It does not
+write to `knowledge_base`; YouTube/API ingestion and embedding generation are
+future explicit tasks that must preserve `edu_content.id` and `version` as
+provenance.
+
+---
+
+## Migration written, NOT YET APPLIED
+
+> ⚠️ **`kits` e `requirements` ainda não existem no banco de produção.**
+> `supabase/migrations/20260813120000_preparedness_requirements_kits.sql`
+> (PREP-T05 / D-161) está escrita e commitada; **o dono aplica no SQL Editor**.
+> Verificado em 2026-08-13: as duas respondem 404.
+> Nada quebra sem ela — nenhum código lê essas tabelas ainda.
+> **Ao aplicar, mova as duas para "Core Tables" e apague este bloco.**
+
+| Table | Shape | Purpose |
+|---|---|---|
+| `kits` | `id · profile_id · slug · name · icon` | Conjunto nomeado de requisitos. Sem discriminador de propósito (D-157). Único por `(profile_id, slug)` |
+| `requirements` | `id · profile_id · resource_key · label · quantity · unit · kit_id · scenario_id · location_scope_id · tier · status · provenance · provenance_ref` | O que DEVERIA existir. Chave natural `(profile_id, resource_key, kit_id, scenario_id)` com `COALESCE` — **`provenance` fica FORA dela** (D-161) |
+
+`kit_id` NULO = requisito de **linha de base da casa**. É para lá que o
+`kit_type='GERAL'` do legado é projetado: "Preparação Geral" nunca foi uma
+mochila.
+
+## Proposed / NOT IMPLEMENTED
+
+This document describes the **current implemented model only**. Nothing in this
+section exists in the database or in a migration.
+
+D-155 / PREP-T03 specifies five entities. Two of them (`Location`, `Holding`)
+have a migration above. The remaining three — **`Requirement`, `Kit`,
+`ReadinessAssessment`** — are specified in
+[`37-preparedness-state.md`](37-preparedness-state.md) and deliberately not
+duplicated here, so this file never reads as if those tables exist.
+`Requirement` and `Kit` are PREP-T05.
 
 ---
 

@@ -21,6 +21,10 @@
  */
 
 import type { IDBPDatabase } from 'idb'
+import type { PlanDocument, PlanSummary } from './family-plan'
+import type { MapBaseMode } from './map-base-mode'
+import type { PlanExecutionSnapshot } from './plan-execution-mode'
+import type { PlanSessionSnapshot } from './plan-session'
 
 const DB_NAME = 'eos'
 const DB_VERSION = 1
@@ -32,6 +36,7 @@ export interface StoredProfile {
   name: string
   location?: string | null
   family_size?: number
+  map_base_mode?: MapBaseMode | null
 }
 
 export interface StoredInventory {
@@ -143,6 +148,198 @@ export async function getShelters(): Promise<StoredShelters | null> {
   if (!db) return null
   const v = await db.get('kv', 'shelters')
   return (v as StoredShelters | undefined) ?? null
+}
+
+/**
+ * O plano de voo da família, no dispositivo (PLAN-T05 / EXEC-T00).
+ *
+ * Este é o cache que justifica o produto: o plano precisa funcionar exatamente
+ * quando o EOS não funciona (doc 18 §2). Guarda o documento inteiro por plano,
+ * com a versão e o instante da sincronização — porque uma cópia local exibida
+ * sem idade nem versão é a falha do doc 18 §6: duas pessoas executando planos
+ * diferentes vão para lugares diferentes.
+ */
+export interface StoredFamilyPlan {
+  circleId: string
+  planId: string
+  /** O documento como veio de `GET /api/plans`. */
+  document: PlanDocument
+  version: number
+  syncedAt: string
+}
+
+export interface StoredFamilyPlanList {
+  circleId: string
+  plans: PlanSummary[]
+  syncedAt: string
+}
+
+type LegacyStoredFamilyPlan = Omit<StoredFamilyPlan, 'planId' | 'document'> & {
+  document: unknown
+}
+
+export type OfflineFamilyPlanSelection = {
+  plans: PlanSummary[]
+  planId: string | null
+  cached: StoredFamilyPlan | null
+}
+
+const legacyPlanKey = (circleId: string) => `family-plan:${circleId}`
+export const familyPlanDocumentKey = (circleId: string, planId: string) =>
+  `family-plan:${circleId}:${planId}`
+export const familyPlanListKey = (circleId: string) => `family-plan-list:${circleId}`
+export const activePlanSessionKey = 'active-plan-session'
+export const activePlanExecutionKey = 'active-plan-execution'
+
+function planFromDocument(document: unknown): PlanDocument['plan'] | null {
+  const maybePlan = (document as { plan?: PlanDocument['plan'] } | null)?.plan
+  return maybePlan?.id ? maybePlan : null
+}
+
+function plansFromLegacyDocument(document: unknown): PlanSummary[] {
+  const explicit = (document as { plans?: PlanSummary[] } | null)?.plans
+  if (Array.isArray(explicit)) return explicit
+
+  const plan = planFromDocument(document)
+  return plan
+    ? [{
+        id: plan.id,
+        name: plan.name,
+        version: plan.version,
+        status: plan.status,
+        updated_at: plan.updated_at,
+      }]
+    : []
+}
+
+async function migrateLegacyFamilyPlan(
+  db: EOSDB,
+  circleId: string,
+): Promise<StoredFamilyPlan | null> {
+  const legacy = (await db.get('kv', legacyPlanKey(circleId))) as LegacyStoredFamilyPlan | undefined
+  if (!legacy?.document) return null
+
+  const plan = planFromDocument(legacy.document)
+  if (!plan) return null
+
+  const migrated: StoredFamilyPlan = {
+    circleId,
+    planId: plan.id,
+    document: legacy.document as PlanDocument,
+    version: legacy.version ?? plan.version ?? 0,
+    syncedAt: legacy.syncedAt,
+  }
+  await db.put('kv', migrated, familyPlanDocumentKey(circleId, plan.id))
+
+  const existingList = await db.get('kv', familyPlanListKey(circleId))
+  if (!existingList) {
+    await db.put('kv', {
+      circleId,
+      plans: plansFromLegacyDocument(legacy.document),
+      syncedAt: legacy.syncedAt,
+    } satisfies StoredFamilyPlanList, familyPlanListKey(circleId))
+  }
+
+  return migrated
+}
+
+export function selectOfflineFamilyPlan(
+  plans: PlanSummary[],
+  cachedPlans: StoredFamilyPlan[],
+  targetPlanId?: string | null,
+): OfflineFamilyPlanSelection {
+  const planId = targetPlanId && plans.some(plan => plan.id === targetPlanId)
+    ? targetPlanId
+    : plans[0]?.id ?? cachedPlans[0]?.planId ?? null
+
+  return {
+    plans,
+    planId,
+    cached: cachedPlans.find(plan => plan.planId === planId) ?? null,
+  }
+}
+
+export async function saveFamilyPlan(p: StoredFamilyPlan): Promise<void> {
+  const db = await getDB()
+  if (!db) return
+  await db.put('kv', p, familyPlanDocumentKey(p.circleId, p.planId))
+}
+
+export async function getFamilyPlan(circleId: string, planId: string): Promise<StoredFamilyPlan | null> {
+  const db = await getDB()
+  if (!db) return null
+  const v = await db.get('kv', familyPlanDocumentKey(circleId, planId))
+  if (v) return v as StoredFamilyPlan
+
+  const migrated = await migrateLegacyFamilyPlan(db, circleId)
+  return migrated?.planId === planId ? migrated : null
+}
+
+export async function saveFamilyPlanList(list: StoredFamilyPlanList): Promise<void> {
+  const db = await getDB()
+  if (!db) return
+  await db.put('kv', list, familyPlanListKey(list.circleId))
+}
+
+export async function getFamilyPlanList(circleId: string): Promise<StoredFamilyPlanList | null> {
+  const db = await getDB()
+  if (!db) return null
+  const v = await db.get('kv', familyPlanListKey(circleId))
+  if (v) return v as StoredFamilyPlanList
+
+  await migrateLegacyFamilyPlan(db, circleId)
+  const migrated = await db.get('kv', familyPlanListKey(circleId))
+  return (migrated as StoredFamilyPlanList | undefined) ?? null
+}
+
+export interface StoredPlanSession {
+  session: PlanSessionSnapshot
+  syncedAt: string
+  pendingSync?: boolean
+}
+
+export async function savePlanSession(session: StoredPlanSession): Promise<void> {
+  const db = await getDB()
+  if (!db) return
+  await db.put('kv', session, activePlanSessionKey)
+}
+
+export async function getPlanSession(): Promise<StoredPlanSession | null> {
+  const db = await getDB()
+  if (!db) return null
+  const v = await db.get('kv', activePlanSessionKey)
+  return (v as StoredPlanSession | undefined) ?? null
+}
+
+export async function clearPlanSession(): Promise<void> {
+  const db = await getDB()
+  if (!db) return
+  await db.delete('kv', activePlanSessionKey)
+}
+
+export interface StoredPlanExecution {
+  execution: PlanExecutionSnapshot
+  syncedAt: string
+  pendingSync?: boolean
+}
+
+export async function savePlanExecution(execution: StoredPlanExecution): Promise<void> {
+  const db = await getDB()
+  if (!db) return
+  await db.put('kv', execution, activePlanExecutionKey)
+}
+
+export async function getPlanExecution(): Promise<StoredPlanExecution | null> {
+  const db = await getDB()
+  if (!db) return null
+  const v = await db.get('kv', activePlanExecutionKey)
+  return (v as StoredPlanExecution | undefined) ?? null
+}
+
+export async function clearPlanExecution(): Promise<void> {
+  const db = await getDB()
+  if (!db) return
+  await db.delete('kv', activePlanExecutionKey)
 }
 
 export async function saveInventory(i: StoredInventory): Promise<void> {

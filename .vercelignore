@@ -1,0 +1,15 @@
+# O que NUNCA deve subir para o deploy.
+#
+# `vercel --prod` envia o diretório local, e o `public/` acumula cópias do
+# service worker geradas a cada build ("sw 2.js", "sw 33.js", "worker-<hash>.js").
+# Num deploy elas entraram no manifesto de precache e quebraram o install em
+# produção — nome com espaço, URL 404, e precache é atômico.
+public/sw.js
+public/sw *.js
+public/worker-*.js
+public/workbox-*.js
+
+.next
+node_modules
+.push-test-cert
+scripts/*.png

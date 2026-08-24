@@ -12,13 +12,13 @@
  * redirect back and renaming the two folders.
  */
 
-import RiskProvider from '@/components/v2/RiskProvider'
 import WorldV2 from '@/components/world-v2/WorldV2'
 
+/**
+ * O `RiskProvider` saiu daqui e subiu para o layout autenticado (D-079): o risco
+ * virou estado do app, e é o que permite o Pilot existir em qualquer tela.
+ * Mantê-lo aqui também aninharia dois provedores, com dois conjuntos de polling.
+ */
 export default function DashboardWorldV2Page() {
-  return (
-    <RiskProvider>
-      <WorldV2 />
-    </RiskProvider>
-  )
+  return <WorldV2 />
 }

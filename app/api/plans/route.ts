@@ -2,6 +2,10 @@ import { type NextRequest, NextResponse } from 'next/server'
 import webpush from 'web-push'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { logError } from '@/lib/error-log'
+import type { CirclePlace, PlanWaypoint, WaypointKind } from '@/lib/family-plan'
+import { normalizePointPrecision, placeKindForWaypoint } from '@/lib/plan-places'
+import { distanceKm } from '@/lib/world/shelters'
 
 /**
  * /api/plans — the family's emergency plan (D-066 / doc 18, PLAN-T01).
@@ -13,6 +17,16 @@ import { createAdminClient } from '@/lib/supabase/admin'
  * only meaningful together. A rendezvous point saved without the role that says
  * who goes there is not half a plan — it is a wrong one.
  *
+ * MÚLTIPLOS PLANOS POR CÍRCULO (D-080). Uma família precisa de planos separados
+ * para situações separadas: queda de energia, sem sinal de celular, incidente na
+ * escola. A migration removeu o índice de plano-ativo-único, e isso tornou
+ * PERIGOSO o comportamento antigo desta rota — ela pegava "o mais recente" e
+ * sobrescrevia. Com dois planos, salvar um sobrescreveria o outro em silêncio.
+ *
+ * Agora o plano é escolhido por `planId`, sempre. Sem `planId` o GET devolve o
+ * mais recente (e a lista completa, para a UI escolher) e o PUT **cria um plano
+ * novo** em vez de adivinhar qual sobrescrever.
+ *
  * VERSIONING IS THE SAFETY FEATURE (doc 18 §6). Every save increments `version`
  * and clears nothing: acks from older versions stay, so the UI can show exactly
  * who has and has not seen the change. A save also pushes the circle, because
@@ -23,14 +37,139 @@ const VAPID_PUBLIC = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? ''
 const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY ?? ''
 const VAPID_SUBJECT = process.env.VAPID_SUBJECT ?? 'mailto:brightscalegroup@gmail.com'
 
-type Waypoint = { kind: string; name: string; lat: number; lng: number; notes?: string | null; sort_order?: number }
+type Waypoint = {
+  id?: string
+  place_id?: string | null
+  kind: WaypointKind
+  name: string
+  lat: number
+  lng: number
+  precision?: string | null
+  notes?: string | null
+  sort_order?: number
+}
 type Route = { label: string; geometry: unknown; mode?: string; notes?: string | null }
-type Role = { member_user_id: string; responsibility: string }
+type Role = { member_user_id: string; for_member_id?: string | null; responsibility: string }
+type DependentBrief = { member_id?: string; instruction?: string }
+type Trigger = {
+  condition: string
+  action: string
+  action_type?: string | null
+  destination_kind?: string | null
+  route_label?: string | null
+  notify_circle?: boolean | null
+  escalation_minutes?: number | null
+  sort_order?: number
+}
+type PlanRow = { id: string; circle_id: string; name: string; version: number; status: string; updated_at: string }
 
 const KINDS = ['rendezvous_1', 'rendezvous_2', 'rendezvous_3', 'home', 'school', 'work', 'custom']
+const ACTION_TYPES = ['meet', 'evacuate', 'shelter', 'communicate', 'wait', 'custom']
+
+function escalationMinutes(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric)) return null
+  return Math.max(5, Math.min(120, Math.round(numeric)))
+}
 
 function tableMissing(error: { code?: string } | null) {
   return error?.code === '42P01'
+}
+
+function columnMissing(error: { code?: string } | null) {
+  return error?.code === '42703' || error?.code === 'PGRST204'
+}
+
+function waypointKind(value: string): WaypointKind | null {
+  return KINDS.includes(value) ? value as WaypointKind : null
+}
+
+function legacyWaypointFromPlace(
+  waypoint: PlanWaypoint,
+  place: CirclePlace,
+): PlanWaypoint {
+  return {
+    ...waypoint,
+    place_id: place.id,
+    name: place.name,
+    lat: place.lat,
+    lng: place.lng,
+    precision: place.precision,
+    notes: place.notes ?? waypoint.notes ?? null,
+  }
+}
+
+async function readCirclePlaces(
+  admin: NonNullable<ReturnType<typeof createAdminClient>>,
+  circleId: string,
+): Promise<CirclePlace[]> {
+  const { data, error } = await admin
+    .from('circle_places')
+    .select('id, circle_id, name, lat, lng, kind, precision, notes, created_by, created_at, updated_at, archived_at')
+    .eq('circle_id', circleId)
+    .is('archived_at', null)
+    .order('updated_at', { ascending: false })
+
+  if (tableMissing(error)) return []
+  if (error) throw error
+  return (data ?? []) as CirclePlace[]
+}
+
+async function findOrCreateCirclePlace(
+  admin: NonNullable<ReturnType<typeof createAdminClient>>,
+  circleId: string,
+  userId: string,
+  waypoint: Waypoint,
+): Promise<CirclePlace | null> {
+  if (waypoint.place_id) {
+    const { data, error } = await admin
+      .from('circle_places')
+      .select('id, circle_id, name, lat, lng, kind, precision, notes, created_by, created_at, updated_at, archived_at')
+      .eq('id', waypoint.place_id)
+      .eq('circle_id', circleId)
+      .is('archived_at', null)
+      .maybeSingle()
+
+    if (tableMissing(error)) return null
+    if (error) throw error
+    return data as CirclePlace | null
+  }
+
+  const precision = normalizePointPrecision(waypoint.precision)
+  if (!precision) return null
+
+  const { data: candidates, error: matchError } = await admin
+    .from('circle_places')
+    .select('id, circle_id, name, lat, lng, kind, precision, notes, created_by, created_at, updated_at, archived_at')
+    .eq('circle_id', circleId)
+    .is('archived_at', null)
+    .ilike('name', waypoint.name.trim())
+
+  if (tableMissing(matchError)) return null
+  if (matchError) throw matchError
+  const existing = ((candidates ?? []) as CirclePlace[])
+    .find(place => distanceKm(place, waypoint) * 1000 < 25)
+  if (existing) return existing
+
+  const { data, error } = await admin
+    .from('circle_places')
+    .insert({
+      circle_id: circleId,
+      name: waypoint.name.trim().slice(0, 80),
+      lat: waypoint.lat,
+      lng: waypoint.lng,
+      kind: placeKindForWaypoint(waypoint.kind),
+      precision,
+      notes: waypoint.notes?.slice(0, 300) ?? null,
+      created_by: userId,
+    })
+    .select('id, circle_id, name, lat, lng, kind, precision, notes, created_by, created_at, updated_at, archived_at')
+    .single()
+
+  if (tableMissing(error)) return null
+  if (error) throw error
+  return data as CirclePlace
 }
 
 async function assertMember(admin: NonNullable<ReturnType<typeof createAdminClient>>, circleId: string, userId: string) {
@@ -43,12 +182,64 @@ async function assertMember(admin: NonNullable<ReturnType<typeof createAdminClie
   return Boolean(data)
 }
 
+async function readPlanDocument(
+  admin: NonNullable<ReturnType<typeof createAdminClient>>,
+  plan: PlanRow,
+  userId: string,
+) {
+  const [{ data: waypoints, error: waypointError }, { data: routes }, { data: roles }, { data: acks }, triggerResult, briefResult] =
+    await Promise.all([
+      admin.from('family_plan_waypoints').select('*').eq('plan_id', plan.id).order('sort_order'),
+      admin.from('family_plan_routes').select('*').eq('plan_id', plan.id),
+      admin.from('family_plan_roles').select('*').eq('plan_id', plan.id),
+      admin.from('family_plan_acks').select('member_user_id, acked_version, acked_at').eq('plan_id', plan.id),
+      admin.from('family_plan_triggers').select('*').eq('plan_id', plan.id).order('sort_order'),
+      admin.from('family_plan_dependent_briefs').select('id, member_id, instruction, updated_at').eq('plan_id', plan.id),
+    ])
+
+  if (waypointError) throw waypointError
+  const rawWaypoints = (waypoints ?? []) as PlanWaypoint[]
+  const placeIds = rawWaypoints.map(w => w.place_id).filter((id): id is string => Boolean(id))
+  let placesById = new Map<string, CirclePlace>()
+  if (placeIds.length) {
+    const { data: places, error } = await admin
+      .from('circle_places')
+      .select('id, circle_id, name, lat, lng, kind, precision, notes, created_by, created_at, updated_at, archived_at')
+      .in('id', placeIds)
+      .is('archived_at', null)
+    if (!tableMissing(error) && error) throw error
+    placesById = new Map(((places ?? []) as CirclePlace[]).map(place => [place.id, place]))
+  }
+  const documentWaypoints = rawWaypoints.map(waypoint => {
+    const place = waypoint.place_id ? placesById.get(waypoint.place_id) : null
+    return place ? legacyWaypointFromPlace(waypoint, place) : waypoint
+  })
+  const places = await readCirclePlaces(admin, plan.circle_id)
+  const acknowledged = (acks ?? []).filter(a => a.acked_version === plan.version).map(a => a.member_user_id)
+  if (briefResult.error && !tableMissing(briefResult.error)) throw briefResult.error
+
+  return {
+    plan,
+    places,
+    waypoints: documentWaypoints,
+    routes: routes ?? [],
+    roles: roles ?? [],
+    dependentBriefs: tableMissing(briefResult.error) ? [] : briefResult.data ?? [],
+    triggers: triggerResult.data ?? [],
+    triggersPending: tableMissing(triggerResult.error),
+    acknowledgedBy: acknowledged,
+    myAck: (acks ?? []).find(a => a.member_user_id === userId)?.acked_version ?? null,
+  }
+}
+
 export async function GET(request: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 })
 
   const circleId = request.nextUrl.searchParams.get('circleId')
+  const planId = request.nextUrl.searchParams.get('planId')
+  const listOnly = request.nextUrl.searchParams.get('all') === '1'
   if (!circleId) return NextResponse.json({ error: 'circleId é obrigatório.' }, { status: 400 })
 
   const admin = createAdminClient()
@@ -57,38 +248,38 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Não é membro deste círculo.' }, { status: 403 })
   }
 
-  const { data: plan, error } = await admin
+  if (listOnly) {
+    const { data: plans, error } = await admin
+      .from('family_plans')
+      .select('id, circle_id, name, version, status, updated_at')
+      .eq('circle_id', circleId)
+      .neq('status', 'archived')
+      .order('updated_at', { ascending: false })
+
+    if (error && tableMissing(error)) {
+      return NextResponse.json({ plans: [], migrationPending: true })
+    }
+    return NextResponse.json({ plans: plans ?? [] })
+  }
+
+  let query = admin
     .from('family_plans')
-    .select('*')
+    .select('id, circle_id, name, version, status, updated_at')
     .eq('circle_id', circleId)
     .neq('status', 'archived')
     .order('updated_at', { ascending: false })
     .limit(1)
-    .maybeSingle()
+
+  if (planId) query = query.eq('id', planId)
+
+  const { data: plan, error } = await query.maybeSingle()
 
   if (error && tableMissing(error)) {
     return NextResponse.json({ plan: null, migrationPending: true })
   }
   if (!plan) return NextResponse.json({ plan: null })
 
-  const [{ data: waypoints }, { data: routes }, { data: roles }, { data: acks }] = await Promise.all([
-    admin.from('family_plan_waypoints').select('*').eq('plan_id', plan.id).order('sort_order'),
-    admin.from('family_plan_routes').select('*').eq('plan_id', plan.id),
-    admin.from('family_plan_roles').select('*').eq('plan_id', plan.id),
-    admin.from('family_plan_acks').select('member_user_id, acked_version, acked_at').eq('plan_id', plan.id),
-  ])
-
-  // Who has seen THIS version — the answer that separates a plan from an intention.
-  const acknowledged = (acks ?? []).filter(a => a.acked_version === plan.version).map(a => a.member_user_id)
-
-  return NextResponse.json({
-    plan,
-    waypoints: waypoints ?? [],
-    routes: routes ?? [],
-    roles: roles ?? [],
-    acknowledgedBy: acknowledged,
-    myAck: (acks ?? []).find(a => a.member_user_id === user.id)?.acked_version ?? null,
-  })
+  return NextResponse.json(await readPlanDocument(admin, plan as PlanRow, user.id))
 }
 
 export async function PUT(request: NextRequest) {
@@ -98,11 +289,15 @@ export async function PUT(request: NextRequest) {
 
   let body: {
     circleId?: string
+    planId?: string | null
+    createNew?: boolean
     name?: string
     status?: string
     waypoints?: Waypoint[]
     routes?: Route[]
     roles?: Role[]
+    dependentBriefs?: DependentBrief[]
+    triggers?: Trigger[]
   }
   try { body = await request.json() } catch { return NextResponse.json({ error: 'Corpo inválido.' }, { status: 400 }) }
   if (!body.circleId) return NextResponse.json({ error: 'circleId é obrigatório.' }, { status: 400 })
@@ -113,14 +308,55 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: 'Não é membro deste círculo.' }, { status: 403 })
   }
 
-  const { data: existing, error: readError } = await admin
+  /**
+   * Sem `planId`, só se atualiza quando NÃO HÁ AMBIGUIDADE.
+   *
+   * Depois que D-080 permitiu vários planos por círculo, cair no "mais recente"
+   * virou sobrescrever o plano errado em silêncio — perder o plano que a família
+   * combinou é a pior falha que este código pode ter. Com dois ou mais planos e
+   * nenhum id, a resposta certa é recusar e pedir qual, não adivinhar.
+   */
+  let existingQuery = admin
     .from('family_plans')
-    .select('id, version')
+    .select('id, version, circle_id')
     .eq('circle_id', body.circleId)
     .neq('status', 'archived')
     .order('updated_at', { ascending: false })
     .limit(1)
-    .maybeSingle()
+
+  if (body.planId && !body.createNew) {
+    // Por id, sem filtrar por círculo: é a checagem de posse logo abaixo que
+    // decide, e assim um id de outro círculo é RECUSADO em vez de ignorado.
+    existingQuery = admin
+      .from('family_plans')
+      .select('id, version, circle_id')
+      .eq('id', body.planId)
+      .limit(1)
+  } else if (!body.createNew) {
+    const { count } = await admin
+      .from('family_plans')
+      .select('*', { count: 'exact', head: true })
+      .eq('circle_id', body.circleId)
+      .neq('status', 'archived')
+    if ((count ?? 0) > 1) {
+      return NextResponse.json(
+        { error: 'ambiguous_plan', message: 'Este círculo tem mais de um plano. Diga qual (planId) ou peça um novo (createNew).' },
+        { status: 409 },
+      )
+    }
+  }
+
+  const { data: existing, error: readError } = body.createNew
+    ? { data: null, error: null }
+    : await existingQuery.maybeSingle()
+
+  if (body.planId && !body.createNew && !existing) {
+    return NextResponse.json({ error: 'Plano não encontrado.' }, { status: 404 })
+  }
+  // Um plano de outro círculo nunca é editável por aqui, nem com id válido.
+  if (existing && (existing as { circle_id?: string }).circle_id !== body.circleId) {
+    return NextResponse.json({ error: 'Plano não pertence a este círculo.' }, { status: 403 })
+  }
 
   if (readError && tableMissing(readError)) {
     return NextResponse.json({ error: 'migration_pending' }, { status: 200 })
@@ -133,7 +369,7 @@ export async function PUT(request: NextRequest) {
     await admin
       .from('family_plans')
       .update({
-        name: body.name ?? undefined,
+        name: body.name?.trim() ? body.name.trim().slice(0, 80) : undefined,
         status: body.status ?? undefined,
         version,
         updated_by: user.id,
@@ -145,7 +381,7 @@ export async function PUT(request: NextRequest) {
       .from('family_plans')
       .insert({
         circle_id: body.circleId,
-        name: body.name ?? 'Plano da família',
+        name: body.name?.trim() ? body.name.trim().slice(0, 80) : 'Plano da família',
         status: body.status ?? 'active',
         created_by: user.id,
         updated_by: user.id,
@@ -164,20 +400,42 @@ export async function PUT(request: NextRequest) {
     admin.from('family_plan_waypoints').delete().eq('plan_id', planId),
     admin.from('family_plan_routes').delete().eq('plan_id', planId),
     admin.from('family_plan_roles').delete().eq('plan_id', planId),
+    admin.from('family_plan_dependent_briefs').delete().eq('plan_id', planId),
   ])
 
-  const waypoints = (body.waypoints ?? [])
-    .filter(w => w?.name?.trim() && Number.isFinite(w.lat) && Number.isFinite(w.lng) && KINDS.includes(w.kind))
-    .map((w, index) => ({
+  const incomingWaypoints = body.waypoints ?? []
+  const waypoints = []
+  for (let index = 0; index < incomingWaypoints.length; index += 1) {
+    const w = incomingWaypoints[index]
+    const kind = waypointKind(w.kind)
+    if (!kind || !w?.name?.trim() || !Number.isFinite(w.lat) || !Number.isFinite(w.lng)) continue
+
+    const place = await findOrCreateCirclePlace(admin, body.circleId, user.id, { ...w, kind }).catch(error => {
+      if (tableMissing(error) || columnMissing(error)) return null
+      throw error
+    })
+
+    waypoints.push({
       plan_id: planId,
-      kind: w.kind,
-      name: w.name.trim().slice(0, 80),
-      lat: w.lat,
-      lng: w.lng,
-      notes: w.notes?.slice(0, 300) ?? null,
+      place_id: place?.id ?? null,
+      kind,
+      name: (place?.name ?? w.name).trim().slice(0, 80),
+      lat: place?.lat ?? w.lat,
+      lng: place?.lng ?? w.lng,
+      notes: (place?.notes ?? w.notes)?.slice(0, 300) ?? null,
       sort_order: w.sort_order ?? index,
-    }))
-  if (waypoints.length) await admin.from('family_plan_waypoints').insert(waypoints)
+    })
+  }
+  if (waypoints.length) {
+    const { error } = await admin.from('family_plan_waypoints').insert(waypoints)
+    if (columnMissing(error)) {
+      await admin.from('family_plan_waypoints').insert(
+        waypoints.map(({ place_id: _placeId, ...legacy }) => legacy),
+      )
+    } else if (error) {
+      throw error
+    }
+  }
 
   const routes = (body.routes ?? [])
     .filter(r => r?.label?.trim() && r.geometry)
@@ -195,9 +453,82 @@ export async function PUT(request: NextRequest) {
     .map(r => ({
       plan_id: planId,
       member_user_id: r.member_user_id,
+      // Quem é buscado (D-135 fase 3). Nulo na maioria dos papéis, que não são
+      // sobre uma pessoa — "levar o rádio", "fechar o gás".
+      for_member_id: r.for_member_id || null,
       responsibility: r.responsibility.trim().slice(0, 200),
     }))
-  if (roles.length) await admin.from('family_plan_roles').insert(roles)
+  if (roles.length) {
+    const { error: erroPapeis } = await admin.from('family_plan_roles').insert(roles)
+    /*
+     * A coluna `for_member_id` pode não existir ainda. Degrada como os
+     * gatilhos: salva o plano SEM o alvo em vez de perder o plano inteiro —
+     * mas grava o motivo, porque um plano que salva pela metade em silêncio é
+     * pior que um que falha.
+     */
+    if (erroPapeis && (erroPapeis.code === '42703' || erroPapeis.code === 'PGRST204')) {
+      await logError('api/plans:for_member_id', erroPapeis, { userId: user.id })
+      await admin.from('family_plan_roles').insert(
+        roles.map(({ for_member_id: _alvo, ...resto }) => resto),
+      )
+    } else if (erroPapeis) {
+      throw erroPapeis
+    }
+  }
+
+  const dependentBriefs = (body.dependentBriefs ?? [])
+    .filter(brief => brief?.member_id && brief?.instruction?.trim())
+    .map(brief => ({
+      plan_id: planId,
+      member_id: brief.member_id,
+      instruction: brief.instruction!.trim().slice(0, 300),
+      updated_at: new Date().toISOString(),
+    }))
+  if (dependentBriefs.length) {
+    const { error: briefError } = await admin.from('family_plan_dependent_briefs').insert(dependentBriefs)
+    if (briefError && !tableMissing(briefError)) throw briefError
+  }
+
+  // Triggers degrade on their own: a database without the migration saves the
+  // rest of the plan instead of failing the whole write.
+  const { error: triggerWipe } = await admin.from('family_plan_triggers').delete().eq('plan_id', planId)
+  let triggersPending = tableMissing(triggerWipe)
+  if (!triggersPending) {
+    const triggers = (body.triggers ?? [])
+      .filter(t => t?.condition?.trim() && t?.action?.trim())
+      .map((t, index) => ({
+        plan_id: planId,
+        condition: t.condition.trim().slice(0, 200),
+        action: t.action.trim().slice(0, 200),
+        action_type: ACTION_TYPES.includes(t.action_type ?? '') ? t.action_type : 'custom',
+        destination_kind: t.destination_kind && KINDS.includes(t.destination_kind) ? t.destination_kind : null,
+        route_label: t.route_label?.trim() ? t.route_label.trim().slice(0, 80) : null,
+        notify_circle: t.notify_circle !== false,
+        escalation_minutes: escalationMinutes(t.escalation_minutes),
+        sort_order: t.sort_order ?? index,
+      }))
+    if (triggers.length) {
+      const { error } = await admin.from('family_plan_triggers').insert(triggers)
+      triggersPending = tableMissing(error)
+      if (columnMissing(error)) {
+        await logError('api/plans:trigger_protocol_fields', error, { userId: user.id })
+        const { error: legacyError } = await admin.from('family_plan_triggers').insert(
+          triggers.map(({
+            action_type: _tipo,
+            destination_kind: _destino,
+            route_label: _rota,
+            notify_circle: _aviso,
+            escalation_minutes: _escalonamento,
+            ...legacy
+          }) => legacy),
+        )
+        triggersPending = tableMissing(legacyError)
+        if (legacyError && !triggersPending) throw legacyError
+      } else if (error && !triggersPending) {
+        throw error
+      }
+    }
+  }
 
   // The author is on the version they just wrote.
   await admin
@@ -210,15 +541,17 @@ export async function PUT(request: NextRequest) {
     const others = (members ?? []).map(m => m.user_id).filter(id => id !== user.id)
     if (others.length) {
       const { data: subs } = await admin
-        .from('push_subscriptions')
+        // A coluna é user_id. profile_id não existe — escrevi errado três vezes e
+    // todo push que eu adicionei falhava em silêncio.
+    .from('push_subscriptions')
         .select('endpoint, p256dh, auth')
-        .in('profile_id', others)
+        .in('user_id', others)
       if (subs?.length) {
         webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE)
         const payload = JSON.stringify({
           title: 'EOS · Plano da família mudou',
           body: `O plano foi atualizado (v${version}). Abra para confirmar que você viu.`,
-          url: '/family',
+          url: '/plan',
         })
         await Promise.allSettled(
           subs.map(sub =>
@@ -229,5 +562,5 @@ export async function PUT(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: true, planId, version })
+  return NextResponse.json({ ok: true, planId, version, triggersPending })
 }

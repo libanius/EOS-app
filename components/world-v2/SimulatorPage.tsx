@@ -29,8 +29,29 @@ import {
   type ThreatType,
 } from '@/lib/simulation'
 import { Card, Pill, SectionLabel } from './primitives'
+import { kindDoThreat } from '@/lib/staged-events'
+import MapPointPicker from './MapPointPicker'
+import MaisNav from './MaisNav'
 import { SPRING, haptic } from './motion'
 import './world-v2.css'
+
+/**
+ * De onde ele vem, em graus de bússola.
+ *
+ * Oito, e não um seletor livre: sob estresse ninguém digita "137°", e a
+ * diferença entre 135 e 137 não muda decisão nenhuma. O sudeste vem primeiro
+ * porque é a rota clássica na Flórida.
+ */
+const RUMOS = [
+  { deg: 135, pt: 'Sudeste', en: 'Southeast' },
+  { deg: 180, pt: 'Sul', en: 'South' },
+  { deg: 225, pt: 'Sudoeste', en: 'Southwest' },
+  { deg: 270, pt: 'Oeste', en: 'West' },
+  { deg: 315, pt: 'Noroeste', en: 'Northwest' },
+  { deg: 0, pt: 'Norte', en: 'North' },
+  { deg: 45, pt: 'Nordeste', en: 'Northeast' },
+  { deg: 90, pt: 'Leste', en: 'East' },
+]
 
 const COPY = {
   pt: {
@@ -39,9 +60,22 @@ const COPY = {
     lead: 'Configure a situação. O EOS inteiro passa a se comportar como se fosse verdade — índice de risco, Pilot, autonomia e mapa.',
     describe: 'Descreva a situação',
     placeholder: 'Ex.: furacão categoria 3 chegando em 12 horas. Minha filha machucou o joelho e não consegue andar rápido.',
+    applyText: 'Aplicar nos painéis',
+    applyingText: 'Interpretando…',
+    parseHint: 'O EOS preenche os painéis com OpenAI. Revise antes de iniciar.',
+    parseError: 'Não consegui interpretar. Ajuste os painéis manualmente.',
     threat: 'Ameaça',
     severity: 'Severidade',
     arrival: 'Chegada',
+    eventName: 'Nome do evento',
+    eventNamePlaceholder: 'Ex.: Furacão Isadora',
+    eventNameHelp: 'Aparece no mapa durante o treino. Dar nome é o que faz a família falar dele.',
+    comesFrom: 'Vem de',
+    placeOnMap: 'Escolher no mapa',
+    placed: 'Posição escolhida',
+    clearPlace: 'Usar o rumo',
+    placeHelp: 'Aponte onde ele está. Aí o rumo e o tempo passam a ser medidos a partir dali.',
+    noGeography: 'Este cenário não desenha no mapa — apagão e frio não têm um ponto de origem.',
     now: 'agora',
     hours: 'h',
     conditions: 'O que já falhou',
@@ -56,6 +90,8 @@ const COPY = {
     reserveHalf: 'Metade',
     reserveCritical: 'No limite',
     start: 'Iniciar simulação',
+    duration: 'Duração do exercício',
+    durationWhy: 'O treino se encerra sozinho e gera o debrief. Dá para esticar durante, se precisar.',
     shareWith: 'Compartilhar com',
     shareHint: 'Cada pessoa recebe um convite e decide se entra. Quem aceitar vê o mesmo cenário.',
     guestLink: 'Convidar alguém de fora',
@@ -91,9 +127,22 @@ const COPY = {
     lead: 'Set the situation. The whole of EOS starts behaving as if it were true — risk index, Pilot, autonomy and map.',
     describe: 'Describe the situation',
     placeholder: 'e.g. category 3 hurricane arriving in 12 hours. My daughter hurt her knee and cannot walk fast.',
+    applyText: 'Apply to panels',
+    applyingText: 'Interpreting…',
+    parseHint: 'EOS fills the panels with OpenAI. Review before starting.',
+    parseError: 'Could not interpret it. Adjust the panels manually.',
     threat: 'Threat',
     severity: 'Severity',
     arrival: 'Arrival',
+    eventName: 'Event name',
+    eventNamePlaceholder: 'e.g. Hurricane Isadora',
+    eventNameHelp: 'Shows on the map during the drill. Naming it is what makes the family talk about it.',
+    comesFrom: 'Comes from',
+    placeOnMap: 'Pick on the map',
+    placed: 'Position picked',
+    clearPlace: 'Use the bearing',
+    placeHelp: 'Point where it is. Bearing and time are then measured from there.',
+    noGeography: 'This scenario draws nothing on the map — a blackout has no point of origin.',
     now: 'now',
     hours: 'h',
     conditions: 'What has already failed',
@@ -108,6 +157,8 @@ const COPY = {
     reserveHalf: 'Half',
     reserveCritical: 'At the limit',
     start: 'Start simulation',
+    duration: 'Exercise length',
+    durationWhy: 'The drill ends by itself and produces the debrief. You can extend it while running.',
     shareWith: 'Share with',
     shareHint: 'Each person gets an invite and decides. Whoever accepts sees the same scenario.',
     guestLink: 'Invite someone outside',
@@ -141,16 +192,23 @@ const COPY = {
 
 const ARRIVALS = [0, 3, 6, 12, 24, 48]
 
+/** Opções de duração. 15 min é um ensaio curto; 120 é um exercício de família. */
+const DURATIONS = [15, 30, 60, 120]
+
 export default function SimulatorPage() {
   const { language } = useLanguage()
   const router = useRouter()
   const c = COPY[language]
   const pt = language === 'pt'
+  const [escolhendo, setEscolhendo] = useState(false)
   const { config: active, start, stop, setSharedSession } = useSimulation()
   const [circles, setCircles] = useState<Array<{ id: string; name: string; members: number }>>([])
   const [selected, setSelected] = useState<string[]>([])
   const [joinLink, setJoinLink] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [parsing, setParsing] = useState(false)
+  const [parseNotes, setParseNotes] = useState<string[]>([])
+  const [parseError, setParseError] = useState<string | null>(null)
 
   useEffect(() => {
     fetch('/api/circles')
@@ -165,7 +223,47 @@ export default function SimulatorPage() {
   }, [])
 
   const [draft, setDraft] = useState<SimulationConfig>(DEFAULT_SIMULATION)
+
+  const posto = draft.eventLat != null && draft.eventLng != null
   const set = (patch: Partial<SimulationConfig>) => setDraft(current => ({ ...current, ...patch }))
+
+  const applyDescription = async () => {
+    const description = draft.description.trim()
+    if (!description) return
+    setParsing(true)
+    setParseError(null)
+    setParseNotes([])
+    try {
+      const response = await fetch('/api/simulation/parse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description, pt }),
+      })
+      const data = await response.json().catch(() => null) as {
+        ok?: boolean
+        patch?: Partial<SimulationConfig>
+        notes?: string[]
+        error?: string
+      } | null
+      if (!response.ok || !data?.ok || !data.patch) {
+        setParseError(data?.error ?? c.parseError)
+        return
+      }
+      setDraft(current => ({
+        ...current,
+        ...data.patch,
+        description,
+        sources: { ...current.sources, ...(data.patch?.sources ?? {}) },
+        values: { ...current.values, ...(data.patch?.values ?? {}) },
+      }))
+      setParseNotes(Array.isArray(data.notes) ? data.notes : [])
+      haptic.impact()
+    } catch {
+      setParseError(c.parseError)
+    } finally {
+      setParsing(false)
+    }
+  }
 
   const launch = async () => {
     haptic.impact()
@@ -198,6 +296,7 @@ export default function SimulatorPage() {
 
   return (
     <div className="wv2 wv2-sim-page" data-risk="watch" data-ready="true">
+      <MaisNav />
       <div className="sim-scroll">
         <header className="sim-header">
           <p className="t-caps ink-3">{c.eyebrow}</p>
@@ -249,6 +348,18 @@ export default function SimulatorPage() {
                 placeholder={c.placeholder}
                 rows={3}
               />
+              <div className="sim-parse">
+                <Pill onClick={applyDescription}>
+                  {parsing ? c.applyingText : c.applyText}
+                </Pill>
+                <span className="t-foot ink-3">{c.parseHint}</span>
+              </div>
+              {parseError && <p className="sim-parse-error t-foot">{parseError}</p>}
+              {parseNotes.length > 0 && (
+                <ul className="sim-parse-notes">
+                  {parseNotes.map(note => <li key={note} className="t-foot ink-2">{note}</li>)}
+                </ul>
+              )}
             </Card>
 
             {/* ── Threat ── */}
@@ -294,6 +405,85 @@ export default function SimulatorPage() {
                   </Chip>
                 ))}
               </div>
+
+              {/*
+                ── DAR NOME AO QUE ESTÁ VINDO (SIM-T12 / D-201) ──────────────
+
+                Pedido do dono: *"dar nome a ele"*. Não é enfeite. Uma família
+                não conversa sobre "o cenário de furacão categoria 3" — ela
+                conversa sobre a **Isadora**. O nome é o que faz o treino virar
+                assunto, e o que faz a lembrança durar depois que ele acaba.
+
+                Os campos só aparecem para as ameaças que TÊM geografia
+                (`kindDoThreat`). Pedir nome e rumo para um apagão seria coletar
+                um dado que não vai a lugar nenhum — e sugerir que existe um
+                "ponto do apagão", que é justamente o que D-200 recusou.
+              */}
+              {kindDoThreat(draft.threat) ? (
+                <>
+                  <div className="sim-row" style={{ marginTop: '1rem' }}>
+                    <span className="t-caps ink-3">{c.eventName}</span>
+                  </div>
+                  <input
+                    className="wv2-input"
+                    value={draft.eventName ?? ''}
+                    maxLength={40}
+                    placeholder={c.eventNamePlaceholder}
+                    aria-label={c.eventName}
+                    onChange={e => set({ eventName: e.target.value })}
+                  />
+                  <p className="t-foot ink-3" style={{ margin: '0.4rem 0 0' }}>{c.eventNameHelp}</p>
+
+                  <div className="sim-row" style={{ marginTop: '1rem' }}>
+                    <span className="t-caps ink-3">{c.comesFrom}</span>
+                  </div>
+                  <div className="sim-chips">
+                    {RUMOS.map(r => (
+                      <Chip
+                        key={r.deg}
+                        on={!posto && (draft.eventBearingDeg ?? 135) === r.deg}
+                        onClick={() => set({ eventBearingDeg: r.deg, eventLat: null, eventLng: null })}
+                      >
+                        {pt ? r.pt : r.en}
+                      </Chip>
+                    ))}
+                  </div>
+
+                  {/*
+                    Apontar no mapa (SIM-T12c / D-202).
+
+                    O rumo responde "de que lado ele vem". Isto responde "onde
+                    ele ESTÁ" — e é o que permite ensaiar a tempestade que já
+                    aconteceu, no lugar exato em que aconteceu.
+
+                    Escolher um rumo limpa a posição, e vice-versa: os dois
+                    respondem à mesma pergunta, e deixar ambos acesos faria a
+                    tela mentir sobre qual está valendo.
+                  */}
+                  <div className="sim-chips" style={{ marginTop: '0.5rem' }}>
+                    <Chip on={posto} onClick={() => setEscolhendo(true)}>
+                      {posto ? `✓ ${c.placed}` : c.placeOnMap}
+                    </Chip>
+                    {posto && (
+                      <Chip on={false} onClick={() => set({ eventLat: null, eventLng: null })}>
+                        {c.clearPlace}
+                      </Chip>
+                    )}
+                  </div>
+                  <p className="t-foot ink-3" style={{ margin: '0.4rem 0 0' }}>{c.placeHelp}</p>
+
+                  <MapPointPicker
+                    open={escolhendo}
+                    pt={pt}
+                    start={posto ? { lat: draft.eventLat!, lng: draft.eventLng! } : null}
+                    fallback={null}
+                    onPick={p => { set({ eventLat: p.lat, eventLng: p.lng }); setEscolhendo(false) }}
+                    onClose={() => setEscolhendo(false)}
+                  />
+                </>
+              ) : (
+                <p className="t-foot ink-3" style={{ margin: '1rem 0 0' }}>{c.noGeography}</p>
+              )}
             </Card>
 
             {/* ── Infrastructure ── */}
@@ -406,8 +596,31 @@ export default function SimulatorPage() {
               )}
             </Card>
 
+            {/*
+              A duração é escolhida ANTES de começar, e não depois.
+              Um treino sem hora para acabar vira estado permanente — e o EOS em
+              simulação mostra risco simulado, autonomia simulada e um Pilot
+              falando de um evento que não existe.
+            */}
+            <Card>
+              <SectionLabel trailing={`${draft.durationMin} min`}>{c.duration}</SectionLabel>
+              <p className="t-foot ink-3">{c.durationWhy}</p>
+              <div className="sim-durations">
+                {DURATIONS.map(minutes => (
+                  <button
+                    key={minutes}
+                    type="button"
+                    className={`wv2-chip${draft.durationMin === minutes ? ' on' : ''}`}
+                    onClick={() => { haptic.selection(); set({ durationMin: minutes }) }}
+                  >
+                    {minutes} min
+                  </button>
+                ))}
+              </div>
+            </Card>
+
             <motion.div whileTap={{ scale: 0.98 }} transition={SPRING.quick}>
-              <Pill primary wide onClick={launch}>{c.start}</Pill>
+              <Pill primary wide onClick={launch}>{c.start} · {draft.durationMin} min</Pill>
             </motion.div>
 
             <p className="sim-safety t-foot ink-3">{c.safety}</p>
@@ -436,14 +649,32 @@ function Stepper({
   onChange: (value: number) => void
 }) {
   const clamp = (n: number) => Math.max(min, Math.min(max, n))
+  const percent = ((value - min) / (max - min)) * 100
+  const change = (next: number, tactile = false) => {
+    if (tactile) haptic.selection()
+    onChange(clamp(next))
+  }
+
   return (
     <div className="sim-stepper">
       <span className="t-sub">{label}</span>
-      <div>
-        <button type="button" aria-label="-" onClick={() => { haptic.selection(); onChange(clamp(value - step)) }}>−</button>
+      <div className="sim-stepper-controls">
+        <button type="button" aria-label={`Diminuir ${label}`} onClick={() => change(value - step, true)}>−</button>
         <strong className="t-sub">{value}{unit}</strong>
-        <button type="button" aria-label="+" onClick={() => { haptic.selection(); onChange(clamp(value + step)) }}>+</button>
+        <button type="button" aria-label={`Aumentar ${label}`} onClick={() => change(value + step, true)}>+</button>
       </div>
+      <input
+        className="sim-stepper-range"
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        aria-label={label}
+        onInput={event => change(Number(event.currentTarget.value))}
+        onChange={event => change(Number(event.currentTarget.value))}
+        style={{ ['--sim-stepper-progress' as string]: `${percent}%` }}
+      />
     </div>
   )
 }

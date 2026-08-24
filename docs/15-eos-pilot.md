@@ -6,7 +6,12 @@
 >
 > **Casa definitiva:** o Pilot deixou de ser "complicação do dashboard" (PILOT-T01, ON HOLD) e deixou de ser a Pilot Capsule do HWD-05. Agora é o **orbe + console** do World v2 (`components/world-v2/Pilot.tsx`), sempre a um toque em `/dashboard`.
 > **Desvio relevante desta spec:** o motor é **determinístico, local e síncrono** (`pilot-engine.ts`), não um fluxo assistido por modelo. Razão: a promessa do produto é responder quando a rede caiu. As 5 atividades da PILOT-T02 foram substituídas por **5 intenções** de decisão ("o que faço agora", "ficar ou sair", "quanto tempo aguentamos", "o que está faltando", "dá para sair"). Os estados GO/LIMITED/WAIT/AVOID/PRIORITY OVERRIDE (PILOT-T03) viraram os vereditos `ready`/`watch`/`hold`/`act`, com as regras de domicílio vindo do `RulesEngine` canônico.
-> **PILOT-T04 (métricas) segue PENDING.**
+> **PILOT-T04 (métricas): FEITO em D-132.** `pilot_events` + `/api/pilot/metrics`.
+> A tabela não tem coluna de texto livre — a pergunta, a resposta, a coordenada
+> e a ficha não têm onde caber. Das seis famílias do §19, cinco se medem por
+> comportamento; **compreensão** fica por proxy (`handle` = seguiu a alça
+> depois do veredito), porque comportamento não responde "a pessoa entendeu o
+> que GO significa" — só pesquisa responde.
 
 ---
 
@@ -63,6 +68,7 @@ Pilot is not:
 - A simple weather screen.
 - An isolated recreational recommender.
 - An AI that makes final decisions for the user.
+- An AI that improvises a new family plan during a crisis.
 - A Dashboard replacement.
 - A separate visual system pasted onto EOS.
 
@@ -127,6 +133,58 @@ Re-evaluate
 ```
 
 Pilot primarily owns interpretation and decision.
+
+### Pilot Hosts Execution (D-079)
+
+When a family plan is already approved, Pilot can switch roles: from
+interpreter to **situational host**.
+
+In this mode it does not brainstorm. It guides the circle through the plan that
+already exists:
+
+- names the immediate safety constraint;
+- asks the family to confirm location/status;
+- surfaces the relevant trigger/action;
+- assigns the saved roles in order;
+- points to the saved rendezvous and route notes;
+- waits for visible confirmation before moving on.
+
+This is an onboarding pattern applied to emergency execution: one next action,
+one confirmation, one state transition. It is not a free-form chat.
+
+For active violence incidents, the host must not produce tactical instructions
+or send family members toward the incident. It coordinates communication and
+responsibilities while deferring to school, emergency services and local
+authorities.
+
+### Pilot Educador Situacional (D-093 / PILOT-T08)
+
+Pilot also acts as a situational educator inside the Preparedness Engine. When
+it recommends concrete work, the recommendation becomes a confirmed
+preparedness proposal:
+
+- `resource` for things to acquire;
+- `task` for things to do or verify;
+- `plan_review` for family-plan changes to review;
+- `comms_setup` for communication/radio setup.
+
+The server assigns source and destination. The UI shows them before the user
+confirms. Confirmed Pilot actions persist through the existing checklist
+contract with `kit_type=PILOT_RECOMMENDATION`.
+
+Pilot may instruct, ask one short clarifying question, validate, and propose. It
+must not silently write to checklist, inventory, plans, Comms, or long-term
+memory.
+
+### Confirmed Pilot Memory (D-095 / UPP-03)
+
+When a conversation reveals durable context, Pilot may return a memory proposal.
+The UI shows the exact Markdown and the reason. The write only happens after the
+user confirms.
+
+Confirmed writes call `POST /api/profile/personalization/memory`, which delegates
+to RPC `confirm_pilot_memory(...)`. The RPC updates `pilot_memory_md` and writes
+`pilot_memory_events` in the same transaction.
 
 ---
 

@@ -3,9 +3,14 @@ import { geocodeLocation } from '@/lib/geocode'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { ensureProfile } from '@/lib/ensure-profile'
+import { DEFAULT_MAP_BASE_MODE, normalizeMapBaseMode, type MapBaseMode } from '@/lib/map-base-mode'
 
-const FICHA_FIELDS = 'id, name, location, location_lat, location_lng, blood_type, allergies, emergency_contact_name, emergency_contact_phone, medical_notes, medications'
+const PUBLIC_FICHA_FIELDS = 'id, name, location, location_lat, location_lng, blood_type, allergies, emergency_contact_name, emergency_contact_phone, medical_notes, medications'
+const PRIVATE_FICHA_FIELDS = `${PUBLIC_FICHA_FIELDS}, map_base_mode`
 
+function columnMissing(error: { code?: string } | null) {
+  return error?.code === '42703'
+}
 
 // ─── GET /api/profile/ficha ───────────────────────────────────────────────────
 export async function GET() {
@@ -15,8 +20,14 @@ export async function GET() {
     return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 })
   }
   await ensureProfile(supabase, user)
-  const { data, error } = await supabase
-    .from('profiles').select(FICHA_FIELDS).eq('id', user.id).single()
+  let { data, error } = await supabase
+    .from('profiles').select(PRIVATE_FICHA_FIELDS).eq('id', user.id).single()
+  if (columnMissing(error)) {
+    const fallback = await supabase
+      .from('profiles').select(PUBLIC_FICHA_FIELDS).eq('id', user.id).single()
+    data = fallback.data ? { ...fallback.data, map_base_mode: DEFAULT_MAP_BASE_MODE } : fallback.data
+    error = fallback.error
+  }
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ficha: data })
 }
@@ -38,6 +49,7 @@ export async function PATCH(req: NextRequest) {
     emergency_contact_phone?: string | null
     medical_notes?: string | null
     medications?: string[]
+    map_base_mode?: MapBaseMode
   }
   try { body = await req.json() } catch {
     return NextResponse.json({ error: 'Corpo inválido.' }, { status: 400 })
@@ -68,11 +80,30 @@ export async function PATCH(req: NextRequest) {
   if (body.emergency_contact_phone !== undefined) patch.emergency_contact_phone = body.emergency_contact_phone
   if (body.medical_notes           !== undefined) patch.medical_notes           = body.medical_notes
   if (body.medications             !== undefined) patch.medications             = body.medications
+  if (body.map_base_mode           !== undefined) {
+    const mapBaseMode = normalizeMapBaseMode(body.map_base_mode)
+    if (!mapBaseMode) return NextResponse.json({ error: 'Base do mapa inválida.' }, { status: 400 })
+    patch.map_base_mode = mapBaseMode
+  }
   if (Object.keys(patch).length === 0) {
     return NextResponse.json({ error: 'Nenhum campo para atualizar.' }, { status: 400 })
   }
-  const { data, error } = await supabase
-    .from('profiles').update(patch).eq('id', user.id).select(FICHA_FIELDS).single()
+  let { data, error } = await supabase
+    .from('profiles').update(patch).eq('id', user.id).select(PRIVATE_FICHA_FIELDS).single()
+  if (columnMissing(error)) {
+    const legacyPatch = { ...patch }
+    delete legacyPatch.map_base_mode
+    if (Object.keys(legacyPatch).length === 0) {
+      return NextResponse.json({
+        ficha: { id: user.id, map_base_mode: patch.map_base_mode },
+        migrationPending: true,
+      })
+    }
+    const fallback = await supabase
+      .from('profiles').update(legacyPatch).eq('id', user.id).select(PUBLIC_FICHA_FIELDS).single()
+    data = fallback.data ? { ...fallback.data, map_base_mode: patch.map_base_mode } : fallback.data
+    error = fallback.error
+  }
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ficha: data })
 }
@@ -94,7 +125,7 @@ export async function POST(req: NextRequest) {
   }
   const service = createServiceClient(url, key)
   const { data, error } = await service
-    .from('profiles').select(FICHA_FIELDS).eq('id', body.id).single()
+    .from('profiles').select(PUBLIC_FICHA_FIELDS).eq('id', body.id).single()
   if (error || !data) return NextResponse.json({ error: 'Ficha não encontrada.' }, { status: 404 })
   return NextResponse.json({ ficha: data })
 }

@@ -15,7 +15,7 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from('family_members')
-    .select('id, profile_id, name, age, medical_conditions, medical_notes, medications, mobility_impaired, is_infant, linked_user_id, created_at')
+    .select('id, profile_id, name, age, medical_conditions, medical_notes, medications, mobility_impaired, is_infant, linked_user_id, relationship, care_notes, created_at')
     .eq('profile_id', user.id)
     .order('created_at', { ascending: true })
 
@@ -46,6 +46,9 @@ export async function POST(req: NextRequest) {
     age?: number | null
     medical_conditions?: string[]
     medical_notes?: string | null
+    /** D-123: quem essa pessoa é para o cuidador, e o que quem for buscá-la precisa saber. */
+    relationship?: string | null
+    care_notes?: string | null
     medications?: string[]
     mobility_impaired?: boolean
     is_infant?: boolean
@@ -70,11 +73,13 @@ export async function POST(req: NextRequest) {
       age:                body.age ?? null,
       medical_conditions: body.medical_conditions ?? [],
       medical_notes:      body.medical_notes ?? null,
+      relationship:       body.relationship ?? null,
+      care_notes:         body.care_notes ?? null,
       medications:        body.medications ?? [],
       mobility_impaired:  body.mobility_impaired ?? false,
       is_infant:          body.is_infant ?? false,
     })
-    .select('id, profile_id, name, age, medical_conditions, medical_notes, medications, mobility_impaired, is_infant, linked_user_id, created_at')
+    .select('id, profile_id, name, age, medical_conditions, medical_notes, medications, mobility_impaired, is_infant, linked_user_id, relationship, care_notes, created_at')
     .single()
 
   if (error) {

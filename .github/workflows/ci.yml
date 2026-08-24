@@ -1,0 +1,75 @@
+# Portão de entrada do `main` (D-120).
+#
+# Até aqui, a única coisa que rodava antes de um deploy era o que eu lembrasse
+# de rodar na minha máquina. Isso já deixou passar para produção: uma tela preta
+# em todo o app, 64 arquivos de lixo no precache e um `sw.js` que nunca
+# registrava. Nos três casos o defeito era pegável por `type-check` ou `build` —
+# faltava alguém rodando sempre, não alguém rodando melhor.
+#
+# O QUE ESTE ARQUIVO NÃO FAZ, DE PROPÓSITO: não roda os testes de navegador.
+# Todos eles criam contas no Supabase de PRODUÇÃO — é o único projeto que
+# existe. Rodar isso a cada push seria despejar dado de teste no banco dos
+# usuários reais várias vezes por dia, e exigiria a chave service-role como
+# segredo do GitHub. Esses testes continuam sendo rodados à mão, e a limpeza
+# deles é garantida por `scripts/lib/test-cleanup.mjs`.
+#
+# Os valores de ambiente aqui são FALSOS de propósito: o build não precisa de
+# banco de verdade, e um segredo que não está aqui é um segredo que não vaza.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Um push novo cancela a checagem do anterior: o que importa é o topo do ramo.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://exemplo.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: chave-falsa-de-ci
+      NEXT_PUBLIC_SITE_URL: https://exemplo.test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      # Ordem escolhida pelo custo: o que falha rápido falha primeiro, para
+      # quem quebrou o tipo não esperar o build inteiro para descobrir.
+      - name: Tipos
+        run: npm run type-check
+
+      - name: Lint
+        run: npm run lint
+
+      # Os scripts de teste ficam fora do `next lint` (que só olha app/, lib/ e
+      # components/), e foi ali que a mesma armadilha de sintaxe passou TRÊS
+      # vezes: uma linha começando com `/regex/` depois de `)` é lida como
+      # divisão, e o teste roda "verde" testando outra coisa. `eslint:recommended`
+      # pega isso mecanicamente — melhor que eu lembrar.
+      - name: Lint dos scripts de teste
+        run: npm run lint:scripts
+
+      - name: Testes unitários
+        run: npm test
+
+      # O build é o mais caro e o mais valioso: é ele que pega import quebrado,
+      # rota que não compila e página que estoura na geração estática.
+      - name: Build
+        run: npm run build

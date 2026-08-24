@@ -1,4 +1,10 @@
 import { type RulesQuery, type RulesResult, ScenarioType, UrgencyLevel } from './types'
+import {
+  formatGallons,
+  GALLON_SHORT,
+  WATER_ADEQUATE_LITERS_PER_PERSON,
+  WATER_CRITICAL_LITERS_PER_PERSON,
+} from './units'
 
 // ─── Urgency Escalation Helpers ──────────────────────────────────────────────
 
@@ -25,11 +31,11 @@ type RuleFn = (
 ) => { urgency: UrgencyLevel; message: string } | null
 
 /**
- * Rule 1 — Water critically low (< 2 L/person).
- * Overrides Rule 2 when both thresholds are crossed.
+ * Rule 1 — Água crítica: menos de UM DIA por pessoa (D-163).
+ * Sobrepõe a Rule 2 quando os dois limiares são cruzados.
  */
 const ruleWaterCritical: RuleFn = (_query, { waterPerPerson }) => {
-  if (waterPerPerson < 2) {
+  if (waterPerPerson < WATER_CRITICAL_LITERS_PER_PERSON) {
     return {
       urgency: UrgencyLevel.CRITICAL,
       message: 'WATER_CRITICAL: reabastecimento imediato',
@@ -39,14 +45,15 @@ const ruleWaterCritical: RuleFn = (_query, { waterPerPerson }) => {
 }
 
 /**
- * Rule 2 — Water low (< 4 L/person).
- * Skipped when Rule 1 already fired (water < 2 L/person).
+ * Rule 2 — Água baixa: entre um e três dias por pessoa (D-163).
+ * O piso da FEMA é três dias; abaixo disso a casa não cumpre o mínimo.
+ * Pulada quando a Rule 1 já disparou.
  */
 const ruleWaterLow: RuleFn = (_query, { waterPerPerson }) => {
-  if (waterPerPerson >= 2 && waterPerPerson < 4) {
+  if (waterPerPerson >= WATER_CRITICAL_LITERS_PER_PERSON && waterPerPerson < WATER_ADEQUATE_LITERS_PER_PERSON) {
     return {
       urgency: UrgencyLevel.HIGH,
-      message: `WATER_LOW: ${waterPerPerson.toFixed(2)} L/pessoa`,
+      message: `WATER_LOW: ${formatGallons(waterPerPerson)} ${GALLON_SHORT}/pessoa`,
     }
   }
   return null

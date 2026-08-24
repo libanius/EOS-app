@@ -55,6 +55,34 @@
 .world-map-wrap { position: absolute; inset: 0; z-index: 0; }
 .world-map { position: absolute; inset: 0; transition: filter 600ms ease; }
 .world-map canvas { outline: none; }
+.world-wind-scalar-canvas, .world-wind-canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; opacity: 0; transition: opacity 180ms ease; }
+.world-wind-scalar-canvas { z-index: 2; mix-blend-mode: normal; filter: saturate(1.35) contrast(1.08); }
+.world-wind-canvas { z-index: 3; mix-blend-mode: screen; }
+.world-wind-scalar-canvas[data-active='true'] { opacity: var(--wind-scalar-opacity, 0.54); }
+.world-wind-canvas[data-active='true'] { opacity: var(--wind-particle-opacity, 1); }
+.world-wind-legend { position: absolute; left: clamp(320px, 28vw, 520px); top: 46%; bottom: auto; transform: translateY(-50%); z-index: 5; display: grid; grid-template-columns: auto repeat(5, auto); align-items: center; gap: 7px; padding: 8px 10px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); background: rgba(5,7,10,0.72); color: rgba(255,255,255,0.8); font-size: 10px; font-weight: 800; letter-spacing: 0.08em; pointer-events: auto; }
+.world-wind-toggle { display: block; border: 0; border-radius: 999px; padding: 8px 10px; background: rgba(122,215,255,0.18); color: #fff; font: inherit; letter-spacing: 0.08em; pointer-events: auto; }
+.world-wind-legend span { color: #fff; }
+.world-wind-legend b { font-size: 9px; color: rgba(255,255,255,0.72); }
+.world-wind-ramp { grid-column: 2 / -1; height: 4px; border-radius: 999px; background: linear-gradient(90deg, rgba(185,245,255,0.62), rgba(122,215,255,0.76), rgba(255,214,10,0.82), rgba(255,159,10,0.88), rgba(255,69,58,0.92)); }
+.world-wind-time, .world-wind-control { grid-column: 1 / -1; display: grid; grid-template-columns: 48px minmax(112px, 1fr); align-items: center; gap: 8px; pointer-events: auto; }
+.world-wind-time span, .world-wind-control span { font-size: 9px; font-weight: 900; color: rgba(255,255,255,0.86); }
+.world-wind-time input, .world-wind-control input { width: 100%; accent-color: #7ad7ff; }
+.world-wind-legend[data-open='false'] { width: auto; padding: 6px; border-radius: 999px; background: rgba(5,7,10,0.64); }
+.world-wind-legend[data-open='false'] .world-wind-title,
+.world-wind-legend[data-open='false'] .world-wind-scale,
+.world-wind-legend[data-open='false'] .world-wind-ramp,
+.world-wind-legend[data-open='false'] .world-wind-time,
+.world-wind-legend[data-open='false'] .world-wind-control { display: none; }
+.world-wind-legend[data-open='true'] { padding: 10px; border-radius: 14px; background: rgba(5,7,10,0.78); }
+@media (max-width: 700px) {
+  .world-wind-legend { left: auto; right: 12px; top: auto; bottom: 122px; transform: none; max-width: min(230px, calc(100vw - 28px)); grid-template-columns: 1fr; justify-items: stretch; gap: 8px; }
+  .world-wind-legend[data-open='true'] .world-wind-ramp { grid-column: 1 / -1; }
+  .world-wind-time, .world-wind-control { grid-template-columns: 54px minmax(120px, 1fr); }
+}
+.world-wind-popup { position: absolute; z-index: 6; transform: translate(12px, -50%); min-width: 148px; display: grid; gap: 3px; padding: 10px 12px; border-radius: 14px; border: 1px solid rgba(122,215,255,0.28); background: rgba(7,10,14,0.86); color: #fff; box-shadow: 0 18px 44px rgba(0,0,0,0.42); pointer-events: none; }
+.world-wind-popup strong { color: #7ad7ff; font-size: 11px; letter-spacing: 0.12em; }
+.world-wind-popup span { font-size: 12px; font-weight: 700; color: rgba(255,255,255,0.82); }
 /* state-aware color grading over the live map (§5.3 / §10) */
 .world[data-risk='watch'] .world-map { filter: saturate(0.95) brightness(0.92); }
 .world[data-risk='warning'] .world-map { filter: saturate(0.85) brightness(0.78); }

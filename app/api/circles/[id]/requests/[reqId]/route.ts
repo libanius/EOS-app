@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { createCommsNotifications, getCircleMemberIds, getCircleName, getProfileName } from '@/lib/comms-notifications'
 
 interface Ctx { params: { id: string; reqId: string } }
 
@@ -34,7 +35,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
 
   const { data: request } = await admin
     .from('circle_join_requests')
-    .select('id, circle_id, requester_id, status')
+    .select('id, circle_id, requester_id, status, wants_family_access')
     .eq('id', params.reqId)
     .eq('circle_id', params.id)
     .maybeSingle()
@@ -43,9 +44,33 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     return NextResponse.json({ error: `Request already ${request.status}` }, { status: 409 })
   }
 
+  let existingMemberIds: string[] = []
   if (action === 'approve') {
+    existingMemberIds = await getCircleMemberIds(admin, params.id)
+
+    /**
+     * O link pedia Família íntima (D-112)?
+     *
+     * Então o membro nasce com o convite PENDENTE — `requested`, nunca
+     * `approved`. Quem decide abrir a própria ficha médica é a pessoa, na conta
+     * dela. Um link de convite pode fazer a pergunta; não pode responder por
+     * ninguém.
+     */
+    const wants = (request as { wants_family_access?: boolean }).wants_family_access === true
     const { error: memErr } = await admin.from('circle_members').upsert(
-      { circle_id: params.id, user_id: request.requester_id, role: 'Viewer', share_inventory: false },
+      {
+        circle_id: params.id,
+        user_id: request.requester_id,
+        role: 'Viewer',
+        share_inventory: false,
+        ...(wants
+          ? {
+              family_access_status: 'requested',
+              family_access_requested_at: new Date().toISOString(),
+              family_access_requested_by: user.id,
+            }
+          : {}),
+      },
       { onConflict: 'circle_id,user_id', ignoreDuplicates: true },
     )
     if (memErr) return NextResponse.json({ error: memErr.message }, { status: 500 })
@@ -56,6 +81,33 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     .update({ status: action === 'approve' ? 'approved' : 'rejected', decided_at: new Date().toISOString(), decided_by: user.id })
     .eq('id', params.reqId)
   if (updErr) return NextResponse.json({ error: updErr.message }, { status: 500 })
+
+  if (action === 'approve') {
+    const [circleName, requesterName] = await Promise.all([
+      getCircleName(admin, params.id),
+      getProfileName(admin, request.requester_id),
+    ])
+    await Promise.all([
+      createCommsNotifications({
+        admin,
+        circleId: params.id,
+        actorId: user.id,
+        recipientIds: [request.requester_id],
+        kind: 'join_request_approved',
+        title: `Você entrou em ${circleName}`,
+        body: `Seu pedido para entrar em ${circleName} foi aceito.`,
+      }),
+      createCommsNotifications({
+        admin,
+        circleId: params.id,
+        actorId: request.requester_id,
+        recipientIds: existingMemberIds,
+        kind: 'member_joined',
+        title: `${requesterName} entrou no círculo`,
+        body: `${requesterName} agora faz parte de ${circleName}.`,
+      }),
+    ])
+  }
 
   return NextResponse.json({ ok: true, action })
 }

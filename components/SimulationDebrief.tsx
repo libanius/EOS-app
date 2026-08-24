@@ -7,9 +7,9 @@
  * that moment a genuine threat owns the screen, and a training report would be
  * exactly the wrong thing to put in front of someone.
  *
- * Each gap that can be bought carries a one-tap "add to checklist". The tap is
+ * Each actionable gap carries a one-tap "add to preparedness". The tap is
  * required — same rule as the Pilot and D-067: nothing edits the family's plan
- * silently.
+ * or resources silently.
  */
 
 import { useEffect, useState } from 'react'
@@ -17,6 +17,16 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useLanguage } from '@/lib/i18n'
 import { useSimulation } from './SimulationProvider'
 import { buildDebrief, type Debrief, type DebriefGap } from '@/lib/simulation-debrief'
+import type { PlanRoute, PlanTrigger, PlanWaypoint } from '@/lib/family-plan'
+
+type PlanForDrill = {
+  hasPlan: boolean
+  waypoints: PlanWaypoint[]
+  routes: PlanRoute[]
+  triggers: PlanTrigger[]
+  planVersion: number
+  membersPending: number
+}
 import { simulationLabel } from '@/lib/simulation'
 
 type Member = { age: number | null; medical_conditions: string[] | null; mobility_impaired: boolean | null; is_infant: boolean | null }
@@ -36,15 +46,39 @@ export default function SimulationDebrief() {
     }
     let cancelled = false
     ;(async () => {
-      const [inv, fam, chk] = await Promise.all([
+      const [inv, fam, chk, circlesRes] = await Promise.all([
         fetch('/api/inventory').catch(() => null),
         fetch('/api/family-members').catch(() => null),
         fetch('/api/checklist').catch(() => null),
+        fetch('/api/circles').catch(() => null),
       ])
       const inventory = inv?.ok ? (await inv.json().catch(() => null))?.inventory ?? null : null
       const roster = fam?.ok ? (await fam.json().catch(() => null))?.members : null
       const members: Member[] = Array.isArray(roster) ? roster : []
       const items: Array<{ acquired: boolean }> = chk?.ok ? (await chk.json().catch(() => null))?.items ?? [] : []
+
+      // SIM-T06: o plano do círculo entra no debrief. Se a leitura falhar, `plan`
+      // fica null e o debrief simplesmente não fala do plano — nunca conclui que
+      // ele não existe, porque silêncio não é ausência.
+      let plan: PlanForDrill | null = null
+      const circles = circlesRes?.ok ? (await circlesRes.json().catch(() => null))?.circles ?? [] : []
+      const circle = circles[0]
+      if (circle?.id) {
+        const doc = await fetch(`/api/plans?circleId=${circle.id}`)
+          .then(r => (r.ok ? r.json() : null))
+          .catch(() => null)
+        if (doc) {
+          const memberCount = Array.isArray(circle.members) ? circle.members.length : 0
+          plan = {
+            hasPlan: Boolean(doc.plan),
+            waypoints: doc.waypoints ?? [],
+            routes: doc.routes ?? [],
+            triggers: doc.triggers ?? [],
+            planVersion: doc.plan?.version ?? 0,
+            membersPending: Math.max(0, memberCount - (doc.acknowledgedBy?.length ?? 0)),
+          }
+        }
+      }
       if (cancelled) return
 
       setReport(
@@ -57,6 +91,7 @@ export default function SimulationDebrief() {
           householdKnown: members.length > 0,
           checklistPct: items.length ? Math.round((items.filter(i => i.acquired).length / items.length) * 100) : 0,
           inventory,
+          plan,
           pt,
         }),
       )
@@ -71,7 +106,7 @@ export default function SimulationDebrief() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        kitType: 'GERAL',
+        kitType: 'SIMULATION_DEBRIEF',
         items: [{ name: gap.task.name, tier: gap.task.tier, quantity: gap.task.quantity, unit: gap.task.unit }],
       }),
     }).catch(() => {
@@ -87,6 +122,12 @@ export default function SimulationDebrief() {
     held: pt ? 'A casa aguentou' : 'The household held',
     tight: pt ? 'Aguentou no limite' : 'It held, barely',
     failed: pt ? 'A casa não aguentaria' : 'The household would not have held',
+  }
+  const actionKindCopy = {
+    resource: pt ? 'Recurso' : 'Resource',
+    task: pt ? 'Tarefa' : 'Task',
+    plan_review: pt ? 'Plano' : 'Plan',
+    comms_setup: pt ? 'Comms' : 'Comms',
   }
 
   return (
@@ -135,15 +176,23 @@ export default function SimulationDebrief() {
                     <strong>{gap.title}</strong>
                     <p>{gap.detail}</p>
                     {gap.task && (
-                      <button
-                        type="button"
-                        disabled={added.has(gap.id)}
-                        onClick={() => addTask(gap)}
-                      >
-                        {added.has(gap.id)
-                          ? (pt ? 'No checklist' : 'On checklist')
-                          : (pt ? 'Adicionar ao checklist' : 'Add to checklist')}
-                      </button>
+                      <div className="proposal">
+                        <span className="proposal-kind">{actionKindCopy[gap.task.action.kind]}</span>
+                        <p>
+                          <strong>{gap.task.name}</strong>
+                          <em>{gap.task.action.source}</em>
+                          <em>{gap.task.action.destination}</em>
+                        </p>
+                        <button
+                          type="button"
+                          disabled={added.has(gap.id)}
+                          onClick={() => addTask(gap)}
+                        >
+                          {added.has(gap.id)
+                            ? gap.task.action.savedLabel
+                            : gap.task.action.confirmLabel}
+                        </button>
+                      </div>
                     )}
                   </div>
                 ))

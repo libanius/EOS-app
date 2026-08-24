@@ -41,7 +41,7 @@
 | F04-1 | User describes a scenario in free text | ✅ IMPLEMENTED |
 | F04-2 | Rules Engine evaluates urgency before LLM | ✅ IMPLEMENTED |
 | F04-3 | LLM cannot downgrade Rules Engine urgency | ✅ IMPLEMENTED |
-| F04-4 | CONNECTED mode uses Claude API + RAG | ✅ IMPLEMENTED |
+| F04-4 | CONNECTED mode uses OpenAI API + RAG | ✅ IMPLEMENTED |
 | F04-5 | SURVIVAL mode uses Rules Engine only (no API) | ✅ IMPLEMENTED |
 | F04-6 | LOCAL_AI mode uses on-device model | ❌ NOT IMPLEMENTED |
 | F04-7 | Action plan is streamed to the client | ✅ IMPLEMENTED |
@@ -114,6 +114,22 @@
 | F10-3 | Pilot can read the personalization layer when producing contextual recommendations | ✅ IMPLEMENTED |
 | F10-4 | Pilot memory is stored separately from user-authored preferences and can be updated only through explicit user-controlled flows in the MVP | ✅ IMPLEMENTED |
 | F10-5 | Public emergency QR does not expose personalization, avatar, Pilot memory, or private preference context | ✅ IMPLEMENTED |
+| F10-6 | Pilot memory writes proposed by the model require explicit confirmation and audit trail | ✅ IMPLEMENTED — UPP-03 |
+
+---
+
+## F11 — Preparedness Engine
+
+| ID | Requirement | Status |
+|---|---|---|
+| F11-1 | Checklist and Resources converge into one Preparação surface | ✅ IMPLEMENTED — PREP-T01 |
+| F11-2 | EDU content can be cataloged by scenario and converted into actionable preparation only after approval/versioning | ✅ IMPLEMENTED — EDU-T01 |
+| F11-3 | Circle-level Comms supports chat/reference workflows separately from Mesh/LoRa hardware | ✅ IMPLEMENTED — COMMS-T01 |
+| F11-6 | Circle radio reference can be edited by Admin/Editor and read by all circle members | ✅ IMPLEMENTED — COMMS-T03 |
+| F11-4 | Simulation invitations can drive contextual onboarding | ✅ IMPLEMENTED — ONB-T01 |
+| F11-7 | Simulation debrief gaps can become confirmed preparedness tasks/resources with visible source | ✅ IMPLEMENTED — SIM-T11 |
+| F11-5 | Pilot may propose preparedness tasks/resources but persistent writes require explicit confirmation and visible source | ✅ IMPLEMENTED — PILOT-T08 |
+| F11-8 | Simulator free text can fill reviewable scenario panels before the drill starts | ✅ IMPLEMENTED — SIM-T09 |
 
 ---
 

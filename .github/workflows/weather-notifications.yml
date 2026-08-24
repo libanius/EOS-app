@@ -1,0 +1,60 @@
+# Notificações de clima a cada 15 minutos, sem plano Pro (D-113).
+#
+# O agendador da Vercel no plano Hobby só aceita UMA execução por dia — e um
+# aviso de tempestade que chega uma vez por dia não é aviso, é boletim. Mas
+# pagar Pro só pelo agendador não se justifica: a rota já existe, já é protegida
+# por `CRON_SECRET`, e o GitHub Actions agenda de graça.
+#
+# O cron da Vercel continua no `vercel.json`, diário, como REDE DE SEGURANÇA: se
+# este workflow for desativado ou o repositório sair do ar, ainda sobra uma
+# passada por dia em vez de nenhuma.
+#
+# PARA ATIVAR: adicione o segredo `CRON_SECRET` em
+# Settings → Secrets and variables → Actions, com o MESMO valor que está na
+# Vercel. Sem ele o workflow falha alto (401), em vez de fingir que rodou.
+
+name: Weather notifications
+
+on:
+  schedule:
+    # A cada 15 minutos. O GitHub atrasa em horários de pico; para um alerta
+    # meteorológico, alguns minutos de atraso são aceitáveis — um dia não é.
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  # Uma execução por vez: duas passadas simultâneas competiriam pela deduplicação
+  # por `source_key` e poderiam gerar aviso repetido.
+  group: weather-notifications
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Disparar a varredura de alertas
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          TARGET: ${{ vars.EOS_CRON_URL || 'https://eos-app-fawn.vercel.app' }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::CRON_SECRET não está configurado nos secrets do repositório."
+            exit 1
+          fi
+
+          code=$(curl -sS -o /tmp/out.json -w '%{http_code}' \
+            --max-time 120 \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$TARGET/api/cron/weather-notifications")
+
+          echo "HTTP $code"
+          head -c 600 /tmp/out.json || true
+          echo
+
+          # Falhar alto é o ponto: um agendador que engole erro é um agendador
+          # que some sem ninguém notar — foi assim que esta rota passou meses
+          # devolvendo 401 sem nenhum sinal.
+          if [ "$code" -ge 400 ]; then
+            echo "::error::A rota respondeu $code."
+            exit 1
+          fi

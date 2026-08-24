@@ -1,12 +1,11 @@
-'use client'
+import { redirect } from 'next/navigation'
 
 /**
- * /checklist — rebuilt on the World v2 design system.
- * The previous implementation is preserved at /checklist-legacy.
+ * `/checklist` apontava para `/preparedness` desde D-086, quando Checklist e
+ * Recursos foram unificados. PREP-T07 devolveu ao checklist uma tela própria,
+ * então o endereço antigo volta a ter um destino exato em vez de largar a
+ * pessoa no topo de uma página que já foi longa.
  */
-
-import ChecklistPage from '@/components/world-v2/ChecklistPage'
-
 export default function Page() {
-  return <ChecklistPage />
+  redirect('/preparedness/o-que-falta')
 }

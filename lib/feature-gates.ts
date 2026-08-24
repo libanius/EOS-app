@@ -22,8 +22,12 @@ export const FEATURE_GATES = {
   monitoring_multilocal: 'family', // Monitor circle members' locations
   monitoring_cdc: 'premium',       // CDC disease / outbreak surveillance
   monitoring_fda: 'premium',       // FDA drug + food recalls
-  monitoring_push: 'premium',      // Push notifications for critical alerts
+  // D-220: gratuito para todos. Um aviso de furacão que só chega para quem
+  // pagou não é um produto de segurança — é um upsell com roupa de alerta.
+  // Revisitar quando/se a monetização exigir, mas o padrão é avisar todo mundo.
+  monitoring_push: 'free',         // Push notifications for critical alerts
   monitoring_history: 'premium',   // 30-day alert history
+  animated_wind: 'premium',        // D-141: animated wind layer renderer
 
   // ── Circles ───────────────────────────────────────────────────────────────
   circulos: 'family',              // CREATE a circle (D-041: joining an invite is free)

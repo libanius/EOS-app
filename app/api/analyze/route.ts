@@ -1,12 +1,14 @@
 import type { NextRequest } from 'next/server'
 import OpenAI from 'openai'
 import { createClient } from '@/lib/supabase/server'
+import { getHousehold } from '@/lib/household'
 import { ensureProfile } from '@/lib/ensure-profile'
 import { getOpenAIModel } from '@/lib/openai'
 import { getRelevantChunks } from '@/lib/knowledge'
 import { enforceRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
 import { fetchOpenMeteoForecast } from '@/lib/weather/providers/open-meteo'
 import { fetchWeather } from '@/lib/monitor'
+import { formatGallons, GALLON_SHORT, WATER_CRITICAL_LITERS_PER_PERSON } from '@/lib/units'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -128,11 +130,12 @@ class RulesEngine {
 
     // Water rules (per person)
     const waterPerPerson = inventory.water_liters / memberCount
-    if (waterPerPerson < 2) {
+    // D-163: crítico é menos de UM DIA por pessoa pela régua da FEMA.
+    if (waterPerPerson < WATER_CRITICAL_LITERS_PER_PERSON) {
       result.priority = 'CRITICAL'
-      result.risks.push('Água abaixo de 2L/pessoa — risco imediato de desidratação')
+      result.risks.push(`Água abaixo de ${formatGallons(2)} ${GALLON_SHORT}/pessoa — risco imediato de desidratação`)
       result.actions.push('Localizar fonte de água potável imediatamente')
-      result.rulesApplied.push('WATER_CRITICAL: < 2L/pessoa')
+      result.rulesApplied.push(`WATER_CRITICAL: < ${formatGallons(WATER_CRITICAL_LITERS_PER_PERSON)} ${GALLON_SHORT}/pessoa`)
     } else if (waterPerPerson < 4) {
       result.priority = escalate(result.priority, 'HIGH')
       result.risks.push(`Reserva de água insuficiente para ${memberCount} pessoa(s) por 2 dias`)
@@ -548,35 +551,35 @@ export async function POST(request: NextRequest) {
 
   // 3. Fetch profile + family + inventory
   // profiles.id = auth.uid(); family_members and resource_inventory use profile_id
-  const [profileRes, familyRes, inventoryRes] = await Promise.all([
+  const [profileRes, household] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', user.id).single(),
-    supabase.from('family_members').select('*').eq('profile_id', user.id),
-    supabase.from('resource_inventory').select('*').eq('profile_id', user.id).maybeSingle(),
+    // A casa, não a lista digitada à mão, e com o inventário SOMADO (D-123).
+    getHousehold(user.id),
   ])
 
   const profile: Profile = profileRes.data
     ? { id: profileRes.data.id, name: profileRes.data.name, location: profileRes.data.location ?? '' }
     : { id: user.id, name: 'Unknown', location: '' }
 
-  const family: FamilyMember[] = (familyRes.data ?? []).map((m) => ({
-    id: m.id,
-    name: m.name,
-    age: m.age ?? null,
-    medical_conditions: m.medical_conditions ?? [],
-    medical_notes: m.medical_notes ?? null,
-    medications: m.medications ?? [],
-    mobility_impaired: m.mobility_impaired ?? false,
-    is_infant: m.is_infant ?? false,
+  const family: FamilyMember[] = household.people.map((p, i) => ({
+    id: p.userId ?? `dep-${i}`,
+    name: p.name,
+    age: p.age,
+    medical_conditions: p.medicalConditions,
+    medical_notes: null,
+    medications: p.medications,
+    mobility_impaired: p.mobilityImpaired,
+    is_infant: p.isInfant,
   }))
 
-  const inv = inventoryRes.data
   const inventory: ResourceInventory = {
-    water_liters: Number(inv?.water_liters) || 0,
-    food_days: Number(inv?.food_days) || 0,
-    fuel_liters: Number(inv?.fuel_liters) || 0,
-    battery_percent: Number(inv?.battery_percent) || 0,
-    has_medical_kit: Boolean(inv?.has_medical_kit),
-    has_communication_device: Boolean(inv?.has_communication_device),
+    water_liters: household.inventory.waterLiters,
+    // A engine espera DIAS; `foodPersonDays` divide pelo tamanho da casa.
+    food_days: household.size > 0 ? household.inventory.foodPersonDays / household.size : 0,
+    fuel_liters: household.inventory.fuelLiters,
+    battery_percent: household.inventory.batteryPercent,
+    has_medical_kit: household.inventory.hasMedicalKit,
+    has_communication_device: household.inventory.hasCommunicationDevice,
   }
 
   const ctx: QueryContext = {

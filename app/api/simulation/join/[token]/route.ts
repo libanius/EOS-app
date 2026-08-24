@@ -13,6 +13,35 @@ import { createAdminClient } from '@/lib/supabase/admin'
 
 type Ctx = { params: { token: string } }
 
+export async function GET(_request: Request, { params }: Ctx) {
+  const admin = createAdminClient()
+  if (!admin) return NextResponse.json({ error: 'Indisponível.' }, { status: 503 })
+
+  const { data: session } = await admin
+    .from('simulation_sessions')
+    .select('id, status, config, owner_id')
+    .eq('join_token', params.token)
+    .maybeSingle()
+
+  if (!session) return NextResponse.json({ error: 'Convite inválido.' }, { status: 404 })
+
+  const { data: owner } = await admin
+    .from('profiles')
+    .select('name')
+    .eq('id', session.owner_id)
+    .maybeSingle()
+
+  return NextResponse.json({
+    ok: true,
+    session: {
+      id: session.id,
+      status: session.status,
+      config: session.config,
+      ownerName: owner?.name ?? '—',
+    },
+  })
+}
+
 export async function POST(_request: Request, { params }: Ctx) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

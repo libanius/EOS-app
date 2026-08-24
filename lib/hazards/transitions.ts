@@ -1,4 +1,4 @@
-// ─── Transition detection (D-074) ─────────────────────────────────────────────
+// ─── Transition detection (D-220) ─────────────────────────────────────────────
 //
 // The difference between the EOS and a weather widget is this file.
 //
@@ -45,6 +45,12 @@ export interface StoredHazardState {
   hazardType: string
   metrics?: HazardMetrics | null
 }
+
+// The audit record is written in the app's base language (English, D-206).
+// What a person READS is rendered later, from `metrics`, in their language —
+// see notificationCopy. Storing a translated label would freeze one language
+// into the database.
+const EN = false
 
 const SEVERITY_RANK: Record<HazardSeverity, number> = {
   info: 0,
@@ -195,7 +201,7 @@ export function detectTransitions({ previous, current, ownedIds }: DetectOptions
       transitions.push({
         kind,
         event,
-        toState: stateLabel(event, true),
+        toState: stateLabel(event, EN),
         toMetrics: event.metrics,
         dedupKey: dedupKeyFor(kind, event),
       })
@@ -210,8 +216,8 @@ export function detectTransitions({ previous, current, ownedIds }: DetectOptions
     transitions.push({
       kind,
       event,
-      fromState: stateLabel(prev, true),
-      toState: stateLabel(event, true),
+      fromState: stateLabel(prev, EN),
+      toState: stateLabel(event, EN),
       fromMetrics: prev.metrics ?? undefined,
       toMetrics: event.metrics,
       dedupKey: dedupKeyFor(kind, event),
@@ -245,8 +251,8 @@ export function detectTransitions({ previous, current, ownedIds }: DetectOptions
         detectedAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       },
-      fromState: stateLabel(prev, true),
-      toState: 'encerrado',
+      fromState: stateLabel(prev, EN),
+      toState: 'ended',
       fromMetrics: prev.metrics ?? undefined,
       dedupKey: `cleared:${prev.id}:${metricSignature(prev.metrics)}`,
     })

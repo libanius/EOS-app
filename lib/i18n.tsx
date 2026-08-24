@@ -21,15 +21,25 @@ const messages = {
     'nav.scenario': 'Cenário',
     'nav.family': 'Família',
     'nav.inventory': 'Recursos',
+    'nav.preparedness': 'Preparação',
     'nav.checklist': 'Checklist',
+    'nav.comms': 'Comms',
     'nav.circles': 'Círculos',
     'nav.weather': 'Clima',
+    'nav.more': 'Mais',
     'nav.main': 'Navegação principal',
     'actions.emergencyCard': 'Minha Ficha de Emergência',
     'actions.settings': 'Configurações',
-    'settings.eyebrow': 'EOS · Preferências',
-    'settings.title': 'Configurações',
-    'settings.description': 'Escolha como o EOS deve apresentar a interface neste dispositivo.',
+    'actions.familyPlan': 'Plano da família',
+    'actions.menu': 'Menu do app',
+    // O título da tela repete o rótulo da barra de propósito (NAV-T06 / D-180):
+    // quando os dois discordam, a pessoa duvida que chegou onde queria.
+    'settings.eyebrow': 'EOS · Mais',
+    'settings.title': 'Mais',
+    'settings.description': 'Treino, plano, conta e preferências do app.',
+    'mais.drill': 'Treino',
+    'mais.drillHelp': 'Ensaiar um cenário com a família, antes do dia real.',
+    'mais.drillOpen': 'Abrir o treino',
     'settings.language': 'Idioma',
     'settings.languageHelp': 'A alteração é aplicada imediatamente e fica salva neste dispositivo.',
     'settings.portuguese': 'Português',
@@ -53,6 +63,7 @@ const messages = {
     'settings.planFeatures.monitoring_fire': 'Incêndios via satélite (NASA)',
     'settings.planFeatures.monitoring_fema': 'Desastres e abrigos (FEMA)',
     'settings.planFeatures.monitoring_multilocal': 'Monitorar localização do círculo',
+    'settings.planFeatures.animated_wind': 'Camada de vento animada',
     'settings.planFeatures.monitoring_push': 'Notificações push críticas',
     'settings.planFeatures.monitoring_history': 'Histórico de alertas (30 dias)',
     'settings.planFeatures.circulos': 'Círculos de família',
@@ -263,9 +274,12 @@ const messages = {
     'family.nameRequired': 'Informe o nome do membro.',
     'family.saveError': 'Erro ao salvar membro.',
     'inventory.loading': 'Carregando inventário…',
-    'inventory.eyebrow': 'Inventário',
-    'inventory.title': 'Recursos',
-    'inventory.readiness': 'Resumo de prontidão',
+    'inventory.eyebrow': 'EOS · Preparação',
+    'inventory.title': 'Preparação',
+    // D-162: a nota é sobre CINCO recursos da casa, não sobre a preparação
+    // da família. O rótulo passa a dizer o que ela mede.
+    'inventory.readiness': 'Linha de base da casa',
+    'inventory.readinessHint': '5 recursos essenciais · não mede plano, kits nem treino',
     'inventory.autonomy': 'Autonomia estimada',
     'inventory.days': 'dias',
     'inventory.members': 'membros',
@@ -286,6 +300,8 @@ const messages = {
     'inventory.nextSteps': 'Próximos passos',
     'inventory.water': 'Água',
     'inventory.liters': 'litros',
+    // D-158: água em galão; combustível continua em litro.
+    'inventory.gallons': 'galões',
     'inventory.perPerson': 'por pessoa',
     'inventory.food': 'Comida',
     'inventory.supplyDays': 'Dias de suprimento',
@@ -299,8 +315,8 @@ const messages = {
     'inventory.communicationDesc': 'Rádio, walkie-talkie ou celular reserva',
     'inventory.cash': 'Dinheiro em espécie',
     'inventory.availableAmount': 'Valor disponível',
-    'inventory.preparedness': 'Preparação',
-    'inventory.generateChecklist': 'Gerar Checklist',
+    'inventory.preparedness': 'Tarefas',
+    'inventory.generateChecklist': 'Gerar tarefas',
     'inventory.emptyChecklist': 'Nenhum item ainda. Gere o checklist para começar.',
     'inventory.loadError': 'Erro ao carregar inventário.',
     'inventory.aiError': 'Erro ao gerar análise com IA.',
@@ -345,15 +361,23 @@ const messages = {
     'nav.scenario': 'Scenario',
     'nav.family': 'Family',
     'nav.inventory': 'Resources',
+    'nav.preparedness': 'Preparedness',
     'nav.checklist': 'Checklist',
+    'nav.comms': 'Comms',
     'nav.circles': 'Circles',
     'nav.weather': 'Weather',
+    'nav.more': 'More',
     'nav.main': 'Main navigation',
     'actions.emergencyCard': 'My Emergency Card',
     'actions.settings': 'Settings',
-    'settings.eyebrow': 'EOS · Preferences',
-    'settings.title': 'Settings',
-    'settings.description': 'Choose how EOS should display the interface on this device.',
+    'actions.familyPlan': 'Family plan',
+    'actions.menu': 'App menu',
+    'settings.eyebrow': 'EOS · More',
+    'settings.title': 'More',
+    'settings.description': 'Drills, plan, account and app preferences.',
+    'mais.drill': 'Drill',
+    'mais.drillHelp': 'Rehearse a scenario with your family, before the real day.',
+    'mais.drillOpen': 'Open the drill',
     'settings.language': 'Language',
     'settings.languageHelp': 'The change applies immediately and is saved on this device.',
     'settings.portuguese': 'Português',
@@ -377,6 +401,7 @@ const messages = {
     'settings.planFeatures.monitoring_fire': 'Satellite fire detection (NASA)',
     'settings.planFeatures.monitoring_fema': 'Disasters & shelters (FEMA)',
     'settings.planFeatures.monitoring_multilocal': 'Monitor circle locations',
+    'settings.planFeatures.animated_wind': 'Animated wind layer',
     'settings.planFeatures.monitoring_push': 'Critical push notifications',
     'settings.planFeatures.monitoring_history': 'Alert history (30 days)',
     'settings.planFeatures.circulos': 'Family circles',
@@ -587,9 +612,12 @@ const messages = {
     'family.nameRequired': 'Enter the member name.',
     'family.saveError': 'Could not save member.',
     'inventory.loading': 'Loading inventory…',
-    'inventory.eyebrow': 'Inventory',
-    'inventory.title': 'Resources',
-    'inventory.readiness': 'Readiness summary',
+    'inventory.eyebrow': 'EOS · Preparedness',
+    'inventory.title': 'Preparedness',
+    // D-162: the score covers FIVE household resources, not the family's
+    // preparedness. The label now says what it measures.
+    'inventory.readiness': 'Household baseline',
+    'inventory.readinessHint': '5 essential resources · does not measure plan, kits or drills',
     'inventory.autonomy': 'Estimated autonomy',
     'inventory.days': 'days',
     'inventory.members': 'members',
@@ -610,6 +638,8 @@ const messages = {
     'inventory.nextSteps': 'Next steps',
     'inventory.water': 'Water',
     'inventory.liters': 'liters',
+    // D-158: water in gallons; fuel stays in litres.
+    'inventory.gallons': 'gallons',
     'inventory.perPerson': 'per person',
     'inventory.food': 'Food',
     'inventory.supplyDays': 'Days of supply',
@@ -623,8 +653,8 @@ const messages = {
     'inventory.communicationDesc': 'Radio, walkie-talkie, or backup phone',
     'inventory.cash': 'Cash',
     'inventory.availableAmount': 'Available amount',
-    'inventory.preparedness': 'Preparedness',
-    'inventory.generateChecklist': 'Generate Checklist',
+    'inventory.preparedness': 'Tasks',
+    'inventory.generateChecklist': 'Generate tasks',
     'inventory.emptyChecklist': 'No items yet. Generate the checklist to begin.',
     'inventory.loadError': 'Could not load inventory.',
     'inventory.aiError': 'Could not generate AI analysis.',
@@ -680,14 +710,42 @@ function isLanguage(value: string | null): value is Language {
   return value === 'pt' || value === 'en'
 }
 
+/**
+ * O padrão é INGLÊS (D-198).
+ *
+ * Era `'pt'`. O EOS opera nos Estados Unidos — as fontes que ele lê são o NWS,
+ * o USGS, o NHC e a FEMA, e o alerta que chega no telefone chega em inglês.
+ * Um app que abre em português para um alerta em inglês obriga a pessoa a
+ * traduzir no pior momento possível.
+ *
+ * Português continua inteiro e a um toque, em Mais. Ele deixa de ser a
+ * suposição e passa a ser a escolha — que é o que ele sempre foi para quem
+ * abre o app pela primeira vez neste país.
+ *
+ * **Quem já escolheu não é afetado**: a preferência salva vence o padrão, e é a
+ * primeira coisa que o efeito abaixo faz.
+ */
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguageState] = useState<Language>('pt')
+  const [language, setLanguageState] = useState<Language>('en')
 
   useEffect(() => {
     const savedLanguage = window.localStorage.getItem(STORAGE_KEY)
     if (isLanguage(savedLanguage)) {
       setLanguageState(savedLanguage)
       document.documentElement.lang = savedLanguage === 'pt' ? 'pt-BR' : 'en'
+      return
+    }
+    /*
+     * Sem escolha salva, o IDIOMA DO APARELHO decide entre os dois que existem.
+     * Um telefone em pt-BR abre em português; qualquer outro abre em inglês.
+     *
+     * Isto não contradiz o padrão inglês — o padrão é o que vale quando não há
+     * informação. O aparelho é informação.
+     */
+    const doAparelho = typeof navigator !== 'undefined' ? navigator.language : ''
+    if (doAparelho.toLowerCase().startsWith('pt')) {
+      setLanguageState('pt')
+      document.documentElement.lang = 'pt-BR'
     }
   }, [])
 
@@ -696,6 +754,20 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     window.localStorage.setItem(STORAGE_KEY, nextLanguage)
     document.cookie = `${STORAGE_KEY}=${nextLanguage}; Path=/; Max-Age=${COOKIE_MAX_AGE}; SameSite=Lax`
     document.documentElement.lang = nextLanguage === 'pt' ? 'pt-BR' : 'en'
+    /*
+     * E no perfil também (D-220). localStorage e cookie bastam para tudo que é
+     * renderizado a partir de uma requisição — mas o push é escrito pela
+     * varredura agendada, que não tem navegador nem cookie. Sem gravar aqui, o
+     * alerta sairia em inglês para quem escolheu português.
+     *
+     * Fire-and-forget de propósito: a troca de idioma na tela não pode esperar
+     * a rede, nem falhar junto com ela.
+     */
+    void fetch('/api/profile/language', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ language: nextLanguage }),
+    }).catch(() => {})
   }, [])
 
   const value = useMemo<LanguageContextValue>(

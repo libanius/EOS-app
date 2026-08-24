@@ -13,7 +13,15 @@
 
 import type { WeatherSnapshot, WeatherAlert, HourlyForecast } from './weather/types'
 
-export type ThreatType = 'hurricane' | 'flood' | 'wildfire' | 'earthquake' | 'winter' | 'blackout' | 'general'
+/*
+ * `fallout` entrou em SIM-T12 / D-200, a pedido do dono.
+ *
+ * Ele já existia no vocabulário do app — `checklist.fallout` gera itens de
+ * contaminação radioativa desde o começo — e faltava do lado do treino. Um
+ * cenário que o checklist sabe preparar e o simulador não sabe encenar é meia
+ * ferramenta.
+ */
+export type ThreatType = 'hurricane' | 'flood' | 'wildfire' | 'earthquake' | 'fallout' | 'winter' | 'blackout' | 'general'
 export type Severity = 1 | 2 | 3 | 4 | 5
 export type ReserveLevel = 'real' | 'half' | 'critical'
 
@@ -57,6 +65,20 @@ export type SimulationConfig = {
   arrivalHours: number
   /** Free-text description the user typed; feeds the Pilot briefing. */
   description: string
+  /*
+   * O nome e a direção do evento encenado (SIM-T12 / D-201).
+   *
+   * Opcionais porque cenário sem geografia (apagão, inverno) não encena nada, e
+   * exigir nome ali seria pedir um dado que não vai a lugar nenhum.
+   */
+  eventName?: string
+  /** De onde ele vem, em graus. 135 = sudeste, a rota clássica na Flórida. */
+  eventBearingDeg?: number
+  /**
+   * Onde ele está, apontado no mapa (D-202). Quando existe, manda sobre o rumo.
+   */
+  eventLat?: number | null
+  eventLng?: number | null
   powerOut: boolean
   networkDown: boolean
   roadsBlocked: boolean
@@ -64,6 +86,15 @@ export type SimulationConfig = {
   mobilityLimited: boolean
   medicalNeed: boolean
   reserves: ReserveLevel
+  /**
+   * Quanto o exercício deve durar, em minutos.
+   *
+   * Um treino sem hora para acabar vira estado permanente — e o EOS em simulação
+   * mostra risco simulado, autonomia simulada e um Pilot falando de um evento
+   * que não existe. Combinar a duração ANTES é o que separa um exercício de um
+   * app com o dado errado.
+   */
+  durationMin: number
   sources: SimulationSources
   values: SimulationValues
 }
@@ -73,6 +104,11 @@ export const DEFAULT_SIMULATION: SimulationConfig = {
   severity: 3,
   arrivalHours: 12,
   description: '',
+  eventName: '',
+  eventBearingDeg: 135,
+  eventLat: null,
+  eventLng: null,
+  durationMin: 30,
   powerOut: false,
   networkDown: false,
   roadsBlocked: false,
@@ -122,6 +158,7 @@ export const THREATS: Array<{ id: ThreatType; pt: string; en: string }> = [
   { id: 'flood', pt: 'Enchente', en: 'Flood' },
   { id: 'wildfire', pt: 'Incêndio', en: 'Wildfire' },
   { id: 'earthquake', pt: 'Terremoto', en: 'Earthquake' },
+  { id: 'fallout', pt: 'Contaminação radioativa', en: 'Radioactive fallout' },
   { id: 'winter', pt: 'Tempestade de inverno', en: 'Winter storm' },
   { id: 'blackout', pt: 'Apagão prolongado', en: 'Extended blackout' },
   { id: 'general', pt: 'Geral', en: 'General' },

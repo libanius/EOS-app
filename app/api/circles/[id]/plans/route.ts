@@ -12,15 +12,34 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
     .select('role').eq('circle_id', params.id).eq('user_id', user.id).maybeSingle()
   if (!membership) return NextResponse.json({ error: 'Not a member' }, { status: 403 })
 
+  /*
+   * Duas consultas em vez de um `join` embutido (D-124).
+   *
+   * `select('… profiles(name)')` devolvia **500 em toda abertura da tela de
+   * Círculos**: o PostgREST recusa com PGRST200 porque não existe chave
+   * estrangeira declarada entre `circle_action_plans` e `profiles`. O bloco de
+   * planos nunca carregou, e ninguém soube — o erro morria no console.
+   *
+   * O nome do autor é enfeite; o plano é o dado. Por isso a falta do nome não
+   * derruba a resposta: quem não puder ser identificado vira "—".
+   */
   const { data, error } = await supabase.from('circle_action_plans')
-    .select('id, title, body, created_by, updated_at, created_at, profiles(name)')
+    .select('id, title, body, created_by, updated_at, created_at')
     .eq('circle_id', params.id)
     .order('updated_at', { ascending: false })
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  const plans = (data ?? []).map(p => ({
+  const linhas = data ?? []
+  const autores = Array.from(new Set(linhas.map(p => p.created_by).filter(Boolean)))
+  const nomePorId = new Map<string, string>()
+  if (autores.length) {
+    const { data: perfis } = await supabase.from('profiles').select('id, name').in('id', autores)
+    for (const perfil of perfis ?? []) nomePorId.set(perfil.id, perfil.name ?? '—')
+  }
+
+  const plans = linhas.map(p => ({
     ...p,
-    author: (p.profiles as { name?: string } | null)?.name ?? '—',
+    author: nomePorId.get(p.created_by) ?? '—',
     is_mine: p.created_by === user.id,
   }))
   return NextResponse.json({ plans })

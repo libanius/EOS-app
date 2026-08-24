@@ -1,21 +1,70 @@
 'use client'
 
-import { useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useEffect, useMemo, useState, useTransition } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import NumericStepper from '@/components/NumericStepper'
 import { useLanguage } from '@/lib/i18n'
+import { simulationLabel, type SimulationConfig } from '@/lib/simulation'
+
+const INVITE_KEY = 'eos-onboarding-sim-invite'
+
+type InviteContext = {
+  token: string
+  ownerName: string
+  config: SimulationConfig
+}
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function OnboardingPage() {
+  return (
+    <Suspense fallback={<div style={s.page}><div style={s.card} /></div>}>
+      <OnboardingContent />
+    </Suspense>
+  )
+}
+
+function OnboardingContent() {
   const router = useRouter()
-  const { t } = useLanguage()
+  const searchParams = useSearchParams()
+  const { language, t } = useLanguage()
+  const pt = language === 'pt'
 
   const [name, setName] = useState('')
   const [location, setLocation] = useState('')
   const [members, setMembers] = useState(2)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+  const [invite, setInvite] = useState<InviteContext | null>(null)
+
+  const redirectTo = searchParams.get('redirectTo')?.startsWith('/') ? searchParams.get('redirectTo')! : null
+  const inviteToken = useMemo(() => {
+    const match = redirectTo?.match(/^\/sim\/([^/?#]+)/)
+    return match?.[1] ?? null
+  }, [redirectTo])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const stored = localStorage.getItem(INVITE_KEY)
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored) as InviteContext
+        if (parsed?.token && parsed?.config) setInvite(parsed)
+      } catch {
+        localStorage.removeItem(INVITE_KEY)
+      }
+    }
+    if (!inviteToken) return
+    fetch(`/api/simulation/join/${inviteToken}`, { cache: 'no-store' })
+      .then(r => r.ok ? r.json() : null)
+      .then((data: { session?: { config: SimulationConfig; ownerName: string } } | null) => {
+        if (!data?.session) return
+        const next = { token: inviteToken, ownerName: data.session.ownerName, config: data.session.config }
+        setInvite(next)
+        localStorage.setItem(INVITE_KEY, JSON.stringify(next))
+      })
+      .catch(() => {})
+  }, [inviteToken])
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
@@ -42,6 +91,14 @@ export default function OnboardingPage() {
         return
       }
 
+      if (invite?.token) {
+        router.push(`/sim/${invite.token}`)
+        return
+      }
+      if (redirectTo?.startsWith('/sim/')) {
+        router.push(redirectTo)
+        return
+      }
       // Pass member count as hint to family setup
       router.push(`/family?members=${members}`)
     })
@@ -66,6 +123,16 @@ export default function OnboardingPage() {
           <h1 style={s.title}>{t('onboarding.title')}</h1>
           <p style={s.sub}>{t('onboarding.subtitle')}</p>
         </div>
+
+        {invite && (
+          <div style={s.contextBox}>
+            <span style={s.contextLabel}>{pt ? 'Convite de simulação' : 'Simulation invite'}</span>
+            <strong style={s.contextTitle}>
+              {pt ? `${invite.ownerName} convidou você` : `${invite.ownerName} invited you`}
+            </strong>
+            <span style={s.contextText}>{simulationLabel(invite.config, pt)}</span>
+          </div>
+        )}
 
         {/* ── Error ─────────────────────────────────────────────────────── */}
         {error && (
@@ -227,6 +294,32 @@ const s: Record<string, React.CSSProperties> = {
     fontSize: 8,
     flexShrink: 0,
     color: 'var(--ac3)',
+  },
+
+  contextBox: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 6,
+    background: 'rgba(0,229,160,0.07)',
+    border: '1px solid rgba(0,229,160,0.2)',
+    borderRadius: 12,
+    padding: '12px 14px',
+  },
+  contextLabel: {
+    fontSize: 10,
+    color: 'var(--mu)',
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+    fontWeight: 700,
+  },
+  contextTitle: {
+    color: 'var(--tx)',
+    fontSize: 14,
+  },
+  contextText: {
+    color: 'var(--mu)',
+    fontSize: 13,
+    lineHeight: 1.45,
   },
 
   // fields

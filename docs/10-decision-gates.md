@@ -1,5 +1,7 @@
 # 10 — Decision Gates
 
+> Last updated: 2026-08-03
+
 > Gates block entire phases or major features. They require explicit decisions before work can proceed.
 
 ---
@@ -8,7 +10,7 @@
 
 **Question**: Should EOS be English-only, Portuguese-only, or bilingual (PT/EN)?
 
-**Why it matters**: UI copy, knowledge base language, Claude prompt language, and marketing all depend on this.
+**Why it matters**: UI copy, knowledge base language, AI prompt language, and marketing all depend on this.
 
 **Current state**: Mixed. Some UI is English, some Portuguese. No consistent decision.
 
@@ -37,13 +39,18 @@
 
 ## G-03 — Mobile Readiness
 
-**Question**: When should we initialize the React Native project?
+**Question**: When should we initialize the native mobile shell?
 
-**Why it matters**: Once initialized, the mobile app needs active maintenance. Starting too early creates dead weight.
+**Why it matters**: Once initialized, the mobile app needs active maintenance.
+Starting too early creates dead weight and risks splitting EOS into separate
+products instead of platform adapters.
 
-**Blocks**: Mobile App phase.
+**Blocks**: Native mobile shell, App Store submission, Google Play submission,
+native push, native background location, and mobile-only secure storage work.
 
-**Status**: OPEN — Phase 1 and Phase 2 are complete, but mobile still needs an explicit owner decision before initialization.
+**Status**: OPEN — D-084 keeps Web/PWA as the primary validation surface.
+`/mobile/` contains template/conceptual files only; no React Native, Expo, or
+Capacitor project is initialized.
 
 ---
 
@@ -68,3 +75,28 @@
 **Blocks**: Phase 4.
 
 **Status**: OPEN
+
+**Clarification from D-084**: app-level Comms and hardware Mesh are separate.
+Circle chat, radio guides, frequencies, and communication status may be planned
+inside the Web/PWA core. BLE/LoRa hardware integration remains blocked here.
+
+---
+
+## G-06 — Automotive Readiness
+
+**Question**: When should EOS support CarPlay and Android Auto?
+
+**Why it matters**: Automotive platforms are restricted, driver-safety governed
+companion surfaces. They cannot host the full EOS product.
+
+**Blocks**: CarPlay, Android Auto, and any automotive-specific UI or release
+work.
+
+**Status**: OPEN — blocked until the native mobile core exists, platform rules
+are reviewed, and the owner approves a restricted companion scope.
+
+**Allowed direction**: status, route handoff, check-in, limited communication,
+and plan execution state.
+
+**Out of scope by default**: long chat, plan editing, EDU video, simulator
+authoring, and dense dashboards.

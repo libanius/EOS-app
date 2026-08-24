@@ -48,8 +48,9 @@ abaixo deriva daqui:
 
 | Elemento | O que é | Autoria |
 |---|---|---|
+| **Endereço de casa** | A ORIGEM de toda distância que a tela afirma. Cartão próprio, no topo. | Usuário |
 | **Pontos de encontro** | Primário, secundário, terciário. Onde a família se reúne. | Usuário |
-| **Lugares conhecidos** | Casa, escola, trabalho, casa de parente. | Usuário |
+| **Lugares importantes** | Escola, trabalho, casa de parente — onde alguém pode estar quando o plano começar. | Usuário |
 | **Rotas** | Traçados entre lugares conhecidos e pontos de encontro. | Usuário desenha |
 | **Papéis** | Quem busca quem. "Ana pega Isadora na escola." | Usuário |
 | **Gatilhos** | Quando executar. "Sem contato por 2h." "Ordem de evacuação." | Usuário |
@@ -57,6 +58,37 @@ abaixo deriva daqui:
 
 Um plano sem **ponto de encontro** e sem **papéis** não é um plano — é um mapa.
 A UI deve tratar esses dois como obrigatórios e o resto como opcional.
+
+### Vários planos por situação (D-080)
+
+Um círculo pode ter mais de um plano ativo. "Acabou a luz", "ficamos sem
+celular", "estamos em um evento aglomerado" e "incidente na escola" são planos
+diferentes porque têm gatilhos, papéis e pontos de decisão diferentes.
+
+O nome do plano é, no MVP, o seletor de cenário. A UI deve permitir criar e
+alternar planos dentro do mesmo círculo sem arquivar o anterior.
+
+### O endereço de casa não é "mais um lugar"
+
+Descoberto ao revisar PLAN-T03 com o dono, e vale como regra: **toda distância
+desta feature sai da casa** — quanto falta até cada ponto de encontro, quantos
+minutos a pé, se o terceiro ponto é alcançável sem carro.
+
+Enquanto a casa era um chip no fim da lista de lugares, dava para montar um
+plano inteiro e nunca ver nenhuma dessas contas, **sem que a tela dissesse por
+quê**. Ausência de número parece "está tudo bem". Hoje:
+
+- a casa tem cartão próprio, primeiro, dizendo que é a origem das contas;
+- quando ela falta, cada ponto de encontro **explica** a distância ausente em vez
+  de omiti-la;
+- o `plan-drill` (SIM-T06) só pula a checagem de alcance quando não há casa — e
+  esse silêncio agora tem causa visível na tela do plano.
+
+Precisão importa e é declarada. `profiles.location` é texto livre com
+placeholder "Cidade, Estado" e o geocoding devolve o **centroide da cidade**: bom
+para alerta meteorológico, inútil para "quanto tempo a pé". A UI oferece esse
+endereço como ponto de partida e diz, na mesma frase, que é o centro da cidade e
+não a casa. O caminho preciso é marcar com o GPS estando lá.
 
 ---
 
@@ -161,6 +193,84 @@ Um plano alterado por IA sem o usuário saber é indistinguível de sabotagem.
 
 ---
 
+## 9.1 Executar plano — Pilot como host situacional (D-079)
+
+O plano só vira produto quando pode ser **executado**. Ler a versão atual é
+preparação; executar é abrir uma sessão operacional em que o EOS guia a família.
+Com D-207, execução não significa despejar o documento inteiro: o usuário escolhe
+um **plano** e, dentro dele, um **protocolo**. No MVP, cada gatilho observável
+salvo em `family_plan_triggers` é um protocolo acionável.
+
+1. Alertar o círculo de que o plano está em execução.
+2. Confirmar localização/presença dos membros.
+3. Escolher o protocolo/gatilho que está ativo e ler a ação correspondente.
+4. Aplicar os papéis: quem busca quem, quem liga, quem fica.
+5. Levar a família para o ponto de encontro correto quando ele puder ser
+   derivado do protocolo aprovado.
+6. Usar rotas desenhadas e notas locais quando existirem.
+7. Encerrar só quando todos estiverem localizados, orientados ou explicitamente
+   pendentes.
+
+O Pilot neste modo é **host**, não autor. Ele instrui como um onboarding de
+crise: uma próxima ação por vez, confirmação visível, linguagem curta, sem
+escrever plano novo no meio do evento.
+
+Regra de autoria: a lista numerada da execução só pode conter passos derivados
+do plano editável. Avisos fixos do EOS, como "confirme a fonte" ou "siga
+autoridades", devem aparecer como aviso do sistema, não como etapa 1 do plano.
+
+Regra de protocolo: o Pilot pode sugerir gatilhos/protocolos na revisão, mas um
+protocolo só é executável depois de aplicado ao rascunho e salvo pelo usuário.
+Quando um plano não tiver gatilhos, o host pode rodar uma execução geral para
+não bloquear a família, mas a tela deve deixar claro que falta a escolha
+operacional do "por quê estamos executando".
+
+Com D-208, protocolo não é só uma frase. Cada gatilho pode declarar:
+
+- condição observável;
+- tipo de ação: encontrar, evacuar, abrigar, comunicar, esperar ou personalizado;
+- instrução curta;
+- ponto de destino do plano, quando aplicável;
+- rota desenhada, quando aplicável;
+- se o círculo deve ser alertado.
+
+Campos estruturados são opcionais para preservar planos antigos. Quando ausentes,
+o host pode inferir destino por texto apenas como fallback.
+
+### Active shooting e eventos de segurança humana
+
+No exemplo de um active shooting perto da escola, o EOS pode coordenar presença,
+comunicação, localização, papéis e contato com responsáveis. Ele **não** deve
+improvisar instrução tática nem mandar familiar se aproximar de uma área que
+autoridades mandaram evitar.
+
+Regra de segurança: quando o evento envolve violência ativa, a primeira fala do
+host deve priorizar autoridade local/escola/emergência e bloquear deslocamento
+impulsivo para a zona de risco. O plano da família continua útil, mas como
+coordenação de informação e responsabilidades, não como autorização para entrar
+no incidente.
+
+### Modelo de execução
+
+MVP implementado sem nova tabela: o aparelho deriva os passos da versão atual do
+plano e permite marcar progresso localmente. A próxima evolução persistente deve
+criar:
+
+```
+family_plan_executions
+  id, plan_id, circle_id, started_by, status,
+  scenario, current_step, started_at, ended_at
+
+family_plan_execution_events
+  id, execution_id, actor_user_id, kind, payload jsonb, created_at
+```
+
+Isso permitirá timeline compartilhada, confirmações por membro e retomada em
+outro aparelho. Até essa migration existir, a execução não deve fingir auditoria
+compartilhada.
+
+---
+
 ## 10. Ligação com mapas offline
 
 O plano resolve a pergunta que a fase de mapas offline precisa responder:
@@ -173,6 +283,31 @@ família vai operar em degradação.
 
 **O plano é o que torna o download offline finito e certo.** Por isso ele vem
 antes dos mapas offline no roadmap, não depois.
+
+### O que foi entregue, e o que NÃO foi (PLAN-T06)
+
+`lib/plan-envelope.ts` calcula a caixa: bounds com margem, centro, maior
+dimensão em km e área — corrigindo a longitude pelo cosseno da latitude, sem o
+que a área sairia ~11% maior na Flórida.
+
+**Baixar tiles não foi feito, e não por esquecimento.** O basemap padrão é o
+CARTO keyless, cujos termos não autorizam download em massa; o MapTiler, que tem
+oferta offline explícita, exige uma chave que não está configurada. Prometer
+"mapa offline" e entregar um cache que viola o provedor seria pior que não
+entregar.
+
+O que resolve o §13.4 hoje é outra coisa, e melhor para o caso: **a carta do
+plano** (`components/world-v2/PlanChart.tsx`). Ela não é um mapa de tiles — é o
+desenho do próprio plano, projetado das coordenadas que já estão no aparelho.
+Não depende de rede, de chave, de WebGL nem de biblioteca de mapa.
+
+E ela deliberadamente **não finge ser um mapa**: sem ruas, sem prédios, sem
+rótulo de bairro. Tem norte, barra de escala e as distâncias reais escritas. Uma
+carta que insinuasse detalhe que não tem seria pior que nenhuma — a família
+seguiria um contorno inventado.
+
+Quando houver chave de provedor com direito a cache, o envelope já está pronto
+para recortar o download; a carta continua como o piso que nunca falha.
 
 ---
 
@@ -198,8 +333,21 @@ family_plan_acks
   plan_id, member_user_id, acked_version int, acked_at
 ```
 
+```
+family_plan_triggers
+  id, plan_id, condition, action,
+  action_type, destination_kind, route_label, notify_circle,
+  sort_order
+```
+
 `family_plan_acks` é o que torna a §6 real: sem ele não há como saber quem está
-executando qual versão.
+executando qual versão. `family_plan_triggers` (migration
+`20260730000000_family_plan_triggers.sql`) responde ao "quando": a condição
+precisa ser **observável**, nunca um julgamento. "Sem contato por 2 horas" é
+gatilho; "se ficar perigoso" exige que alguém decida no pior momento possível.
+
+Não há mais índice de "um plano ativo por círculo" desde D-080. Vários planos
+ativos são a forma correta de representar cenários distintos.
 
 RLS: leitura e escrita restritas a membros do `circle_id`. Edição por papel do
 círculo (Admin/Editor). Endpoints públicos de ficha **nunca** tocam estas tabelas.
@@ -210,14 +358,17 @@ círculo (Admin/Editor). Endpoints públicos de ficha **nunca** tocam estas tabe
 
 | Fase | Entrega |
 |---|---|
-| **PLAN-T00** | Esta spec + decisão (D-066) |
-| **PLAN-T01** | Modelo de dados + RLS + API autenticada de leitura/escrita |
-| **PLAN-T02** | Editor: pontos de encontro, lugares conhecidos, papéis, gatilhos |
-| **PLAN-T03** | Desenho de rotas no mapa + edição de traçado |
-| **PLAN-T04** | Versionamento, push ao círculo e reconhecimento (§6) |
-| **PLAN-T05** | Cache offline do plano + execução sem rede |
-| **PLAN-T06** | Envelope do plano como recorte de download de mapas offline (§10) |
-| **PLAN-T07** | Pilot propõe/revisa planos com confirmação explícita (§9) |
+| **PLAN-T00** | ✅ Esta spec + decisão (D-066) |
+| **PLAN-T01** | ✅ Modelo de dados + RLS + API autenticada de leitura/escrita — `GET/PUT /api/plans` (documento inteiro), `POST /api/plans/[id]/ack`. Versão incrementa a cada save, acks antigos NÃO são carregados adiante, e push avisa o círculo. |
+| **PLAN-T02** | ✅ Editor em `/plan`: escada de pontos de encontro nomeada pelo caso que resolve, lugares conhecidos, papéis e gatilhos. Ponto de encontro e papel são obrigatórios e a tela diz o que falta antes de deixar salvar. Distância, rumo e tempo a pé desde a casa em cada ponto (§4). |
+| **PLAN-T03** | ✅ `RouteDraw`: mapa plano (pitch 0) com os lugares do plano como âncoras nomeadas. A rota começa e termina em pontos que já existem — a família desenha o MEIO. Comprimento e tempo a pé calculados no traçado real; desfazer, limpar e reabrir para editar. Nenhum motor de roteamento, por decisão (§5). |
+| **PLAN-T04** | ✅ Versão e idade da cópia sempre na tela; mudança dispara push ao círculo; membro precisa reconhecer explicitamente, e o autor vê quem já viu. Uma nova versão **invalida** o reconhecimento anterior — provado em teste. |
+| **PLAN-T05** | ✅ Documento inteiro em IndexedDB por círculo, com versão e instante da sincronização. `GET /api/plans` é NetworkOnly de propósito (D-075): sem isso o service worker devolvia cópia velha como se fosse ao vivo. |
+| **PLAN-T06** | ✅ Envelope calculado (`lib/plan-envelope.ts`) + **carta do plano** em SVG que desenha lugares, escada numerada, traçados, norte e escala **sem tile nenhum**. Download de tiles segue fora por termos de provedor (§10). |
+| **PLAN-T07** | ✅ Pilot propõe/revisa gatilhos e papéis como itens confirmáveis; aplicar muda só o rascunho e o plano só persiste no salvar versionado (§9) |
+| **PLAN-T08** | ✅ Executar Plano MVP: painel da pessoa no mapa abre um host situacional, deriva passos da versão atual do plano e permite alertar o círculo para executar agora. Persistência multiusuário fica para `family_plan_executions`. |
+| **PLAN-T09** | ✅ Múltiplos planos por círculo + execução cancelável: selecionar/criar planos por situação, cancelar falso alarme e remover passos fixos da lista editável. |
+| **PLAN-T10** | ✅ Handoff multi-stop: cada rota desenhada no EOS pode abrir o Google Maps com origem, destino e paradas intermediárias na ordem do traçado. O EOS guarda o combinado offline; o app de mapas calcula ruas quando houver rede. |
 
 ---
 
@@ -229,7 +380,8 @@ conseguir:
 1. Abrir o EOS e ver o plano completo, com sua versão e idade.
 2. Ler quem busca quem, sem ambiguidade.
 3. Ver os três pontos de encontro com rumo e distância desde onde está.
-4. Seguir as rotas desenhadas sobre um mapa cacheado.
+4. Seguir as rotas desenhadas na carta do plano — desenhada das coordenadas
+   locais, sem depender de tiles.
 5. Saber que está executando a mesma versão que o resto da família.
 
 O item 5 é o que separa um plano de um desenho bonito.

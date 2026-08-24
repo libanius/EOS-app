@@ -1,4 +1,4 @@
-# Alertas automáticos — ativação (D-074)
+# Alertas automáticos — ativação (D-220)
 
 > Como ligar a varredura agendada que faz o EOS avisar **com o app fechado**.
 > Companion: `hazard-data-integrations-audit.md` (o que cada fonte entrega),
@@ -8,13 +8,24 @@
 
 ## O que isso resolve
 
-Até aqui o EOS **recebia** os dados certos e não **entregava** nada: toda rota era
-on-demand, então o dado só era buscado quando alguém abria a tela. O único push
-existente era o broadcast manual de um Admin de círculo.
+O D-113 já entregou uma varredura agendada (`/api/cron/weather-notifications` +
+workflow do GitHub Actions a cada 15 min). Isto **não a substitui** — cobre o
+que ela não faz:
 
-Além disso, faltava a memória. Um alerta útil fala de **mudança** ("foi elevado
-a Tempestade Tropical"), não de estado ("existe uma Tempestade Tropical"). Sem
+| | D-113 (já em produção) | D-220 (esta) |
+|---|---|---|
+| Chega no telefone? | ❌ só caixa de entrada no app | ✅ web push na tela de bloqueio |
+| Guarda estado anterior? | ❌ dedup por `source_key` | ✅ compara com a passada anterior |
+| Fontes | NWS | NWS + NHC + USGS + AQI + nowcast |
+| Fala de mudança? | ❌ "existe um alerta" | ✅ "foi elevado a Tempestade Tropical" |
+
+A memória é o ponto. Um alerta útil fala de **mudança** ("foi elevado a
+Tempestade Tropical"), não de estado ("existe uma Tempestade Tropical"). Sem
 guardar o estado anterior, é impossível dizer a primeira frase.
+
+> **Os dois varredores convivem por enquanto.** Unificar é `ALERT-T05` — de
+> propósito num passo separado, porque trocar motor e agendamento na mesma leva
+> é como se perde a noção de qual metade quebrou.
 
 ---
 
@@ -28,7 +39,7 @@ supabase/migrations/20260824000000_hazard_alerting.sql
 
 É idempotente e autossuficiente: pode rodar quantas vezes precisar, e funciona
 tanto se a migration antiga (`20260710010000_hazard_tables.sql`) já foi aplicada
-quanto se nunca foi. Ela cria/completa 6 tabelas:
+quanto se nunca foi. Ela cria/completa 6 tabelas e 1 coluna:
 
 | Tabela | Para quê |
 |---|---|
@@ -38,6 +49,7 @@ quanto se nunca foi. Ela cria/completa 6 tabelas:
 | `user_hazard_preferences` | Tipos ligados, quiet hours, cooldown |
 | `hazard_subscriptions` | Lugares vigiados além da localização atual |
 | `provider_health` | Última medição por provider |
+| `profiles.language` | Coluna nova: idioma escolhido, para o push sair no idioma certo |
 
 Conferir depois de aplicar:
 
@@ -77,12 +89,23 @@ silêncio nunca é confundido com "nenhum perigo hoje".
 
 ## Passo 3 — Agendar
 
-### Opção A — pg_cron no Supabase (recomendada, custo zero)
+### Opção A — GitHub Actions (recomendada; já é o que o D-113 usa)
 
-O `pg_cron` roda dentro do próprio Supabase, a cada 10 minutos, sem custo
-adicional e sem depender do plano da Vercel. O bloco pronto está comentado no
-final da migration — troque `<SEU-DOMINIO>` e `<CRON_SECRET>` e execute
-**depois** do deploy:
+O repositório **já tem** `.github/workflows/weather-notifications.yml`, rodando
+a cada 15 min de graça. Adicione um passo para a nova rota no mesmo workflow, ou
+duplique o arquivo trocando o caminho para `/api/cron/hazard-scan`. É a resposta
+certa para a preocupação de custo: o GitHub agenda sem cobrar, e não amarra o
+alerta ao plano da Vercel.
+
+Requer o segredo `CRON_SECRET` em **Settings → Secrets and variables → Actions**,
+com o mesmo valor da Vercel. Sem ele o workflow falha alto (401) em vez de
+fingir que rodou.
+
+### Opção B — pg_cron no Supabase (custo zero, sem depender do GitHub)
+
+Roda dentro do próprio banco. O bloco pronto está comentado no final da
+migration — troque `<SEU-DOMINIO>` e `<CRON_SECRET>` e execute **depois** do
+deploy:
 
 ```sql
 CREATE EXTENSION IF NOT EXISTS pg_cron;
@@ -104,25 +127,13 @@ SELECT cron.schedule(
 
 Conferir: `SELECT * FROM cron.job;` · Desagendar: `SELECT cron.unschedule('eos-hazard-scan');`
 
-### Opção B — Vercel Cron (só no plano Pro)
+### ⚠️ O que NÃO fazer: cron sub-diário no `vercel.json`
 
-⚠️ **Não existe `vercel.json` no repo de propósito.** Uma conta **Hobby** não
-"reduz" um cron sub-diário: ela **rejeita o deploy inteiro** na validação, com
-`Hobby accounts are limited to daily cron jobs`. Ou seja, commitar a entrada de
-cron derruba a publicação do app até para quem nem quer usá-la.
-
-Se e quando a conta for **Pro**, crie `vercel.json` na raiz:
-
-```json
-{
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "crons": [{ "path": "/api/cron/hazard-scan", "schedule": "*/10 * * * *" }]
-}
-```
-
-A Vercel envia o `Authorization: Bearer $CRON_SECRET` automaticamente quando a
-env existe. Enquanto a conta for Hobby, use a Opção A — ela é melhor de todo
-jeito, porque não amarra o alerta ao plano de hospedagem.
+O `vercel.json` do repo tem **um** cron, diário (`0 11 * * *`), como rede de
+segurança do D-113. Não acrescente uma entrada sub-diária ali: numa conta
+**Hobby** isso não é degradado silenciosamente — a Vercel **rejeita o deploy
+inteiro** com `Hobby accounts are limited to daily cron jobs`, derrubando a
+publicação do app. Já aconteceu uma vez nesta feature.
 
 ### Custo real de uma varredura
 
@@ -206,12 +217,22 @@ Alertas críticos furam a janela quando `allow_critical_override` está ligado
 
 ## Limitações conhecidas
 
-1. **Idioma**: o push sai em português para todos. A escolha de idioma vive no
-   `localStorage` do aparelho (`lib/i18n.tsx`) e o servidor não a enxerga.
-   Corrigir = persistir a preferência em `profiles`.
-2. **Gate de plano**: `monitoring_push` é `premium` (`lib/feature-gates.ts`).
-   Alertas **críticos** furam o gate; o resto não. Se a decisão for que todo
-   alerta de segurança é gratuito, muda uma linha — mas é decisão de produto.
+1. **Dois varredores** (`hazard-scan` e `weather-notifications`) rodam em
+   paralelo até `ALERT-T05`. Não há entrega duplicada — canais diferentes (push
+   vs. caixa de entrada) e deduplicações independentes.
+2. **Quiet hours por longitude**: sem timezone no perfil, o fuso é aproximado em
+   15°/hora. Precisão de ~1 hora — suficiente para não acordar ninguém às 3h,
+   insuficiente para prometer "exatamente 22:00".
 3. **Cobertura**: NWS é só EUA. Fora dos EUA restam NHC, USGS, AQI e nowcast.
 4. **Sem UI de preferências**: a API `/api/hazards/preferences` existe (GET/PUT);
-   a tela ainda não.
+   a tela é `ALERT-T06`.
+
+## Decisões de produto já tomadas
+
+- **Push é gratuito para todos** (`monitoring_push: 'free'`). Um aviso de furacão
+  que só chega para quem pagou não é produto de segurança. O código continua
+  consultando o gate, então reverter é uma linha.
+- **Idioma: inglês é a base, português é respeitado quando escolhido.** O push é
+  escrito pela varredura, que não tem navegador — por isso `profiles.language`,
+  gravado por `setLanguage` em fire-and-forget. Quem nunca escolheu recebe em
+  inglês.

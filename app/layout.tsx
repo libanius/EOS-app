@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { LanguageProvider } from '@/lib/i18n'
+import AffiliateAttribution from '@/components/AffiliateAttribution'
+import ClientErrorReporter from '@/components/ClientErrorReporter'
 
 export const metadata: Metadata = {
   title: 'EOS — Emergency Operating System',
@@ -38,8 +40,15 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
+  /*
+   * D-198: o documento nasce em INGLÊS.
+   *
+   * O `LanguageProvider` corrige para `pt-BR` quando a pessoa escolheu
+   * português ou quando o aparelho está em português. O EOS opera nos EUA —
+   * NWS, USGS, NHC e FEMA falam inglês, e o alerta chega no telefone em inglês.
+   */
   return (
-    <html lang="pt-BR">
+    <html lang="en">
       <head>
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta
@@ -49,6 +58,9 @@ export default function RootLayout({
       </head>
       <body>
         <LanguageProvider>
+          {/* Raiz de propósito: cobre a tela de entrada, onde uma falha dói mais. */}
+          <ClientErrorReporter />
+          <AffiliateAttribution />
           <div id="app">{children}</div>
         </LanguageProvider>
       </body>

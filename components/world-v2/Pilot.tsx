@@ -18,12 +18,14 @@
  *     not open with "great question".
  *
  *  3. ADVICE BECOMES WORK. If the specialist says to buy fuel, that arrives as a
- *     TASK you can add to the checklist with one tap. Advice that evaporates
- *     when the screen closes is why preparedness apps fail. The tap is required:
- *     nothing edits the family's plan silently (UPP-03, D-067).
+ *     preparedness proposal with source and type. Advice that evaporates when
+ *     the screen closes is why preparedness apps fail. The tap is required:
+ *     nothing edits the family's plan or readiness silently (UPP-03, D-067,
+ *     D-092).
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { notePilot, msDesdeQueAbriu } from '@/lib/pilot-metrics-client'
 import Link from 'next/link'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useLanguage } from '@/lib/i18n'
@@ -36,19 +38,29 @@ import {
   type PilotIntentId,
   type PilotVerdict,
 } from './pilot-engine'
-import type { PilotDestination, PilotTask } from '@/app/api/pilot/chat/route'
+import type { PilotDestination, PilotMemoryProposal, PilotTask } from '@/app/api/pilot/chat/route'
 import { bearing, compassPoint, distanceKm } from '@/lib/world/shelters'
 import { directionsUrl, formatDistance } from '@/lib/world/navigation'
 
 type Message = {
   id: string
   role: 'pilot' | 'user'
+  /**
+   * `brief` é a resposta do motor local: uma manchete curta, com fatores e
+   * ressalva. `chat` é conversa livre — prosa, que precisa ser lida como prosa.
+   *
+   * Antes tudo caía no mesmo molde e o texto do chat era renderizado em
+   * `t-title2`: parágrafos inteiros em corpo de manchete. Era a poluição que o
+   * dono apontou, e a razão de não sobrar espaço para a etiqueta.
+   */
+  kind?: 'brief' | 'chat'
   text: string
   detail?: string
   verdict?: PilotVerdict
   factors?: Array<{ label: string; value: string }>
   actions?: PilotAnswer['actions']
   tasks?: PilotTask[]
+  memory?: PilotMemoryProposal[]
   destinations?: PilotDestination[]
   caveat?: string
 }
@@ -68,8 +80,19 @@ const COPY = {
     offline: 'Sem rede. O Pilot segue respondendo pelo motor local — toque nas perguntas abaixo.',
     unavailable: 'Não consegui falar com a base agora. As respostas locais continuam funcionando.',
     addTask: 'Adicionar',
-    added: 'No checklist',
-    tasksTitle: 'Vira tarefa',
+    added: 'Na preparação',
+    tasksTitle: 'Propostas de preparação',
+    source: 'Fonte',
+    destination: 'Destino',
+    taskKind: {
+      resource: 'Recurso',
+      task: 'Tarefa',
+      plan_review: 'Plano',
+      comms_setup: 'Comms',
+    },
+    memoryTitle: 'Memória do Pilot',
+    saveMemory: 'Salvar memória',
+    memorySaved: 'Memória salva',
     goTitle: 'Ir até lá',
     showOnMap: 'Ver no mapa',
     navigate: 'Abrir no app de mapas',
@@ -91,8 +114,19 @@ const COPY = {
     offline: 'No network. The Pilot still answers from the local engine — tap a question below.',
     unavailable: 'I could not reach the knowledge base. Local answers still work.',
     addTask: 'Add',
-    added: 'On checklist',
-    tasksTitle: 'Becomes a task',
+    added: 'In preparedness',
+    tasksTitle: 'Preparedness proposals',
+    source: 'Source',
+    destination: 'Destination',
+    taskKind: {
+      resource: 'Resource',
+      task: 'Task',
+      plan_review: 'Plan',
+      comms_setup: 'Comms',
+    },
+    memoryTitle: 'Pilot memory',
+    saveMemory: 'Save memory',
+    memorySaved: 'Memory saved',
     goTitle: 'Go there',
     showOnMap: 'Show on map',
     navigate: 'Open in maps app',
@@ -107,6 +141,11 @@ const VERDICT_LABEL: Record<PilotVerdict, { pt: string; en: string }> = {
   watch: { pt: 'Atenção', en: 'Watch' },
   hold: { pt: 'Prepare', en: 'Prepare' },
   act: { pt: 'Aja agora', en: 'Act now' },
+}
+
+/** O veredito do servidor entra no MESMO vocabulário de etiqueta do motor local. */
+const GUARD_TAG: Record<string, PilotVerdict> = {
+  GO: 'ready', LIMITED: 'watch', WAIT: 'hold', AVOID: 'act', PRIORITY_OVERRIDE: 'act',
 }
 
 let seq = 0
@@ -150,21 +189,101 @@ export default function Pilot({
   const [draft, setDraft] = useState('')
   const [busy, setBusy] = useState(false)
   const [addedTasks, setAddedTasks] = useState<Set<string>>(new Set())
+  const [savedMemory, setSavedMemory] = useState<Set<string>>(new Set())
   const streamRef = useRef<HTMLDivElement>(null)
+  /** Há resposta nova abaixo e a pessoa está lendo mais acima. */
+  const [temNovidade, setTemNovidade] = useState(false)
 
   const opening = useMemo(() => askPilot('now', ctx), [ctx])
 
-  const scrollToEnd = useCallback(() => {
+  /*
+   * Descoberta e retenção (PILOT-T04).
+   *
+   * "Quantas pessoas tocam no Pilot" e "quanto tempo levam até o primeiro
+   * toque" são as duas primeiras perguntas da spec, e as duas se respondem
+   * aqui. O `ms` é `performance.now()` — tempo desde que a página carregou,
+   * que é literalmente a pergunta. O evento de fechar sai por `sendBeacon`,
+   * senão o navegador cancelaria a chamada justamente ao fechar.
+   */
+  const jaContou = useRef(false)
+  useEffect(() => {
+    if (open && !jaContou.current) {
+      jaContou.current = true
+      notePilot('opened', { surface: 'orb', ms: msDesdeQueAbriu() })
+    }
+    if (!open && jaContou.current) {
+      jaContou.current = false
+      notePilot('closed')
+    }
+  }, [open])
+
+  /**
+   * Rolagem que respeita quem está lendo (D-125).
+   *
+   * A versão anterior puxava a conversa para o fim SEMPRE. O dono relatou o
+   * efeito: começa a ler a resposta, o cartão de tarefas chega no final, a tela
+   * salta para baixo e ele perde a linha — tendo que subir de novo, para o
+   * texto fugir outra vez.
+   *
+   * A regra é a de qualquer conversa boa: **só acompanha o fim quem já estava
+   * no fim.** Quem subiu para reler fica onde está, e um aviso discreto diz que
+   * há coisa nova embaixo.
+   */
+  const grudadoNoFim = useRef(true)
+
+  const perto = useCallback(() => {
+    const el = streamRef.current
+    if (!el) return true
+    // 64px de folga: o dedo raramente para exatamente no fim.
+    return el.scrollHeight - el.scrollTop - el.clientHeight < 64
+  }, [])
+
+  const scrollToEnd = useCallback((forcar = false) => {
+    if (!forcar && !grudadoNoFim.current) {
+      setTemNovidade(true)
+      return
+    }
     requestAnimationFrame(() => {
       const el = streamRef.current
       if (el) el.scrollTop = el.scrollHeight
+      setTemNovidade(false)
     })
   }, [])
 
-  // Opening brief: local, instant, offline-safe. Never a spinner.
+  /**
+   * A abertura: local, instantânea, offline. Nunca um spinner.
+   *
+   * E ELA SE CORRIGE quando os fatos chegam (D-137).
+   *
+   * Antes era `current.length ? current : [abertura]` — escrita uma vez, no
+   * instante em que o Pilot abre, e congelada. Como a casa é lida do servidor
+   * logo depois, a mensagem nascia com `known: false` e ficava dizendo "Não sei
+   * o suficiente / falta a ficha da família" para sempre — mesmo depois de o
+   * app já saber que moram três pessoas ali.
+   *
+   * Era metade da queixa do dono: numa tela ele lia "checklist 0%, não sei quem
+   * mora aí" e na outra "88%, limitante 0.7d". Não era só a fonte divergindo;
+   * era esta mensagem tendo sido escrita cedo demais e nunca revista.
+   *
+   * A regra: enquanto a conversa for SÓ a abertura automática, ela acompanha os
+   * fatos. Na primeira coisa que a pessoa disser, ela vira histórico e não se
+   * mexe mais — reescrever o que a pessoa já leu seria pior que o congelamento.
+   */
+  const aberturaAutomatica = useRef<string | null>(null)
   useEffect(() => {
     if (!open) return
-    setMessages(current => (current.length ? current : [fromAnswer(opening)]))
+    const nova = fromAnswer(opening)
+    setMessages(current => {
+      if (!current.length) {
+        aberturaAutomatica.current = nova.id
+        return [nova]
+      }
+      const soAAbertura = current.length === 1 && current[0].id === aberturaAutomatica.current
+      if (!soAAbertura) return current
+      // Mantém o id para o React não remontar o cartão e piscar na tela.
+      aberturaAutomatica.current = current[0].id
+      return [{ ...nova, id: current[0].id }]
+    })
     scrollToEnd()
   }, [open, opening, scrollToEnd])
 
@@ -215,9 +334,22 @@ export default function Pilot({
     scrollToEnd()
   }
 
+  /**
+   * Atualiza uma bolha que já está na tela.
+   *
+   * É o que permite a resposta crescer enquanto chega, em vez de aparecer
+   * inteira de uma vez. Sem isto, cada pedaço viraria uma bolha nova.
+   */
+  const replace = (id: string, fn: (m: Message) => Message) => {
+    setMessages(current => current.map(m => (m.id === id ? fn(m) : m)))
+  }
+
   /** Local engine — instant and offline. Used by the suggestion chips. */
   const askLocal = (intent: PilotIntentId, label: string) => {
     haptic.selection()
+    // Qual das cinco intenções a pessoa realmente usa — o `intent` é enum e o
+    // `label` (que é texto) fica de fora de propósito.
+    notePilot('intent', { intent, surface: 'chip' })
     push({ id: nextId(), role: 'user', text: label })
     push(fromAnswer(askPilot(intent, ctx)))
   }
@@ -237,10 +369,16 @@ export default function Pilot({
     push({ id: nextId(), role: 'user', text: question })
 
     if (!online) {
+      // A degradação honesta também é métrica: quantas perguntas o produto
+      // recebe sem rede diz se a promessa "responde quando a rede caiu" está
+      // sendo cobrada de verdade.
+      notePilot('offline', { intent: 'free' })
       push({ id: nextId(), role: 'pilot', text: c.offline })
       return
     }
 
+    notePilot('asked', { intent: 'free', surface: 'bar' })
+    const comecou = msDesdeQueAbriu()
     setBusy(true)
     const history = [...messages, { id: 'x', role: 'user' as const, text: question }]
       .filter(m => m.role === 'user' || m.text)
@@ -248,7 +386,7 @@ export default function Pilot({
       .map(m => ({ role: m.role === 'user' ? ('user' as const) : ('assistant' as const), content: m.text }))
 
     try {
-      const response = await fetch('/api/pilot/chat', {
+      const response = await fetch('/api/pilot/chat?stream=1', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -306,6 +444,10 @@ export default function Pilot({
               precipProbPct: h.precip_prob_pct,
               gustMph: h.wind_gust_mph,
             })),
+            // Ciclones e vento medido: sem isto, o Pilot dizia não enxergar um
+            // evento que o mapa ao lado estava desenhando (D-079).
+            cyclones: ctx.cyclones ?? [],
+            wind: ctx.wind ?? null,
             nearestShelter: ctx.nearestShelter,
             sheltersKnown: ctx.sheltersKnown,
             inventory: ctx.inventory
@@ -357,21 +499,99 @@ export default function Pilot({
           },
         }),
       })
-      const data = (await response.json()) as {
-        reply?: string | null
-        tasks?: PilotTask[]
-        destinations?: PilotDestination[]
-        error?: string
+      /*
+       * A resposta CHEGA ESCREVENDO (D-125).
+       *
+       * Antes o cliente esperava o JSON inteiro e despejava tudo de uma vez —
+       * o dono descreveu como "explode na tela". Agora o servidor manda a
+       * etiqueta determinística primeiro, depois o texto em pedaços, e só no
+       * fim as tarefas e destinos.
+       *
+       * A ordem importa: a etiqueta não depende do modelo, então não faz
+       * sentido esperar o texto para saber que há uma regra crítica ativa.
+       */
+      const idResposta = nextId()
+      let acumulado = ''
+      let criada = false
+
+      const leitor = response.body?.getReader()
+      if (!leitor) throw new Error('sem corpo')
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      const aplicar = (evento: string, dados: Record<string, unknown>) => {
+        if (evento === 'guard') {
+          const g = dados as unknown as { verdict: string; binding: boolean; headline: string; rules: string[] }
+          push({
+            id: idResposta,
+            role: 'pilot',
+            kind: 'chat',
+            text: '',
+            verdict: GUARD_TAG[g.verdict] ?? undefined,
+            // A frase determinística só aparece quando é vinculante. Nos casos
+            // tranquilos ela seria ruído em cima de uma conversa normal.
+            caveat: g.binding ? g.headline : undefined,
+            factors: g.binding && g.rules.length ? g.rules.map(r => ({ label: '', value: r })) : undefined,
+          })
+          criada = true
+          // Segurança (spec §19): com que frequência a regra determinística
+          // fala, e o que ela diz. É o único jeito de saber se o override
+          // existe na prática ou só no código.
+          notePilot('verdict', { verdict: GUARD_TAG[g.verdict] ?? null })
+          scrollToEnd()
+          return
+        }
+        if (evento === 'delta') {
+          acumulado += String((dados as { text?: string }).text ?? '')
+          if (!criada) { push({ id: idResposta, role: 'pilot', kind: 'chat', text: acumulado }); criada = true }
+          else replace(idResposta, m => ({ ...m, text: acumulado }))
+          scrollToEnd()
+          return
+        }
+        if (evento === 'done') {
+          const d = dados as unknown as {
+            reply?: string; tasks?: PilotTask[]; memory?: PilotMemoryProposal[]; destinations?: PilotDestination[]
+          }
+          replace(idResposta, m => ({
+            ...m,
+            text: d.reply || acumulado || c.unavailable,
+            tasks: d.tasks?.length ? d.tasks : undefined,
+            memory: d.memory?.length ? d.memory : undefined,
+            destinations: d.destinations?.length ? d.destinations : undefined,
+          }))
+          /*
+           * Confiança (spec §19): a resposta chegou, e depois de quanto tempo.
+           *
+           * A espera é medida até o `done` e não até o primeiro `delta` de
+           * propósito: o que a pessoa sente é o tempo até poder AGIR, e as
+           * tarefas só chegam no fim. Medir até a primeira palavra daria um
+           * número bonito que não descreve a experiência de ninguém.
+           */
+          const agora = msDesdeQueAbriu()
+          notePilot('answered', {
+            intent: 'free',
+            ms: comecou !== null && agora !== null ? agora - comecou : null,
+          })
+          scrollToEnd()
+        }
       }
-      push({
-        id: nextId(),
-        role: 'pilot',
-        text: data.reply || c.unavailable,
-        tasks: data.tasks?.length ? data.tasks : undefined,
-        destinations: data.destinations?.length ? data.destinations : undefined,
-      })
+
+      for (;;) {
+        const { done, value } = await leitor.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const blocos = buffer.split('\n\n')
+        buffer = blocos.pop() ?? ''
+        for (const bloco of blocos) {
+          const evento = bloco.match(/^event: (.+)$/m)?.[1]
+          const dados = bloco.match(/^data: (.+)$/m)?.[1]
+          if (!evento || !dados) continue
+          try { aplicar(evento, JSON.parse(dados)) } catch { /* bloco parcial: o próximo fecha */ }
+        }
+      }
+      if (!criada) push({ id: idResposta, role: 'pilot', kind: 'chat', text: c.unavailable })
     } catch {
-      push({ id: nextId(), role: 'pilot', text: c.unavailable })
+      push({ id: nextId(), role: 'pilot', kind: 'chat', text: c.unavailable })
     } finally {
       setBusy(false)
       scrollToEnd()
@@ -381,18 +601,44 @@ export default function Pilot({
   /** One tap turns advice into work. Never automatic. */
   const addTask = async (task: PilotTask) => {
     haptic.impact()
+    // Confiança medida por ato, não por opinião: a pessoa transformou o
+    // conselho em trabalho. O nome da tarefa NÃO viaja — só o fato.
+    notePilot('task_added')
     setAddedTasks(current => new Set(current).add(task.name))
     await fetch('/api/checklist/save-items', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        kitType: 'GERAL',
+        kitType: 'PILOT_RECOMMENDATION',
         items: [{ name: task.name, tier: task.tier, quantity: task.quantity ?? 1, unit: task.unit ?? null }],
       }),
     }).catch(() => {
       setAddedTasks(current => {
         const next = new Set(current)
         next.delete(task.name)
+        return next
+      })
+    })
+  }
+
+  const saveMemory = async (memory: PilotMemoryProposal) => {
+    haptic.impact()
+    // Personalização (spec §19): a pessoa corrige/confirma uma preferência.
+    // O conteúdo da preferência fica onde já está guardado; aqui só o fato.
+    notePilot('memory_saved')
+    setSavedMemory(current => new Set(current).add(memory.proposal_md))
+    await fetch('/api/profile/personalization/memory', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        source: 'pilot_chat',
+        reason: memory.reason,
+        proposal_md: memory.proposal_md,
+      }),
+    }).catch(() => {
+      setSavedMemory(current => {
+        const next = new Set(current)
+        next.delete(memory.proposal_md)
         return next
       })
     })
@@ -406,6 +652,7 @@ export default function Pilot({
             type="button"
             className="wv2-pilot-scrim"
             aria-label={c.close}
+            onPointerDown={() => onOpenChange(false)}
             onClick={() => onOpenChange(false)}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -437,7 +684,16 @@ export default function Pilot({
               </button>
             </header>
 
-            <div className="chat-stream" ref={streamRef}>
+            <div
+              className="chat-stream"
+              ref={streamRef}
+              onScroll={() => {
+                // Quem chegou ao fim volta a ser levado pelo fim; quem subiu
+                // para reler deixa de ser arrastado.
+                grudadoNoFim.current = perto()
+                if (grudadoNoFim.current) setTemNovidade(false)
+              }}
+            >
               {messages.map(message =>
                 message.role === 'user' ? (
                   <p key={message.id} className="chat-user t-body">{message.text}</p>
@@ -446,14 +702,18 @@ export default function Pilot({
                     {message.verdict && (
                       <span className="chat-verdict t-caps">{VERDICT_LABEL[message.verdict][pt ? 'pt' : 'en']}</span>
                     )}
-                    <p className="chat-headline t-title2">{message.text}</p>
+                    {message.text && (
+                      <p className={message.kind === 'chat' ? 'chat-prose t-body' : 'chat-headline t-title2'}>
+                        {message.text}
+                      </p>
+                    )}
                     {message.detail && <p className="t-body ink-2">{message.detail}</p>}
 
                     {message.factors && message.factors.length > 0 && (
                       <div className="chat-factors">
                         {message.factors.map(f => (
                           <span key={`${f.label}${f.value}`}>
-                            <em className="t-caps ink-3">{f.label}</em>
+                            {f.label && <em className="t-caps ink-3">{f.label}</em>}
                             <b className="t-foot">{f.value}</b>
                           </span>
                         ))}
@@ -470,8 +730,11 @@ export default function Pilot({
                           return (
                             <div key={task.name} className="chat-task">
                               <span>
+                                <i className="chat-task-kind">{c.taskKind[task.kind]}</i>
                                 <strong className="t-sub">{task.name}</strong>
                                 {task.why && <em className="t-foot ink-3">{task.why}</em>}
+                                <em className="t-foot ink-3">{c.source}: {task.source}</em>
+                                <em className="t-foot ink-3">{c.destination}: {task.destination}</em>
                               </span>
                               <button
                                 type="button"
@@ -480,6 +743,32 @@ export default function Pilot({
                                 onClick={() => addTask(task)}
                               >
                                 {done ? c.added : c.addTask}
+                              </button>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+
+                    {message.memory && (
+                      <div className="chat-memory">
+                        <p className="t-caps ink-3">{c.memoryTitle}</p>
+                        {message.memory.map(memory => {
+                          const done = savedMemory.has(memory.proposal_md)
+                          return (
+                            <div key={memory.proposal_md} className="chat-memory-item">
+                              <span>
+                                <strong className="t-sub">{memory.title}</strong>
+                                {memory.reason && <em className="t-foot ink-3">{memory.reason}</em>}
+                                <code>{memory.proposal_md}</code>
+                              </span>
+                              <button
+                                type="button"
+                                className={done ? 'done' : ''}
+                                disabled={done}
+                                onClick={() => saveMemory(memory)}
+                              >
+                                {done ? c.memorySaved : c.saveMemory}
                               </button>
                             </div>
                           )
@@ -513,6 +802,7 @@ export default function Pilot({
                                   className="primary"
                                   onClick={() => {
                                     haptic.impact()
+                                    notePilot('handle', { surface: 'orb' })
                                     onShowCourse(destination)
                                     onOpenChange(false)
                                   }}
@@ -541,7 +831,18 @@ export default function Pilot({
                             key={action.href + action.label}
                             href={action.href}
                             className={`wv2-pill${action.primary ? ' primary' : ''}`}
-                            onClick={() => haptic.impact()}
+                            /*
+                              O PROXY de compreensão (spec §19).
+                              A spec pergunta "as pessoas entendem o que o
+                              veredito significa?". Comportamento não responde
+                              isso — só pesquisa responde. O que dá para
+                              observar é se, depois de ler, a pessoa SEGUE a
+                              alça. Está registrado como proxy, e o doc diz que
+                              é proxy: um número apresentado como resposta a
+                              uma pergunta que ele não responde é pior que
+                              nenhum número.
+                            */
+                            onClick={() => { haptic.impact(); notePilot('handle', { surface: 'dock' }) }}
                           >
                             {action.label}
                           </Link>
@@ -566,6 +867,21 @@ export default function Pilot({
                 </button>
               ))}
             </div>
+
+            {/*
+              Aviso de conteúdo novo, para quem está lendo mais acima.
+              Substitui o salto automático: em vez de arrastar a pessoa, avisa
+              e deixa ela decidir quando descer.
+            */}
+            {temNovidade && (
+              <button
+                type="button"
+                className="chat-jump"
+                onClick={() => { grudadoNoFim.current = true; scrollToEnd(true) }}
+              >
+                {pt ? 'Resposta nova ↓' : 'New answer ↓'}
+              </button>
+            )}
 
             <form
               className="chat-compose"

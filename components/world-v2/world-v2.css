@@ -96,12 +96,46 @@
 .wv2-map .world-map-wrap,
 .wv2-map .world-plate,
 .wv2-map .world-map { position: absolute; inset: 0; }
-.wv2-map .maplibregl-ctrl-attrib {
-  background: rgba(0, 0, 0, 0.42);
-  color: var(--ink-3);
-  font-size: 9px;
+/*
+ * Atribuição do mapa: exigência de LICENÇA, não enfeite (D-128).
+ *
+ * Estado medido antes: contraste de **1,07:1** e totalmente coberta pela barra
+ * de navegação — links reais, invisíveis e não tocáveis. O CARTO e o
+ * OpenStreetMap exigem crédito visível; sem isso o app está fora dos termos dos
+ * provedores, o que importa antes de qualquer loja de aplicativos.
+ *
+ * A causa do 1,07:1 era de especificidade: a regra do maplibre
+ * (`.maplibregl-ctrl-attrib.maplibregl-compact { background-color: #fff }`)
+ * tem a mesma especificidade que a nossa e vence por ordem de importação — o
+ * CSS dele é importado DEPOIS. Por isso aqui vai `!important`: não é preguiça,
+ * é a única forma de ganhar de uma folha de terceiros que chega depois.
+ */
+.wv2-map .maplibregl-ctrl-attrib,
+.wv2-map .maplibregl-ctrl-attrib.maplibregl-compact {
+  background: rgba(0, 0, 0, 0.55) !important;
+  color: var(--ink-2);
+  font-size: 10px;
+  border-radius: var(--r-pill);
+  position: relative;
+  z-index: 4;
 }
-.wv2-map .maplibregl-ctrl-attrib a { color: var(--ink-3); }
+/* A margem vai no CONTAINER, não no bloco: é ele que o maplibre posiciona.
+   Primeira tentativa foi no `.maplibregl-ctrl-attrib` e não moveu nada — a
+   folha continuou por cima, medido em y=733. E `--sheet-peek` também não
+   servia: 85px é a altura do pegador, não o quanto a folha cobre da tela.
+   `--sheet-cover` é a distância medida do fundo da janela até o topo da folha,
+   republicada durante o arrasto — então isto acompanha de verdade. */
+.wv2-map .maplibregl-ctrl-bottom-right,
+.wv2-map .maplibregl-ctrl-bottom-left {
+  margin-bottom: calc(var(--sheet-cover, 150px) + var(--s2));
+  z-index: 4;
+}
+.wv2-map .maplibregl-ctrl-attrib a,
+.wv2-map .maplibregl-ctrl-attrib.maplibregl-compact a {
+  /* --ink-2 mede 7,09:1 sobre este fundo; --ink-3 media 3,2:1 e reprovava. */
+  color: var(--ink-2);
+  text-decoration: underline;
+}
 
 /* Scrim only where floating chrome actually overlaps the map — a gradient
    edge effect, not a hard divider. */
@@ -338,7 +372,35 @@
   background: var(--accent);
   transform-origin: left center;
 }
-.wv2-bar.low > .track > i { background: var(--ink-3); }
+/*
+ * Reserva baixa GRITA, não recua (D-128).
+ *
+ * Antes: `background: var(--ink-3)` — a tinta mais apagada do sistema. Quanto
+ * mais urgente o estado, mais ele sumia, e uma reserva zerada ficava idêntica
+ * a "ainda não carregou". Numa tela de preparação, essa é a diferença entre
+ * "você tem um problema" e "espera aí".
+ *
+ * A cor não carrega o recado sozinha — o valor ao lado escreve o estado, como
+ * o comentário do primitivo já exigia.
+ */
+.wv2-bar.low > .track > i {
+  background: #ff9f0a;
+  /* Um traço mínimo mesmo em 0%: a barra vazia precisa ser distinguível de uma
+     barra que não foi medida. */
+  min-width: 3px;
+}
+.wv2-bar.low > .track { background: rgba(255, 159, 10, 0.16); }
+
+/* Sem dados é outro estado, e parece outro estado: tracejado, sem preenchimento
+   nenhum. Antes um zero medido e um "não sei" desenhavam a mesma coisa. */
+.wv2-bar.unknown > .track {
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--fill-2) 0 6px,
+    transparent 6px 12px
+  );
+}
+.wv2-bar.unknown > .track > i { display: none; }
 
 /* ── Status capsule: the always-visible answer to "where am I, how bad is it" ── */
 .wv2-capsule {
@@ -395,7 +457,10 @@
    for the map", not as more loose circles competing with the global chrome. */
 .wv2-mapcontrols {
   position: absolute;
-  top: calc(max(16px, env(safe-area-inset-top, 0px) + 8px) + 50px);
+  /* Pendurado no fim do chrome (D-127), não num número mágico próprio.
+     Antes era `topo + 50px` e o chrome era `topo` — funcionava por
+     coincidência, e parou de funcionar assim que o chrome mudou de lugar. */
+  top: calc(var(--chrome-top, 16px) + var(--chrome-h, 40px) + var(--chrome-gap, 10px));
   right: 16px;
   display: flex;
   flex-direction: column;
@@ -407,9 +472,15 @@
   -webkit-backdrop-filter: blur(var(--mat-blur-sm)) saturate(var(--mat-sat));
   box-shadow: 0 10px 26px -14px rgba(0, 0, 0, 0.95);
 }
+/* A coluna tem a largura da PALAVRA, não um 44 arbitrário.
+   "Atualizar" a 9px não cabia em 44px e o `overflow: hidden` do bloco cortava
+   a palavra no meio — o dono viu "Atualiza" e "Camada". Alvo de toque continua
+   com 44px de altura; a largura passa a acompanhar o conteúdo. */
 .wv2-mapcontrols .wv2-iconbtn {
-  width: 44px;
+  width: 100%;
+  min-width: 44px;
   height: 44px;
+  padding-inline: var(--s2);
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -461,6 +532,33 @@
   box-shadow: 0 -24px 60px -30px rgba(0, 0, 0, 1);
   pointer-events: auto;
   will-change: transform;
+}
+
+.wv2-sheet-reveal-zone {
+  position: absolute;
+  left: 50%;
+  bottom: max(10px, env(safe-area-inset-bottom));
+  width: min(168px, 42vw);
+  height: 48px;
+  transform: translateX(-50%);
+  z-index: 1;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: transparent;
+  pointer-events: auto;
+  cursor: default;
+  touch-action: manipulation;
+}
+.wv2-sheet-reveal-zone::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 66px;
+  height: 5px;
+  transform: translate(-50%, -50%);
+  border-radius: var(--r-pill);
+  background: rgba(235, 235, 245, 0.34);
 }
 
 .wv2-grabber {
@@ -721,9 +819,9 @@
 
 /* ── Scrim: dim to focus. The Pilot is a decision, so the map steps back. ── */
 .wv2-pilot-scrim {
-  position: absolute;
+  position: fixed;
   inset: 0;
-  z-index: 5;
+  z-index: 899;
   border: 0;
   padding: 0;
   background: rgba(0, 0, 0, 0.32);
@@ -934,6 +1032,11 @@
   letter-spacing: -0.01em;
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6);
 }
+.wv2 .w-mapmarker.real .pin {
+  width: 42px;
+  height: 42px;
+  font-size: 0.75rem;
+}
 .wv2 .w-mapmarker .lab {
   max-width: 190px;
   overflow: hidden;
@@ -952,6 +1055,9 @@
 }
 /* Shelters are institutions, not people: square-ish tag, accent-filled. */
 .wv2 .w-mapmarker.shelter .lab {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
   border-color: transparent;
   background: var(--accent);
   color: var(--accent-ink);
@@ -961,8 +1067,8 @@
 /* ── The self puck ── */
 .wv2 .w-selfpuck {
   position: relative;
-  width: 46px;
-  height: 46px;
+  width: 62px;
+  height: 62px;
   display: grid;
   place-items: center;
   pointer-events: none;
@@ -970,8 +1076,8 @@
 .wv2 .w-selfpuck .disc {
   position: relative;
   z-index: 1;
-  width: 42px;
-  height: 42px;
+  width: 58px;
+  height: 58px;
   display: grid;
   place-items: center;
   overflow: hidden;
@@ -990,9 +1096,130 @@
   object-fit: cover;
   display: block;
 }
+
+.wv2 .world-wind-scalar-canvas,
+.wv2 .world-wind-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+.wv2 .world-wind-scalar-canvas {
+  z-index: 2;
+  mix-blend-mode: normal;
+  filter: saturate(1.35) contrast(1.08);
+}
+.wv2 .world-wind-canvas {
+  z-index: 3;
+  mix-blend-mode: screen;
+}
+.wv2 .world-wind-scalar-canvas[data-active='true'] { opacity: var(--wind-scalar-opacity, 0.56); }
+.wv2 .world-wind-canvas[data-active='true'] { opacity: var(--wind-particle-opacity, 1); }
+.wv2 .world-wind-legend {
+  position: absolute;
+  left: auto;
+  right: 78px;
+  top: calc(var(--chrome-top, 16px) + var(--chrome-h, 40px) + var(--chrome-gap, 10px) + 146px);
+  bottom: auto;
+  transform: none;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: auto repeat(5, auto);
+  align-items: center;
+  gap: 7px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(5, 7, 10, 0.72);
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.625rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  pointer-events: auto;
+}
+.wv2 .world-wind-toggle {
+  display: block;
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 11px;
+  background: rgba(122, 215, 255, 0.18);
+  color: #ffffff;
+  font: inherit;
+  letter-spacing: 0.08em;
+  pointer-events: auto;
+  cursor: pointer;
+}
+.wv2 .world-wind-legend span { color: #ffffff; }
+.wv2 .world-wind-legend b { font-size: 0.5625rem; font-weight: 800; color: rgba(255, 255, 255, 0.72); }
+.wv2 .world-wind-ramp {
+  grid-column: 2 / -1;
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(185,245,255,0.62), rgba(122,215,255,0.76), rgba(255,214,10,0.82), rgba(255,159,10,0.88), rgba(255,69,58,0.92));
+}
+.wv2 .world-wind-time,
+.wv2 .world-wind-control {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 48px minmax(112px, 1fr);
+  align-items: center;
+  gap: 8px;
+  pointer-events: auto;
+}
+.wv2 .world-wind-time span,
+.wv2 .world-wind-control span {
+  font-size: 0.5625rem;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.86);
+}
+.wv2 .world-wind-time input,
+.wv2 .world-wind-control input {
+  width: 100%;
+  accent-color: #7ad7ff;
+}
+.wv2 .world-wind-legend[data-open='false'] {
+  width: auto;
+  padding: 6px;
+  border-radius: 999px;
+  background: rgba(5, 7, 10, 0.64);
+}
+.wv2 .world-wind-legend[data-open='false'] .world-wind-title,
+.wv2 .world-wind-legend[data-open='false'] .world-wind-scale,
+.wv2 .world-wind-legend[data-open='false'] .world-wind-ramp,
+.wv2 .world-wind-legend[data-open='false'] .world-wind-time,
+.wv2 .world-wind-legend[data-open='false'] .world-wind-control {
+  display: none;
+}
+.wv2 .world-wind-legend[data-open='true'] {
+  padding: 10px;
+  border-radius: 14px;
+  background: rgba(5, 7, 10, 0.78);
+}
+@media (max-width: 700px) {
+  .wv2 .world-wind-legend {
+    left: auto;
+    right: 76px;
+    top: calc(var(--chrome-top, 16px) + var(--chrome-h, 40px) + var(--chrome-gap, 10px) + 146px);
+    bottom: auto;
+    transform: none;
+    max-width: min(230px, calc(100vw - 28px));
+    grid-template-columns: 1fr;
+    justify-items: stretch;
+    gap: 8px;
+    pointer-events: auto;
+  }
+  .wv2 .world-wind-legend[data-open='true'] .world-wind-ramp { grid-column: 1 / -1; }
+  .wv2 .world-wind-time,
+  .wv2 .world-wind-control { grid-template-columns: 54px minmax(120px, 1fr); }
+}
 .wv2 .w-selfpuck .eos-glyph {
-  width: 22px;
-  height: 22px;
+  width: 26px;
+  height: 26px;
   fill: var(--accent);
 }
 /* The halo is a signal, not decoration: it says the point is live. */
@@ -1043,7 +1270,9 @@
   z-index: 4;
   top: calc(max(16px, env(safe-area-inset-top, 0px) + 8px));
   left: var(--edge);
-  right: calc(16px + 88px + 10px);
+  /* NAV-T06/D-180: o ☰ deixou de existir, e a fileira voltou a ser só desta
+     barra. A largura reservada para ele volta para a busca. */
+  right: 16px;
   max-width: 520px;
 }
 
@@ -1212,6 +1441,31 @@
 }
 .wv2-sim-page .sim-textarea::placeholder { color: var(--ink-3); }
 
+.wv2-sim-page .sim-parse {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  flex-wrap: wrap;
+  margin-top: var(--s3);
+}
+.wv2-sim-page .sim-parse > span {
+  flex: 1 1 180px;
+}
+.wv2-sim-page .sim-parse-error {
+  margin: var(--s2) 0 0;
+  color: var(--ac3);
+}
+.wv2-sim-page .sim-parse-notes {
+  margin: var(--s3) 0 0;
+  padding: var(--s3);
+  border-radius: var(--r-tile);
+  border: 1px solid rgba(var(--accent-rgb), 0.24);
+  background: rgba(var(--accent-rgb), 0.07);
+}
+.wv2-sim-page .sim-parse-notes li {
+  margin-left: 1rem;
+}
+
 .wv2-sim-page .sim-chips {
   display: flex;
   flex-wrap: wrap;
@@ -1335,8 +1589,8 @@
    a quiet day and urgent when it is not. */
 
 .wv2-pilot-chat {
-  position: absolute;
-  z-index: 6;
+  position: fixed;
+  z-index: 900;
   left: 0;
   right: 0;
   bottom: 0;
@@ -1372,9 +1626,11 @@
 }
 .wv2-pilot-chat .chat-id { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .wv2-pilot-chat .chat-id em { font-style: normal; color: var(--accent); }
+/* 44px: o mínimo da HIG. Fechar o Pilot é a saída da superfície mais
+   importante do app, e estava com 36px E coberta pelo chrome (D-128). */
 .wv2-pilot-chat .chat-close {
   flex: none;
-  width: 36px; height: 36px;
+  width: 44px; height: 44px;
   display: grid; place-items: center;
   border: 0; border-radius: var(--r-pill);
   background: var(--fill-2);
@@ -1464,6 +1720,21 @@
 .wv2-pilot-chat .chat-task > span { min-width: 0; }
 .wv2-pilot-chat .chat-task strong { display: block; color: var(--ink); }
 .wv2-pilot-chat .chat-task em { display: block; font-style: normal; margin-top: 1px; }
+.wv2-pilot-chat .chat-task-kind {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  margin-bottom: var(--s1);
+  padding: 0 var(--s2);
+  border-radius: var(--r-pill);
+  background: rgba(var(--accent-rgb), 0.14);
+  color: var(--accent);
+  font-style: normal;
+  font-size: 0.625rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
 .wv2-pilot-chat .chat-task button {
   flex: none;
   min-height: 36px;
@@ -1477,6 +1748,53 @@
   touch-action: manipulation;
 }
 .wv2-pilot-chat .chat-task button.done {
+  background: transparent;
+  border: 1px solid var(--sep-strong);
+  color: var(--ink-3);
+  cursor: default;
+}
+
+.wv2-pilot-chat .chat-memory {
+  margin-top: var(--s4);
+  padding: var(--s3);
+  border: 1px solid rgba(255, 214, 10, 0.28);
+  border-radius: var(--r-tile);
+  background: rgba(255, 214, 10, 0.07);
+}
+.wv2-pilot-chat .chat-memory > p { margin: 0 0 var(--s2); }
+.wv2-pilot-chat .chat-memory-item {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--s3);
+  padding: var(--s2) 0;
+  border-top: 1px solid var(--sep);
+}
+.wv2-pilot-chat .chat-memory-item:first-of-type { border-top: 0; }
+.wv2-pilot-chat .chat-memory-item > span { min-width: 0; }
+.wv2-pilot-chat .chat-memory-item strong,
+.wv2-pilot-chat .chat-memory-item em {
+  display: block;
+  font-style: normal;
+}
+.wv2-pilot-chat .chat-memory-item code {
+  display: block;
+  margin-top: var(--s2);
+  white-space: pre-wrap;
+  color: var(--ink-2);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.75rem;
+}
+.wv2-pilot-chat .chat-memory-item button {
+  flex: none;
+  min-height: 36px;
+  padding: 0 var(--s4);
+  border: 0;
+  border-radius: var(--r-pill);
+  background: #ffd60a;
+  color: #171204;
+  font: inherit; font-size: 0.8125rem; font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.wv2-pilot-chat .chat-memory-item button.done {
   background: transparent;
   border: 1px solid var(--sep-strong);
   color: var(--ink-3);
@@ -1866,7 +2184,11 @@
   z-index: 4;
   top: calc(max(16px, env(safe-area-inset-top, 0px) + 8px));
   left: var(--edge);
-  right: calc(16px + 88px + 10px);
+  /* NAV-T06/D-180: `right` reservava 88px para o chrome do canto — e reservava
+     errado desde D-131, que encolheu o chrome para 40px e só atualizou a busca
+     logo acima. Com o ☰ removido a reserva inteira caiu, e a barra do Pilot
+     ganhou ~98px de largura num telefone de 390px. */
+  right: 16px;
   max-width: 560px;
   display: flex;
   align-items: center;
@@ -1890,6 +2212,7 @@
 .wv2-pilotbar input {
   flex: 1;
   min-width: 0;
+  min-height: 44px;
   border: 0;
   outline: none;
   background: transparent;
@@ -1899,22 +2222,10 @@
   letter-spacing: -0.006em;
 }
 .wv2-pilotbar input::placeholder { color: var(--ink-3); }
-.wv2-pilotbar .bar-orb {
-  flex: none;
-  width: 46px;
-  height: 46px;
-  display: grid;
-  place-items: center;
-  border-radius: var(--r-pill);
-  color: var(--accent);
-  cursor: pointer;
-  touch-action: manipulation;
-  transition: transform 110ms ease-out;
-}
-.wv2-pilotbar .bar-orb:active { transform: scale(0.92); }
-.wv2[data-risk='critical'] .wv2-pilotbar .bar-orb {
-  animation: wv2-pilot-alert 1800ms ease-in-out infinite;
-}
+/* A barra só diz que o orbe não estica. A FORMA dele mora em `.pilot-orb`. */
+.wv2-pilotbar .bar-orb { flex: none; }
+
+
 
 /* The compose field was rendering UNDER the bottom nav (fixed, z-index 100),
    which is why it was invisible on a real phone. `max()` keeps the sheet above
@@ -1922,8 +2233,7 @@
 .wv2-pilot-chat { bottom: max(var(--nav-inset), var(--wv2-keyboard, 0px)); }
 
 @media (prefers-reduced-motion: reduce) {
-  .wv2-pilotbar .bar-orb:active { transform: none; }
-  .wv2[data-risk='critical'] .wv2-pilotbar .bar-orb { animation: none; }
+
 }
 
 /* Instrument panel: each source live, simulated, or failed. */
@@ -1965,7 +2275,8 @@
 .wv2-sim-page .sim-source-modes button.on.down { background: rgba(255, 69, 58, 0.28); color: #ffd9d6; }
 
 .wv2-sim-page .sim-stepper {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(92px, 1fr) auto;
   align-items: center;
   justify-content: space-between;
   gap: var(--s3);
@@ -1973,7 +2284,7 @@
   border-bottom: 1px solid var(--sep);
 }
 .wv2-sim-page .sim-stepper:last-of-type { border-bottom: 0; }
-.wv2-sim-page .sim-stepper > div {
+.wv2-sim-page .sim-stepper-controls {
   flex: none;
   display: flex;
   align-items: center;
@@ -1999,6 +2310,72 @@
   touch-action: manipulation;
 }
 .wv2-sim-page .sim-stepper button:active { transform: scale(0.94); }
+.wv2-sim-page .sim-stepper-range {
+  grid-column: 1 / -1;
+  width: 100%;
+  height: 30px;
+  margin: -2px 0 0;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+  touch-action: pan-y;
+}
+.wv2-sim-page .sim-stepper-range::-webkit-slider-runnable-track {
+  height: 5px;
+  border-radius: 999px;
+  background:
+    linear-gradient(90deg, var(--accent) 0 var(--sim-stepper-progress), rgba(255, 255, 255, 0.18) var(--sim-stepper-progress) 100%);
+}
+.wv2-sim-page .sim-stepper-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  margin-top: -8.5px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.82);
+  background: var(--accent);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.32);
+}
+.wv2-sim-page .sim-stepper-range::-moz-range-track {
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+}
+.wv2-sim-page .sim-stepper-range::-moz-range-progress {
+  height: 5px;
+  border-radius: 999px;
+  background: var(--accent);
+}
+.wv2-sim-page .sim-stepper-range::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.82);
+  background: var(--accent);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.32);
+}
+.wv2-sim-page .sim-stepper-range:focus-visible {
+  outline: none;
+}
+.wv2-sim-page .sim-stepper-range:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.22), 0 6px 16px rgba(0, 0, 0, 0.32);
+}
+.wv2-sim-page .sim-stepper-range:focus-visible::-moz-range-thumb {
+  box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.22), 0 6px 16px rgba(0, 0, 0, 0.32);
+}
+
+@media (max-width: 430px) {
+  .wv2-sim-page .sim-stepper {
+    grid-template-columns: 1fr;
+    gap: var(--s2);
+  }
+  .wv2-sim-page .sim-stepper-controls {
+    justify-content: space-between;
+  }
+  .wv2-sim-page .sim-stepper strong {
+    flex: 1;
+  }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .wv2-sim-page .sim-stepper button:active { transform: none; }
@@ -2048,7 +2425,8 @@
 /* Touch has no hover, so the map controls carry their name (WV2-T06). */
 .wv2-mapcontrols .wv2-iconbtn.with-caption {
   height: auto;
-  padding: 7px 0 6px;
+  min-height: 44px;
+  padding: 7px var(--s2) 6px;
   gap: 2px;
   flex-direction: column;
   display: flex;
@@ -2056,6 +2434,7 @@
   justify-content: center;
 }
 .wv2-mapcontrols .wv2-iconbtn .cap {
+  white-space: nowrap;   /* a palavra não quebra: ou cabe, ou a coluna cresce */
   font-size: 0.5625rem;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -2063,3 +2442,2180 @@
   color: var(--ink-3);
 }
 .wv2-mapcontrols .wv2-iconbtn.on .cap { color: var(--accent); }
+
+/* ═══ MEMBER SHEET (D-073) ═════════════════════════════════════════════════
+   Tap a face, act on that person. A marker that only says where someone is
+   answers half the question. */
+
+/*
+ * ── O scrim da folha da PESSOA (D-187) ──────────────────────────────────────
+ *
+ * Ela reusava `.wv2-pilot-scrim`, e isso funcionou de 29/07 até 09/08. Nessa
+ * data, `fix(pilot): close chat when tapping outside` subiu aquele scrim para
+ * **z-index 899**, para ele passar por cima da barra de navegação (100) e do
+ * AppActions (200).
+ *
+ * Correto para o Pilot — que é montado no LAYOUT, no contexto de empilhamento
+ * da raiz, onde 899 realmente o coloca acima da barra.
+ *
+ * Errado para esta folha, que vive dentro de `.wv2`. E `.wv2` é
+ * `position: fixed`, o que **cria um contexto de empilhamento próprio**: ali
+ * dentro, 899 não é comparado com a barra — é comparado com a folha, que é 7.
+ * O scrim passou a cobrir exatamente o que ele deveria destacar. A tela ficava
+ * embaçada inteira e nenhum botão respondia: o toque parava no scrim.
+ *
+ * A armadilha não foi o número. Foi **uma classe servindo dois pontos de
+ * montagem em contextos diferentes** — mudar um deles não tem como avisar o
+ * outro. Agora são duas classes, e cada uma vive na régua do próprio contexto.
+ *
+ * Régua de `.wv2`: mapa 0 · painéis e folha 3 · busca/PilotBar 4 · orbe 6.
+ */
+.wv2-member-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 6;
+  border: 0;
+  padding: 0;
+  background: rgba(0, 0, 0, 0.32);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  cursor: pointer;
+}
+@media (prefers-reduced-transparency: reduce) {
+  .wv2-member-scrim {
+    background: rgba(0, 0, 0, 0.62);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+.wv2-member {
+  position: absolute;
+  /* Acima do próprio scrim (6), que por sua vez cobre painéis e folha (3). */
+  z-index: 7;
+  left: 0;
+  right: 0;
+  bottom: var(--nav-inset);
+  max-height: 74dvh;
+  overflow-y: auto;
+  padding: var(--s5) var(--s5) calc(var(--s6) + env(safe-area-inset-bottom));
+  border-radius: var(--r-sheet) var(--r-sheet) 0 0;
+}
+@media (min-width: 900px) {
+  .wv2-member {
+    left: auto;
+    right: var(--edge);
+    width: 420px;
+    bottom: calc(var(--nav-inset) + var(--edge));
+    border-radius: 30px;
+  }
+}
+.wv2-member header { display: flex; align-items: center; gap: var(--s3); }
+.wv2-member .face {
+  flex: none;
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: var(--r-pill);
+  border: 2px solid var(--accent);
+  background: #0b0d12;
+  color: var(--ink);
+  font-size: 0.9375rem;
+  font-weight: 700;
+}
+.wv2-member .face img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.wv2-member .who { min-width: 0; }
+.wv2-member .who em { display: block; font-style: normal; margin-top: 2px; }
+
+.wv2-member .go { display: flex; gap: var(--s2); margin-top: var(--s4); }
+.wv2-member .go > * {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 0 var(--s3);
+  border: 1px solid var(--sep-strong);
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.wv2-member .go > .primary {
+  border-color: transparent;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 700;
+}
+.wv2-member .go > .marked {
+  border-color: rgba(var(--accent-rgb), 0.42);
+  color: var(--accent);
+}
+.wv2-member .go > *:active { transform: scale(0.97); }
+
+.wv2-member .label { margin: var(--s5) 0 var(--s2); }
+.wv2-member .presets { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s2); }
+.wv2-member .presets button {
+  min-height: 44px;
+  padding: 0 var(--s3);
+  border: 1px solid var(--sep);
+  border-radius: 14px;
+  background: var(--fill-2);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.wv2-member .presets button.done {
+  background: rgba(var(--accent-rgb), 0.2);
+  border-color: rgba(var(--accent-rgb), 0.45);
+  color: var(--ink);
+}
+.wv2-member .presets button:active:not(:disabled) { transform: scale(0.97); }
+.wv2-member .execute-plan { margin-top: var(--s4); }
+.wv2-member .system-note {
+  margin: var(--s4) 0 0;
+  padding: var(--s3);
+  border: 1px solid rgba(255, 159, 10, 0.28);
+  border-radius: 14px;
+  background: rgba(255, 159, 10, 0.08);
+}
+.wv2-member .plan-choices {
+  display: grid;
+  gap: var(--s2);
+  margin-top: var(--s3);
+}
+.wv2-member .plan-choices button {
+  min-height: 48px;
+  padding: var(--s3);
+  border: 1px solid var(--sep);
+  border-radius: 14px;
+  background: var(--fill-2);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.wv2-member .plan-choices button.highlighted {
+  border-color: rgba(var(--accent-rgb), 0.48);
+  background: rgba(var(--accent-rgb), 0.16);
+}
+.wv2-member .plan-choices strong,
+.wv2-member .plan-choices em {
+  display: block;
+}
+.wv2-member .plan-choices em {
+  margin-top: 2px;
+  color: var(--ink-3);
+  font-size: 0.8125rem;
+  font-style: normal;
+}
+.wv2-member .protocol-choices {
+  margin-top: var(--s2);
+}
+.wv2-member .selected-protocol {
+  width: 100%;
+  min-height: 54px;
+  margin: 0 0 var(--s3);
+  padding: var(--s3);
+  border: 1px solid rgba(var(--accent-rgb), 0.42);
+  border-radius: 14px;
+  background: rgba(var(--accent-rgb), 0.13);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.wv2-member .selected-protocol strong,
+.wv2-member .selected-protocol em {
+  display: block;
+}
+.wv2-member .selected-protocol em {
+  margin-top: 2px;
+  color: var(--accent);
+  font-size: 0.8125rem;
+  font-style: normal;
+  font-weight: 700;
+}
+.wv2-member .note.compact {
+  margin-top: var(--s2);
+}
+.wv2-member .execution-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s3);
+  margin: var(--s4) 0 var(--s3);
+}
+.wv2-member .execution-head span {
+  flex: none;
+  padding-top: 3px;
+}
+.wv2-member .broadcast {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid rgba(var(--accent-rgb), 0.42);
+  border-radius: 14px;
+  background: rgba(var(--accent-rgb), 0.16);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.wv2-member .execution-actions {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--s2);
+}
+.wv2-member .execution-actions .cancel,
+.wv2-member .false-alarm {
+  min-height: 44px;
+  border: 1px solid var(--sep);
+  border-radius: 14px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.wv2-member .false-alarm {
+  width: 100%;
+  margin-top: var(--s2);
+  color: #ff9f0a;
+  border-color: rgba(255, 159, 10, 0.32);
+}
+.wv2-member .hold-execute {
+  --hold-progress: 0%;
+  width: 148px;
+  height: 148px;
+  min-width: 148px;
+  min-height: 148px;
+  display: grid;
+  place-items: center;
+  margin: var(--s4) auto var(--s3);
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(14, 17, 18, 0.96) 0 58%, transparent 59%),
+    conic-gradient(var(--accent) var(--hold-progress), rgba(255, 255, 255, 0.14) 0);
+  color: var(--ink);
+  box-shadow:
+    0 0 0 1px rgba(var(--accent-rgb), 0.22),
+    0 18px 44px -28px rgba(var(--accent-rgb), 1);
+  font: inherit;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+}
+.wv2-member .hold-execute:active {
+  transform: scale(0.985);
+}
+.wv2-member .hold-execute:disabled {
+  opacity: 0.64;
+  cursor: progress;
+}
+.wv2-member .hold-execute span,
+.wv2-member .hold-execute strong,
+.wv2-member .hold-execute em {
+  display: block;
+  text-align: center;
+}
+.wv2-member .hold-execute strong {
+  font-size: 1rem;
+  font-weight: 800;
+}
+.wv2-member .hold-execute em {
+  margin-top: 3px;
+  color: var(--accent);
+  font-size: 0.875rem;
+  font-style: normal;
+  font-weight: 800;
+}
+.wv2-member .execution-steps {
+  display: grid;
+  gap: var(--s2);
+  margin-top: var(--s3);
+}
+.wv2-member .execution-steps button {
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  gap: var(--s3);
+  width: 100%;
+  min-height: 64px;
+  padding: var(--s3);
+  border: 1px solid var(--sep);
+  border-radius: 16px;
+  background: var(--fill-2);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.wv2-member .execution-steps .num {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(var(--accent-rgb), 0.16);
+  color: var(--accent);
+  font-size: 0.8125rem;
+  font-weight: 800;
+}
+.wv2-member .execution-steps strong,
+.wv2-member .execution-steps em {
+  display: block;
+  min-width: 0;
+}
+.wv2-member .execution-steps strong {
+  font-size: 0.875rem;
+  line-height: 1.25;
+}
+.wv2-member .execution-steps em {
+  margin-top: 3px;
+  color: var(--ink-2);
+  font-size: 0.8125rem;
+  font-style: normal;
+  line-height: 1.35;
+}
+.wv2-member .execution-steps button.done {
+  border-color: rgba(var(--accent-rgb), 0.45);
+  background: rgba(var(--accent-rgb), 0.13);
+}
+.wv2-member .warn { margin: var(--s3) 0 0; color: #ff9f0a; }
+.wv2-member .note { margin: var(--s4) 0 0; line-height: 1.5; }
+
+@media (prefers-reduced-motion: reduce) {
+  .wv2-member .go > *:active,
+  .wv2-member .presets button:active:not(:disabled),
+  .wv2-member .hold-execute:active { transform: none; }
+}
+
+/* ═══ PLAN — o plano de voo da família (D-066 / doc 18) ════════════════════ */
+
+.wv2.wv2-plan-page {
+  position: static;
+  inset: auto;
+  overflow: visible;
+  min-height: 100dvh;
+  background: #000;
+}
+.wv2-plan-switcher {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin-top: var(--s3);
+}
+.wv2-plan-switcher .wv2-chip {
+  max-width: 100%;
+}
+.wv2-plan-page .plan-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+  max-width: 720px;
+  margin: 0 auto;
+  padding: calc(var(--s8) + env(safe-area-inset-top)) var(--edge) calc(var(--nav-inset) + var(--s8));
+}
+.wv2-plan-page .plan-head { padding: 0 var(--s2); }
+.wv2-plan-page .plan-title {
+  margin: var(--s2) 0 var(--s2);
+  font-size: clamp(1.875rem, 7vw, 2.375rem);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  font-weight: 700;
+}
+
+/* Version and age sit together on purpose: a version without an age does not
+   tell you whether the copy you are holding is the one being executed. */
+.wv2-plan-page .wv2-plan-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  margin-top: var(--s3);
+  flex-wrap: wrap;
+}
+.wv2-plan-page .wv2-plan-version {
+  padding: 4px 10px;
+  border-radius: var(--r-pill);
+  background: var(--fill-1);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.wv2-plan-page .wv2-plan-circles {
+  display: flex;
+  gap: var(--s2);
+  flex-wrap: wrap;
+  margin-top: var(--s3);
+}
+
+.wv2 .wv2-chip {
+  padding: 6px 12px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--sep);
+  background: var(--fill-2);
+  color: var(--ink-2);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.wv2 .wv2-chip.on {
+  border-color: rgba(var(--accent-rgb), 0.5);
+  background: rgba(var(--accent-rgb), 0.14);
+  color: var(--ink);
+}
+.wv2 .wv2-chip.premium {
+  border-color: rgba(245, 158, 11, 0.4);
+  color: rgba(255, 255, 255, 0.76);
+}
+.wv2 .wv2-chip.premium span {
+  margin-left: 6px;
+  color: #f59e0b;
+  font-size: 0.625rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.wv2-plan-page .wv2-plan-note { display: grid; gap: var(--s2); }
+.wv2-plan-page .wv2-plan-note ul { margin: 0; padding-left: var(--s5); display: grid; gap: 4px; }
+.wv2-plan-page .wv2-plan-note.gaps { border-color: rgba(255, 214, 10, 0.28); }
+.wv2-plan-page .wv2-plan-note.warn { border-color: rgba(255, 159, 10, 0.3); }
+.wv2 .warn { color: #ff9f0a; }
+.wv2 .ok { color: var(--accent); }
+
+.wv2-plan-page .wv2-plan-ack { display: grid; gap: var(--s3); justify-items: start; }
+.wv2-plan-page .wv2-plan-session-arm { display: grid; gap: var(--s3); }
+.wv2-plan-page .wv2-plan-session-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s2);
+}
+.wv2-plan-page .wv2-plan-session-grid label,
+.wv2-plan-page .wv2-plan-session-list {
+  display: grid;
+  gap: var(--s2);
+}
+.wv2-plan-page .wv2-plan-session-list .wv2-plan-check {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+}
+.wv2-plan-page .wv2-plan-session-list .wv2-plan-check .wv2-input {
+  grid-column: 1 / -1;
+}
+.wv2-plan-page .wv2-plan-pilot { display: grid; gap: var(--s3); }
+.wv2-plan-page .wv2-plan-pilot-list { display: grid; gap: var(--s2); }
+.wv2-plan-page .wv2-plan-pilot-item {
+  display: grid;
+  gap: var(--s2);
+  justify-items: start;
+  padding: var(--s3);
+  border-radius: var(--r-tile);
+  border: 1px solid var(--sep);
+  background: var(--fill-2);
+}
+.wv2-plan-page .wv2-plan-pilot-item strong,
+.wv2-plan-page .wv2-plan-pilot-item p {
+  overflow-wrap: anywhere;
+}
+
+/* ── the rendezvous ladder ── */
+.wv2-plan-page .wv2-plan-step { display: grid; gap: var(--s2); }
+.wv2-plan-page .wv2-plan-step .head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s3);
+}
+.wv2-plan-page .wv2-plan-step .rung {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--fill-1);
+  color: var(--ink);
+}
+.wv2-plan-page .wv2-plan-step .point { font-weight: 600; }
+.wv2-plan-page .wv2-plan-step .acts { display: flex; gap: var(--s2); margin-top: var(--s1); }
+
+/* ── rows, roles, triggers ── */
+.wv2-plan-page .wv2-plan-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s3) 0;
+  border-bottom: 1px solid var(--sep);
+}
+.wv2-plan-page .wv2-plan-role,
+.wv2-plan-page .wv2-plan-trigger {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: var(--s2);
+  align-items: center;
+  padding: var(--s2) 0;
+}
+.wv2-plan-page .wv2-plan-trigger {
+  grid-template-columns: 1.2fr 0.8fr 1fr auto;
+  align-items: start;
+}
+.wv2-plan-page .wv2-plan-trigger > .wv2-input:first-child,
+.wv2-plan-page .wv2-plan-trigger > .wv2-input:nth-child(3) {
+  grid-column: span 2;
+}
+.wv2-plan-page .wv2-plan-check {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: 10px 12px;
+  border: 1px solid var(--sep);
+  border-radius: var(--r-tile);
+  background: var(--fill-2);
+  color: var(--ink-2);
+  font-size: 0.875rem;
+}
+.wv2-plan-page .wv2-plan-check input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+.wv2-plan-page .wv2-plan-trigger-minutes {
+  min-height: 44px;
+  display: grid;
+  grid-template-columns: 1fr 72px auto;
+  align-items: center;
+  gap: var(--s2);
+  padding: 8px 10px;
+  border: 1px solid var(--sep);
+  border-radius: var(--r-tile);
+  background: var(--fill-2);
+}
+.wv2-plan-page .wv2-plan-trigger-minutes .wv2-input {
+  min-width: 0;
+  padding: 8px 10px;
+}
+.wv2-plan-page .wv2-plan-trigger-minutes em {
+  font-style: normal;
+}
+@media (max-width: 520px) {
+  .wv2-plan-page .wv2-plan-role,
+  .wv2-plan-page .wv2-plan-trigger,
+  .wv2-plan-page .wv2-plan-session-grid {
+    grid-template-columns: 1fr auto;
+  }
+  .wv2-plan-page .wv2-plan-session-grid label,
+  .wv2-plan-page .wv2-plan-role > .wv2-input:first-child,
+  .wv2-plan-page .wv2-plan-trigger > .wv2-input,
+  .wv2-plan-page .wv2-plan-trigger-minutes,
+  .wv2-plan-page .wv2-plan-check {
+    grid-column: 1 / -1;
+  }
+}
+.wv2-plan-page .wv2-plan-addrow {
+  display: flex;
+  gap: var(--s2);
+  flex-wrap: wrap;
+  margin-top: var(--s3);
+}
+.wv2-plan-page .sugg-label { display: block; margin: var(--s4) 0 var(--s2); }
+.wv2-plan-page .wv2-plan-acks { display: flex; gap: var(--s2); flex-wrap: wrap; margin-bottom: var(--s3); }
+.wv2-plan-page .wv2-plan-x {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--sep);
+  background: var(--fill-2);
+  color: var(--ink-2);
+  font-size: 1.125rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.wv2-plan-page .wv2-plan-save { margin-top: var(--s4); display: grid; gap: var(--s2); }
+
+/*
+  Saída do plano. Separada do salvar por uma linha e por espaço: é a única ação
+  desta página que remove algo que a família combinou, e não pode ser alcançada
+  no mesmo impulso de salvar. Alvos em 44px como o resto do sistema — a ação
+  mais destrutiva não pode ser o menor botão da tela.
+*/
+.wv2-plan-page .wv2-plan-danger {
+  margin-top: var(--s5);
+  padding-top: var(--s4);
+  border-top: 1px solid var(--sep);
+  display: grid;
+  gap: var(--s2);
+  justify-items: start;
+}
+.wv2-plan-page .wv2-plan-danger .acts { display: flex; gap: var(--s2); flex-wrap: wrap; }
+.wv2-plan-page .wv2-plan-danger-open,
+.wv2-plan-page .wv2-plan-danger-go {
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 15px;
+  cursor: pointer;
+  transition: transform 120ms ease, background 160ms ease;
+}
+.wv2-plan-page .wv2-plan-danger-open {
+  background: transparent;
+  border: 1px solid rgba(255, 69, 58, 0.36);
+  color: #ff8b80;
+}
+.wv2-plan-page .wv2-plan-danger-go {
+  background: rgba(255, 69, 58, 0.16);
+  border: 1px solid rgba(255, 69, 58, 0.52);
+  color: #ff9f93;
+  font-weight: 600;
+}
+.wv2-plan-page .wv2-plan-danger-open:active,
+.wv2-plan-page .wv2-plan-danger-go:active { transform: scale(0.97); }
+.wv2-plan-page .wv2-plan-danger-go[disabled] { opacity: 0.6; cursor: default; }
+
+@media (prefers-reduced-motion: reduce) {
+  .wv2-plan-page .wv2-plan-danger-open,
+  .wv2-plan-page .wv2-plan-danger-go { transition: none; }
+  .wv2-plan-page .wv2-plan-danger-open:active,
+  .wv2-plan-page .wv2-plan-danger-go:active { transform: none; }
+}
+
+/* ── inputs: 44px minimum target, no zoom-on-focus on iOS (16px floor) ── */
+.wv2 .wv2-input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 14px;
+  border-radius: var(--r-tile);
+  border: 1px solid var(--sep);
+  background: var(--fill-2);
+  color: var(--ink);
+  font: inherit;
+  font-size: 1rem;
+}
+.wv2 .wv2-input::placeholder { color: var(--ink-3); }
+.wv2 .wv2-input:focus-visible {
+  outline: 2px solid rgba(var(--accent-rgb), 0.7);
+  outline-offset: 1px;
+}
+.wv2 .wv2-field { display: grid; gap: var(--s2); }
+
+/* ── point picker: the same fumé material as the Pilot ── */
+.wv2-picker-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 299;
+  border: 0;
+  padding: 0;
+  background: rgba(0, 0, 0, 0.52);
+  cursor: pointer;
+}
+.wv2-picker {
+  position: fixed;
+  left: var(--edge);
+  right: var(--edge);
+  bottom: calc(var(--nav-inset) + var(--s3));
+  z-index: 300;
+  max-height: 78dvh;
+  overflow-y: auto;
+  display: grid;
+  gap: var(--s3);
+  padding: var(--s5);
+  border-radius: var(--r-sheet);
+  border: 1px solid var(--sep-strong);
+}
+@media (min-width: 760px) {
+  .wv2-picker { left: 50%; right: auto; width: 520px; transform: translateX(-50%); }
+}
+.wv2-picker .wv2-picker-search { display: flex; gap: var(--s2); align-items: center; }
+.wv2-picker .wv2-picker-results {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--s1);
+  max-height: 220px;
+  overflow-y: auto;
+}
+.wv2-picker .wv2-picker-results button {
+  width: 100%;
+  display: grid;
+  gap: 2px;
+  text-align: left;
+  padding: var(--s3);
+  border-radius: var(--r-tile);
+  border: 1px solid transparent;
+  background: var(--fill-2);
+  color: var(--ink);
+  cursor: pointer;
+}
+.wv2-picker .wv2-picker-results button:hover,
+.wv2-picker .wv2-picker-results button:focus-visible {
+  border-color: rgba(var(--accent-rgb), 0.5);
+}
+.wv2-picker .wv2-picker-acts { display: flex; gap: var(--s2); justify-content: flex-end; }
+
+@media (prefers-reduced-transparency: reduce) {
+  .wv2-picker { background: #101014; backdrop-filter: none; }
+}
+
+/* ── Rotas desenhadas pela família (PLAN-T03 / doc 18 §5) ── */
+
+.wv2-plan-page .route-meta { display: block; font-style: normal; margin-top: 2px; }
+.wv2-plan-page .route-acts { display: flex; gap: var(--s2); align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.wv2-plan-page .wv2-route-nav {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--s3);
+  border-radius: var(--r-pill);
+  border: 1px solid rgba(var(--accent-rgb), 0.42);
+  background: rgba(var(--accent-rgb), 0.12);
+  color: var(--ink);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.wv2.wv2-draw {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  background: #000;
+  display: flex;
+  flex-direction: column;
+}
+.wv2-draw .wv2-draw-map { flex: 1; min-height: 0; }
+
+/* O painel é a única superfície translúcida da tela: o mapa embaixo é o
+   conteúdo, e empilhar vidro sobre vidro mataria a legibilidade. */
+.wv2-draw .wv2-draw-panel {
+  flex: none;
+  max-height: 52dvh;
+  overflow-y: auto;
+  display: grid;
+  gap: var(--s3);
+  padding: var(--s5) var(--edge) calc(var(--s5) + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--sep-strong);
+  border-radius: var(--r-sheet) var(--r-sheet) 0 0;
+  margin-top: calc(var(--r-sheet) * -1);
+}
+.wv2-draw .wv2-draw-head { display: grid; gap: var(--s1); }
+.wv2-draw .wv2-draw-ends { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s3); }
+.wv2-draw .wv2-draw-mode { display: flex; gap: var(--s2); }
+.wv2-draw .wv2-draw-acts { display: flex; gap: var(--s2); flex-wrap: wrap; justify-content: flex-end; }
+
+/* Pino nomeado: durante o desenho o nome importa mais que o ícone — a família
+   está procurando "a praça", não um alfinete. */
+.wv2-drawpin {
+  padding: 4px 9px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--sep-strong);
+  background: rgba(20, 20, 24, 0.86);
+  backdrop-filter: blur(var(--mat-blur-sm));
+  color: var(--ink-2);
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  transform: translateY(-6px);
+}
+.wv2-drawpin.from { border-color: rgba(var(--accent-rgb), 0.8); color: var(--ink); }
+.wv2-drawpin.to { border-color: rgba(255, 214, 10, 0.8); color: var(--ink); }
+
+@media (min-width: 760px) {
+  .wv2-draw .wv2-draw-panel { max-height: 46dvh; padding-inline: var(--s8); }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .wv2-draw .wv2-draw-panel { background: #101014; backdrop-filter: none; }
+  .wv2-drawpin { background: #101014; backdrop-filter: none; }
+}
+
+/* ── A carta do plano: desenho que não depende de tile (PLAN-T06) ── */
+
+.wv2-chart { display: grid; gap: var(--s3); }
+.wv2-chart svg {
+  width: 100%;
+  height: auto;
+  border-radius: var(--r-tile);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.wv2-chart .chart-route-glow {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 9;
+  stroke-opacity: 0.18;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.wv2-chart .chart-route {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.wv2-chart .chart-pin circle,
+.wv2-chart .chart-pin path { fill: var(--fill-1); stroke: var(--ink-3); stroke-width: 1.5; }
+.wv2-chart .chart-pin.home path { fill: rgba(var(--accent-rgb), 0.22); stroke: var(--accent); }
+.wv2-chart .chart-pin.rendezvous circle { fill: rgba(255, 214, 10, 0.2); stroke: #ffd60a; }
+.wv2-chart .chart-pin text {
+  fill: var(--ink);
+  font-size: 11px;
+  font-weight: 700;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.75);
+  stroke-width: 3px;
+}
+.wv2-chart .chart-pin .chart-label { font-size: 10px; font-weight: 600; fill: var(--ink-2); }
+
+.wv2-chart .chart-north path { fill: var(--ink-2); }
+.wv2-chart .chart-north text { fill: var(--ink-2); font-size: 10px; font-weight: 700; }
+.wv2-chart .chart-scale line { stroke: var(--ink-2); stroke-width: 1.5; }
+.wv2-chart .chart-scale text { fill: var(--ink-2); font-size: 10px; font-weight: 600; }
+
+.wv2-chart .wv2-chart-legend { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.wv2-plan-page .chart-note { margin-top: var(--s3); }
+
+/* Alto contraste: o desenho passa a depender de forma e traço, não de opacidade. */
+@media (prefers-contrast: more) {
+  .wv2-chart svg { background: #000; border: 1px solid var(--sep-strong); }
+  .wv2-chart .chart-route { stroke-width: 3.5; }
+  .wv2-chart .chart-pin circle, .wv2-chart .chart-pin path { stroke-width: 2.5; }
+}
+
+/* ── Escolher o ponto no mapa (condomínio: mesmo número, prédios diferentes) ── */
+
+.wv2-picker .wv2-picker-ways { display: flex; gap: var(--s2); flex-wrap: wrap; }
+
+.wv2.wv2-mappick {
+  position: fixed;
+  inset: 0;
+  z-index: 420;   /* acima do picker do plano, que fica em 300 */
+  background: #000;
+  display: flex;
+  flex-direction: column;
+}
+.wv2-mappick .wv2-mappick-map { flex: 1; min-height: 0; }
+
+/* A mira mora no centro geométrico da área do mapa e NÃO recebe toque: o dedo
+   precisa arrastar o mapa por baixo dela. */
+.wv2-mappick .wv2-mappick-cross {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 46dvh;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+.wv2-mappick .wv2-mappick-cross .ring {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.5), 0 0 18px rgba(var(--accent-rgb), 0.5);
+}
+.wv2-mappick .wv2-mappick-cross .dot {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.6);
+}
+
+.wv2-mappick .wv2-mappick-panel {
+  flex: none;
+  max-height: 46dvh;
+  overflow-y: auto;
+  display: grid;
+  gap: var(--s3);
+  padding: var(--s5) var(--edge) calc(var(--s5) + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--sep-strong);
+  border-radius: var(--r-sheet) var(--r-sheet) 0 0;
+  margin-top: calc(var(--r-sheet) * -1);
+}
+.wv2-mappick .wv2-mappick-head { display: grid; gap: var(--s1); }
+.wv2-mappick .wv2-mappick-row { display: flex; gap: var(--s2); align-items: center; flex-wrap: wrap; }
+.wv2-mappick .wv2-mappick-row .coords { font-variant-numeric: tabular-nums; }
+.wv2-mappick .wv2-mappick-acts { display: flex; gap: var(--s2); justify-content: flex-end; }
+
+@media (min-width: 760px) {
+  .wv2-mappick .wv2-mappick-panel { max-height: 38dvh; padding-inline: var(--s8); }
+  .wv2-mappick .wv2-mappick-cross { bottom: 38dvh; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .wv2-mappick .wv2-mappick-panel { background: #101014; backdrop-filter: none; }
+}
+
+/* ── Sugestões de gatilho: frases inteiras, não etiquetas ──
+   Numa pill elas estouravam a largura do telefone. Bloco com quebra de linha é
+   o que uma frase pede. */
+.wv2-plan-page .wv2-plan-suggestions { display: grid; gap: var(--s2); margin-top: var(--s2); }
+.wv2-plan-page .wv2-plan-suggestions button {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  padding: var(--s3);
+  border-radius: var(--r-tile);
+  border: 1px solid var(--sep);
+  background: var(--fill-2);
+  color: var(--ink);
+  cursor: pointer;
+}
+.wv2-plan-page .wv2-plan-suggestions button strong,
+.wv2-plan-page .wv2-plan-suggestions button span {
+  /* Sem isto uma condição longa empurra o card e sangra na borda da tela. */
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+.wv2-plan-page .wv2-plan-suggestions button:disabled { opacity: 0.45; cursor: default; }
+.wv2-plan-page .wv2-plan-suggestions button:hover:not(:disabled) { border-color: rgba(var(--accent-rgb), 0.5); }
+
+/* A mesma trava para QUALQUER pill do sistema: um rótulo longo deixa de esticar
+   a linha e passa a quebrar dentro do próprio botão. */
+.wv2 .wv2-pill {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  text-align: left;
+}
+
+/* ── Duração do exercício ── */
+.sim-durations { display: flex; gap: var(--s2); flex-wrap: wrap; margin-top: var(--s3); }
+
+/* ── Ciclone no mapa (D-078) ── */
+.w-storm {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+}
+.w-storm .eye { font-size: 24px; line-height: 1; filter: drop-shadow(0 0 6px rgba(255, 69, 58, 0.8)); }
+.w-storm .tag {
+  position: absolute;
+  top: 100%;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 0 4px #000, 0 0 2px #000;
+}
+/* A seta de rumo sai do olho e aponta para onde a tempestade vai — a pergunta
+   que a pessoa faz não é onde ela está, é para onde ela vem. */
+.w-storm .heading {
+  position: absolute;
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-bottom: 16px solid #ff453a;
+  transform-origin: 50% 100%;
+  margin-bottom: 30px;
+  filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.9));
+}
+@media (prefers-reduced-motion: reduce) {
+  .w-storm .eye { filter: none; }
+}
+
+/* ── Painel de camadas do mapa (D-078) ── */
+.wv2-layers {
+  position: absolute;
+  right: var(--edge);
+  top: calc(50px + 3 * 62px);
+  z-index: 60;
+  width: min(280px, calc(100vw - var(--edge) * 2));
+  max-height: clamp(180px, calc(100dvh - 348px), 520px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  display: grid;
+  gap: var(--s2);
+  padding: var(--s4);
+  border-radius: var(--r-card);
+  border: 1px solid var(--sep-strong);
+}
+.wv2-layers .row { display: flex; gap: var(--s2); flex-wrap: wrap; }
+.wv2-layers p.t-caps { margin: var(--s2) 0 0; }
+.wv2-layers p.t-caps:first-child { margin-top: 0; }
+
+@media (prefers-reduced-transparency: reduce) {
+  .wv2-layers { background: #101014; backdrop-filter: none; }
+}
+
+/* ── Alertas tocáveis: cada um leva a câmera até ele ── */
+.wv2-alertlist { display: grid; gap: var(--s2); margin-top: var(--s2); }
+.wv2-alertlist button {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  padding: var(--s3);
+  border-radius: var(--r-tile);
+  border: 1px solid var(--sep);
+  background: var(--fill-2);
+  color: var(--ink);
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.wv2-alertlist button:hover, .wv2-alertlist button:focus-visible { border-color: rgba(var(--accent-rgb), 0.5); }
+
+/* ── O evento climático pulsa na cor do risco ──
+   A cor que diz "quão ruim está" no topo da tela é a mesma que marca ONDE isso
+   está acontecendo. Duas superfícies, um vocabulário — a conexão se faz sem
+   legenda. */
+.wv2 .w-mapmarker.alerting .lab {
+  color: var(--accent-ink);
+  background: var(--accent);
+  border-color: var(--accent);
+  font-weight: 700;
+  animation: eos-alert-pulse 1.8s ease-in-out infinite;
+}
+.wv2 .w-mapmarker.alerting .pin { background: var(--accent); box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.25); }
+
+/* O item tocado na lista pulsa junto: é o mesmo evento nas duas telas. */
+.wv2-alertlist button.showing {
+  border-color: var(--accent);
+  animation: eos-alert-pulse 1.8s ease-in-out infinite;
+}
+.wv2-alertlist button.showing .t-body { color: var(--accent); font-weight: 650; }
+
+@keyframes eos-alert-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(var(--accent-rgb), 0.55); }
+  50%      { box-shadow: 0 0 0 10px rgba(var(--accent-rgb), 0); }
+}
+
+/* Pulso é informação, não decoração: sem movimento, a mesma coisa é dita por
+   contorno permanente. Nada se perde. */
+@media (prefers-reduced-motion: reduce) {
+  .wv2 .w-mapmarker.alerting .lab,
+  .wv2-alertlist button.showing {
+    animation: none;
+    box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.5);
+  }
+}
+
+/* ── Linha de tempestade: um botão, e a distância diz se é assunto seu ── */
+.wv2-layers .wv2-stormline {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  padding: var(--s3);
+  border-radius: var(--r-tile);
+  border: 1px solid var(--sep);
+  background: var(--fill-2);
+  color: var(--ink-2);
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+/* Perto o bastante para virar assunto: ganha a cor do risco. Longe fica
+   apagado — é contexto, não ameaça, e a tela não pode insinuar o contrário. */
+.wv2-layers .wv2-stormline.near { border-color: rgba(var(--accent-rgb), 0.45); color: var(--ink); }
+.wv2-layers .wv2-stormline.showing { border-color: var(--accent); animation: eos-alert-pulse 1.8s ease-in-out infinite; }
+.wv2-layers .wv2-stormline.showing .t-sub { color: var(--accent); }
+.wv2-layers .wv2-stormline:not(.near) .t-sub { opacity: 0.72; }
+
+@media (prefers-reduced-motion: reduce) {
+  .wv2-layers .wv2-stormline.showing { animation: none; box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.5); }
+}
+
+/* ── Orbe do Pilot fora do dashboard (D-079) ──
+   Mesma linguagem do orbe da PilotBar, em posição flutuante: acima da nav, no
+   lado oposto ao polegar que rola a lista. */
+/* ── O dock só diz ONDE (D-136) ────────────────────────────────────────────
+   Isto era um segundo orbe: 56px de círculo com borda e fundo próprios, ícone
+   maior, brilho de 8px, e a cor mudando com o risco — verde, amarelo, laranja,
+   vermelho. A pessoa aprendia a reconhecer o Pilot no dashboard e precisava
+   aprender de novo em toda outra tela.
+
+   A cor por risco saiu junto. O risco tem lugares próprios para ser dito — a
+   faixa, o índice, os alertas; um botão que muda de cor é um botão que se
+   deixa de reconhecer justamente no dia em que mais se precisa achá-lo. O
+   pulso do crítico ficou, e agora vale nas duas telas igual. */
+.wv2-dock-orb {
+  position: fixed;
+  right: 16px;
+  bottom: calc(var(--nav-inset, 72px) + 14px);
+  z-index: 190;
+  touch-action: none;
+}
+/* Enquanto arrasta, o orbe cresce um pouco e perde a sombra de repouso: a
+   pessoa precisa ver que ele saiu do lugar, não só que o dedo se moveu. */
+.wv2-dock-orb.dragging { transform: scale(1.12); cursor: grabbing; }
+
+@media (prefers-reduced-motion: reduce) { .wv2-dock-orb.dragging { transform: none; } }
+
+/* ── Portal de tokens (D-079) ──
+   Escopo de variáveis SEM a casca de tela cheia. `.wv2` é o shell do dashboard
+   (fixed, inset 0, fundo preto); quem só precisa das cores — o Pilot montado
+   sobre outra página — usa isto, senão pinta o app inteiro de preto. */
+.wv2.wv2-portal {
+  position: static;
+  inset: auto;
+  overflow: visible;
+  background: transparent;
+  min-height: 0;
+  height: auto;
+  width: auto;
+  contain: none;
+  pointer-events: none;
+}
+/* Os filhos (scrim e folha do Pilot) voltam a receber toque por conta própria. */
+.wv2.wv2-portal > * { pointer-events: auto; }
+
+/* ═══ FAMÍLIA (D-082) ══════════════════════════════════════════════════════ */
+
+.wv2.wv2-family-page {
+  position: static;
+  inset: auto;
+  overflow: visible;
+  min-height: 100dvh;
+  background: #000;
+}
+.wv2-family-page .family-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+  max-width: 720px;
+  margin: 0 auto;
+  padding: calc(var(--s8) + env(safe-area-inset-top)) var(--edge) calc(var(--nav-inset) + var(--s8));
+}
+.wv2-family-page .family-head { padding: 0 var(--s2); }
+.wv2-family-page .family-title {
+  margin: var(--s2) 0 var(--s3);
+  font-size: clamp(1.5rem, 5.5vw, 2rem);
+  line-height: 1.12;
+  letter-spacing: -0.025em;
+  font-weight: 700;
+}
+.wv2-family-page .family-meta { display: flex; gap: var(--s2); flex-wrap: wrap; align-items: baseline; }
+
+/* Uma pessoa é UMA linha: cadastro, conta e papel costurados. */
+.wv2-family-page .family-person { display: grid; gap: var(--s3); }
+.wv2-family-page .family-person .who { display: flex; gap: var(--s3); align-items: center; }
+.wv2-family-page .family-person .face {
+  flex: none;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: var(--fill-1);
+  border: 1px solid var(--sep-strong);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--ink-2);
+}
+.wv2-family-page .family-person .face img { width: 100%; height: 100%; object-fit: cover; }
+.wv2-family-page .family-person .id { display: grid; gap: 2px; min-width: 0; }
+.wv2-family-page .family-person .id em { font-style: normal; overflow-wrap: anywhere; }
+.wv2-family-page .family-person .chips { display: flex; gap: var(--s2); flex-wrap: wrap; }
+.wv2-family-page .family-person .role { overflow-wrap: anywhere; }
+.wv2-family-page .family-person .role b { margin-right: var(--s2); }
+.wv2-family-page .family-person .acts { display: flex; gap: var(--s2); flex-wrap: wrap; }
+
+.wv2-family-page .family-needs { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s2); }
+.wv2-family-page .family-foot { display: flex; gap: var(--s2); flex-wrap: wrap; margin-top: var(--s4); }
+
+/* ── Página de convite (D-112) ── */
+.wv2.wv2-invite-page {
+  position: static;
+  inset: auto;
+  overflow: visible;
+  min-height: 100dvh;
+  background: #000;
+  display: grid;
+  place-items: center;
+  padding: var(--s6) var(--edge) calc(var(--nav-inset) + var(--s6));
+}
+.wv2-invite-page .invite-box {
+  display: grid;
+  gap: var(--s4);
+  justify-items: start;
+  max-width: 460px;
+  padding: var(--s6);
+  border-radius: var(--r-card);
+  border: 1px solid var(--sep);
+  background: var(--mat-regular);
+  backdrop-filter: blur(var(--mat-blur-md));
+}
+
+/* ── Compartilhar convite (D-112) ── */
+.invite-share { display: grid; gap: var(--s2); justify-items: start; }
+.invite-share-btn {
+  padding: 8px 14px;
+  border-radius: var(--r-pill);
+  border: 1px solid rgba(var(--accent-rgb, 48, 209, 88), 0.45);
+  background: rgba(var(--accent-rgb, 48, 209, 88), 0.12);
+  color: var(--accent, #30d158);
+  font-size: 0.8125rem;
+  font-weight: 650;
+  cursor: pointer;
+  min-height: 44px;
+}
+/* D-124: a área de toque tem 44px mesmo com a caixa desenhada em 22px — o
+   alvo é maior que o desenho, e antes tinha 18px, abaixo de qualquer dedo. */
+.invite-share-family {
+  display: flex;
+  gap: var(--s3);
+  align-items: flex-start;
+  cursor: pointer;
+  min-height: 44px;
+  padding: var(--s2) 0;
+}
+.invite-share-family input { margin-top: 2px; flex: none; width: 22px; height: 22px; }
+.invite-share-family span { display: grid; gap: 2px; font-size: 0.8125rem; color: var(--ink-2, #a1a1aa); }
+/* O aviso de que a pessoa ainda decide fica colado na caixa, não numa nota de
+   rodapé: é a diferença entre pedir e conceder. */
+.invite-share-family em { font-style: normal; font-size: 0.75rem; color: var(--ink-3, #71717a); }
+.invite-share-note { font-size: 0.75rem; color: var(--ink-2, #a1a1aa); overflow-wrap: anywhere; margin: 0; }
+.wv2-family-page .family-invite { display: grid; gap: var(--s2); }
+
+/* ═══ Cadastro da família (D-122) ═══════════════════════════════════════════
+   A tela anterior vivia fora do sistema: verde neon, mono em caixa alta e
+   botões cortados em paralelogramo. Aqui não há um único valor novo — tudo sai
+   dos tokens que as outras telas já usam, que é o que faz o app ler como um
+   app só. */
+
+.wv2.wv2-roster-page {
+  position: static;
+  inset: auto;
+  overflow: visible;
+  min-height: 100dvh;
+  background: #000;
+}
+.wv2-roster-page .roster-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+  max-width: 720px;
+  margin: 0 auto;
+  padding: calc(var(--s6) + env(safe-area-inset-top)) var(--edge) calc(var(--nav-inset) + var(--s8));
+}
+
+/* Wayfinding: a saída é a primeira coisa da tela. Área de toque de 44px mesmo
+   com o texto pequeno — o alvo é maior que o desenho. */
+.wv2-roster-page .roster-back {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1);
+  min-height: 44px;
+  padding: 0 var(--s2);
+  margin-left: calc(var(--s2) * -1);
+  color: var(--ink-2);
+  font-size: 1rem;
+  text-decoration: none;
+  transition: opacity 120ms ease-out;
+}
+.wv2-roster-page .roster-back:active { opacity: 0.55; }
+.wv2-roster-page .roster-back > span { font-size: 1.375rem; line-height: 1; }
+
+.wv2-roster-page .roster-head { padding: 0 var(--s2); display: grid; gap: var(--s2); }
+.wv2-roster-page .roster-title {
+  margin: 0;
+  /* Tracking negativo porque o texto é grande: letras crescidas leem
+     espaçadas demais com tracking neutro. */
+  font-size: clamp(1.75rem, 6.5vw, 2.25rem);
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  font-weight: 700;
+}
+.wv2-roster-page .roster-count { margin-top: var(--s1); }
+
+.wv2-roster-page .roster-actions { display: flex; gap: var(--s2); flex-wrap: wrap; }
+
+.wv2-roster-page .roster-person { display: grid; gap: var(--s3); }
+.wv2-roster-page .roster-person .row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+.wv2-roster-page .roster-person .id { display: grid; gap: 2px; min-width: 0; }
+.wv2-roster-page .roster-person .id em { font-style: normal; overflow-wrap: anywhere; }
+.wv2-roster-page .roster-person .chips { display: flex; gap: var(--s2); flex-wrap: wrap; }
+.wv2-roster-page .roster-person .link-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+  flex-wrap: wrap;
+  padding-top: var(--s2);
+  border-top: 1px solid var(--sep);
+}
+.wv2-roster-page .roster-candidates { margin: var(--s3) 0 0; padding-left: var(--s4); display: grid; gap: var(--s2); }
+
+/* ── Botões de texto ──────────────────────────────────────────────────────── */
+.wv2-roster-page .roster-plain {
+  justify-self: flex-start;
+  min-height: 44px;
+  padding: 0 var(--s2);
+  border: 0;
+  background: none;
+  color: var(--ink-3);
+  font: inherit;
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition: opacity 120ms ease-out;
+}
+.wv2-roster-page .roster-plain:active { opacity: 0.5; }
+.wv2-roster-page .roster-danger {
+  min-height: 48px;
+  padding: 0 var(--s4);
+  border-radius: var(--r-pill);
+  border: 1px solid rgba(255, 69, 58, 0.32);
+  background: rgba(255, 69, 58, 0.12);
+  color: #ff453a;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 100ms ease-out;
+}
+.wv2-roster-page .roster-danger:active { transform: scale(0.97); }
+
+/* ── A folha do formulário ────────────────────────────────────────────────── */
+.wv2-roster-page .roster-scrim {
+  position: fixed;
+  inset: 0;
+  /* Acima da barra de navegação (z-index 100) e do AppActions (200).
+     A primeira versão usava 60 e o botão Salvar ficava ATRÁS da barra — no
+     telefone não dava para salvar. Uma tarefa modal cobre o fundo; a barra é
+     fundo. O teste de navegador pegou isto antes do usuário. */
+  z-index: 900;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  /* Tarefa modal: escurece o fundo e o empurra para trás. */
+  background: rgba(0, 0, 0, 0.72);
+  animation: rosterScrim 220ms ease-out both;
+}
+.wv2-roster-page .roster-sheet {
+  width: min(100%, 720px);
+  /* O teclado do celular cobre a parte de baixo da tela, e é exatamente ali
+     que fica o botão de salvar. `--roster-keyboard` é medido pelo visualViewport
+     e sobe a folha na mesma altura. */
+  margin-bottom: var(--roster-keyboard, 0px);
+  max-height: calc(92dvh - var(--roster-keyboard, 0px));
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--r-sheet) var(--r-sheet) 0 0;
+  /* Material MAIS PESADO que o do mapa, de propósito.
+     `--mat-thick` (0.78) existe para a folha do mapa, onde ver o mapa por trás
+     é a razão da translucidez. Aqui atrás não há nada que ajude a decidir — e
+     a captura mostrou a tela de baixo legível ATRAVÉS da folha, com "Isadora" e
+     "Falta: idade" competindo com o formulário. Superfície maior lê como vidro
+     mais grosso, e a legibilidade não pode depender de o `backdrop-filter` ter
+     sido renderizado. */
+  background: rgba(20, 20, 23, 0.94);
+  border: 1px solid var(--sep);
+  border-bottom: 0;
+  backdrop-filter: blur(var(--mat-blur-lg)) saturate(var(--mat-sat));
+  -webkit-backdrop-filter: blur(var(--mat-blur-lg)) saturate(var(--mat-sat));
+  box-shadow: 0 -24px 60px -30px rgba(0, 0, 0, 1);
+  /* Materializa: o desfoque e a escala entram JUNTOS, para a superfície ler
+     como vidro chegando e não como opacidade mudando. Entra por baixo e sai
+     por baixo — o caminho de volta é o mesmo da ida. */
+  animation: rosterSheetIn 380ms cubic-bezier(0.2, 0.9, 0.25, 1) both;
+}
+@keyframes rosterScrim { from { opacity: 0 } to { opacity: 1 } }
+@keyframes rosterSheetIn {
+  from { transform: translate3d(0, 100%, 0) scale(0.97); opacity: 0.6 }
+  to   { transform: translate3d(0, 0, 0) scale(1); opacity: 1 }
+}
+
+.wv2-roster-page .roster-sheet .grab {
+  width: 36px;
+  height: 5px;
+  margin: var(--s2) auto 0;
+  border-radius: var(--r-pill);
+  background: var(--sep-strong);
+  flex: none;
+}
+.wv2-roster-page .sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding: var(--s3) var(--s4) var(--s2);
+  flex: none;
+}
+.wv2-roster-page .roster-close {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 0;
+  background: var(--fill-2);
+  color: var(--ink-2);
+  font-size: 0.9375rem;
+  cursor: pointer;
+  transition: transform 100ms ease-out;
+}
+.wv2-roster-page .roster-close:active { transform: scale(0.92); }
+
+.wv2-roster-page .sheet-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  display: grid;
+  gap: var(--s5);
+  padding: var(--s2) var(--s4) var(--s5);
+}
+.wv2-roster-page .sheet-foot {
+  flex: none;
+  padding: var(--s3) var(--s4) calc(var(--s4) + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--sep);
+  /* Borda de rolagem em vez de divisória dura: o conteúdo desaparece sob a
+     barra em vez de bater nela. */
+  background: linear-gradient(180deg, rgba(20, 20, 23, 0) 0%, rgba(20, 20, 23, 0.94) 40%);
+}
+
+.wv2-roster-page .field { display: grid; gap: var(--s2); }
+.wv2-roster-page .roster-input,
+.wv2-roster-page .roster-textarea {
+  width: 100%;
+  min-height: 48px;
+  padding: var(--s3);
+  border-radius: var(--r-tile);
+  border: 1px solid var(--sep);
+  background: var(--fill-2);
+  color: var(--ink);
+  font: inherit;
+  font-size: 1rem; /* 16px: abaixo disso o iOS dá zoom ao focar */
+  transition: border-color 140ms ease-out, background 140ms ease-out;
+}
+.wv2-roster-page .roster-textarea { min-height: 96px; resize: vertical; line-height: 1.5; }
+.wv2-roster-page .roster-input::placeholder,
+.wv2-roster-page .roster-textarea::placeholder { color: var(--ink-3); }
+.wv2-roster-page .roster-input:focus,
+.wv2-roster-page .roster-textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--fill-1);
+}
+.wv2-roster-page .med-row { display: flex; gap: var(--s2); align-items: center; }
+.wv2-roster-page .med-row .roster-input { flex: 1; min-width: 0; }
+.wv2-roster-page .med-list { list-style: none; margin: var(--s2) 0 0; padding: 0; display: grid; gap: var(--s1); }
+.wv2-roster-page .med-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+  padding: var(--s2) var(--s3);
+  border-radius: var(--r-tile);
+  background: var(--fill-2);
+}
+.wv2-roster-page .chips { display: flex; gap: var(--s2); flex-wrap: wrap; }
+
+/* ── Interruptor ──────────────────────────────────────────────────────────── */
+.wv2-roster-page .roster-switch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  width: 100%;
+  min-height: 56px;
+  padding: var(--s3) 0;
+  border: 0;
+  border-bottom: 1px solid var(--sep);
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.wv2-roster-page .roster-switch:last-of-type { border-bottom: 0; }
+.wv2-roster-page .roster-switch .txt { display: grid; gap: 2px; min-width: 0; }
+.wv2-roster-page .roster-switch .track {
+  flex: none;
+  width: 51px;
+  height: 31px;
+  border-radius: var(--r-pill);
+  background: var(--fill-1);
+  padding: 2px;
+  transition: background 220ms ease-out;
+}
+.wv2-roster-page .roster-switch .track > i {
+  display: block;
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  /* Amortecimento crítico: chega e para, sem oscilar. */
+  transition: transform 320ms cubic-bezier(0.2, 0.9, 0.25, 1);
+}
+.wv2-roster-page .roster-switch.on .track { background: var(--accent); }
+.wv2-roster-page .roster-switch.on .track > i { transform: translateX(20px); }
+
+.wv2-roster-page .danger { display: grid; gap: var(--s2); justify-items: start; }
+.wv2-roster-page .danger-acts { display: flex; gap: var(--s2); flex-wrap: wrap; }
+
+/* Movimento reduzido não é ausência de retorno: a folha continua chegando,
+   só que sem deslizar a tela inteira. */
+@media (prefers-reduced-motion: reduce) {
+  .wv2-roster-page .roster-sheet {
+    animation: rosterScrim 180ms ease-out both;
+    transform: none;
+  }
+  .wv2-roster-page .roster-switch .track > i { transition-duration: 1ms; }
+}
+
+/* Transparência reduzida: o vidro vira superfície sólida em vez de sumir. */
+@media (prefers-reduced-transparency: reduce) {
+  .wv2-roster-page .roster-sheet {
+    background: #18181b;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .wv2-roster-page .sheet-foot { background: #18181b; }
+}
+
+@media (prefers-contrast: more) {
+  .wv2-roster-page .roster-input,
+  .wv2-roster-page .roster-textarea { border-color: var(--sep-strong); background: #0c0c0e; }
+}
+
+/* D-123: o círculo aparece separado da casa, com a distância na frente. */
+.wv2-family-page .family-reachable {
+  list-style: none;
+  margin: var(--s3) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--s3);
+}
+.wv2-family-page .family-reachable li {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  flex-wrap: wrap;
+}
+
+/* ═══ Círculos (D-124) ══════════════════════════════════════════════════════
+   A tela tinha 139 blocos de estilo escritos à mão, 22 cores literais e zero
+   uso deste sistema — era a última do app fora dele, e o audit deu 7/20. Aqui
+   não há um único valor novo: tudo sai dos tokens que Família, Preparação e
+   Mundo já usam. Nenhum alvo de toque abaixo de 44px, nenhum texto abaixo de
+   0,8125rem, e o corpo em 1rem para o iOS não dar zoom ao focar um campo. */
+
+.wv2.wv2-circles-page {
+  position: static;
+  inset: auto;
+  overflow: visible;
+  min-height: 100dvh;
+  background: #000;
+}
+.wv2-circles-page .cir-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+  max-width: 720px;
+  margin: 0 auto;
+  padding: calc(var(--s6) + env(safe-area-inset-top)) var(--edge) calc(var(--nav-inset) + var(--s8));
+}
+.wv2-circles-page .cir-head { padding: 0 var(--s2); display: grid; gap: var(--s2); }
+.wv2-circles-page .cir-title {
+  margin: 0;
+  font-size: clamp(1.625rem, 6vw, 2.125rem);
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  font-weight: 700;
+}
+
+.wv2-circles-page .cir-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+  margin: 0;
+  padding: var(--s3);
+  border-radius: var(--r-tile);
+  font-size: 0.9375rem;
+}
+.wv2-circles-page .cir-banner.danger { background: rgba(255, 69, 58, 0.12); border: 1px solid rgba(255, 69, 58, 0.32); color: #ff9f93; }
+.wv2-circles-page .cir-banner.info { background: var(--fill-2); border: 1px solid var(--sep); color: var(--ink-2); }
+
+/* ── Botões: um tamanho, o do dedo ────────────────────────────────────────── */
+.wv2-circles-page .cir-btn,
+.wv2-circles-page .cir-sheet .cir-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  min-height: 44px;
+  padding: 0 var(--s4);
+  border-radius: var(--r-pill);
+  border: 1px solid var(--sep-strong);
+  background: var(--fill-2);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 100ms ease-out, background 140ms ease-out;
+}
+.wv2-circles-page .cir-btn:active { transform: scale(0.97); }
+.wv2-circles-page .cir-btn:disabled { opacity: 0.4; cursor: default; }
+.wv2-circles-page .cir-btn.primary { background: var(--accent); border-color: transparent; color: var(--accent-ink); }
+.wv2-circles-page .cir-btn.on { background: var(--accent); border-color: transparent; color: var(--accent-ink); }
+.wv2-circles-page .cir-btn.warn { color: #ff9f0a; border-color: rgba(255, 159, 10, 0.4); background: rgba(255, 159, 10, 0.1); }
+.wv2-circles-page .cir-btn.danger { color: #ff453a; border-color: rgba(255, 69, 58, 0.4); background: rgba(255, 69, 58, 0.1); }
+
+/* Foco visível: quem navega por teclado precisa ver onde está. A tela antiga
+   não declarava nenhum, então o anel do navegador sumia sob os fundos escuros. */
+.wv2-circles-page :is(button, a, input, textarea):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.wv2-circles-page .cir-state {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--s3);
+  font-size: 0.875rem;
+  color: var(--ink-2);
+}
+.wv2-circles-page .cir-state.ok { color: var(--accent); }
+.wv2-circles-page .cir-state.warn { color: #ff9f0a; }
+
+/* ── Campos ───────────────────────────────────────────────────────────────── */
+.wv2-circles-page .cir-field { display: grid; gap: var(--s2); }
+.wv2-circles-page .cir-field .row { display: flex; gap: var(--s2); align-items: center; flex-wrap: wrap; }
+.wv2-circles-page .cir-input,
+.wv2-circles-page .cir-textarea {
+  flex: 1;
+  min-width: 0;
+  min-height: 48px;
+  padding: var(--s3);
+  border-radius: var(--r-tile);
+  border: 1px solid var(--sep);
+  background: var(--fill-2);
+  color: var(--ink);
+  font: inherit;
+  font-size: 1rem;   /* abaixo de 16px o iOS dá zoom ao focar */
+  transition: border-color 140ms ease-out;
+}
+.wv2-circles-page .cir-textarea { min-height: 100px; resize: vertical; line-height: 1.5; }
+.wv2-circles-page .cir-input:focus,
+.wv2-circles-page .cir-textarea:focus { outline: none; border-color: var(--accent); }
+.wv2-circles-page .cir-input.code {
+  font-family: ui-monospace, Menlo, monospace;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+}
+.wv2-circles-page .cir-join { display: grid; gap: var(--s4); }
+.wv2-circles-page .cir-results { list-style: none; margin: var(--s2) 0 0; padding: 0; display: grid; gap: var(--s2); }
+.wv2-circles-page .cir-results li {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  flex-wrap: wrap;
+  padding: var(--s2) var(--s3);
+  border-radius: var(--r-tile);
+  background: var(--fill-2);
+}
+
+/* ── O cartão do círculo ──────────────────────────────────────────────────── */
+.wv2-circles-page .cir-circle { display: grid; gap: var(--s3); }
+.wv2-circles-page .cir-circle-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+.wv2-circles-page .cir-circle-head .id { display: grid; gap: 2px; min-width: 0; }
+.wv2-circles-page .cir-circle-head .score { display: flex; align-items: baseline; gap: 2px; flex: none; }
+.wv2-circles-page .cir-circle-head .score b {
+  font-size: 1.75rem;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--accent);
+}
+
+/* A lista mostra ESTADO; a folha guarda decisão. Uma linha, um toque. */
+.wv2-circles-page .cir-members { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s2); }
+.wv2-circles-page .cir-member {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  width: 100%;
+  min-height: 56px;
+  padding: var(--s2) var(--s3);
+  border: 0;
+  border-radius: var(--r-tile);
+  background: var(--fill-2);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 100ms ease-out, background 140ms ease-out;
+}
+.wv2-circles-page .cir-member:active { transform: scale(0.99); background: var(--fill-1); }
+.wv2-circles-page .cir-member .face {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--fill-1);
+  border: 1px solid var(--sep-strong);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--ink-2);
+}
+.wv2-circles-page .cir-member .id { display: grid; gap: 2px; min-width: 0; flex: 1; }
+.wv2-circles-page .cir-member .chev { flex: none; color: var(--ink-3); font-size: 1.375rem; line-height: 1; }
+
+.wv2-circles-page .cir-requests { display: grid; gap: var(--s2); padding: var(--s3); border-radius: var(--r-tile); background: rgba(255, 159, 10, 0.08); }
+.wv2-circles-page .cir-requests .req { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); flex-wrap: wrap; }
+.wv2-circles-page .cir-requests .acts { display: flex; gap: var(--s2); }
+
+.wv2-circles-page .cir-pooled,
+.wv2-circles-page .cir-monitor,
+.wv2-circles-page .cir-plans { display: grid; gap: var(--s2); padding: var(--s3); border-radius: var(--r-tile); background: var(--fill-2); }
+.wv2-circles-page .cir-pooled .nums { display: flex; gap: var(--s4); flex-wrap: wrap; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+.wv2-circles-page .cir-monitor .row { display: flex; align-items: center; gap: var(--s2); }
+.wv2-circles-page .cir-monitor .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.wv2-circles-page .cir-monitor .row .t-body { flex: 1; }
+.wv2-circles-page .cir-plans .plan { display: grid; gap: var(--s2); padding-top: var(--s2); border-top: 1px solid var(--sep); }
+.wv2-circles-page .cir-plans .plan:first-of-type { border-top: 0; padding-top: 0; }
+.wv2-circles-page .cir-plans .acts { display: flex; gap: var(--s2); flex-wrap: wrap; }
+
+.wv2-circles-page .cir-actions { display: flex; gap: var(--s2); flex-wrap: wrap; align-items: center; }
+.wv2-circles-page .cir-qr {
+  display: grid;
+  justify-items: center;
+  gap: var(--s2);
+  padding: var(--s4);
+  border-radius: var(--r-card);
+  background: #fff;
+}
+.wv2-circles-page .cir-qr .code {
+  font-family: ui-monospace, Menlo, monospace;
+  letter-spacing: 0.3em;
+  color: #111;
+  font-weight: 700;
+}
+
+/* ── As folhas ────────────────────────────────────────────────────────────── */
+.wv2-circles-page .cir-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 900;   /* acima da barra de navegação (100) e do AppActions (200) */
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.72);
+  animation: cirScrim 220ms ease-out both;
+}
+.wv2-circles-page .cir-sheet {
+  width: min(100%, 720px);
+  max-height: 92dvh;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--r-sheet) var(--r-sheet) 0 0;
+  background: rgba(20, 20, 23, 0.94);
+  border: 1px solid var(--sep);
+  border-bottom: 0;
+  backdrop-filter: blur(var(--mat-blur-lg)) saturate(var(--mat-sat));
+  -webkit-backdrop-filter: blur(var(--mat-blur-lg)) saturate(var(--mat-sat));
+  box-shadow: 0 -24px 60px -30px rgba(0, 0, 0, 1);
+  animation: cirSheetIn 380ms cubic-bezier(0.2, 0.9, 0.25, 1) both;
+}
+@keyframes cirScrim { from { opacity: 0 } to { opacity: 1 } }
+@keyframes cirSheetIn {
+  from { transform: translate3d(0, 100%, 0) scale(0.97); opacity: 0.6 }
+  to   { transform: translate3d(0, 0, 0) scale(1); opacity: 1 }
+}
+.wv2-circles-page .cir-sheet .grab { width: 36px; height: 5px; margin: var(--s2) auto 0; border-radius: var(--r-pill); background: var(--sep-strong); flex: none; }
+.wv2-circles-page .cir-sheet .sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding: var(--s3) var(--s4) var(--s2);
+  flex: none;
+}
+.wv2-circles-page .cir-close {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 0;
+  background: var(--fill-2);
+  color: var(--ink-2);
+  font-size: 0.9375rem;
+  cursor: pointer;
+  transition: transform 100ms ease-out;
+}
+.wv2-circles-page .cir-close:active { transform: scale(0.92); }
+.wv2-circles-page .cir-close.small { width: 32px; height: 32px; background: none; }
+.wv2-circles-page .cir-sheet .sheet-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  display: grid;
+  gap: var(--s4);
+  padding: var(--s2) var(--s4) calc(var(--s5) + env(safe-area-inset-bottom));
+}
+.wv2-circles-page .cir-sheet-sub { margin: 0; }
+.wv2-circles-page .cir-decision { display: grid; gap: var(--s2); }
+.wv2-circles-page .cir-decision .acts { display: flex; gap: var(--s2); flex-wrap: wrap; align-items: center; }
+.wv2-circles-page .cir-danger { display: grid; gap: var(--s2); justify-items: start; padding-top: var(--s3); border-top: 1px solid var(--sep); }
+.wv2-circles-page .cir-danger .acts { display: flex; gap: var(--s2); flex-wrap: wrap; }
+.wv2-circles-page .cir-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+/* Interruptor com o motivo encostado nele. */
+.wv2-circles-page .cir-switch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  min-height: 56px;
+  padding: var(--s3) 0;
+  border-bottom: 1px solid var(--sep);
+  cursor: pointer;
+}
+.wv2-circles-page .cir-switch:last-of-type { border-bottom: 0; }
+.wv2-circles-page .cir-switch .txt { display: grid; gap: 2px; min-width: 0; }
+.wv2-circles-page .cir-switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+.wv2-circles-page .cir-switch .track {
+  flex: none;
+  width: 51px;
+  height: 31px;
+  border-radius: var(--r-pill);
+  background: var(--fill-1);
+  padding: 2px;
+  transition: background 220ms ease-out;
+}
+.wv2-circles-page .cir-switch .track > i {
+  display: block;
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  transition: transform 320ms cubic-bezier(0.2, 0.9, 0.25, 1);
+}
+.wv2-circles-page .cir-switch input:checked ~ .track { background: var(--accent); }
+.wv2-circles-page .cir-switch input:checked ~ .track > i { transform: translateX(20px); }
+.wv2-circles-page .cir-switch input:focus-visible ~ .track { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .wv2-circles-page .cir-sheet { animation: cirScrim 180ms ease-out both; transform: none; }
+  .wv2-circles-page .cir-switch .track > i,
+  .wv2-circles-page .cir-btn,
+  .wv2-circles-page .cir-member { transition-duration: 1ms; }
+  .wv2-circles-page .cir-btn:active,
+  .wv2-circles-page .cir-member:active { transform: none; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .wv2-circles-page .cir-sheet { background: #18181b; backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
+
+/* ── Pilot: prosa é prosa, e a etiqueta cabe (D-125) ─────────────────────────
+   O chat livre renderizava parágrafos inteiros em `t-title2`, corpo de
+   manchete. Era o que o dono chamou de poluído — e o que não deixava espaço
+   para a etiqueta determinística. */
+.wv2 .chat-prose {
+  margin: 0;
+  line-height: 1.55;
+  white-space: pre-wrap;      /* o modelo escreve em parágrafos; respeitá-los */
+  overflow-wrap: anywhere;
+}
+
+/* Aviso de resposta nova, para quem subiu para reler.
+   Substitui o salto automático que arrastava a pessoa para o fim. */
+.wv2 .chat-jump {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--s8) + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 3;
+  min-height: 44px;
+  padding: 0 var(--s4);
+  border-radius: var(--r-pill);
+  border: 1px solid var(--sep-strong);
+  background: var(--mat-thick);
+  backdrop-filter: blur(var(--mat-blur-md)) saturate(var(--mat-sat));
+  -webkit-backdrop-filter: blur(var(--mat-blur-md)) saturate(var(--mat-sat));
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  animation: chatJumpIn 240ms cubic-bezier(0.2, 0.9, 0.25, 1) both;
+}
+@keyframes chatJumpIn {
+  from { opacity: 0; transform: translate(-50%, 8px) }
+  to   { opacity: 1; transform: translate(-50%, 0) }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wv2 .chat-jump { animation-duration: 1ms; }
+}
+
+/* ── Camadas: três saídas em vez de nenhuma (D-128) ──────────────────────────
+   O painel não tinha como fechar — sem botão, sem Escape, sem toque fora — e
+   cobria 54% do próprio controle que o abriu. Um mau toque prendia a pessoa na
+   tela inicial. */
+.wv2-layers-catch {
+  position: absolute;
+  inset: 0;
+  z-index: 59;   /* logo abaixo do painel (60): captura o toque, não o cobre */
+  /* Transparente de propósito: existe para capturar o toque, não para
+     escurecer. Um painel de utilidade não merece o peso de uma tarefa modal. */
+  background: transparent;
+}
+.wv2-layers-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+  margin-bottom: var(--s1);
+}
+.wv2-layers-head .t-caps { margin: 0; }
+.wv2-layers-close {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  margin: -10px -10px -10px 0;   /* alvo de 44px sem inchar o painel */
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink-2);
+  font-size: 0.9375rem;
+  cursor: pointer;
+  transition: transform 100ms ease-out, background 140ms ease-out;
+}
+.wv2-layers-close:active { transform: scale(0.92); background: var(--fill-2); }
+
+/* O painel abre ABAIXO do controle, não por cima dele. Cobrir o próprio
+   gatilho é o que tornava o beco sem saída difícil até de perceber. */
+.wv2-layers { top: calc(50px + 3 * 62px + 8px); }
+
+@media (prefers-reduced-motion: reduce) {
+  .wv2-layers-close { transition-duration: 1ms; }
+  .wv2-layers-close:active { transform: none; }
+}
+
+/* ── A faixa de repouso, e a alça (D-128) ────────────────────────────────────
+   O acento segue o PIOR entre clima e casa. Antes a faixa era sempre verde,
+   porque só olhava o tempo — e ficava verde numa casa sem água. */
+.wv2 .lead[data-severity='warning'] .t-title1 { color: #ff9f0a; }
+.wv2 .lead[data-severity='critical'] .t-title1 { color: #ff453a; }
+.wv2 .lead[data-severity='watch'] .t-title1 { color: #ffd60a; }
+
+/* A alça: de "0 dias de autonomia" dá para chegar em resolver.
+   `stopPropagation` no clique impede que ela também abra a folha — dois
+   destinos no mesmo toque seria pior que nenhum. */
+.wv2 .wv2-peek-handle {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--s3);
+  margin-right: calc(var(--s3) * -1);
+  border-radius: var(--r-pill);
+  color: var(--ink-2);
+  text-decoration: none;
+  transition: color 140ms ease-out, background 140ms ease-out;
+}
+.wv2 .wv2-peek-handle:active { background: var(--fill-2); color: var(--ink); }
+@media (prefers-reduced-motion: reduce) {
+  .wv2 .wv2-peek-handle { transition-duration: 1ms; }
+}
+
+/* ── O cartão de risco segue o pior dos dois (D-128) ─────────────────────────
+   Vale para o painel do desktop e para a folha do celular: o cartão é o mesmo
+   componente. A primeira versão consertou só a faixa do celular, e no desktop
+   a contradição continuou inteira — 12 · Estável em verde sobre 0,3 dias. */
+.wv2 .wv2-pair .t-display[data-severity='warning'] { color: #ff9f0a; }
+.wv2 .wv2-pair .t-display[data-severity='critical'] { color: #ff453a; }
+.wv2 .wv2-pair .t-display[data-severity='watch'] { color: #ffd60a; }
+
+/* A linha que diz qual é o problema, e leva até ele. */
+.wv2 .wv2-worse {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  flex-wrap: wrap;
+  margin: var(--s3) 0 0;
+  padding: var(--s2) var(--s3);
+  border-radius: var(--r-tile);
+  background: rgba(255, 159, 10, 0.1);
+  color: #ff9f0a;
+}
+.wv2 .wv2-worse[data-severity='critical'] {
+  background: rgba(255, 69, 58, 0.1);
+  color: #ff453a;
+}
+.wv2 .wv2-worse-handle {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--s2);
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 650;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.wv2 .wv2-worse-handle:active { opacity: 0.6; }
+
+/* D-130: quem a pessoa listou na ficha e ainda espera o link. */
+.wv2-circles-page .cir-waiting {
+  display: grid;
+  gap: var(--s2);
+  padding: var(--s3);
+  border-radius: var(--r-tile);
+  background: rgba(255, 159, 10, 0.08);
+}
+.wv2-circles-page .cir-waiting .row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+  flex-wrap: wrap;
+}
+
+/* ── Controles do mapa sempre visíveis (D-196) ───────────────────────────────
+   A coluna fica expandida em repouso: centralizar, atualizar e camadas são
+   ações frequentes demais para ficarem atrás de um botão de mais opções. */
+
+/* ── O verde volta a significar uma coisa (D-131) ────────────────────────────
+   Em repouso a tela tinha cinco objetos verdes: o orbe do Pilot, o "Você"
+   ligado, o pulso do puck, o orbe da navegação e a borda da faixa. Um acento
+   usado cinco vezes não acentua nada — vira o fundo.
+
+   Aqui o verde fica com quem carrega estado de vida: o puck (você no mapa) e a
+   faixa do veredito. "GPS ligado" é informação de ajuste, não de risco: ela se
+   diz com o ícone aceso em branco. */
+.wv2-mapcontrols .wv2-iconbtn.on { color: var(--fg); }
+.wv2-mapcontrols .wv2-iconbtn.on .cap { color: var(--fg); }
+
+/* A linha que separa o que dura do que capacita (D-131). */
+.wv2-capability-note {
+  margin: var(--s4) 0 var(--s3);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--sep);
+}
+
+/* As duas saídas da duplicata (D-135): juntar, ou dizer que são duas pessoas. */
+.family-dupe-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin-top: var(--s3);
+}
+
+/* "Paulo · busca · Avó Ana · levar a bengala" — a linha se lê como frase (D-135). */
+.wv2-plan-role-verb {
+  align-self: center;
+  white-space: nowrap;
+  padding-inline: 2px;
+}
+
+/* ── O orbe do Pilot: UM só, em toda tela (D-136) ───────────────────────────
+   Existiam dois. No dashboard, 46px de pílula de vidro esfumaçado, ícone de
+   22px, sempre verde. Nas outras telas, 56px de círculo com borda própria,
+   ícone de 24px, brilho, e a cor mudando com o risco.
+
+   Duas aparências para o mesmo botão custam mais que feiura: num app que se
+   abre sob estresse, reconhecer é metade do trabalho.
+
+   Quem usa este componente decide só o LUGAR. `.wv2-fume` (a folha do
+   dashboard) continua dando o material — aqui fica o formato e o gesto. */
+.pilot-orb {
+  /*
+   * OS TOKENS VIVEM AQUI, não herdados.
+   *
+   * `--accent` e `--r-pill` são declarados em `.wv2`, a casca do dashboard. O
+   * orbe do dock é `position: fixed` e renderiza FORA dela — então herdava
+   * nada: saía com canto reto e branco em vez de pílula verde, enquanto o do
+   * dashboard saía certo. Foi o que a medição mostrou (raio 0px, cor
+   * rgb(240,240,248)) depois de eu já ter "unificado" os dois.
+   *
+   * Um componente que aparece em toda tela não pode depender de estar dentro
+   * de um ancestral específico. Os valores continuam sendo os mesmos tokens
+   * quando eles existem; o fallback é o valor deles.
+   */
+  --accent: var(--wv2-accent, #30d158);
+  --accent-rgb: var(--wv2-accent-rgb, 48, 209, 88);
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  color: var(--accent);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform 110ms ease-out;
+}
+.pilot-orb:active { transform: scale(0.92); }
+
+/* Só o crítico pulsa: se tudo pulsa, nada chama atenção. E vale nas duas
+   telas — antes o dashboard e o dock pulsavam com animações diferentes. */
+.pilot-orb[data-risk='critical'] {
+  animation: wv2-pilot-alert 1800ms ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pilot-orb:active { transform: none; }
+  .pilot-orb[data-risk='critical'] { animation: none; }
+}
+
+/* O liga/desliga dos valores de vento (D-205). Binário, não régua: a pergunta
+   é "quero ver os números?", e ninguém sabe responder "40% de opacidade". */
+.wv2 .world-wind-switch {
+  min-width: 46px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--sep);
+  background: transparent;
+  color: var(--ink-3);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+.wv2 .world-wind-switch.on {
+  border-color: rgba(var(--accent-rgb), 0.55);
+  background: rgba(var(--accent-rgb), 0.14);
+  color: var(--accent);
+}

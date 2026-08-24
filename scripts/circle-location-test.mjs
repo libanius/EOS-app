@@ -96,6 +96,34 @@ await input.fill('teste')
 console.log('consegue digitar:', (await input.inputValue()) === 'teste' ? 'sim ✅' : 'NÃO ❌')
 await p.screenshot({path:'/tmp/eos-shots/22-pilot-campo-celular.png'})
 
+// ── D-073: tocar na foto abre interações ──
+// fecha o Pilot e recolhe o sheet para o mapa ficar alcançável
+await p.keyboard.press('Escape')
+await p.waitForTimeout(1200)
+for (let i = 0; i < 3; i++) {
+  const d = await p.locator('.wv2-sheet').getAttribute('data-detent').catch(() => null)
+  if (d === 'peek') break
+  await p.locator('.wv2-grabber').click()
+  await p.waitForTimeout(900)
+}
+const marker = p.locator('.w-mapmarker.real').first()
+if (await marker.count()) {
+  await marker.click()
+  await p.waitForTimeout(1500)
+  const sheet = p.locator('.wv2-member')
+  console.log('  painel do membro abriu:', await sheet.count() ? 'sim ✅' : 'NÃO ❌')
+  if (await sheet.count()) {
+    console.log('  ações:', (await sheet.locator('.go > *').allTextContents()).join(' | '))
+    console.log('  mensagens:', (await sheet.locator('.presets button').allTextContents()).join(' | '))
+    await p.screenshot({path:'/tmp/eos-shots/32-painel-membro.png'})
+    // rota até ela desenha o trajeto no EOS
+    await sheet.locator('.go > .primary').click()
+    await p.waitForTimeout(3500)
+    console.log('  rota até ela desenhou pino:', await p.locator('.w-mapmarker.destination').count() ? 'sim ✅' : 'NÃO ❌')
+    await p.screenshot({path:'/tmp/eos-shots/33-rota-ate-ela.png'})
+  }
+}
+
 // ── e sem ponto ao vivo, ela precisa PARECER aproximada ──
 await admin(`/rest/v1/profiles?id=eq.${esposa.id}`,{method:'PATCH',body:JSON.stringify({last_location_lat:null,last_location_lng:null,last_location_at:null})})
 await p.reload({waitUntil:'networkidle'})

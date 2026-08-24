@@ -1,7 +1,7 @@
 # 09 — Build Status
 
 > The single most important file for resuming a session. Read this first after AGENTS.md.
-> Last updated: 2026-07-29
+> Last updated: 2026-08-19
 
 ---
 
@@ -9,9 +9,171 @@
 
 | Field | Value |
 |---|---|
-| **Current Phase** | Abrigos oficiais + planos da família (FAM/PLAN) + gates de validação da v2 abertos (WV2-T05) |
-| **Last Completed Task** | **ALERT-T01→T04 / D-074 — alertas automáticos: o EOS avisa com o app fechado (2026-08-24)** |
-| | WV2-T12 / D-073 — a PilotBar abre a conversa no Enter, não no toque (2026-07-29)** |
+| **Current Phase** | Execução de Plano (EXEC) sobre Web/PWA |
+| **Current Task** | **AUTHOR-T01 — rascunho persistente em IndexedDB.** NOT STARTED — não iniciar sem ler `specs/PLAN-AUTHOR-001-autoria-do-plano.md`. AUTHOR-T02 fechou em 2026-08-19 (D-217); a fase EXEC fechou T00→T06, e EXEC-T07 (destino por identidade) fica atrás das fases de autoria. |
+| **Spec Ready** | `specs/PLAN-EXEC-001-execucao-de-plano.md` **v1.1** — execução de plano como modo operacional; D-212, D-217. |
+| **Spec Ready** | `specs/PLAN-AUTHOR-001-autoria-do-plano.md` — integridade do rascunho na autoria; D-217. |
+| **⚠ Pendência operacional** | **Aplicar `supabase/migrations/20260813210000_profiles_auth_fk.sql`** (D-175). Limpa 9 perfis de teste vazios e cria a FK que impede a recorrência. Para com erro se encontrar órfão com dado. |
+| **Migrações aplicadas** | `locations`, `holdings`, `kits`, `requirements`, `checklists.status` — todas verificadas por REST. |
+| **Migrações aplicadas** | As duas de Preparedness State **aplicadas em 2026-08-13** e verificadas por REST: `locations`, `holdings`, `kits`, `requirements` → 200. Nenhuma pendência operacional. |
+| **Last Completed Task** | **D-188 / COMMS-T12 — lista, thread e conversa individual (2026-08-15)** |
+| | **AUTHOR-T02 / D-217 — confirmar ponto deixa de ser bloqueado por precisão (2026-08-19)** |
+| | **Correções da tela de execução, vistas em uso (2026-08-19)** — rótulo de protocolo nunca sai vazio; faixa de execução deixa de apagar o texto na ponta direita. |
+| | **D-216 / PLAN follow-up — excluir plano arquiva, com trava de execução em curso (2026-08-19)** |
+| | **EXEC-T06 — Promoção de ponto do dia + basemap persistente (2026-08-19)** |
+| | **EXEC-T05 — Estado compartilhado e encerramento (2026-08-19)** |
+| | **EXEC-T04 — Playbook por papel offline-first (2026-08-19)** |
+| | **EXEC-T03 — `family_plan_executions` + disparo por gesto (2026-08-19)** |
+| | **EXEC-T02 — `plan_sessions` + armar/desarmar (2026-08-19)** |
+| | **EXEC-T01 — `circle_places` + waypoints por referência (2026-08-19)** |
+| | **EXEC-T00 — cache offline por `(circleId, planId)` para múltiplos planos (2026-08-19)** |
+| | **D-211 / PLAN follow-up — Casa usa perfil ou mapa direto, sem modal intermediário (2026-08-18)** |
+| | **D-210 / PLAN follow-up — picker de endereço não embaça a tela (2026-08-18)** |
+| | **D-209 / PLAN follow-up — casa pode ser confirmada sem digitar nome manual (2026-08-18)** |
+| | **D-207 / PLAN-T11 — execução escolhe protocolo dentro do plano (2026-08-17)** |
+| | **D-208 / PLAN-T12 — protocolos têm tipo de ação, destino e rota (2026-08-17)** |
+| | **D-205 / WV2 touch follow-up — alça de retorno do sheet não rouba pan do mapa (2026-08-16)** |
+| | **D-204 / SIM-T08 follow-up — leituras simuladas ajustam por slider e stepper (2026-08-16)** |
+| | **D-201 / WV2-T31 — controles de vento recolhíveis junto ao botão Vento (2026-08-16)** |
+| | **D-200 / WV2-T30 — Surge usa Peak Storm Surge Forecast do NHC/CPHC (2026-08-16)** |
+| | **D-197 / WV2-T29 — painel de Camadas rola em qualquer device (2026-08-16)** |
+| | **D-196 / WV2-T28 — controles laterais do mapa sempre expandidos (2026-08-15)** |
+| | **D-193 / WV2-T27 — mapa esconde completamente o sheet do Mundo (2026-08-15)** |
+| | **D-192 / NAV-T09 follow-up — navegação comum usa amarelo do Treino; top nav sem faixa (2026-08-15)** |
+| | **D-190 / NAV-T10 — componente shadcn BottomNavBar como exemplo standalone (2026-08-15)** |
+| | **D-189 / NAV-T09 — BottomNav vira pílula expansível (2026-08-15)** |
+| | **D-188 / COMMS-T11 — a conversa vira uma coisa (2026-08-15)** |
+| | **D-177 / NAV-T04 — Plano e Aprender entram na Preparação (2026-08-13)** |
+| | **D-176 / PREP-T10d — Cutover: `requirements` é a verdade (2026-08-13)** |
+| | **D-175 / PREP-T15 — Um perfil sem conta não tem significado (2026-08-13)** |
+| | **D-174 / PILOT-T12 — "Não sabemos" ≠ "você não tem nada" (2026-08-13)** |
+| | **D-173 / PREP-T10c — Backfill aplicado; forma do cutover definida (2026-08-13)** |
+| | **D-172 / PREP-T10b — Escrita dupla validada contra o banco (2026-08-13)** |
+| | **D-171 / PREP-T10 fase 1 — Estados de aquisição; "não se aplica" (2026-08-13)** |
+| | **D-170 / PREP-T09 — Amortecimento do laço, sem tabela que ninguém leria (2026-08-13)** |
+| | **D-169 / PREP-T08 fase 2 — Lacuna de alerta vira tarefa com número (2026-08-13)** |
+| | **D-168 / PREP-T08 fase 1 — Alerta vira reavaliação determinística (2026-08-13)** |
+| | **D-167 / PREP-T14 — A tarefa carrega o próprio contexto (2026-08-13)** |
+| | **D-166 / PREP-T14 — Briefing termina em ação confirmável (2026-08-13)** |
+| | **D-165 / PREP-T07 fase 2 — A Visão decide; o estoque muda de tela (2026-08-13)** |
+| | **D-164 / PREP-T07 fase 1 — Navegação local; kit vira filtro (2026-08-13)** |
+| | **D-163 / PREP-T13 — Mínimo de água é o da FEMA: 3 dias por pessoa (2026-08-13)** |
+| | **D-162 / PREP-T06 — Cobertura derivada; `unknown` nunca é `covered` (2026-08-13)** |
+| | **D-161 / PREP-T05 — Requirements + kits + procedência separada (2026-08-13)** |
+| | **D-160 / PREP-T04 — Holdings + Location padrão (2026-08-13)** |
+| | **PREP-T11 — Checklist para de escrever no estoque; água em galão FEMA (2026-08-12)** |
+| | **D-159 / PREP-T12 — Régua da água é a da FEMA: 1 galão por pessoa por dia (2026-08-12)** |
+| | **D-158 — Água em galão; unidade nunca contradiz o nome do campo (2026-08-12)** |
+| | **D-157 — Todo kit é Preparação; não existe classe "lazer" (2026-08-12)** |
+| | **D-156 — Autonomia da casa lê a água que está em CASA (2026-08-12)** |
+| | **D-155 / PREP-T03 — Preparedness State v2, arquitetura canônica (2026-08-12)** |
+
+### PREP-T03 em uma tela (leia `docs/37-preparedness-state.md` antes de tocar em Preparação)
+
+O laço fechado de preparação **já existe**: EDU→ação (D-119), simulação→ação
+(D-092) e Pilot→ação (D-093), todos com confirmação. Falta a quarta entrada
+(alerta oficial, que hoje morre num cartão de notificação) e, sobretudo, falta
+**estado** para o laço raciocinar.
+
+Modelo canônico: o objeto central é o par **`Requirement ↔ Holding`** unido por
+`resource_key`. Cinco entidades propostas — `Holding`, `Requirement`,
+`Location`, `Kit`, `ReadinessAssessment`. `PreparednessTrigger` foi
+explicitamente **rejeitado** como entidade.
+
+Sequência aprovada: **T04** (Holdings + Location) → **T05** (Requirements +
+separação kit/procedência) → **T06** (cobertura + Readiness v2) → **T07** (IA da
+Preparação) → **T08** (alerta→reavaliação) → **T09** (dedup/damping) → **T10**
+(cutover). A IA **não** ficou por último de propósito.
+
+Três defeitos ficaram documentados e **não corrigidos** (`docs/37` §34). O mais
+grave: `getInventoryDelta()` (`PreparednessPage.tsx:301`) **sobrescreve** o
+estoque em vez de somar — uma casa com 20 L que marca um item de 4 L fica com
+4 L. Precisa de tarefa e decisão próprias.
+
+Estado da árvore ao fim de PREP-T03: **nenhum código de aplicação, migração,
+rota ou UI foi alterado.**
+
+| | |
+|---|---|
+| | **D-154 / WV2-T26 — `Resolver` do card de risco navega para Preparação (2026-08-12)** |
+| | **D-153 / WV2-T25 — Slider para setas fallback do vento (2026-08-11)** |
+| | **D-152 / WV2-T24 — Painel de vento flutuante com transparência (2026-08-11)** |
+| | **D-151 / WV2-T23 — Controles de vento colapsáveis no mobile (2026-08-11)** |
+| | **D-150 / WV2-T22 — Sliders de densidade e rastro do vento (2026-08-11)** |
+| | **D-149 / WV2-T21 — Densidade do vento mantida no zoom e velocidade proporcional (2026-08-11)** |
+| | **D-148 / WV2-T20 — Linhas retas artificiais removidas do vento animado (2026-08-10)** |
+| | **D-147 / WV2-T19 — Vento animado com fluxo contínuo e cauda real (2026-08-10)** |
+| | **D-146 / WV2-T18 — Rastros do vento perceptíveis mesmo em vento fraco (2026-08-10)** |
+| | **D-145 / WV2-T17 — Vento premium sincronizado com Hurricane Tracker, sem provider pago (2026-08-10)** |
+| | **D-144 / WV2-T16 — Vento como modo premium mundial, separado de Escuro/Satélite (2026-08-10)** |
+| | **D-143 / WV2-T15 — Campo escalar premium de vento no WorldMap inteiro, sem raster tile layer (2026-08-10)** |
+| | **D-142 / WV2-T14 — Vento animado como WindParticleLayer bilinear, sem flicker (2026-08-10)** |
+| | **D-141 / WV2-T13 — Camada premium de vento animado no mapa existente (2026-08-09)** |
+| | **D-140 / PILOT-T11 — Pilot fecha ao tocar fora da janela (2026-08-09)** |
+| | **D-139 / NAV-T03 — Loop do dashboard corrigido; BottomNav validada por navegador (2026-08-08)** |
+| | **D-138 / NAV-T02 — Links da BottomNav voltam a navegar quando há badge (2026-08-08)** |
+| | **D-122 / EDU-T07 — Notificação ao salvar conteúdo EDU (2026-08-04)** |
+| | **D-121 / PREP-T02 — Editar e excluir itens do checklist em Preparação; controles visíveis por linha (2026-08-04)** |
+| | **D-120 / EDU-T06 — Curadoria/tradução das ações EDU (2026-08-04)** |
+| | **D-119 / EDU-T05 — EDU aprovado gera ações confirmáveis de Preparação (2026-08-04)** |
+| | **D-118 / LA-T04 — Rate limit distribuído + health/error log (2026-08-04)** |
+| | **D-124 / CIR-T01 — Círculos reconstruída; 3 funções silenciosamente quebradas corrigidas (2026-08-04)** |
+| | **D-123 / HH-T01+T02 — Modelo da casa: fonte única + marcação com confirmação (2026-08-04)** |
+| | **D-122 / FAM-T03 — Cadastro da família reconstruído; `scripts/` entra no lint (2026-08-04)** |
+| | **D-121 / SEC-T03 — Agrupamento automático de defeitos, sem Sentry (2026-08-04)** |
+| | **D-120 / CI-T01 — Portão automático no `main`: tipos, lint, testes e build (2026-08-04)** |
+| | **D-119 / SEC-T02 — Erro do navegador vira linha e o dono é avisado (2026-08-04)** |
+| | **D-118 / SEC-T01 — Limite de uso do Pilot no Postgres + `error_log` (2026-08-04) — migration aplicada e guardrails 5/5** |
+| | **D-117 / NOTIF-T01 — Badges separados por ícone/surface (2026-08-04)** |
+| | **D-116 / NAV-T01 — BottomNav com Clima primeiro e Cenário último (2026-08-04)** |
+| | **D-115 / COMMS-T10 — Notificação de mensagem também atualiza o chat (2026-08-04)** |
+| | **D-114 / COMMS-T09 — Clique do Inbox transporta imediatamente para mensagem (2026-08-04)** |
+| | **D-113 / COMMS-T08 — Inbox social Today/Last 7 days + chat enquadrado (2026-08-04)** |
+| | **D-112 / COMMS-T07 — Polimento Inbox/EDU pós-teste real (2026-08-04)** |
+| | **D-111 / COMMS-T06 — Inbox EOS global com EDU, simulação, chat e alertas (2026-08-04)** |
+| | **D-110 / COMMS-T05 — Realtime para chat e badge do Comms (2026-08-04)** |
+| | **D-109 / COMMS-T04 — Badge e timeline social de notificações (2026-08-04)** |
+| | **D-108 / FAM-T12 — Família íntima exige convite e aceite do dono da ficha (2026-08-04)** |
+| | **D-107 / FAM-T11 — Círculo separado de Família íntima (2026-08-04)** |
+| | **D-106 / PILOT-T10 — Pilot lê fichas visíveis do círculo (2026-08-04)** |
+| | **D-105 / PILOT-T09 — Pilot lê ficha master e membros detalhados (2026-08-04)** |
+| | **D-104 / EDU-T04 — guardrail impede RAG link-only no EDU (2026-08-04)** |
+| | **D-103 / EDU-T03 — ingestão admin de EDU aprovado para RAG (2026-08-04)** |
+| | **D-102 — `/admin/*` exige privilégio no middleware (2026-08-04)** |
+| | **D-101 / EDU-T02 — vídeo aprovado toca dentro do `/edu` (2026-08-04)** |
+| | **D-100 — Settings mostra links admin somente para usuários privilegiados (2026-08-04)** |
+| | **D-099 / LA-T06 — admin de afiliados + Stripe promotion codes + tracker (2026-08-04)** |
+| | **D-098 / WV2-T07 — features HWD v1 reconciliadas na World v2 (2026-08-04)** |
+| | **D-097 / WV2-T05 — validação reproduzível de produção da World v2 (2026-08-04)** |
+| | **D-096 / PLAN-T07 — Pilot revisa planos com confirmação elemento a elemento (2026-08-03)** |
+| | **D-095 / UPP-03 — memória do Pilot com confirmação e auditoria (2026-08-03)** |
+| | **D-094 / SIM-T09 — texto livre do simulador preenche painéis revisáveis (2026-08-03)** |
+| | **D-093 / PILOT-T08 — Pilot educador com propostas confirmáveis de preparação (2026-08-03)** |
+| | **D-092 / SIM-T11 — debrief gera preparação acionável confirmável (2026-08-03)** |
+| | **D-091 / ONB-T01 — onboarding contextual por convite de simulação (2026-08-03)** |
+| | **D-090 / EDU-T01 — catálogo educativo oficial com aprovação/versionamento (2026-08-03)** |
+| | **D-089 / COMMS-T03 — referência de rádio editável por círculo (2026-08-03)** |
+| | **D-088 / COMMS-T02 — referência de frequências familiares inserida em Comms (2026-08-03)** |
+| | **D-087 / COMMS-T01 — Comms app-level: chat do círculo + guia de rádio + limite Mesh/LoRa (2026-08-03)** |
+| | **D-086 / PREP-T01 — Checklist + Recursos unificados em Preparação (2026-08-03)** |
+| | D-085 / PREP-T00 — spec + decisão do Preparedness Engine (2026-08-03)** |
+| | D-084 / P0B-T01→T06 — EOS Platform Foundation Alignment (2026-08-03)** |
+| | D-083 — RAG com tradução de consulta, limiar 0,45 e Pilot em `gpt-4.1` (2026-08-02)** |
+| | **D-082 / PLAN-T10 — handoff multi-stop da rota do plano para Google Maps (2026-07-31)** |
+| | D-081 / WV2-T12 — camadas flood, surge, wind impact e direção oficial de tornado (2026-07-31)** |
+| | D-080 / PLAN-T09 — múltiplos planos, execução cancelável e passos editáveis (2026-07-31)** |
+| | D-079 / PLAN-T08 — Executar Plano: Pilot host situacional no painel da pessoa (2026-07-31)** |
+| | D-078 — tempestade no mapa: cone, trajetória, vento em grade e alerta que vira lugar (2026-07-31)** |
+| | D-077 — controle do círculo (papel/renomear/excluir), acesso ao plano, gatilhos e temporizador de simulação (2026-07-31)** |
+| | D-076 — escolher endereço no mapa (mira), satélite sem chave e botão de GPS que fala (2026-07-31)** |
+| | PLAN-T06 — envelope do plano + carta que desenha o plano sem tile nenhum (2026-07-30)** |
+| | Endereço de casa como campo explícito e primeiro do plano; fim das distâncias que sumiam caladas (2026-07-30)** |
+| | SIM-T06 — o simulador cobra o plano: a decisão vira parte do debrief (2026-07-30)** |
+| | PLAN-T03 — rotas desenhadas pela família, ancoradas nos lugares do plano (2026-07-30)** |
+| | PLAN-T02/T04/T05 — editor do plano de voo, versionamento com reconhecimento e execução offline (2026-07-30)** |
+| | D-075 — o App Router não registrava service worker nenhum; `/api/plans` vira NetworkOnly (2026-07-30)** |
+| | D-074 — push funcionando: precache do SW corrigido + teste real 6/6 (2026-07-29)** |
+| | D-073 — localização em tempo real e interação no marcador (2026-07-29)** |
 | | PLAN-T01 — modelo de dados e API do plano de voo (2026-07-29)** |
 | | WV2-T06 rótulos nos controles do mapa · FAM-T08 cache offline dos abrigos |
 | | Fix: localização ao vivo travada no iOS; ponto de perfil agora parece aproximado |
@@ -36,9 +198,26 @@
 | | D-065 / FAM-T05→T07 — abrigos oficiais do FEMA NSS, rumo/distância on-device e deep-link de navegação (2026-07-27)** |
 | | D-066 / PLAN-T00 — spec dos Planos de Emergência da Família (`docs/18-family-plans.md`) (2026-07-27) |
 | | D-064 / FAM-T01→T04 — localização familiar ao vivo, consentimento próprio e remoção dos mocks do mapa (2026-07-27) |
-| **⚠️ Migration pendente** | `20260824000000_hazard_alerting.sql` — alertas automáticos (D-074). **Idempotente e autossuficiente**: substitui e completa a `20260710010000_hazard_tables.sql`, que nunca foi aplicada. Até aplicar, a varredura não tem onde guardar memória e nenhum alerta de mudança é possível. Ver `docs/hazard-alerting-setup.md`. |
-| **⚠️ Env pendente** | `CRON_SECRET` (gerar com `openssl rand -hex 32`). Sem ela `/api/cron/hazard-scan` responde 503 e não roda — de propósito. |
-| **⚠️ Migration pendente** | `20260729000000_family_plans.sql` — Planos de Emergência da Família (PLAN-T01). Até aplicar, `/api/plans` responde `migration_pending` e nada quebra. |
+| **Migration** | ✅ `20260730000000_family_plan_triggers.sql` aplicada pelo dono em 2026-07-30 e verificada. Gatilho gravando ponta a ponta no teste de navegador. |
+| **Migration** | ✅ `20260817000000_family_plan_protocol_fields.sql` aplicada pelo dono em 2026-08-17. Libera persistência de tipo de ação, destino, rota e aviso ao círculo nos protocolos do plano. |
+| **Migration** | ✅ `20260819045025_exec_t01_circle_places.sql` aplicada pelo dono em 2026-08-19. Libera catálogo de lugares e waypoints por referência. |
+| **Migration** | ✅ `20260819050556_exec_t02_plan_sessions.sql` aplicada pelo dono em 2026-08-19 e verificada por REST service-role: `plan_sessions`, `plan_session_members`, `plan_session_dependents`, `plan_session_places` → 200. |
+| **Migration** | ✅ `20260819124613_exec_t03_family_plan_executions.sql` aplicada pelo dono em 2026-08-19 e verificada por REST service-role: `family_plan_executions`, `family_plan_execution_events` → 200. |
+| **Migration** | ✅ `20260819144004_exec_t06_map_base_mode.sql` aplicada pelo dono em 2026-08-19 e verificada por REST service-role (`profiles?select=id,map_base_mode&limit=1` → 200; exemplo retornou `satellite`). |
+| **Migration** | ✅ `20260804014000_inbox_eos_notifications.sql` aplicada pelo dono em 2026-08-04. Evolui `circle_notifications` para Inbox EOS app-level (`scope`, `severity`, `source_key`, `circle_id` nullable). |
+| **Migration** | ✅ `20260804180000_rate_limit_and_error_log.sql` aplicada pelo dono em 2026-08-04 e verificada com `/api/health` + `node scripts/guardrails-test.mjs` (5/5). Adiciona `rate_limit_buckets`, RPC `consume_rate_limit` e `error_log`. |
+| **Migration** | ✅ `20260804015000_edu_view_count.sql` aplicada pelo dono e verificada em 2026-08-04 via REST service-role (`edu_content?select=id,view_count` responde 200). Adiciona `edu_content.view_count` para destaque do vídeo mais clicado. |
+| **Migration** | ✅ `20260804013000_comms_realtime.sql` aplicada pelo dono em 2026-08-04. Libera leitura RLS controlada e publicação realtime para `circle_messages` e `circle_notifications`. |
+| **Migration** | ✅ `20260804012000_circle_notifications.sql` aplicada pelo dono em 2026-08-04. Cria `circle_notifications` para badge vermelho do Comms e timeline social de interações. |
+| **Migration** | ✅ `20260804011000_circle_family_access_requested_by.sql` aplicada pelo dono em 2026-08-04 e verificada via service-role (`family_access_requested_by` responde em `circle_members`; linhas atuais default `null`). |
+| **Migration** | ✅ `20260804010000_circle_family_access.sql` aplicada pelo dono em 2026-08-04 e verificada via service-role (`family_access_status`, datas e aprovador respondem em `circle_members`; linhas atuais default `none`). |
+| **Migration** | ✅ `20260804000000_affiliate_codes.sql` aplicada pelo dono em 2026-08-04 e verificada via service-role (`affiliate_codes`, `affiliate_referrals`, `affiliate_conversions` respondem 200; `EOSPARTNER` ativo com tag `Teste Afiliado app`, Family/Premium, comissão 70%). |
+| **Migration** | ✅ `20260803003000_pilot_memory_events.sql` aplicada pelo dono em 2026-08-03 e verificada via service-role (`pilot_memory_events` responde 200; count=0). UPP-03 está operacional para salvar memória confirmada com auditoria. |
+| **Migration** | ✅ `20260803002000_edu_content.sql` aplicada pelo dono em 2026-08-03 e verificada via service-role (`edu_content` responde 200; count=0). EDU-T01 está operacional para catálogo persistente. |
+| **Migration** | ✅ `20260803001000_circle_radio_profiles.sql` aplicada pelo dono em 2026-08-03 e verificada via service-role (`circle_radio_profiles` responde 200; count=0). |
+| **Migration** | ✅ `20260803000000_circle_messages.sql` aplicada pelo dono em 2026-08-03 e verificada via service-role (`circle_messages` responde 200; count=0). |
+| **Migration** | ✅ `20260731000000_multiple_family_plans.sql` aplicada pelo dono em 2026-07-31. Remove o índice antigo de plano ativo único e libera múltiplos planos por círculo. Tentei verificar via REST `pg_indexes`, mas a view não está exposta no schema cache. |
+| **Migration** | ✅ `20260729000000_family_plans.sql` aplicada pelo dono em 2026-07-29 e verificada (5 tabelas + índice de plano ativo único). |
 | **Migration** | ✅ `20260728010000_simulation_join_token.sql` aplicada pelo dono em 2026-07-28 e verificada. |
 | **Migration** | ✅ `20260728000000_shared_simulation.sql` aplicada pelo dono em 2026-07-28. Tabelas e colunas verificadas por REST service-role. |
 | **Migration** | ✅ `20260727000000_live_location.sql` aplicada pelo dono em 2026-07-27. Verificado via REST service-role: as 4 colunas `last_location_*` respondem 200 em `profiles`. |
@@ -68,10 +247,64 @@
 | | LA-T02: Stripe **Live** cutover — faturamento real ativo (2026-07-21) |
 | | LA-T01: Stripe test payment → webhook → `profiles.plan=family` (2026-07-20) |
 | **In Progress** | — |
-| **Next Task** | **PLAN-T02** — editor do plano (pontos de encontro, lugares, papéis, gatilhos). Depois **PLAN-T04** (versionamento e reconhecimento na UI) e **SIM-T06**. Antes disso: **PLAN-T01** — modelo de dados + RLS + API dos Planos de Emergência da Família (`docs/18-family-plans.md`), que destrava SIM-T06 e os mapas offline. Antes disso: **SIM-T05** — debrief da simulação com lacunas quantificadas. Alternativas: **SIM-T04** (injeção de eventos/avanço de tempo), **PLAN-T01** (modelo de dados do plano de voo) — modelo de dados + RLS por círculo + API dos Planos de Emergência da Família (`docs/18-family-plans.md`). Alternativas abertas: **WV2-T05** (gates de validação da v2, dívida assumida em D-063), **FAM-T08** (cache offline dos abrigos), **LA-T06** (códigos de afiliado, travado nos params do dono). |
-| **Build** | ✅ Passing — type-check, ESLint e production build limpos (2026-07-28) |
-| **Vercel** | ✅ Produção em 2026-07-28 (`050399e`) — abrigos FEMA, busca no mapa, puck com foto, simulador, Pilot conversacional com navegação, checklist v2. Verificado: `/api/shelters` retorna 4 abrigos reais perto de Bend/OR. |
+| **Platform Alignment** | ✅ D-084: EOS é plataforma multi-superfície com um único core operacional. Web/PWA segue como superfície primária; iOS/Android serão adapters nativos futuros; Automotive é companion mode restrito; Mesh/LoRa segue bloqueado por G-05. `/mobile/` é template/conceitual, não app inicializado. |
+| **Fases pedidas pelo dono (2026-07-31)** | ✅ 1. Camadas de clima + rastreio de ciclone (D-078). 2. Reinventar a aba Família no design system da v2, com componentes dinâmicos. 3. WV2-T05 (a11y/perf), PLAN-T07 (Pilot propõe plano). |
+| **Next Task** | **EXEC-T03 — `family_plan_executions` + disparo por gesto.** |
+| **Build** | ✅ D-205 validado em 2026-08-16 com `npm run type-check`, `git diff --check`, `npm run build` e Playwright mobile no Mundo: o antigo y=692 virou canvas, a lateral baixa virou canvas, a alça central ainda reabre o sheet e drags movem o MapLibre no primeiro gesto. |
+| | ✅ EXEC-T01 validado em 2026-08-19 com `npm test -- --runTestsByPath lib/__tests__/plan-places.test.ts lib/__tests__/offline-family-plan-cache.test.ts lib/__tests__/plan-execution.test.ts`, `npm run type-check` e `git diff --check`. `supabase migration list --local` não rodou porque o Postgres local não estava ativo em `127.0.0.1:54322`. |
+| | ✅ EXEC-T02 validado em 2026-08-19 com `npm test -- --runTestsByPath lib/__tests__/plan-session.test.ts`, `npm run type-check`, `git diff --check` e `npm run build`. |
+| | ✅ Correções da execução validadas em 2026-08-19 com `npm run type-check`, `npm test` e `npm run build`. **(1)** `buildPlanExecutionProtocols` gravava `label: trigger.condition` cru, e `condition` é texto livre que o planejamento não exige — um plano salvo com condição em branco renderizava botões SEM TEXTO na escolha de protocolo, com a família escolhendo às cegas na execução. O rótulo agora cai para a ação e depois para `Protocolo N`. **(2)** O gradiente da faixa terminava em `#10b981` (~2,6:1 com branco) e o estado de cada pessoa é alinhado à direita, então o texto menos legível caía na ponta mais clara; agora para em `#047857` (~5,5:1) e a idade da leitura subiu para 88% de opacidade — spec v1.1 §4.3. |
+| | ✅ AUTHOR-T02 validado em 2026-08-19 com `npm test` (46 suítes / 501 testes, incluindo `lib/__tests__/plan-author.test.ts`), `npm run type-check`, `npm run build` e `git diff --check`. Sem migration. |
+| | ✅ D-216 (excluir plano) validado em 2026-08-19 com `npm run type-check`, `npm test` (45 suítes / 497 testes), `npm run build` e `git diff --check`. Sem migration: usa `status = 'archived'`, que já existe no schema. |
+| | ✅ EXEC-T06 follow-up (basemap transversal) validado em 2026-08-19 com `npm run type-check`, `npm test` (45 suítes / 497 testes), `npm run build` e `git diff --check`. |
+| | ✅ EXEC-T00 validado em 2026-08-19 com `npm test -- --runTestsByPath lib/__tests__/offline-family-plan-cache.test.ts` e `npm run type-check`. |
+| | ✅ D-211 validado em 2026-08-18 com `npm run type-check`, `git diff --check` e `npm run build`. |
+| | ✅ D-210 validado em 2026-08-18 com `npm run type-check`, `git diff --check` e `npm run build`. |
+| | ✅ D-209 validado em 2026-08-18 com `npm run type-check`, `git diff --check` e `npm run build`. |
+| | ✅ D-207 validado em 2026-08-17 com `npm run type-check`, `npm test -- --runInBand lib/__tests__/plan-execution.test.ts`, `git diff --check` e `npm run build`. |
+| | ✅ D-208 validado em 2026-08-17 com `npm run type-check`, `npm test -- --runInBand lib/__tests__/plan-execution.test.ts lib/__tests__/plan-pilot-review.test.ts lib/__tests__/plan-drill.test.ts`, `git diff --check` e `npm run build`. |
+| | ✅ D-204 validado em 2026-08-16 com `npm run type-check`, `npm run build`, `git diff --check` e Playwright mobile em `/mais/treino`: 7 sliders de Clima simulado; slider de Vento alterou `45km/h → 160km/h`; botão `+` continuou para `165km/h`. |
+| | ✅ WV2-T30 validado em 2026-08-16 com `npm run type-check`, `git diff --check`, `npm run build`, `/api/world/peak-surge` lendo KML NHC real de Lala e Playwright mobile confirmando fonte/layer `eos-peak-surge-*` com polígonos. |
+| | ✅ WV2-T29 validado em 2026-08-16 com `npm run type-check`, `git diff --check`, `npm run build` e Playwright mobile no dashboard: painel `Camadas` tem overflow vertical e aceita scroll interno. |
+| | ✅ WV2-T28 validado em 2026-08-15 com `npm run type-check`, `git diff --check`, `npm run build` e Playwright mobile no dashboard: controles do mapa exibem `Você`, `Atualizar` e `Camadas` em repouso, sem botão `.../x`. |
+| | ✅ WV2-T27 validado em 2026-08-15 com `npm run type-check`, `git diff --check`, `npm run build`, `npm run test:nav` e Playwright no dashboard: mobile `peek → hidden → peek` por toque; mouse `hidden → peek` por hover. |
+| | ✅ NAV-T09 color follow-up validado em 2026-08-15 com `npm run type-check`, `git diff --check`, `npm run build`, `npm run test:nav` e captura Playwright de `/mais/treino` (BottomNav e `MaisNav` amarelos; top nav transparente). |
+| | ✅ NAV-T09 follow-up validado em 2026-08-15 com `npm run type-check`, `git diff --check`, `npm run build`, `npm run test:nav` e captura Playwright em 320px (`nav` 320px; `nav-tabs` 304px; MUNDO ativo ~107px e texto visível). |
+| | ✅ NAV-T10 validado em 2026-08-15 com `npm run type-check`, `git diff --check`, `npm run build`. Componente shadcn standalone compila; Tailwind/shadcn ainda não está instalado como design system ativo. |
+| | ✅ NAV-T09 validado em 2026-08-15 com `npm run type-check`, `git diff --check`, `npm run build`, `npm run test:nav` e captura Playwright em 320px (`nav-tabs` 300px; MUNDO ativo 104px). |
+| | ✅ WV2-T25 validado em 2026-08-11 com `npm run type-check`, `npm test -- --runInBand` (202/202), `npm run build`, `npm run test:weather` (14/14; slider `Setas` zerou `icon-opacity`/`text-opacity`; Fluxo/Rastro/Mapa continuam aplicando; painel recolhe ao tocar fora). |
+| | ✅ WV2-T24 validado em 2026-08-11 com `npm run type-check`, `npm test -- --runInBand` (202/202), `npm run build`, `npm run test:weather` (14/14; slider `Mapa` reduziu opacidade para 0.483; painel recolhe ao tocar fora; Fluxo/Rastro continuam aplicando). |
+| | ✅ WV2-T23 validado em 2026-08-11 com `npm run type-check`, `npm test -- --runInBand` (202/202), `npm run build`, `npm run test:weather` (13/13; painel mobile colapsado abre, sliders Fluxo/Rastro aplicam 988→1383 partículas e `fade=0.982`). |
+| | ✅ WV2-T22 validado em 2026-08-11 com `npm run type-check`, `npm test -- --runInBand` (202/202), `npm run build`, `npm run test:weather` (13/13; padrão limpo 806/988 partículas visíveis; slider Fluxo 988→1383; slider Rastro `fade=0.982`; zoom preserva 896/1383 visíveis). |
+| | ✅ WV2-T21 validado em 2026-08-11 com `npm run type-check`, `npm test -- --runInBand` (202/202), `npm run build`, `npm run test:weather` (12/12; 1764/2106 partículas visíveis antes do zoom, 1371/2106 depois do zoom, `speedScale=0.00024`, timeline frame 3). |
+| | ✅ WV2-T20 validado em 2026-08-10 com `npm run type-check`, `npm test -- --runInBand` (202/202), `npm run build`, `npm run test:weather` (11/11; canvas `25x25`, 2106 partículas, cauda `fade=0.965`, segmento máximo 34px, timeline frame 3). |
+| | ✅ WV2-T19 validado em 2026-08-10 com `npm run type-check`, `npm test -- --runInBand` (202/202), `npm run build`, `npm run test:weather` (11/11; vento fraco 4 km/h, canvas `25x25`, 2106 partículas, cauda `fade=0.965`, timeline frame 3). |
+| | ✅ WV2-T18 validado em 2026-08-10 com `npm run type-check`, `npm test -- --runInBand` (202/202), `npm run build`, `npm run test:weather` (11/11; vento fraco 7 km/h, canvas `25x25`, 2106 partículas, rastro mínimo 2.6px, timeline frame 3). |
+| | ✅ WV2-T17 validado em 2026-08-10 com `npm run type-check`, `npm test -- --runInBand` (202/202), `npm run build`, `npm run test:weather` (11/11; Open-Meteo `best_match` com 25 frames, canvas `25x25`, timeline frame 3 aplicada, zoom interativo e sem provider pago). |
+| | ✅ WV2-T16 validado em 2026-08-10 com `npm run type-check`, `npm test -- --runInBand` (202/202), `npm run build`, `npm run test:weather` (9/9; `Escuro/Satélite/Vento`, modo mundial `25x25`, 195696 px escalares, 1833 partículas, zoom interativo 1.55→2.14 em 798 ms). |
+| | ✅ WV2-T15 follow-up validado em 2026-08-10 com `npm run type-check`, `npm test -- --runInBand` (202/202), `npm run build`, `npm run test:weather` (8/8; zoom global `17x17`, 378000 px escalares, 1833 partículas, `wrapsWorld=true`). |
+| | ✅ WV2-T15 validado em 2026-08-10 com `npm run type-check`, `npm test -- --runInBand` (202/202), `npm run build`, `npm run test:weather` (8/8; `15x15`, 365119 px escalares, 780 partículas) e `git diff --check`. |
+| | ✅ WV2-T14 validado em 2026-08-10 com `npm run type-check`, `npm test -- --runInBand` (202/202), `npm run build`, `npm run test:weather` (8/8; `WindParticleLayer` bilinear `9x9`, 780 partículas) e `git diff --check`. |
+| **Plano execução** | ✅ PLAN-T08 MVP: tocar no próprio rosto no mapa abre comando familiar; "Executar plano" carrega um plano escolhido, monta passos determinísticos do host (círculo → gatilhos → papéis → pontos → rotas → encerramento) e alerta o círculo com push preset "Execute o plano da família agora". Sem nova tabela ainda: timeline compartilhada fica para `family_plan_executions`. |
+| **Plano múltiplo** | ✅ PLAN-T09: o círculo pode ter vários planos ativos; `/plan` alterna/cria planos por nome, o executor escolhe qual plano rodar, passos fixos do EOS saem da lista numerada e há cancelar/falso alarme. Migration `20260731000000_multiple_family_plans.sql` aplicada pelo dono. |
+| **Protocolos de execução** | ✅ PLAN-T11: execução é plano → protocolo. Cada gatilho salvo vira protocolo acionável; o host local pede a escolha antes dos passos e mostra o caminho selecionado. Sem migration nova; timeline compartilhada segue futura em `family_plan_executions`. |
+| **Protocolos estruturados** | ✅ PLAN-T12: gatilhos/protocolos agora têm tipo de ação (`meet/evacuate/shelter/communicate/wait/custom`), destino, rota e aviso ao círculo. Migration `20260817000000_family_plan_protocol_fields.sql` aplicada pelo dono em 2026-08-17. |
+| **Rotas do plano** | ✅ PLAN-T10: cada rota desenhada no plano agora tem handoff "Google Maps" com origem, destino e paradas intermediárias na ordem da `LineString`. O EOS mantém o combinado offline; Google Maps calcula ruas/ETA quando abrir. |
+| **Família** | ✅ `npm run test:family` **5/5** (2026-08-01) — posição com frescor, quem NÃO está coberto e por quê, papel do plano junto da pessoa, necessidades que mudam a decisão, e o cadastro preservado em `/family-legacy`. |
+| **Planos** | ✅ `npm run test:multiplan` **4/4** (2026-08-01) — dois planos coexistem, salvar um não toca no outro, id de outro círculo é 403 e salvar sem dizer qual é 409. |
+| **Mapa** | ✅ `npm run test:marker` **3/3** (2026-07-31) — o pino com foto sobrevive a duas rodadas de atualização e a URL da imagem não muda. Validado com controle negativo. |
+| **RAG** | ✅ `npm run bench:rag` (2026-08-02) — com tradução da consulta e limiar 0,45, **0 de 8** perguntas em português ficam sem resposta; com o limiar antigo (0,7) eram **8 de 8**. Modelo do Pilot: `gpt-4.1`. |
+| **Pilot** | ✅ `npm run test:pilot` **8/8** com o MODELO real (2026-07-31): orbe fora do dashboard sem duplicar no dashboard, clima com números sem negar acesso, ciclone citado E qualificado, análise de atividade com veredito/números/janela, orbe arrastável que fica onde foi deixado, e um guarda que percorre 7 telas conferindo que nenhuma está coberta (validado com controle negativo). |
+| **Clima** | ✅ `npm run test:weather` **9/9** com dado AO VIVO (2026-07-31): ciclone com posição/rumo, geometria oficial do NHC, vento em grade, painel com camadas Flood/Surge/Vento impacto/Tornado, setas RENDERIZADAS no mapa, camada de impacto de vento conectada ao MapLibre, alerta pulsando na cor do risco, e tempestade tocável ENQUADRANDO o cone (medido contra a geometria da API, não contra as entranhas do mapa). O teste PROCURA uma região com alerta ativo no feed do NWS em vez de depender do tempo em Parkland. |
+| **Círculo** | ✅ `npm run test:circle` **5/5** (2026-07-31) — promover a Editor muda o banco, quem não é Admin recebe 403, renomear funciona, excluir exige o nome exato e cascateia. Toda asserção lê o banco depois da ação. |
+| **Plano** | ✅ `npm run test:plan` **14/14** em dois navegadores (2026-07-30): não salva sem ponto e papel, autor salva v1, membro reconhece, v2 **invalida** o ack anterior, gatilho grava, rota desenhada vira LineString, o debrief cobra um ponto de encontro inalcançável a pé, e com a rede derrubada o plano continua na tela rotulado como cópia local **e a carta é desenhada** (pinos, traçado, norte, escala). Inclui abrir o mapa na posição atual, escolher pela mira sem digitar nada, e GPS negado que diz o motivo sem travar a tela. |
+| **Push** | ✅ `npm run test:push` 6/6 em Chrome real + `npm run test:push:prod` 3/3 contra produção (2026-07-29). Validado com controle negativo: reverter o `buildExcludes` faz o teste falhar. Ambos exigem Google Chrome instalado. **Rodar o prod-check depois de todo deploy que toque `next.config.mjs`, o next-pwa ou a versão do Next.** |
+| **Vercel** | ✅ Produção em 2026-08-01 — Família reconstruída (D-082), múltiplos planos seguros (D-080), pino sem piscar (D-081), orbe arrastável. `test:push:prod` 3/3; `/family`, `/family-legacy` e `/plan` respondendo 200. | — D-079. `test:push:prod` 3/3. Anterior: `49a66e1` — cone enquadrado. `test:push:prod` 3/3. Anterior: `fa9efe0` — tempestade tocável, distância qualificada, cache de ausência corrigido. Anterior: `a89d2ab` — alerta pulsando na cor do risco. `test:push:prod` 3/3. Anterior: `9761620`. `test:push:prod` 3/3; `/api/world/cyclones` respondendo com cone em produção. Anterior: `b6c5b45` — D-077. `test:push:prod` 3/3. Anterior: `8d72d8a` — mapa abre na posição atual, ponto confirma sem digitar. `test:push:prod` 3/3. Anterior: `ef9a5f7` — GPS em dois estágios. `test:push:prod` 3/3. Anterior: `b084f99` — escolha de endereço no mapa, satélite ESRI e orbe de camadas. `test:push:prod` 3/3. Anterior: `c2e4608` — envelope + carta do plano. `test:push:prod` 3/3. Anterior: `85283c0` — endereço de casa explícito. `test:push:prod` 3/3 (113 arquivos). Anterior: `53393b4` — o simulador cobra o plano. `test:push:prod` 3/3 (112 arquivos no precache). Anterior: `02fab31` — rotas desenhadas pela família. `test:push:prod` 3/3 depois do deploy. Anterior: `023712a` — editor do plano em `/plan`, versionamento com reconhecimento, execução offline e registro do service worker em todo o app (D-075). `test:push:prod` 3/3 depois do deploy. Anterior: 2026-07-29 (`9a78935`) — correção do push (D-074). Verificado com `npm run test:push:prod` **3/3**: precache limpo (105 arquivos), service worker instala e ativa no deploy que está no ar, e o `push-sw.js` de lá exibe notificação. Deploy anterior: 2026-07-28 (`050399e`) — abrigos FEMA, busca no mapa, puck com foto, simulador, Pilot conversacional com navegação, checklist v2. Verificado: `/api/shelters` retorna 4 abrigos reais perto de Bend/OR. |
 | **Supabase** | ✅ Healthy — project ref `alxurmgpyxjhvnliivbf` |
+| **Notificações de clima** | ✅ Funcionando (2026-08-04). `CRON_SECRET` criado na Vercel e no GitHub; execução manual do workflow **verde** (`ping` 7 s). Cadência de 15 min via GitHub Actions, de graça; cron diário da Vercel (`0 11 * * *`) fica como rede de segurança — o plano Hobby não aceita mais que isso, e um `*/15` no `vercel.json` **bloqueia todo deploy**. |
+| **⚠️ Pendência — agendador** | Dois pontos a vigiar: (1) o GitHub **desativa workflows agendados após 60 dias sem commits** no repositório — se o projeto parar, as notificações param junto e nada avisa; (2) decidir se vale Vercel Pro para trazer o agendador de volta para casa e eliminar a dependência do GitHub. |
+| **Repositório** | ⚠️ **Público** no GitHub. Varrido em 2026-08-04: nenhum `.env` real versionado; cruzando cada valor do `.env.local` com o histórico inteiro, só `NEXT_PUBLIC_SITE_URL` e `VAPID_SUBJECT` aparecem — públicos por definição. Não anula a rotação pendente: a exposição foi em conversa, não no repositório. |
+| **Banco de produção** | ✅ Limpo de novo em 2026-08-04 (2ª vez): 7 contas vazadas por `guardrails-test.mjs`, que terminava com `process.exit()` — gancho `beforeExit` nunca disparava. Corrigido com `finish()`. Restam **0 de teste e 9 reais**. ✅ Limpo em 2026-08-04: 32 contas de teste, 24 perfis órfãos e 8 círculos removidos; as **8 contas reais intactas**. Causa corrigida em `scripts/lib/test-cleanup.mjs` (D-114) — a limpeza passa a rodar em qualquer saída, não só no fim feliz. |
 | **⚠️ Segurança** | Rotacionar segredos expostos em chat: Vercel token (`vcp_…`), Supabase PAT (`sbp_…`), Stripe test/Live keys, MapTiler. |
 
 ---
@@ -81,7 +314,7 @@
 Sessão longa e de reconstrução. Começou como uma reavaliação de design do
 `/dashboard-world` sob a skill `apple-design` e terminou com o EOS abrindo numa
 tela nova, um copiloto conversacional e um simulador que treina a família
-inteira. **11 decisões (D-062→D-072), 2 specs novas (docs 18 e 19), 3 migrations.**
+inteira. **13 decisões (D-062→D-074), 2 specs novas (docs 18 e 19), 4 migrations.**
 
 ### O arco
 
@@ -120,16 +353,52 @@ esquecer a outra.
 | Mapa recentralizando e travando o scroll | `flyTo` programático disparava os eventos que recolhiam o HUD |
 | `.w-mapmarker` sem estilo na v2 | CSS vivia só em `world-dashboard.css`, que a v2 não importa |
 | Convidado esperando 20s pelo pop-up | `router.replace` não remonta o layout onde vive o poller |
+| Push nunca chegava em produção | Metadado de build 404 no precache → install do SW rejeitado → worker `redundant` (D-074) |
+| Senders de push falhando em silêncio | Liam `profile_id`; a coluna é `user_id` (3 endpoints) |
+
+### Push: o bug que nenhuma leitura de código ia achar (D-074)
+
+`/api/family/ping`, o convite de simulação e o aviso de mudança de plano nunca
+entregaram nada. O sintoma era um botão em Ajustes que não mudava de estado.
+
+A causa não estava em nada relacionado a push: o `next-pwa` colocava
+`/_next/app-build-manifest.json` no manifesto de precache do Workbox, o Next não
+serve esse arquivo, e **precache é atômico** — um 404 rejeita o `waitUntil` do
+`install`, o worker vira `redundant` e nunca ativa. Sem worker ativo não existe
+push, em nenhum lugar do produto.
+
+Só apareceu com `ServiceWorker.workerErrorReported` do CDP num Chrome real. Três
+hipóteses minhas antes disso estavam erradas — inclusive uma em que eu "corrigi"
+o nome hasheado do worker, o que era um problema real mas não *o* problema.
+
+Detalhe que vale guardar: o helper que esperava o worker **rejeitava ao ver
+`redundant`**, e `redundant` é estado normal (significa substituído). Havia um
+segundo bug reportando falha por cima de um worker saudável. A correção é não
+escrever essa espera à mão: `navigator.serviceWorker.ready` é a espera canônica.
 
 ### Validação
 
 Sessão em que a verificação em navegador real passou a existir:
-`scripts/browser-walkthrough.mjs`, `scripts/circle-location-test.mjs` e
-`scripts/simulation-share-test.mjs` (Playwright). **Todos criam e apagam contas
-no Supabase de produção** — é o único projeto configurado no `.env.local`.
+`scripts/browser-walkthrough.mjs`, `scripts/circle-location-test.mjs`,
+`scripts/simulation-share-test.mjs`, `scripts/family-plan-test.mjs` e
+`scripts/push-test.mjs` (Playwright). **Todos criam e apagam contas no Supabase
+de produção** — é o único projeto configurado no `.env.local`.
+
+`npm run test:push` — **6/6**. Prova os 6 elos do push num Chrome real: precache
+100% buscável → SW instala e ativa → `/api/push/subscribe` grava as chaves →
+`/api/family/ping` emite Web Push assinado em VAPID → o payload **descriptografa**
+(RFC 8291) para o texto exato → o handler real do `push-sw.js` **exibe** a
+notificação, lida de `getNotifications()`. Sobe o próprio `next start` na 3010,
+porque precisa confiar no CA do serviço de push falso (o `web-push` só fala
+HTTPS; a verificação de certificado fica ligada, via `NODE_EXTRA_CA_CERTS`).
+
+O teste foi validado com **controle negativo**: removendo o `buildExcludes` e
+reconstruindo, ele falha apontando `404 /_next/app-build-manifest.json`. Um teste
+que passa mas não falharia com o bug de volta não vale nada.
 
 Os três primeiros bugs da tabela acima foram encontrados **lendo código**; os
-sete últimos, **rodando o app**. A diferença é o argumento para WV2-T05.
+sete seguintes, **rodando o app**; e o do push, só **instrumentando o navegador**.
+A diferença é o argumento para WV2-T05.
 
 ---
 
@@ -201,7 +470,7 @@ sete últimos, **rodando o app**. A diferença é o argumento para WV2-T05.
 | P1-T11: Recursos screen — checklist integration + inventory sync | ✅ COMPLETE | 2026-06-28 |
 | P1-T05: Bilingual PT/EN settings | ✅ COMPLETE | 2026-06-29 |
 | P1-T07: Sentry error monitoring | DEFERRED | D-028 |
-| P1-T08: Rate limit validation (Upstash) | DRAFT | — |
+| P1-T08: Rate limit validation (Upstash) | SUPERSEDED | D-118 substituiu por Supabase/Postgres |
 
 | P3-T05: Weather Intelligence — 29 activities, rules engine, Open-Meteo | ✅ COMPLETE | 2026-07-01 |
 
@@ -283,10 +552,10 @@ Validar `/dashboard-world` antes de qualquer rollout para substituir `/dashboard
 | PWA icons missing (icon-192.png, icon-512.png) | ✅ FIXED | `public/` | P1-T03 — completed 2026-06-28 |
 | Landing page | ✅ DONE | `app/page.tsx` | Pitch + CTAs deployed |
 | Offline write sync not implemented | MEDIUM | `lib/offline-storage.ts` | Writes to IndexedDB not synced back to Supabase on reconnect |
-| LOCAL_AI mode not implemented | MEDIUM | `app/api/analyze/route.ts` | Phase 2 |
-| React Native project not initialized | MEDIUM | `mobile/` | `/mobile/` has template files but `npx react-native init` not run — Phase 2 |
+| LOCAL_AI mode not implemented | MEDIUM | mobile/native AI | Blocked by G-03 / native mobile readiness |
+| Native mobile shell not initialized | HIGH | `mobile/` | Blocked by G-03 / D-084; `/mobile/` has template/conceptual files but no initialized app |
 | Sentry DSN not confirmed in Vercel | LOW | Vercel env vars | P1-T07 — confirm `SENTRY_DSN` is set |
-| Upstash Redis not confirmed in Vercel | LOW | Vercel env vars | P1-T08 — rate limit falls back to in-memory without it |
+| Upstash Redis not confirmed in Vercel | ✅ SUPERSEDED | Vercel env vars | D-118 — Upstash é opcional; rate limit distribuído v1 usa Supabase/Postgres e `/api/health` valida `rateLimit=ok` |
 | SAMHSA_Tips 20 chunks skipped (null bytes) | LOW | knowledge_base | 49/69 chunks stored — non-critical |
 | `SUPABASE_SERVICE_ROLE_KEY` ausente no Vercel → `/ficha/[id]` e RAG quebrados | ✅ FIXED | Vercel env / `app/ficha/[id]`, `app/api/profile/ficha` | 2026-07-05 — D-035: env var adicionada + guardas defensivas |
 | Tela Círculos: conteúdo final escondido atrás da nav fixa + home indicator (iPhone); layout apertado | ✅ FIXED | `app/(app)/circles/page.tsx` | 2026-07-10 — `<main>` ganhou folga inferior `calc(96px + env(safe-area-inset-bottom))`; grade Criar/Entrar responsiva (`auto-fit`); mais respiro (padding/gaps). Padrão a replicar nas outras telas do app se necessário. |

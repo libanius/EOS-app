@@ -35,7 +35,7 @@ import {
 import { animate, motion, useMotionValue, useReducedMotion } from 'framer-motion'
 import { SPRING, haptic, projectMomentum, rubberband, velocityFrom } from './motion'
 
-export type Detent = 'peek' | 'medium' | 'large'
+export type Detent = 'hidden' | 'peek' | 'medium' | 'large'
 
 const ORDER: Detent[] = ['peek', 'medium', 'large']
 /** Movement before a drag commits to a direction (§10 hysteresis). */
@@ -70,6 +70,25 @@ export default function DetentSheet({
   const y = useMotionValue(0)
   const playback = useRef<ReturnType<typeof animate> | null>(null)
   const metrics = useRef({ height: 0, peek: 120, medium: 320 })
+
+  /**
+   * Quanto da tela a folha está cobrindo, publicado como variável (D-128).
+   *
+   * Outras coisas precisam ficar ACIMA dela — a atribuição do mapa, que é
+   * exigência de licença do CARTO e do OpenStreetMap e estava sendo engolida.
+   *
+   * A primeira versão publicou a altura do repouso (`peek`, 85px) e não
+   * resolveu: `peek` é o tamanho do pegador, não o quanto a folha ocupa da
+   * tela. O número certo é a distância do fundo da janela até o topo da folha —
+   * e ele muda quando a pessoa arrasta, então é medido, não calculado.
+   */
+  const publicarCobertura = useCallback(() => {
+    const el = sheetRef.current
+    if (!el) return
+    const r = el.getBoundingClientRect()
+    const coberto = Math.max(0, Math.round(window.innerHeight - r.top))
+    document.documentElement.style.setProperty('--sheet-cover', `${coberto}px`)
+  }, [])
   const current = useRef<Detent>(detent)
   const drag = useRef<{
     pointerId: number
@@ -83,6 +102,7 @@ export default function DetentSheet({
   /** Translate for a detent. `large` is 0 (fully open); `peek` is the deepest. */
   const yFor = useCallback((d: Detent) => {
     const { height, peek, medium } = metrics.current
+    if (d === 'hidden') return height + 8
     if (d === 'large') return 0
     return Math.max(0, height - (d === 'peek' ? peek : medium))
   }, [])
@@ -141,21 +161,28 @@ export default function DetentSheet({
     const measure = () => {
       const height = layer.clientHeight
       const grabber = grabberRef.current?.offsetHeight ?? 96
+      const peek = Math.min(grabber + 8, height)
       metrics.current = {
         height,
-        peek: Math.min(grabber + 8, height),
+        peek,
         medium: Math.round(Math.min(Math.max(height * 0.52, 300), height)),
       }
+      publicarCobertura()
       playback.current?.stop()
       y.set(yFor(current.current))
+      // a folha acabou de se posicionar: republica quanto ela cobre
+      requestAnimationFrame(publicarCobertura)
     }
 
     measure()
+    // O `y` muda durante o arrasto e ao assentar; a cobertura acompanha, para
+    // que o que se pendura nela não fique preso na posição antiga.
+    const solta = y.on('change', publicarCobertura)
     const observer = new ResizeObserver(measure)
     observer.observe(layer)
     if (grabberRef.current) observer.observe(grabberRef.current)
-    return () => observer.disconnect()
-  }, [y, yFor])
+    return () => { solta(); observer.disconnect() }
+  }, [y, yFor, publicarCobertura])
 
   // ── External detent changes (map interaction, deep links, keyboard) ──────
   useEffect(() => {
@@ -237,8 +264,24 @@ export default function DetentSheet({
     commit(next, 0)
   }
 
+  const reveal = () => {
+    commit('peek', 0)
+  }
+
   return (
     <div className="wv2-sheet-layer" ref={layerRef}>
+      {detent === 'hidden' && (
+        <button
+          type="button"
+          className="wv2-sheet-reveal-zone"
+          aria-label={grabberLabel}
+          onClick={reveal}
+          onFocus={reveal}
+          onPointerEnter={event => {
+            if (event.pointerType === 'mouse') reveal()
+          }}
+        />
+      )}
       <motion.section
         ref={sheetRef}
         className="wv2-sheet"
@@ -253,7 +296,7 @@ export default function DetentSheet({
           ref={grabberRef}
           type="button"
           className="wv2-grabber"
-          aria-expanded={detent !== 'peek'}
+          aria-expanded={detent !== 'peek' && detent !== 'hidden'}
           aria-label={grabberLabel}
           onPointerDown={onPointerDown}
           onClick={onGrabberClick}

@@ -18,6 +18,7 @@
  */
 
 export type LatLng = { lat: number; lng: number }
+export type TravelMode = 'driving' | 'walking'
 
 export type RouteProvider = {
   id: string
@@ -54,6 +55,73 @@ export function directionsUrl(destination: LatLng, label?: string): string {
     return `https://maps.apple.com/?daddr=${lat},${lng}${name}&dirflg=d`
   }
   return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`
+}
+
+function pointParam(point: LatLng): string {
+  return `${point.lat.toFixed(6)},${point.lng.toFixed(6)}`
+}
+
+function samePoint(a: LatLng, b: LatLng): boolean {
+  return Math.abs(a.lat - b.lat) < 0.00001 && Math.abs(a.lng - b.lng) < 0.00001
+}
+
+function dedupeConsecutive(points: LatLng[]): LatLng[] {
+  return points.filter((point, index) => index === 0 || !samePoint(point, points[index - 1]))
+}
+
+function sampleInterior(points: LatLng[], max: number): LatLng[] {
+  if (points.length <= max) return points
+  if (max <= 0) return []
+  const sampled: LatLng[] = []
+  const step = (points.length - 1) / (max - 1)
+  for (let i = 0; i < max; i += 1) {
+    sampled.push(points[Math.round(i * step)])
+  }
+  return dedupeConsecutive(sampled)
+}
+
+/**
+ * Google Maps handoff for an EOS route with ordered stops.
+ *
+ * This does not compute roads inside EOS. It passes the family-agreed sequence
+ * to Google Maps, which then calculates streets, ETA and turn-by-turn. The URL
+ * budget is intentionally conservative because mobile browsers and app bridges
+ * are less forgiving than desktop Chrome.
+ */
+export function googleMapsRouteUrl(
+  points: LatLng[],
+  opts: { travelMode?: TravelMode; maxWaypoints?: number } = {},
+): string | null {
+  const clean = dedupeConsecutive(points.filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lng)))
+  if (clean.length < 2) return null
+
+  const travelMode = opts.travelMode ?? 'driving'
+  const maxWaypoints = opts.maxWaypoints ?? 8
+  const origin = clean[0]
+  const destination = clean[clean.length - 1]
+  const interior = sampleInterior(clean.slice(1, -1), maxWaypoints)
+
+  const params = new URLSearchParams({
+    api: '1',
+    origin: pointParam(origin),
+    destination: pointParam(destination),
+    travelmode: travelMode,
+  })
+  if (interior.length) params.set('waypoints', interior.map(pointParam).join('|'))
+
+  return `https://www.google.com/maps/dir/?${params.toString()}`
+}
+
+export function googleMapsRouteUrlFromLineString(
+  geometry: unknown,
+  mode: 'foot' | 'car' | undefined,
+): string | null {
+  const coords = (geometry as { type?: string; coordinates?: unknown } | null)?.coordinates
+  if (!Array.isArray(coords)) return null
+  const points = coords
+    .filter((p): p is [number, number] => Array.isArray(p) && typeof p[0] === 'number' && typeof p[1] === 'number')
+    .map(([lng, lat]) => ({ lat, lng }))
+  return googleMapsRouteUrl(points, { travelMode: mode === 'foot' ? 'walking' : 'driving' })
 }
 
 /** Human distance. Under a km, metres are what someone on foot can act on. */

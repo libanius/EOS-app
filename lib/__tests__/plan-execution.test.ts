@@ -1,0 +1,159 @@
+import { buildPlanExecutionProtocols, buildPlanExecutionSteps } from '../plan-execution'
+import type { PlanDocument } from '../family-plan'
+
+describe('buildPlanExecutionSteps', () => {
+  it('turns the approved family plan into a deterministic host sequence', () => {
+    const doc: PlanDocument = {
+      plan: { id: 'plan-1', name: 'Plano escola', version: 4, status: 'active', updated_at: '2026-07-31T00:00:00Z' },
+      waypoints: [
+        { kind: 'rendezvous_3', name: 'Casa da tia', lat: 1, lng: 1 },
+        { kind: 'rendezvous_1', name: 'Esquina', lat: 1, lng: 2 },
+      ],
+      routes: [{ label: 'Saida pela rua de tras', geometry: { type: 'LineString', coordinates: [] }, mode: 'foot', notes: 'Evitar avenida.' }],
+      roles: [{ member_user_id: 'ana', responsibility: 'Ana busca Isadora se a escola liberar.' }],
+      triggers: [{ condition: 'Alerta na escola', action: 'Confirmar fonte oficial antes de dirigir.' }],
+      acknowledgedBy: [],
+      myAck: null,
+    }
+
+    const steps = buildPlanExecutionSteps(doc, true)
+
+    expect(steps.map(step => step.kind)).toEqual([
+      'circle',
+      'trigger',
+      'role',
+      'rendezvous',
+      'rendezvous',
+      'route',
+      'finish',
+    ])
+    expect(steps[0].body).toContain('v4')
+    expect(steps[3].title).toContain('Ponto 1')
+    expect(steps[4].title).toContain('Ponto 3')
+    expect(steps[5].body).toContain('Evitar avenida.')
+  })
+
+  it('builds protocol choices from saved triggers', () => {
+    const doc: PlanDocument = {
+      plan: { id: 'plan-1', name: 'Plano escola', version: 4, status: 'active', updated_at: '2026-07-31T00:00:00Z' },
+      waypoints: [],
+      routes: [],
+      roles: [],
+      triggers: [
+        { condition: 'Sem contato por 2 horas', action: 'Ir para o bairro' },
+        { condition: 'Evacuação oficial', action: 'Sair para fora da região' },
+      ],
+      acknowledgedBy: [],
+      myAck: null,
+    }
+
+    const protocols = buildPlanExecutionProtocols(doc, true)
+
+    expect(protocols).toHaveLength(2)
+    expect(protocols[0].label).toBe('Sem contato por 2 horas')
+    expect(protocols[1].triggerIndex).toBe(1)
+  })
+
+  it('runs the selected protocol instead of listing every trigger', () => {
+    const doc: PlanDocument = {
+      plan: { id: 'plan-1', name: 'Furacão', version: 2, status: 'active', updated_at: '2026-07-31T00:00:00Z' },
+      waypoints: [
+        { kind: 'rendezvous_1', name: 'Esquina', lat: 1, lng: 2 },
+        { kind: 'rendezvous_2', name: 'Escola', lat: 2, lng: 2 },
+        { kind: 'rendezvous_3', name: 'Casa da tia', lat: 3, lng: 3 },
+      ],
+      routes: [],
+      roles: [],
+      triggers: [
+        { condition: 'Sem contato por 2 horas', action: 'Ir para o ponto do bairro' },
+        { condition: 'Evacuação oficial', action: 'Executar saída para fora da região', action_type: 'evacuate' },
+      ],
+      acknowledgedBy: [],
+      myAck: null,
+    }
+    const protocol = buildPlanExecutionProtocols(doc, true)[1]
+
+    const steps = buildPlanExecutionSteps(doc, true, protocol)
+
+    expect(steps.map(step => step.title)).toContain('Evacuar: Evacuação oficial')
+    expect(steps.map(step => step.title)).not.toContain('Encontrar: Sem contato por 2 horas')
+    expect(steps.map(step => step.title)).toContain('Ponto 3: Casa da tia')
+    expect(steps.map(step => step.title)).not.toContain('Ponto 1: Esquina')
+    expect(steps.map(step => step.title)).not.toContain('Ponto 2: Escola')
+  })
+
+  it('uses explicit protocol destination and route before text inference', () => {
+    const doc: PlanDocument = {
+      plan: { id: 'plan-1', name: 'Escola', version: 3, status: 'active', updated_at: '2026-07-31T00:00:00Z' },
+      waypoints: [
+        { kind: 'rendezvous_2', name: 'Escola Paola', lat: 2, lng: 2 },
+        { kind: 'rendezvous_3', name: 'Casa da tia', lat: 3, lng: 3 },
+      ],
+      routes: [
+        { label: 'Rota escola', geometry: { type: 'LineString', coordinates: [] }, mode: 'car', notes: 'Entrar pelo portão lateral.' },
+        { label: 'Rota evacuação', geometry: { type: 'LineString', coordinates: [] }, mode: 'car', notes: 'Pegar estrada oeste.' },
+      ],
+      roles: [],
+      triggers: [{
+        condition: 'Incidente na escola',
+        action: 'Buscar criança e não ir para fora da região',
+        action_type: 'meet',
+        destination_kind: 'rendezvous_2',
+        route_label: 'Rota escola',
+      }],
+      acknowledgedBy: [],
+      myAck: null,
+    }
+
+    const steps = buildPlanExecutionSteps(doc, true, buildPlanExecutionProtocols(doc, true)[0])
+
+    expect(steps.map(step => step.title)).toContain('Encontrar: Incidente na escola')
+    expect(steps.map(step => step.title)).toContain('Ponto 2: Escola Paola')
+    expect(steps.map(step => step.title)).not.toContain('Ponto 3: Casa da tia')
+    expect(steps.map(step => step.title)).toContain('Rota escola')
+    expect(steps.map(step => step.title)).not.toContain('Rota evacuação')
+  })
+})
+
+/**
+ * Visto em uso em 2026-08-19: um plano com três protocolos de condição vazia
+ * renderizou três botões SEM TEXTO na tela de execução. Escolher protocolo às
+ * cegas é o pior lugar possível para um rótulo faltando.
+ */
+describe('rótulo de protocolo nunca sai vazio', () => {
+  const docWith = (triggers: Array<{ condition: string; action: string }>) => ({
+    plan: { id: 'p1', name: 'Plano', version: 1, status: 'active', updated_at: '2026-08-19T00:00:00Z' },
+    waypoints: [],
+    routes: [],
+    roles: [],
+    triggers,
+  })
+
+  it('cai para a ação quando a condição está vazia', () => {
+    const [protocol] = buildPlanExecutionProtocols(
+      docWith([{ condition: '   ', action: 'Ir para a escola' }]) as never,
+      true,
+    )
+    expect(protocol.label).toBe('Ir para a escola')
+  })
+
+  it('cai para o número quando condição e ação estão vazias', () => {
+    const protocols = buildPlanExecutionProtocols(
+      docWith([
+        { condition: '', action: '' },
+        { condition: '', action: '' },
+      ]) as never,
+      true,
+    )
+    expect(protocols.map(p => p.label)).toEqual(['Protocolo 1', 'Protocolo 2'])
+    expect(protocols.every(p => p.label.trim().length > 0)).toBe(true)
+  })
+
+  it('preserva a condição quando ela existe', () => {
+    const [protocol] = buildPlanExecutionProtocols(
+      docWith([{ condition: 'Sem contato por 2 horas', action: 'Ir ao ponto 1' }]) as never,
+      true,
+    )
+    expect(protocol.label).toBe('Sem contato por 2 horas')
+  })
+})

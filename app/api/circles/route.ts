@@ -16,6 +16,21 @@ type MemberProfile = {
 }
 
 type CircleRole = 'Admin' | 'Editor' | 'Viewer'
+type FamilyAccessStatus = 'none' | 'requested' | 'approved' | 'denied'
+type CircleMembershipRow = {
+  circle_id: string
+  user_id?: string
+  role?: string | null
+  share_inventory?: boolean | null
+  shared_fields?: string[] | null
+  family_access_status?: FamilyAccessStatus | null
+  household_status?: string | null
+  household_requested_by?: string | null
+  family_access_requested_at?: string | null
+  family_access_requested_by?: string | null
+  family_access_approved_at?: string | null
+  family_access_approved_by?: string | null
+}
 
 /** Beyond this the live point is history, not a position — fall back to profile. */
 const LIVE_POINT_MAX_AGE_MS = 30 * 60 * 1000
@@ -66,11 +81,19 @@ export async function GET() {
 
   const { data: memberships, error: mErr } = await supabase
     .from('circle_members')
-    .select('circle_id, role, share_inventory, shared_fields')
+    .select('circle_id, role, share_inventory, shared_fields, family_access_status, family_access_requested_at, family_access_requested_by, family_access_approved_at, family_access_approved_by, household_status, household_requested_by')
     .eq('user_id', user.id)
-  if (mErr) return NextResponse.json({ error: mErr.message }, { status: 500 })
+  let myMemberships = memberships as CircleMembershipRow[] | null
+  if (mErr) {
+    const { data: legacyMemberships, error: legacyErr } = await supabase
+      .from('circle_members')
+      .select('circle_id, role, share_inventory, shared_fields')
+      .eq('user_id', user.id)
+    if (legacyErr) return NextResponse.json({ error: legacyErr.message }, { status: 500 })
+    myMemberships = legacyMemberships as CircleMembershipRow[] | null
+  }
 
-  const circleIds = (memberships ?? []).map(m => m.circle_id)
+  const circleIds = (myMemberships ?? []).map(m => m.circle_id)
   const { data: ledCircles } = await supabase.from('circles').select('id').eq('leader_id', user.id)
   const allIds = Array.from(new Set<string>([...circleIds, ...((ledCircles ?? []).map(c => c.id) as string[])]))
   if (allIds.length === 0) return NextResponse.json({ circles: [] })
@@ -83,16 +106,22 @@ export async function GET() {
   const admin = createAdminClient()
   const results: unknown[] = []
   for (const c of circles ?? []) {
-    const [{ data: pooled }, { data: members }] = await Promise.all([
-      supabase.rpc('circle_pooled_inventory', { circle_uuid: c.id }),
+    const [{ data: members }] = await Promise.all([
       supabase.from('circle_members')
-        .select('user_id, role, share_inventory, shared_fields')
+        .select('user_id, role, share_inventory, shared_fields, family_access_status, family_access_requested_at, family_access_requested_by, family_access_approved_at, family_access_approved_by, household_status, household_requested_by')
         .eq('circle_id', c.id),
     ])
+    let circleMembers = members as CircleMembershipRow[] | null
+    if (!circleMembers) {
+      const { data: legacyMembers } = await supabase.from('circle_members')
+        .select('user_id, role, share_inventory, shared_fields')
+        .eq('circle_id', c.id)
+      circleMembers = legacyMembers as CircleMembershipRow[] | null
+    }
     // circle_members.user_id references auth.users, and profiles is owner-only
     // under RLS — so resolve co-members' identities with the service-role client
     // (the caller is a member of this circle, which we are iterating).
-    const memberIds = (members ?? []).map(m => m.user_id)
+    const memberIds = (circleMembers ?? []).map(m => m.user_id)
     const profileById = new Map<string, MemberProfile>()
     if (admin && memberIds.length) {
       const { data: profs } = await admin
@@ -127,7 +156,51 @@ export async function GET() {
         for (const p of legacy ?? []) profileById.set(p.id, p as MemberProfile)
       }
     }
-    const row = Array.isArray(pooled) ? pooled[0] : pooled
+    /*
+     * Os recursos do círculo, somados aqui (D-124).
+     *
+     * Antes isto vinha de `supabase.rpc('circle_pooled_inventory')` — uma
+     * função que **não existe no banco**. O PostgREST devolvia PGRST202, o
+     * resultado virava `null`, o bloco de recursos nunca renderizou para
+     * ninguém, e o score do círculo era calculado com zeros em tudo menos o
+     * tamanho. Era por isso que todo círculo mostrava uma nota baixinha.
+     *
+     * Usa o cliente admin porque somar exige ler o inventário de outra pessoa,
+     * e a RLS impede — corretamente. O consentimento que autoriza é o
+     * `share_inventory` que cada um marcou; quem não marcou não entra na conta.
+     */
+    const quemCompartilha = (circleMembers ?? [])
+      .filter(m => m.share_inventory && typeof m.user_id === 'string')
+      .map(m => m.user_id as string)
+
+    let row: {
+      member_count: number
+      water_liters: number
+      food_days: number
+      medical_kit_count: number
+      communication_device_count: number
+    } | null = null
+
+    if (admin && quemCompartilha.length) {
+      const { data: despensas } = await admin
+        .from('resource_inventory')
+        .select('profile_id, water_liters, food_days, has_medical_kit, has_communication_device')
+        .in('profile_id', quemCompartilha)
+      const linhas = (despensas ?? []) as Array<Record<string, unknown>>
+      row = {
+        member_count: quemCompartilha.length,
+        water_liters: linhas.reduce((t, i) => t + (Number(i.water_liters) || 0), 0),
+        // Dias de comida somam como PESSOA-DIA e voltam a dias dividindo pelo
+        // número de despensas — a mesma unidade que `lib/household.ts` usa.
+        // Somar o campo cru daria o dobro da comida que existe.
+        food_days: linhas.length
+          ? linhas.reduce((t, i) => t + (Number(i.food_days) || 0), 0) / linhas.length
+          : 0,
+        medical_kit_count: linhas.filter(i => i.has_medical_kit).length,
+        communication_device_count: linhas.filter(i => i.has_communication_device).length,
+      }
+    }
+
     const score = computeCircleScore({
       water_liters: Number(row?.water_liters ?? 0),
       food_days: Number(row?.food_days ?? 0),
@@ -135,7 +208,7 @@ export async function GET() {
       communication_device_count: Number(row?.communication_device_count ?? 0),
       member_count: Number(row?.member_count ?? 0),
     })
-    const myMembership = memberships?.find(m => m.circle_id === c.id)
+    const myMembership = myMemberships?.find(m => m.circle_id === c.id)
     const myRole = (myMembership?.role as CircleRole | undefined) ?? (c.leader_id === user.id ? 'Admin' : 'Viewer')
     results.push({
       ...c,
@@ -145,7 +218,7 @@ export async function GET() {
       shared_fields: (myMembership?.shared_fields as string[] | undefined) ?? [],
       pooled: row,
       score,
-      members: (members ?? []).map(m => {
+      members: (circleMembers ?? []).filter((m): m is CircleMembershipRow & { user_id: string } => typeof m.user_id === 'string').map(m => {
         const p = profileById.get(m.user_id) ?? null
         const sharedFields = (m.shared_fields as string[] | undefined) ?? []
         const sharesContact = m.share_inventory && (sharedFields.length === 0 || sharedFields.includes('emergency_contact'))
@@ -168,6 +241,17 @@ export async function GET() {
           emergency_contact_name: sharesContact ? (p?.emergency_contact_name ?? null) : null,
           emergency_contact_phone: sharesContact ? (p?.emergency_contact_phone ?? null) : null,
           share_inventory: m.share_inventory as boolean,
+          family_access_status: ((m.family_access_status as FamilyAccessStatus | undefined) ?? 'none'),
+          family_access_requested_at: (m.family_access_requested_at as string | undefined) ?? null,
+          family_access_requested_by: (m.family_access_requested_by as string | undefined) ?? null,
+          family_access_approved_at: (m.family_access_approved_at as string | undefined) ?? null,
+          family_access_approved_by: (m.family_access_approved_by as string | undefined) ?? null,
+          /**
+           * Mora na mesma casa (D-123). Consentimento SEPARADO do de ficha
+           * médica: este entra na conta de água, aquele abre o prontuário.
+           */
+          household_status: ((m.household_status as string | undefined) ?? 'none'),
+          household_requested_by: (m.household_requested_by as string | undefined) ?? null,
           is_me: isMe,
         }
       }),
@@ -200,5 +284,53 @@ export async function POST(req: NextRequest) {
   await supabase.from('circle_members').insert({
     circle_id: circle.id, user_id: user.id, role: 'Admin', share_inventory: true,
   })
-  return NextResponse.json({ circle }, { status: 201 })
+
+  /*
+   * Quem criou o círculo mora nele (D-130).
+   *
+   * Sem esta linha, a pessoa cria a casa e ela conta uma pessoa — a dela mesma
+   * fora. Foi exatamente o que confundiu o dono no D-129: Círculos dizia "sua
+   * casa (3)" e o motor contava 1, porque ele nunca tinha confirmado. Quem
+   * cria a casa declarou que mora nela pelo próprio ato.
+   */
+  await supabase
+    .from('circle_members')
+    .update({ household_status: 'confirmed', household_confirmed_at: new Date().toISOString() })
+    .eq('circle_id', circle.id)
+    .eq('user_id', user.id)
+
+  /*
+   * Os convites guardados encontram um círculo (D-130).
+   *
+   * A pessoa listou quem mora na casa lá na ficha, disse "agora não" para o
+   * plano, e os nomes ficaram esperando. Agora o círculo existe, e eles se
+   * amarram a ele — sem ela digitar tudo de novo.
+   *
+   * O STATUS CONTINUA `pending`, e isso é deliberado. A primeira versão marcava
+   * `sent` aqui, e era mentira: nada foi enviado. O convite deste app é um link
+   * que a pessoa compartilha, e só ela sabe por onde. Marcar como enviado o que
+   * ninguém enviou faria a tela dizer que a Daniela foi convidada enquanto a
+   * Daniela não recebeu nada.
+   *
+   * Falha aqui não derruba a criação do círculo — o círculo é o pedido, os
+   * convites são a cortesia.
+   */
+  let convitesProntos = 0
+  try {
+    const admin = createAdminClient()
+    if (admin) {
+      const { data } = await admin
+        .from('household_invites')
+        .update({ circle_id: circle.id })
+        .eq('owner_id', user.id)
+        .eq('status', 'pending')
+        .is('circle_id', null)
+        .select('id')
+      convitesProntos = data?.length ?? 0
+    }
+  } catch {
+    /* ver o comentário acima */
+  }
+
+  return NextResponse.json({ circle, pendingInvitesReady: convitesProntos }, { status: 201 })
 }

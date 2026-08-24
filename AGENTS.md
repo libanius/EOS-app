@@ -97,3 +97,24 @@ It does not drive decisions. It reflects them.
 - Commit message format: `type(scope): description`
 - Always push after committing — do not leave commits only local
 - The agent commits and pushes; do not wait for the user to do it
+
+---
+
+## Rule 11 — Design with Intent / Wren
+
+Design with Intent (`intent@intent`) is available in Claude Code for UX planning.
+Use Wren before structural UX changes involving information architecture,
+navigation architecture, user journeys, feature ownership, screen hierarchy, or
+wireframing.
+
+Wren is an experience architect for planning and critique. It must not modify
+code, refactor the app, or implement UI unless the user explicitly asks for
+implementation after the planning/specification step.
+
+Expected flow:
+
+```text
+PLANNING: Wren / Design with Intent
+SPECIFICATION: App Spine / roadmap / decision log
+IMPLEMENTATION: Claude Code / Codex
+```

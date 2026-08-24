@@ -1,4 +1,4 @@
-// ─── Synthesized events + notification copy (D-074) ───────────────────────────
+// ─── Synthesized events + notification copy (D-220) ───────────────────────────
 //
 // Two of the five alert types the competitor sends are not "events" in any feed:
 // air quality is a number, and the rain nowcast is a forecast curve. This file
@@ -87,8 +87,8 @@ export function airQualityEvent(
     visualClass: 'DETECTED_EVENT',
     hazardType: 'air_quality',
     eventType: `air_quality_${band.key}`,
-    title: `Qualidade do ar: ${band.pt}`,
-    summary: `AQI ${aqi} — ${band.pt}.${aq?.pm25 != null ? ` PM2.5 ${aq.pm25} µg/m³.` : ''}`,
+    title: `Air quality: ${band.en}`,
+    summary: `AQI ${aqi} — ${band.en}.${aq?.pm25 != null ? ` PM2.5 ${aq.pm25} µg/m³.` : ''}`,
     severity: band.severity,
     urgency: 'immediate',
     certainty: 'observed',
@@ -122,7 +122,7 @@ export function precipitationEvent(
   if (INTENSITY_RANK[precip.intensity] < INTENSITY_RANK[A.precipMinimumIntensity]) return null
 
   const iso = now.toISOString()
-  const label = INTENSITY_PT[precip.intensity]
+  const label = INTENSITY_EN[precip.intensity]
   const duration = precip.expectedDurationMinutes
   return {
     id: `eos:precip:${scanKey}`,
@@ -132,10 +132,10 @@ export function precipitationEvent(
     visualClass: 'FORECAST',
     hazardType: 'precipitation',
     eventType: 'rain_starting_soon',
-    title: `${label} começando em ${precip.startsInMinutes} min`,
+    title: `${label} starting in ${precip.startsInMinutes} min`,
     summary: duration
-      ? `${label} começando em ${precip.startsInMinutes} minutos, deve durar cerca de ${duration} minutos.`
-      : `${label} começando em ${precip.startsInMinutes} minutos.`,
+      ? `${label} starting in ${precip.startsInMinutes} minutes, probably stopping within ${duration} minutes.`
+      : `${label} starting in ${precip.startsInMinutes} minutes.`,
     severity: precip.intensity === 'heavy' ? 'moderate' : 'minor',
     urgency: 'expected',
     certainty: precip.probability >= 0.7 ? 'likely' : 'possible',
