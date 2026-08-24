@@ -41,6 +41,57 @@ Achado de passagem, corrigido aqui: o filtro de relevância do USGS re-extraía 
 
 ---
 
+## D-219 — O campo escalar do vento amostra em rede, não por pixel
+
+**Date**: 2026-08-19
+**Status**: DECIDED
+**Roadmap**: MAP follow-up (defeito visto em uso)
+**Spec**: `docs/16-hybrid-world-dashboard.md`
+
+**Context**: ligar o Vento congelava a página. O dono reproduziu em Chrome e
+Safari, inclusive em aba anônima, e o navegador oferecia "aguardar ou sair" —
+sintoma de thread principal bloqueada, não de rede.
+
+`WindParticleLayer.renderScalarField` percorria **cada pixel** do canvas —
+~705.000 num laptop com `scalarMaxDpr: 0.72` — e para cada um chamava
+`map.unproject()` mais uma interpolação com busca binária. Tudo síncrono.
+
+O dono notou que piorava no HÍBRIDO, e a observação era a chave: híbrido é a
+**única** base que liga o terreno 3D (`providers.ts`: `hasTerrain: !isDark &&
+!isSatellite && Boolean(key)`). Com terreno, `unproject` deixa de ser inversão
+de matriz e vira raycast contra a malha de elevação. Setecentos mil raycasts não
+terminam.
+
+O absurdo de fundo: a grade de vento tem **625 pontos** (25×25, `WorldMap.tsx`).
+O render gerava 705 mil amostras a partir deles — mil vezes mais fino que o
+dado, produzindo zero informação nova.
+
+**Decision**: o campo escalar é calculado num canvas de baixa resolução, uma
+amostra a cada `scalarSampleStep` pixels (padrão 8), e ampliado com suavização
+bilinear. A conta cai 64x — ~11.000 amostras no lugar de ~705.000.
+
+**Cada amostra continua sendo um `unproject` REAL.** A alternativa óbvia —
+desprojetar os quatro cantos e interpolar lng/lat entre eles — foi **recusada**:
+o mapa abre com `pitch: 56°`, a projeção não é afim, e o campo pararia no lugar
+geográfico errado perto do horizonte. Num app de emergência, vento desenhado no
+lugar errado é falha pior que lentidão.
+
+**Consequence**: o vento volta a funcionar nas três bases, sem regra nova. A
+proposta de restringir o Vento ao Satélite foi descartada: ela reverteria a
+D-199 (vento é camada, não base), tiraria os rótulos de rua do híbrido e
+sobrescreveria a preferência persistida em `profiles.map_base_mode` (D-h). Se o
+terreno ainda pesar depois desta correção, o próximo passo é suspender o relevo
+3D com o vento ligado, declarando na tela — nunca trocar a base escolhida pela
+pessoa em silêncio.
+
+Visualmente o campo é indistinguível: a fonte já era suave, e a ampliação
+bilinear devolve a mesma mancha.
+
+**Não autorizado por D-219**: voltar a amostrar por pixel; interpolar lng/lat
+entre cantos da tela; acoplar o Vento a uma base específica.
+
+---
+
 ## D-218 — Mapa e rota offline saem de OSM, não do Google
 
 **Date**: 2026-08-19

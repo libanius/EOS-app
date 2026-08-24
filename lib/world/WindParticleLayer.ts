@@ -13,6 +13,8 @@ export type WindParticleLayerConfig = {
   maxAgeJitter: number
   scalarOpacity: number
   scalarMaxDpr: number
+  /** Lado da célula de amostragem do campo escalar, em pixels de canvas. */
+  scalarSampleStep: number
   minStepPx: number
   maxSegmentPx: number
 }
@@ -52,6 +54,7 @@ const DEFAULT_CONFIG: WindParticleLayerConfig = {
   maxAgeJitter: 170,
   scalarOpacity: 0.78,
   scalarMaxDpr: 0.72,
+  scalarSampleStep: 8,
   minStepPx: 1.45,
   maxSegmentPx: 34,
 }
@@ -172,6 +175,7 @@ export class WindParticleLayer {
   private ctx: CanvasRenderingContext2D
   private scalarCanvas: HTMLCanvasElement | null
   private scalarCtx: CanvasRenderingContext2D | null
+  private scalarScratch: HTMLCanvasElement | null = null
   private config: WindParticleLayerConfig
   private particles: Particle[] = []
   private grid: Grid | null = null
@@ -179,6 +183,7 @@ export class WindParticleLayer {
   private frame: number | null = null
   private scalarTimer: number | null = null
   private scalarPixels = 0
+  private scalarSamples = 0
   private skippedSegments = 0
   private hidden = false
 
@@ -336,6 +341,48 @@ export class WindParticleLayer {
     }, 120)
   }
 
+  /**
+   * Canvas de baixa resolução onde o campo escalar é calculado antes de ser
+   * ampliado. Vive na instância porque redimensioná-lo é mais barato que
+   * recriá-lo a cada render.
+   */
+  private ensureScratch(cols: number, rows: number) {
+    let scratch = this.scalarScratch
+    if (!scratch) {
+      scratch = document.createElement('canvas')
+      this.scalarScratch = scratch
+    }
+    if (scratch.width !== cols || scratch.height !== rows) {
+      scratch.width = cols
+      scratch.height = rows
+    }
+    return scratch
+  }
+
+  /**
+   * ── O CAMPO ESCALAR NÃO PRECISA DE UMA AMOSTRA POR PIXEL ────────────────
+   *
+   * A versão anterior percorria CADA pixel do canvas — ~705 mil num laptop —
+   * e para cada um chamava `map.unproject()` mais uma interpolação. Isso
+   * travava a thread principal por dezenas de segundos, e o `Page
+   * Unresponsive` do navegador aparecia.
+   *
+   * No modo HÍBRIDO era pior por um motivo que não estava à vista: híbrido é a
+   * única base que liga o terreno 3D (`providers.ts` → `hasTerrain`), e com
+   * terreno o `unproject` deixa de ser inversão de matriz e vira raycast
+   * contra a malha de elevação. Setecentos mil raycasts não terminam.
+   *
+   * E tudo isso para desenhar um campo de **625 pontos** (grade 25×25). O
+   * render era mil vezes mais fino que o dado — computação que não produzia
+   * informação nenhuma.
+   *
+   * Agora amostra a cada `scalarSampleStep` pixels e deixa o canvas ampliar
+   * com suavização. Cada amostra continua sendo um `unproject` REAL, então
+   * perspectiva e terreno seguem corretos — o que muda é a quantidade, que cai
+   * 64x. Interpolar entre os cantos seria mais rápido ainda e estaria ERRADO:
+   * com `pitch: 56°` a projeção não é afim, e o campo iria parar no lugar
+   * geográfico errado perto do horizonte.
+   */
   private renderScalarField() {
     const grid = this.grid
     const ctx = this.scalarCtx
@@ -345,14 +392,28 @@ export class WindParticleLayer {
       return
     }
     const { width, height, dpr } = size
-    const image = ctx.createImageData(width, height)
+    const step = Math.max(1, Math.round(this.config.scalarSampleStep))
+    const cols = Math.max(1, Math.ceil(width / step))
+    const rows = Math.max(1, Math.ceil(height / step))
+
+    const scratch = this.ensureScratch(cols, rows)
+    const scratchCtx = scratch.getContext('2d')
+    if (!scratchCtx) {
+      this.clearScalar()
+      return
+    }
+
+    const image = scratchCtx.createImageData(cols, rows)
     const data = image.data
     let drawn = 0
-    for (let y = 0; y < height; y += 1) {
-      for (let x = 0; x < width; x += 1) {
-        const lngLat = this.map.unproject([x / dpr, y / dpr])
+    for (let row = 0; row < rows; row += 1) {
+      // Centro da célula, em pixels CSS — é o que `unproject` espera.
+      const py = ((row + 0.5) * step) / dpr
+      for (let col = 0; col < cols; col += 1) {
+        const px = ((col + 0.5) * step) / dpr
+        const lngLat = this.map.unproject([px, py])
         const vector = interpolate(grid, normalizeLngForGrid(grid, lngLat.lng), lngLat.lat)
-        const idx = (y * width + x) * 4
+        const idx = (row * cols + col) * 4
         if (!vector) {
           data[idx + 3] = 0
           continue
@@ -365,8 +426,20 @@ export class WindParticleLayer {
         drawn += 1
       }
     }
-    ctx.putImageData(image, 0, 0)
-    this.scalarPixels = drawn
+    scratchCtx.putImageData(image, 0, 0)
+
+    /*
+     * `putImageData` ignora suavização e transformação; `drawImage` não. A
+     * ampliação bilinear é o que devolve a mancha macia que a versão por pixel
+     * produzia — e ela é fiel porque o dado de origem já era suave.
+     */
+    ctx.clearRect(0, 0, width, height)
+    ctx.imageSmoothingEnabled = true
+    ctx.imageSmoothingQuality = 'high'
+    ctx.drawImage(scratch, 0, 0, cols, rows, 0, 0, width, height)
+
+    this.scalarSamples = drawn
+    this.scalarPixels = drawn * step * step
     this.debug(true)
   }
 
@@ -551,6 +624,7 @@ export class WindParticleLayer {
           mode: 'bilinear',
           scalar: Boolean(this.scalarCanvas),
           scalarPixels: this.scalarPixels,
+          scalarSamples: this.scalarSamples,
           wrapsWorld: this.grid ? gridWrapsWorld(this.grid) : false,
           frameIndex: this.grid?.cells?.[0]?.find(Boolean)?.frameIndex ?? 0,
           cycloneAdjusted: this.grid ? this.grid.cells.flat().filter(r => r?.cycloneAdjusted).length : 0,
