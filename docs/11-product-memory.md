@@ -19,6 +19,17 @@ Corolário que vale para qualquer canal novo: o silêncio é parte do produto. U
 varredura a cada 10 minutos sobre uma tempestade parada precisa notificar zero
 vezes. Se o motor não sabe ficar quieto, ele não pode ser ligado.
 
+## Cron sub-diário no `vercel.json` derruba o deploy no plano Hobby (2026-08-24)
+
+Não é degradação silenciosa — é erro de validação que **falha a publicação
+inteira**: `Hobby accounts are limited to daily cron jobs`. O app parou de
+publicar por causa de uma feature que nem estava sendo usada ainda.
+
+Por isso **não existe `vercel.json` neste repo**. O agendamento vive no
+`pg_cron` do Supabase, que roda a cada 10 min de graça e não amarra o alerta ao
+plano de hospedagem. Regra geral: configuração de plataforma que só funciona num
+plano pago não entra no repositório — ela quebra quem está no plano gratuito.
+
 ## Nunca re-extraia número de texto que você mesmo formatou (2026-08-24)
 
 O filtro de relevância do USGS pegava a magnitude de volta do título com

@@ -79,10 +79,10 @@ silêncio nunca é confundido com "nenhum perigo hoje".
 
 ### Opção A — pg_cron no Supabase (recomendada, custo zero)
 
-O plano Hobby da Vercel só permite **1 cron por dia**, o que é inútil para
-alertas. O `pg_cron` roda dentro do próprio Supabase, a cada 10 minutos, sem
-custo adicional. O bloco pronto está comentado no final da migration — troque
-`<SEU-DOMINIO>` e `<CRON_SECRET>` e execute **depois** do deploy:
+O `pg_cron` roda dentro do próprio Supabase, a cada 10 minutos, sem custo
+adicional e sem depender do plano da Vercel. O bloco pronto está comentado no
+final da migration — troque `<SEU-DOMINIO>` e `<CRON_SECRET>` e execute
+**depois** do deploy:
 
 ```sql
 CREATE EXTENSION IF NOT EXISTS pg_cron;
@@ -104,11 +104,25 @@ SELECT cron.schedule(
 
 Conferir: `SELECT * FROM cron.job;` · Desagendar: `SELECT cron.unschedule('eos-hazard-scan');`
 
-### Opção B — Vercel Cron
+### Opção B — Vercel Cron (só no plano Pro)
 
-`vercel.json` já traz a entrada `*/10 * * * *`. Ela só vale de fato no plano
-**Pro**; no Hobby a Vercel reduz para 1x/dia silenciosamente. A Vercel envia o
-`Authorization: Bearer $CRON_SECRET` automaticamente quando a env existe.
+⚠️ **Não existe `vercel.json` no repo de propósito.** Uma conta **Hobby** não
+"reduz" um cron sub-diário: ela **rejeita o deploy inteiro** na validação, com
+`Hobby accounts are limited to daily cron jobs`. Ou seja, commitar a entrada de
+cron derruba a publicação do app até para quem nem quer usá-la.
+
+Se e quando a conta for **Pro**, crie `vercel.json` na raiz:
+
+```json
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [{ "path": "/api/cron/hazard-scan", "schedule": "*/10 * * * *" }]
+}
+```
+
+A Vercel envia o `Authorization: Bearer $CRON_SECRET` automaticamente quando a
+env existe. Enquanto a conta for Hobby, use a Opção A — ela é melhor de todo
+jeito, porque não amarra o alerta ao plano de hospedagem.
 
 ### Custo real de uma varredura
 
