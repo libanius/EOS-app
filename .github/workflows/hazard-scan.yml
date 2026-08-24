@@ -1,0 +1,90 @@
+# Varredura de hazards a cada 10 minutos (D-220).
+#
+# ARQUIVO SEPARADO do `weather-notifications.yml` de propósito, e não um passo a
+# mais dentro dele. São dois motores distintos até o ALERT-T05: cadências
+# diferentes (10 vs 15 min), deduplicações independentes e canais diferentes
+# (push na tela de bloqueio vs caixa de entrada do app). Juntos num job só, uma
+# falha do hazard-scan pintaria de vermelho uma passada de clima que funcionou —
+# e é exatamente esse tipo de sinal confuso que faz um agendador quebrado passar
+# meses sem ninguém notar.
+#
+# PARA ATIVAR: o segredo `CRON_SECRET` já deve existir em
+# Settings → Secrets and variables → Actions (o D-113 usa o mesmo). Nada mais.
+#
+# ORDEM IMPORTA: o GitHub só agenda `schedule` a partir do branch PADRÃO. Este
+# arquivo fica inerte enquanto viver num branch de feature, e passa a rodar
+# sozinho no merge para o `main` — junto com o deploy que publica a rota. Se uma
+# passada cair na janela entre o merge e o fim do build da Vercel, ela falha uma
+# vez com 404 e a seguinte já encontra a rota no ar.
+
+name: Hazard scan
+
+on:
+  schedule:
+    # A cada 10 min: é a cadência que o motor de transições assume para não
+    # perder um agravamento entre passadas. O GitHub atrasa em horários de pico;
+    # para um alerta, minutos de atraso são aceitáveis — uma hora não é.
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  # Grupo PRÓPRIO, separado do weather-notifications: um motor nunca deve ficar
+  # na fila esperando o outro. Duas passadas simultâneas do mesmo motor, porém,
+  # competiriam pelo índice único (user_id, dedup_key) e gerariam gravação
+  # perdida — por isso serializadas entre si.
+  group: hazard-scan
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Disparar a varredura de hazards
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          TARGET: ${{ vars.EOS_CRON_URL || 'https://eos-app-fawn.vercel.app' }}
+        run: |
+          set -uo pipefail
+
+          if [ -z "${CRON_SECRET:-}" ]; then
+            echo "::error::CRON_SECRET não está configurado nos secrets do repositório."
+            exit 1
+          fi
+
+          # --max-time acompanha o maxDuration=300 da rota. Cortar antes seria
+          # marcar como falha uma varredura que ainda estava dentro do orçamento.
+          code=$(curl -sS -o /tmp/scan.json -w '%{http_code}' \
+            --max-time 300 \
+            -X POST \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$TARGET/api/cron/hazard-scan")
+
+          echo "HTTP $code"
+          head -c 2000 /tmp/scan.json || true
+          echo
+
+          # O resumo no painel da execução, não só enterrado no log: quantas
+          # transições viraram push e quantas foram suprimidas, e por quê, é a
+          # única resposta possível para "por que eu não fui avisado?".
+          {
+            echo "### Hazard scan — HTTP $code"
+            echo ''
+            echo '```json'
+            head -c 2000 /tmp/scan.json || true
+            echo ''
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          # Falhar alto é o ponto. Esta rota devolve 200 mesmo com erro em uma
+          # localização isolada (o resumo os lista em `errors`), então um código
+          # >= 400 aqui significa falha real: segredo errado, rota ausente,
+          # aplicação fora do ar.
+          if [ "$code" -ge 400 ]; then
+            echo "::error::A rota respondeu $code."
+            exit 1
+          fi
+
+          if [ "$code" -eq 000 ]; then
+            echo "::error::Sem resposta (timeout ou conexão recusada)."
+            exit 1
+          fi

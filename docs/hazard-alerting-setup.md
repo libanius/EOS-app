@@ -89,17 +89,28 @@ silêncio nunca é confundido com "nenhum perigo hoje".
 
 ## Passo 3 — Agendar
 
-### Opção A — GitHub Actions (recomendada; já é o que o D-113 usa)
+### Opção A — GitHub Actions ✅ **já pronta no repositório**
 
-O repositório **já tem** `.github/workflows/weather-notifications.yml`, rodando
-a cada 15 min de graça. Adicione um passo para a nova rota no mesmo workflow, ou
-duplique o arquivo trocando o caminho para `/api/cron/hazard-scan`. É a resposta
-certa para a preocupação de custo: o GitHub agenda sem cobrar, e não amarra o
-alerta ao plano da Vercel.
+`.github/workflows/hazard-scan.yml` existe e roda a cada 10 min, com
+`workflow_dispatch` para disparo manual. O GitHub agenda sem cobrar, e o alerta
+não fica amarrado ao plano da Vercel.
+
+É um **arquivo separado** do `weather-notifications.yml`, de propósito: são dois
+motores até o `ALERT-T05`, com cadências (10 vs 15 min) e deduplicações
+independentes. Num job só, uma falha do hazard-scan pintaria de vermelho uma
+passada de clima que funcionou — e sinal confuso é como um agendador quebrado
+passa meses sem ninguém notar.
 
 Requer o segredo `CRON_SECRET` em **Settings → Secrets and variables → Actions**,
-com o mesmo valor da Vercel. Sem ele o workflow falha alto (401) em vez de
-fingir que rodou.
+com o mesmo valor da Vercel. **O D-113 já usa esse mesmo segredo**, então se o
+workflow de clima roda sem 401, não há nada a configurar. Sem ele o workflow
+falha alto em vez de fingir que rodou.
+
+> **O GitHub só agenda `schedule` a partir do branch padrão.** Num branch de
+> feature o arquivo fica inerte; ele passa a rodar sozinho no merge para o
+> `main`, junto com o deploy que publica a rota. Uma passada que caia na janela
+> entre o merge e o fim do build falha uma vez com 404, e a seguinte já
+> encontra a rota no ar.
 
 ### Opção B — pg_cron no Supabase (custo zero, sem depender do GitHub)
 
@@ -151,6 +162,9 @@ são gratuitos e sem chave. Os limites ficam em `HAZARD_CONFIG.alerting`:
 curl -X POST https://<SEU-DOMINIO>/api/cron/hazard-scan \
   -H "Authorization: Bearer $CRON_SECRET"
 ```
+
+Sem terminal à mão: **Actions → Hazard scan → Run workflow**. Dispara a mesma
+passada e imprime o resumo no painel da execução.
 
 Resposta:
 
