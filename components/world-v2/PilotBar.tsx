@@ -11,14 +11,9 @@
  * So typing here IS talking to the Pilot. "home depot perto de mim" is a
  * question, not a query — and the specialist answers it, finds it, and offers to
  * put it on the map.
- *
- * The conversation only opens on ENTER. Touching the field used to raise the
- * whole sheet over the map before a single character existed — the person had
- * asked nothing and was already covered. Focus is intent to type; Enter is
- * intent to ask. The orb next door is the way in when there is no question yet.
  */
 
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { haptic } from './motion'
 import PilotOrb from './PilotOrb'
 
@@ -34,17 +29,15 @@ export default function PilotBar({
   riskState: string
 }) {
   const [draft, setDraft] = useState('')
-  const fieldRef = useRef<HTMLInputElement>(null)
 
   const submit = () => {
     const question = draft.trim()
-    // Enter with nothing typed is a slip, not a request: stay where we are.
-    if (!question) return
+    if (!question) {
+      onOpen()
+      return
+    }
     haptic.impact()
     setDraft('')
-    // Hand the screen back to the answer: the field keeps focus after submit,
-    // so on a phone the keyboard would stay up covering the conversation.
-    fieldRef.current?.blur()
     onAsk(question)
   }
 
@@ -59,7 +52,6 @@ export default function PilotBar({
         }}
       >
         <input
-          ref={fieldRef}
           value={draft}
           onChange={event => setDraft(event.target.value)}
           placeholder={pt ? 'Pergunte ou procure algo' : 'Ask or search for anything'}

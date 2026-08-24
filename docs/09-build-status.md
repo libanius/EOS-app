@@ -16,7 +16,10 @@
 | **⚠ Pendência operacional** | **Aplicar `supabase/migrations/20260813210000_profiles_auth_fk.sql`** (D-175). Limpa 9 perfis de teste vazios e cria a FK que impede a recorrência. Para com erro se encontrar órfão com dado. |
 | **Migrações aplicadas** | `locations`, `holdings`, `kits`, `requirements`, `checklists.status` — todas verificadas por REST. |
 | **Migrações aplicadas** | As duas de Preparedness State **aplicadas em 2026-08-13** e verificadas por REST: `locations`, `holdings`, `kits`, `requirements` → 200. Nenhuma pendência operacional. |
-| **Last Completed Task** | **D-188 / COMMS-T12 — lista, thread e conversa individual (2026-08-15)** |
+| **⚠️ Migration pendente** | `20260824000000_hazard_alerting.sql` — alertas por mudança (D-220). **Idempotente e autossuficiente**: cria/completa 6 tabelas + `profiles.language`, e substitui a `20260710010000_hazard_tables.sql`, que nunca foi aplicada. Até aplicar, a varredura não tem onde guardar memória e nenhum alerta de mudança é possível. Ver `docs/hazard-alerting-setup.md`. |
+| **⚠️ Env pendente** | `CRON_SECRET` — na Vercel **e** nos secrets do GitHub Actions (mesmo valor). Sem ela `/api/cron/hazard-scan` responde 503 e não roda, de propósito. |
+| **Last Completed Task** | **ALERT-T01→T04 / D-220 — alertas por mudança com push real na tela de bloqueio (2026-08-24)** |
+| | **D-188 / COMMS-T12 — lista, thread e conversa individual (2026-08-15)** |
 | | **AUTHOR-T02 / D-217 — confirmar ponto deixa de ser bloqueado por precisão (2026-08-19)** |
 | | **Correções da tela de execução, vistas em uso (2026-08-19)** — rótulo de protocolo nunca sai vazio; faixa de execução deixa de apagar o texto na ponta direita. |
 | | **D-216 / PLAN follow-up — excluir plano arquiva, com trava de execução em curso (2026-08-19)** |

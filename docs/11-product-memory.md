@@ -5,6 +5,43 @@
 
 ---
 
+**Um alerta é sobre MUDANÇA; um widget é sobre estado (D-220).** O EOS tinha as
+fontes certas (NHC, NWS, USGS, AQI, nowcast) e ainda assim não entregava o que o
+concorrente entregava. "Existe um Furacão Categoria 1" é widget. "Lala **foi
+rebaixado** para Categoria 1" é alerta — e a segunda frase só é possível se a
+varredura anterior gravou que ontem era Categoria 2. **Sem memória persistida
+não existe alerta, só display.** Corolário para qualquer canal novo: o silêncio é
+parte do produto. Varrer a cada 10 min sobre uma tempestade parada precisa
+notificar zero vezes; motor que não sabe ficar quieto não pode ser ligado.
+
+**Nunca re-extraia número de texto que você mesmo formatou (D-220).** O filtro de
+relevância do USGS pegava a magnitude de volta do título com `/M(\d+\.\d+)/`. O
+título do USGS é `"M 4.3 - 10km SSW of…"` — **com espaço**. A regex nunca casou,
+toda magnitude virou `0`, e o filtro descartou **todo terremoto** como
+irrelevante. Ficou assim por semanas sem ninguém notar, porque a falha é
+silenciosa: lista vazia parece dia tranquilo. Agora os números vivem em
+`HazardEvent.metrics` e o texto é só apresentação. A mesma lição apareceu de novo
+na cópia das notificações — rótulo congelado em português na detecção saía como
+"downgraded to Furacão Categoria 1" num telefone em inglês. **Guarde o dado
+estruturado; renderize no idioma de quem lê, na hora de ler.**
+
+**Cron sub-diário no `vercel.json` derruba o deploy no plano Hobby (D-220).** Não
+é degradação silenciosa — é erro de validação que **falha a publicação inteira**:
+`Hobby accounts are limited to daily cron jobs`. O app parou de publicar por
+causa de uma feature que nem estava ligada. Por isso o agendamento vive no
+GitHub Actions (D-113) e o `vercel.json` só tem o cron diário de rede de
+segurança. Regra geral: configuração de plataforma que só funciona em plano pago
+não entra no repositório — ela quebra quem está no plano gratuito.
+
+**"Não existe X" precisa ser verificado no `main`, não na sua branch (D-220).**
+Esta feature nasceu de uma auditoria que concluiu "não existe nenhum job
+agendado". A branch estava um mês atrás do `main`, onde o D-113 já tinha
+entregue exatamente isso. A conclusão sobrevivente ainda era válida (faltava push
+real e memória de estado), mas metade do diagnóstico era sobre um problema já
+resolvido. Antes de afirmar ausência, `git fetch` e olhar o `main`.
+
+---
+
 **"Casa" tem UMA definição: contas confirmadas + dependentes delas
 (D-129/D-179).** Círculos mostrava "SUA CASA (3)" e o cadastro dizia "ninguém
 cadastrado", porque um lia contas e o outro só dependentes. `/family/cadastro`
