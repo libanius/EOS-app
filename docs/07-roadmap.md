@@ -211,6 +211,13 @@
 | WV2-T10 | Responsividade no celular: câmera do usuário, teclado e entrada única | ✅ COMPLETE | 2026-07-28 — D-070. A recentragem automática recolhia o sheet em uso; agora a câmera segue só na 1ª leitura e apenas gestos reais recolhem o HUD |
 | WV2-T11 | PilotBar substitui a busca — o Pilot vira a entrada única | ✅ COMPLETE | 2026-07-28 — D-070; `MapSearch` aposentado |
 | WV2-T12 | PilotBar abre a conversa no Enter, não no toque | ✅ COMPLETE | 2026-07-29 — D-073; tocar na barra deixa digitar, só o Enter submete ao Pilot |
+| ALERT-T01 | Varredura agendada de hazards (`/api/cron/hazard-scan`) | ✅ COMPLETE | 2026-08-24 — D-074; agnóstica de agendador (pg_cron recomendado, custo zero) |
+| ALERT-T02 | Motor de transição: formed / upgraded / downgraded / cleared | ✅ COMPLETE | 2026-08-24 — D-074; `lib/hazards/transitions.ts`, 29 testes. Alerta é sobre MUDANÇA |
+| ALERT-T03 | Push automático com dedup, quiet hours, cooldown e preferências | ✅ COMPLETE | 2026-08-24 — D-074; toda supressão registrada com motivo em `notification_delivery_log` |
+| ALERT-T04 | AQI e nowcast de chuva como eventos do mesmo pipeline | ✅ COMPLETE | 2026-08-24 — D-074; os 5 tipos do concorrente cobertos |
+| ALERT-T05 | Tela de preferências de alerta (API pronta, UI pendente) | PENDING | `/api/hazards/preferences` GET/PUT existe; falta a tela em `/settings` |
+| ALERT-T06 | Persistir idioma em `profiles` para push no idioma certo | PENDING | Hoje o push sai em pt para todos — idioma só existe no localStorage |
+| ALERT-T07 | Ligar `/api/hazards` no `RiskProvider` (NHC + nowcast no dashboard) | PENDING | Dashboard ainda lê só `/api/weather-intelligence` |
 | PILOT-T03 | Rule-backed recommendation states: GO, LIMITED, WAIT, AVOID, PRIORITY OVERRIDE | BLOCKED | Critical rules must override AI |
 | PILOT-T04 | Metrics instrumentation for discovery, trust, retention, personalization, safety | BLOCKED | Needed before production rollout |
 

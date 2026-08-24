@@ -4,6 +4,37 @@
 
 ---
 
+## D-074 — O EOS avisa com o app fechado; e avisa sobre MUDANÇA, não sobre estado
+
+**Date**: 2026-08-24
+**Status**: DECIDED / IMPLEMENTADO — depende da migration `20260824000000_hazard_alerting.sql` e da env `CRON_SECRET`
+**Spec**: `docs/hazard-alerting-setup.md`
+
+**Context**: O dono comparou o EOS com o MyRadar no celular. O concorrente entregou 5 notificações (tempestade formada, tempestade elevada, furacão rebaixado, ar insalubre, chuva em 15 min). O EOS não entregou nenhuma. A auditoria mostrou que **não era falta de fonte** — NHC, NWS, USGS, AQI e nowcast já estavam integrados e vivos desde D-043. Faltavam três coisas:
+
+1. **Nada rodava com o app fechado.** Toda rota era on-demand; o único push era o broadcast manual de um Admin de círculo.
+2. **Não havia memória.** Os providers devolvem o estado atual. "Foi rebaixado para Categoria 1" exige saber que ontem era Categoria 2 — e a migration que guardaria isso (`20260710010000`) nunca foi aplicada.
+3. **O dashboard nem consumia o subsistema.** `RiskProvider` lê `/api/weather-intelligence`; NHC e nowcast só existem em `/api/hazards`.
+
+**Decision**:
+1. **Varredura agendada, agnóstica de agendador.** `/api/cron/hazard-scan` é uma requisição autenticada por `CRON_SECRET`. Vercel Cron, pg_cron do Supabase, GitHub Action ou qualquer pinger externo servem. O padrão recomendado é **pg_cron**, porque o Hobby da Vercel só permite 1 execução por dia — inútil para alerta — e o pg_cron roda a cada 10 min sem custo adicional. A preocupação de custo do dono é real e esta é a resposta a ela.
+2. **O alerta é sobre a MUDANÇA.** `lib/hazards/transitions.ts` compara a varredura atual com a anterior e emite `formed | issued | detected | upgraded | downgraded | cleared`. Evento sem mudança não produz nada — esse silêncio é a feature: varrer a cada 10 min sobre uma tempestade parada não pode notificar 144 vezes por dia.
+3. **Números estruturados, nunca texto re-parseado.** `HazardEvent.metrics` carrega vento, categoria Saffir-Simpson, magnitude, AQI. Extrair isso de volta de uma string de resumo é como um alerta fica errado em silêncio — foi exatamente o que já acontecia (ver Consequência).
+4. **Categoria acima de severidade para ciclones.** Cat 4 e Cat 2 são ambos `severe`; colapsar os dois deixaria o EOS mudo justamente na mudança que importa.
+5. **AQI e chuva viram `HazardEvent` sintéticos.** Não são "eventos" em nenhum feed — um é número, o outro é curva de previsão. Sintetizá-los faz os cinco tipos passarem pelo mesmo pipeline de dedup e entrega. Um pipeline, um lugar para estar errado.
+6. **Só notifica o que pode te alcançar.** Ciclone tropical a mais de **750 mi** não gera push. O concorrente manda "Iselle se formou no Pacífico Leste" para um telefone na Flórida: é escolha de ser *interessante*, não *útil*. Quem quiser esse comportamento liga `basin_wide_tropical` — existe, mas é opt-in explícito.
+7. **Toda supressão é registrada com motivo.** `deduped`, `not_relevant`, `suppressed_quiet_hours`, `suppressed_cooldown`, `plan_gated`, `no_subscription`, `failed`. "Por que eu não fui avisado?" precisa ter resposta.
+8. **Dedup por chave estável de transição**, com índice único `(user_id, dedup_key)`. No print do concorrente, "Lala rebaixada para Categoria 1" aparece **duas vezes**, em dias diferentes. Aqui isso é impossível por construção, não por sorte.
+9. **Quiet hours por longitude** (15°/hora), porque o perfil não guarda timezone. Precisão de ~1 hora, documentada em vez de escondida. Crítico fura a janela quando `allow_critical_override` está ligado.
+
+**Consequence**: o EOS passa a ter voz própria — deixa de depender de alguém abrir o app para descobrir que um furacão mudou de categoria. O custo é a primeira persistência de estado de hazard e um job recorrente; mitigado por agrupamento por grade (~1,1 km), teto de 60 localizações por passada e feeds todos gratuitos.
+
+Achado de passagem, corrigido aqui: o filtro de relevância do USGS re-extraía a magnitude do título com `/M(\d+\.\d+)/`, mas o título do USGS vem como `"M 4.3 - …"` — **com espaço**. A regex nunca casava, toda magnitude virava `0`, e **todo terremoto era descartado como irrelevante**. É o exemplo exato do item 3: o dado estava lá, chegava certo, e morria num re-parse de texto.
+
+**Aberto (decisão do dono)**: `monitoring_push` é `premium` em `lib/feature-gates.ts`. Hoje apenas alertas **críticos** furam o gate. Se a posição for que todo alerta de segurança é gratuito, é uma linha — mas é decisão de produto, não de implementação.
+
+---
+
 ## D-073 — A PilotBar abre a conversa no Enter, não no toque
 
 **Date**: 2026-07-29

@@ -10,7 +10,8 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Abrigos oficiais + planos da família (FAM/PLAN) + gates de validação da v2 abertos (WV2-T05) |
-| **Last Completed Task** | **WV2-T12 / D-073 — a PilotBar abre a conversa no Enter, não no toque (2026-07-29)** |
+| **Last Completed Task** | **ALERT-T01→T04 / D-074 — alertas automáticos: o EOS avisa com o app fechado (2026-08-24)** |
+| | WV2-T12 / D-073 — a PilotBar abre a conversa no Enter, não no toque (2026-07-29)** |
 | | PLAN-T01 — modelo de dados e API do plano de voo (2026-07-29)** |
 | | WV2-T06 rótulos nos controles do mapa · FAM-T08 cache offline dos abrigos |
 | | Fix: localização ao vivo travada no iOS; ponto de perfil agora parece aproximado |
@@ -35,6 +36,8 @@
 | | D-065 / FAM-T05→T07 — abrigos oficiais do FEMA NSS, rumo/distância on-device e deep-link de navegação (2026-07-27)** |
 | | D-066 / PLAN-T00 — spec dos Planos de Emergência da Família (`docs/18-family-plans.md`) (2026-07-27) |
 | | D-064 / FAM-T01→T04 — localização familiar ao vivo, consentimento próprio e remoção dos mocks do mapa (2026-07-27) |
+| **⚠️ Migration pendente** | `20260824000000_hazard_alerting.sql` — alertas automáticos (D-074). **Idempotente e autossuficiente**: substitui e completa a `20260710010000_hazard_tables.sql`, que nunca foi aplicada. Até aplicar, a varredura não tem onde guardar memória e nenhum alerta de mudança é possível. Ver `docs/hazard-alerting-setup.md`. |
+| **⚠️ Env pendente** | `CRON_SECRET` (gerar com `openssl rand -hex 32`). Sem ela `/api/cron/hazard-scan` responde 503 e não roda — de propósito. |
 | **⚠️ Migration pendente** | `20260729000000_family_plans.sql` — Planos de Emergência da Família (PLAN-T01). Até aplicar, `/api/plans` responde `migration_pending` e nada quebra. |
 | **Migration** | ✅ `20260728010000_simulation_join_token.sql` aplicada pelo dono em 2026-07-28 e verificada. |
 | **Migration** | ✅ `20260728000000_shared_simulation.sql` aplicada pelo dono em 2026-07-28. Tabelas e colunas verificadas por REST service-role. |

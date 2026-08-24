@@ -31,6 +31,16 @@ function stormSeverity(classification: string, windKt: number): HazardSeverity {
   return 'minor'
 }
 
+/** Saffir-Simpson from sustained winds in mph. Null when it is not a hurricane. */
+export function saffirSimpsonCategory(windMph: number): number | undefined {
+  if (windMph >= 157) return 5
+  if (windMph >= 130) return 4
+  if (windMph >= 111) return 3
+  if (windMph >= 96) return 2
+  if (windMph >= 74) return 1
+  return undefined
+}
+
 export function normalizeNhcStorm(s: NhcStorm, user: Coordinates): HazardEvent {
   const cls = (s.classification ?? '').toUpperCase()
   const label = CLASS_LABEL[cls] ?? 'Tropical Cyclone'
@@ -63,6 +73,12 @@ export function normalizeNhcStorm(s: NhcStorm, user: Coordinates): HazardEvent {
     confidence: 'high',
     location: pos,
     distanceMiles: distanceMiles != null ? Number(distanceMiles.toFixed(1)) : undefined,
+    metrics: {
+      windMph,
+      pressureMb: parseFloat(String(s.pressure ?? '')) || undefined,
+      classification: cls || undefined,
+      category: cls === 'HU' || cls === 'MH' ? saffirSimpsonCategory(windMph) : undefined,
+    },
     detectedAt: updated,
     updatedAt: updated,
     officialUrl: s.publicAdvisory?.url ?? 'https://www.nhc.noaa.gov/',

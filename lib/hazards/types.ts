@@ -40,6 +40,33 @@ export type HazardClass =
   | 'FORECAST'
   | 'EOS_RISK_ANALYSIS'
 
+// Structured numbers behind an event. Text is for humans; THIS is what the
+// transition detector compares. "Foi elevado a Tempestade Tropical, ventos de
+// 46 mph" only exists because the previous scan stored windMph and category —
+// re-parsing them out of a summary string is how alerts get silently wrong.
+export interface HazardMetrics {
+  /** Sustained winds, mph — tropical cyclones. */
+  windMph?: number
+  /** Central pressure, mb — tropical cyclones. */
+  pressureMb?: number
+  /** Raw NHC classification: HU, MH, TS, TD, STS, SD, PTC, RM. */
+  classification?: string
+  /** Saffir-Simpson category 1-5. Hurricanes only, derived from windMph. */
+  category?: number
+  /** Richter magnitude — earthquakes. */
+  magnitude?: number
+  /** Depth in km — earthquakes. */
+  depthKm?: number
+  /** US AQI — air quality. */
+  aqi?: number
+  /** Minutes until precipitation starts — nowcast. */
+  startsInMinutes?: number
+  /** How hard it will rain — kept structured so the copy renders in either language. */
+  precipIntensity?: PrecipIntensity
+  /** Expected duration in minutes — nowcast. */
+  precipDurationMinutes?: number
+}
+
 export interface HazardEvent {
   id: string
   sourceEventId: string
@@ -58,6 +85,7 @@ export interface HazardEvent {
   location?: Coordinates
   geometry?: unknown
   distanceMiles?: number
+  metrics?: HazardMetrics
   startsAt?: string
   endsAt?: string
   detectedAt: string

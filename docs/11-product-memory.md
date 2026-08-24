@@ -5,6 +5,34 @@
 
 ---
 
+## Um alerta é sobre MUDANÇA; um widget é sobre estado (2026-08-24)
+
+O EOS tinha as fontes certas (NHC, NWS, USGS, AQI, nowcast) e mesmo assim não
+entregava nada que o concorrente entregava. A diferença não era dado, eram duas
+ausências: nada rodava com o app fechado, e nada guardava o estado anterior.
+
+"Existe um Furacão Categoria 1" é widget. "Lala **foi rebaixado** para Categoria
+1" é alerta — e a segunda frase só é possível se a varredura anterior gravou que
+ontem era Categoria 2. **Sem memória persistida não existe alerta, só display.**
+
+Corolário que vale para qualquer canal novo: o silêncio é parte do produto. Uma
+varredura a cada 10 minutos sobre uma tempestade parada precisa notificar zero
+vezes. Se o motor não sabe ficar quieto, ele não pode ser ligado.
+
+## Nunca re-extraia número de texto que você mesmo formatou (2026-08-24)
+
+O filtro de relevância do USGS pegava a magnitude de volta do título com
+`/M(\d+\.\d+)/`. O título do USGS é `"M 4.3 - 10km SSW of…"` — **com espaço**. A
+regex nunca casou, toda magnitude virou `0`, e o filtro descartou **todo
+terremoto** como irrelevante. Ficou assim por semanas sem ninguém notar, porque
+a falha é silenciosa: uma lista vazia parece um dia tranquilo.
+
+Agora os números vivem em `HazardEvent.metrics` (vento, categoria, magnitude,
+AQI) e o texto é só apresentação. Mesma lição apareceu duas vezes seguidas na
+cópia das notificações: rótulo de estado congelado em português na detecção saía
+como "downgraded to Furacão Categoria 1" num telefone em inglês. **Guarde o
+dado estruturado; renderize no idioma de quem lê, na hora de ler.**
+
 ## `onFocus` numa barra que abre folha é armadilha no celular (2026-07-29)
 
 A PilotBar abria a conversa no foco do campo. Parecia atalho e era o contrário: tocar na barra é o gesto de quem vai **digitar**, e a folha subia sobre o mapa antes de existir texto. Pior no telefone — o campo em foco continuava embaixo da conversa recém-aberta, com o teclado por cima.

@@ -48,6 +48,31 @@ export const HAZARD_CONFIG = {
     queryMinMagnitude: 2.5,
     queryWindowHours: 24,
   },
+
+  // Automatic alerting (D-074) — the scheduled scan and what earns a push.
+  alerting: {
+    // How far a tropical cyclone can be and still be YOUR problem. Beyond this
+    // it is news, not an alert — a family in Florida does not need a push about
+    // a storm forming off Baja California. `basin_wide_tropical` opts back in.
+    tropicalRelevanceMiles: 750,
+    // US AQI band edges. Crossing UP into a band ≥ sensitive notifies; falling
+    // back to ≤ moderate sends the all-clear.
+    aqiSensitiveThreshold: 101,
+    aqiUnhealthyThreshold: 151,
+    aqiVeryUnhealthyThreshold: 201,
+    aqiHazardousThreshold: 301,
+    // Rain nowcast: only worth a push when it starts within this window.
+    precipAlertWithinMinutes: 30,
+    precipMinimumIntensity: 'moderate' as const,
+    // A location is scanned only if the app saw it recently — stale coordinates
+    // would alert people about a city they left weeks ago.
+    locationMaxAgeDays: 7,
+    // Bounds one run: distinct rounded locations per scan, and how many run at once.
+    maxLocationsPerRun: 60,
+    scanConcurrency: 4,
+    // Coordinate rounding for grouping users into one upstream fetch (~1.1 km).
+    scanKeyPrecision: 2,
+  },
 } as const
 
 export type HazardConfig = typeof HAZARD_CONFIG
