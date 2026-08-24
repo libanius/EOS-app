@@ -22,6 +22,43 @@
 
 ---
 
+## D-220 — O EOS avisa com o app fechado; e avisa sobre MUDANÇA, não sobre estado
+
+**Date**: 2026-08-24
+**Status**: DECIDED / IMPLEMENTADO — depende da migration `20260824000000_hazard_alerting.sql` e da env `CRON_SECRET`
+**Spec**: `docs/hazard-alerting-setup.md`
+
+**Context**: O dono comparou o EOS com o MyRadar no celular. O concorrente entregou 5 notificações (tempestade formada, tempestade elevada, furacão rebaixado, ar insalubre, chuva em 15 min). O EOS não entregou nenhuma. A auditoria mostrou que **não era falta de fonte** — NHC, NWS, USGS, AQI e nowcast já estavam integrados e vivos desde D-043.
+
+**Correção de premissa (importante para quem ler depois)**: a primeira versão desta análise foi feita sobre uma base de 2026-07-29 e concluiu "não existe nenhum job agendado". **Isso estava errado para o `main` atual.** O D-113 já entregou `/api/cron/weather-notifications` + workflow do GitHub Actions a cada 15 min — inclusive resolvendo o problema do plano Hobby de um jeito melhor do que o proposto aqui (Actions de graça, com o cron diário da Vercel como rede de segurança). O que o D-113 **não** faz, e é o que sobra para esta decisão:
+
+1. **Não chega no telefone.** `createCommsNotifications` insere em `circle_notifications` — é caixa de entrada dentro do app. O sininho enche; a tela de bloqueio nunca acende. O print do dono é de notificação na tela de bloqueio.
+2. **Não tem memória de estado.** A varredura do D-113 deduplica por `source_key` (o mesmo alerta não repete), mas não compara com a passada anterior. "Foi rebaixado para Categoria 1" exige saber que ontem era Categoria 2 — e a migration que guardaria isso (`20260710010000`) nunca foi aplicada.
+3. **Cobre só NWS.** O cron do D-113 chama `fetchWeather` e mais nada. NHC (furacões), AQI, nowcast de chuva e terremotos ficam de fora — 4 dos 5 alertas do print.
+4. **O dashboard nem consome o subsistema.** `RiskProvider` lê `/api/weather-intelligence`; NHC e nowcast só existem em `/api/hazards`.
+
+**Decision**:
+1. **Varredura agendada, agnóstica de agendador.** `/api/cron/hazard-scan` é uma requisição autenticada por `CRON_SECRET`, igual à do D-113 — e por isso **é dirigida pelo mesmo workflow do GitHub Actions**, que já resolve o problema do plano Hobby de graça. O `vercel.json` do D-113 (cron diário, rede de segurança) fica intacto.
+   **Corrigido em campo**: a primeira versão desta implementação sobrescreveu o `vercel.json` com `*/10 * * * *` e **derrubou o deploy** — uma conta Hobby não reduz um cron sub-diário, ela rejeita a publicação inteira. Lição que vale além deste caso: configuração de plataforma que só funciona em plano pago não entra no repositório, porque quebra quem está no plano gratuito. O D-113 já tinha acertado isso; foi o merge tardio que expôs o erro.
+2. **O alerta é sobre a MUDANÇA.** `lib/hazards/transitions.ts` compara a varredura atual com a anterior e emite `formed | issued | detected | upgraded | downgraded | cleared`. Evento sem mudança não produz nada — esse silêncio é a feature: varrer a cada 10 min sobre uma tempestade parada não pode notificar 144 vezes por dia.
+3. **Números estruturados, nunca texto re-parseado.** `HazardEvent.metrics` carrega vento, categoria Saffir-Simpson, magnitude, AQI. Extrair isso de volta de uma string de resumo é como um alerta fica errado em silêncio — foi exatamente o que já acontecia (ver Consequência).
+4. **Categoria acima de severidade para ciclones.** Cat 4 e Cat 2 são ambos `severe`; colapsar os dois deixaria o EOS mudo justamente na mudança que importa.
+5. **AQI e chuva viram `HazardEvent` sintéticos.** Não são "eventos" em nenhum feed — um é número, o outro é curva de previsão. Sintetizá-los faz os cinco tipos passarem pelo mesmo pipeline de dedup e entrega. Um pipeline, um lugar para estar errado.
+6. **Só notifica o que pode te alcançar.** Ciclone tropical a mais de **750 mi** não gera push. O concorrente manda "Iselle se formou no Pacífico Leste" para um telefone na Flórida: é escolha de ser *interessante*, não *útil*. Quem quiser esse comportamento liga `basin_wide_tropical` — existe, mas é opt-in explícito.
+7. **Toda supressão é registrada com motivo.** `deduped`, `not_relevant`, `suppressed_quiet_hours`, `suppressed_cooldown`, `plan_gated`, `no_subscription`, `failed`. "Por que eu não fui avisado?" precisa ter resposta.
+8. **Dedup por chave estável de transição**, com índice único `(user_id, dedup_key)`. No print do concorrente, "Lala rebaixada para Categoria 1" aparece **duas vezes**, em dias diferentes. Aqui isso é impossível por construção, não por sorte.
+9. **Quiet hours por longitude** (15°/hora), porque o perfil não guarda timezone. Precisão de ~1 hora, documentada em vez de escondida. Crítico fura a janela quando `allow_critical_override` está ligado.
+
+**Consequence**: o EOS passa a ter voz própria — deixa de depender de alguém abrir o app para descobrir que um furacão mudou de categoria. O custo é a primeira persistência de estado de hazard e um job recorrente; mitigado por agrupamento por grade (~1,1 km), teto de 60 localizações por passada e feeds todos gratuitos.
+
+Achado de passagem, corrigido aqui: o filtro de relevância do USGS re-extraía a magnitude do título com `/M(\d+\.\d+)/`, mas o título do USGS vem como `"M 4.3 - …"` — **com espaço**. A regex nunca casava, toda magnitude virava `0`, e **todo terremoto era descartado como irrelevante**. É o exemplo exato do item 3: o dado estava lá, chegava certo, e morria num re-parse de texto.
+
+10. **Dois varredores convivem por enquanto** (`hazard-scan` e `weather-notifications`). Não unifiquei no mesmo commit de propósito: o do D-113 está em produção e funcionando, e trocar o motor de alerta e a fonte de agendamento na mesma leva é como se perde a capacidade de saber qual metade quebrou. `ALERT-T05` é a unificação, com o `hazard-scan` absorvendo o outro — ele é superconjunto em fontes e o único com memória de estado.
+11. **`monitoring_push` passa a ser `free`** (decisão do dono, 2026-08-24). Um aviso de furacão que só chega para quem pagou não é produto de segurança, é upsell com roupa de alerta. O código continua consultando o gate, então reverter é uma linha.
+12. **Idioma do push segue a escolha do usuário, com inglês como base** (decisão do dono, 2026-08-24; alinhado ao D-206). `localStorage` e cookie bastam para tudo que é renderizado a partir de uma requisição — mas a varredura não tem navegador. Por isso `profiles.language`, gravado em fire-and-forget por `setLanguage`. Quem nunca escolheu recebe em inglês; quem escolheu português recebe em português.
+
+---
+
 ## D-218 — Mapa e rota offline saem de OSM, não do Google
 
 **Date**: 2026-08-19

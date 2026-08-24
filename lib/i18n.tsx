@@ -754,6 +754,20 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     window.localStorage.setItem(STORAGE_KEY, nextLanguage)
     document.cookie = `${STORAGE_KEY}=${nextLanguage}; Path=/; Max-Age=${COOKIE_MAX_AGE}; SameSite=Lax`
     document.documentElement.lang = nextLanguage === 'pt' ? 'pt-BR' : 'en'
+    /*
+     * E no perfil também (D-220). localStorage e cookie bastam para tudo que é
+     * renderizado a partir de uma requisição — mas o push é escrito pela
+     * varredura agendada, que não tem navegador nem cookie. Sem gravar aqui, o
+     * alerta sairia em inglês para quem escolheu português.
+     *
+     * Fire-and-forget de propósito: a troca de idioma na tela não pode esperar
+     * a rede, nem falhar junto com ela.
+     */
+    void fetch('/api/profile/language', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ language: nextLanguage }),
+    }).catch(() => {})
   }, [])
 
   const value = useMemo<LanguageContextValue>(

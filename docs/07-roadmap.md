@@ -320,6 +320,13 @@ precisa funcionar exatamente quando o EOS não funciona.*
 | PILOT-T03 | Rule-backed recommendation states: GO, LIMITED, WAIT, AVOID, PRIORITY OVERRIDE | ✅ COMPLETE | 2026-08-07 — D-125; `lib/pilot-guard.ts` determinístico, veredito como etiqueta (não texto injetado), streaming SSE e rolagem que respeita quem lê |
 | PILOT-T04 | Metrics instrumentation for discovery, trust, retention, personalization, safety | DONE (D-132) | `pilot_events` + `/api/pilot/metrics`. Sem texto livre por construção. Compreensão fica por proxy (`handle`) — a pergunta real precisa de pesquisa, não de telemetria. Falta o dono aplicar a migration. |
 | WV2-T33 | Enter vazio não abre o Pilot; submeter devolve a tela | ✅ COMPLETE | 2026-08-24 — D-219; `blur()` no submit para o teclado do celular não cobrir a resposta |
+| ALERT-T01 | Varredura de hazards com memória de estado (`/api/cron/hazard-scan`) | ✅ COMPLETE | 2026-08-24 — D-220; complementa D-113, que varre mas não guarda estado anterior |
+| ALERT-T02 | Motor de transição: formed / upgraded / downgraded / cleared | ✅ COMPLETE | 2026-08-24 — D-220; `lib/hazards/transitions.ts`, 30 testes. Alerta é sobre MUDANÇA |
+| ALERT-T03 | Web push real com dedup, quiet hours, cooldown e preferências | ✅ COMPLETE | 2026-08-24 — D-220; D-113 só enchia a caixa de entrada — não chegava na tela de bloqueio |
+| ALERT-T04 | NHC, AQI e nowcast de chuva no pipeline de alerta | ✅ COMPLETE | 2026-08-24 — D-220; D-113 cobria só NWS. Os 5 tipos do concorrente cobertos |
+| ALERT-T05 | Unificar `/api/cron/hazard-scan` e `/api/cron/weather-notifications` | PENDING | Dois varredores convivem hoje; ver D-220 §10 |
+| ALERT-T06 | Tela de preferências de alerta (API pronta, UI pendente) | PENDING | `/api/hazards/preferences` GET/PUT existe; falta a tela em `/settings` |
+| ALERT-T07 | Ligar `/api/hazards` no `RiskProvider` (NHC + nowcast no dashboard) | PENDING | Dashboard ainda lê só `/api/weather-intelligence` |
 
 ---
 

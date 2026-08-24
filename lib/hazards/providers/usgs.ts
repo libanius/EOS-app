@@ -58,6 +58,7 @@ export function normalizeUsgsFeature(f: UsgsFeature, user: Coordinates): HazardE
     certainty: 'observed',
     location: epicenter,
     distanceMiles: Number.isFinite(distanceMiles) ? Number(distanceMiles.toFixed(1)) : undefined,
+    metrics: { magnitude, depthKm },
     startsAt: time,
     detectedAt: time,
     updatedAt: updated,
@@ -85,16 +86,19 @@ export const usgsProvider: HazardEventProvider = {
       }
       const json = (await res.json()) as { features?: UsgsFeature[] }
       // Keep only relevant events per the configurable rules.
+      // The magnitude comes from `metrics`, never re-parsed from the title: USGS
+      // titles read "M 4.3 - 10km SSW of…" (with a space), so the old
+      // /M(\d+\.\d+)/ never matched, every quake scored magnitude 0, and the
+      // relevance filter silently dropped ALL of them.
       const events = (json.features ?? [])
         .map(f => normalizeUsgsFeature(f, location))
-        .filter(e => {
-          const mag = parseFloat(e.title.match(/M(\d+\.\d+)/)?.[1] ?? '0')
-          return classifyEarthquake({
-            magnitude: mag,
+        .filter(e =>
+          classifyEarthquake({
+            magnitude: e.metrics?.magnitude ?? 0,
             distanceMiles: e.distanceMiles ?? Number.POSITIVE_INFINITY,
             tsunami: e.hazardType.includes('tsunami'),
-          }).relevant
-        })
+          }).relevant,
+        )
       return {
         provider: 'usgs',
         status: 'live',
