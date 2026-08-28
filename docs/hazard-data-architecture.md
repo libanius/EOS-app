@@ -73,6 +73,31 @@
 
 ---
 
+## NHC Operational Layers
+
+Decisão D-223: os produtos oficiais do NHC não criam uma nova tela nem um mapa
+paralelo. Eles são camadas do `MUNDO`, sobre o mesmo MapLibre e a mesma
+proveniência de hazards.
+
+Camadas previstas:
+
+| Layer | Fonte | Autoridade | Regra de UI |
+| --- | --- | --- | --- |
+| Centro atual | NHC `CurrentStorms.json` / GIS | forecast | Mostra nome, classe, vento, pressão, movimento e distância até o usuário. |
+| Trajetória prevista | NHC GIS forecast track | forecast | Linha oficial; não interpolar como previsão própria. |
+| Pontos de previsão | NHC GIS forecast points | forecast | Marcadores por horário/intensidade; tocar mostra validade temporal. |
+| Cone de incerteza | NHC GIS forecast cone | forecast | Sempre rotulado como incerteza do centro, não área de dano. |
+| Trajeto passado | NHC GIS past track | observational/forecast archive | Mostra contexto histórico, sem virar gatilho de ação por si só. |
+| Watches/warnings | NHC/NWS oficial | official | Cores oficiais quando possível; ações EOS podem abrir plano/preparação, mas não inferem evacuação. |
+| Impacto EOS | Open-Meteo/NWS/NHC + motor EOS | eos_analysis | Sempre rotulado como leitura/estimativa EOS, nunca como alerta oficial. |
+
+O resumo operacional deve cruzar essas camadas com casa, família consentida,
+lugares do plano, rotas e preparação, respondendo "o que isso toca no meu
+mundo?". A ausência de ciclone ativo é resposta correta (`empty: true`), não
+erro.
+
+---
+
 ## Regra crítica "ALL SYSTEMS LIVE"
 
 `aggregateNetworkStatus` só emite `ALL SYSTEMS LIVE` quando **todo canal obrigatório e configurado** está `live` e **nenhum** usa fallback. Precedência (testada):

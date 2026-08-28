@@ -161,6 +161,7 @@
 | 8.18 | Vigilância de surtos (CDC) | — | **P** | **G — não existe** |
 | 8.19 | Recalls de medicamentos (FDA) | — | **P** | **G — não existe** |
 | 8.20 | Histórico de alertas (30 dias) | — | **P** | **G — não existe** |
+| 8.21 | Camadas NHC operacionais separadas (centro, trajetória, pontos, cone, trajetória passada, watches/warnings + cruzamento EOS) | `/dashboard`, `/api/world/cyclones` | — | **G — planejado em D-223 / WV2-T32** |
 
 ## 9. Cenários e simulação
 

@@ -4,6 +4,59 @@
 
 ---
 
+## D-223 — O NHC vira camadas operacionais, não outro mapa
+
+**Date**: 2026-08-28
+**Status**: DECIDED / PLANEJADO — aguardando slot no roadmap; não autoriza código
+antes da tarefa atual do Spine.
+**Roadmap**: WV2-T32, futura
+**Spec**: `docs/hazard-data-architecture.md`, `docs/16-hybrid-world-dashboard.md`
+
+**Context**: o dono pediu para planejar como trazer para o EOS as features do
+mapa do NHC (`gm_track`): centro atual, trajetória prevista, pontos de previsão,
+cone de incerteza, alertas/vigilâncias, e leitura de posição relativa à família.
+O EOS já possui `/api/world/cyclones`, geometria oficial do NHC, vento, surge,
+alertas com geometria e camadas no Mundo. O risco seria criar uma tela nova ou
+um clone visual do NHC, duplicando a superfície operacional.
+
+**Decision**: produtos do NHC entram como **camadas operacionais separadas do
+Mundo**, dentro do painel de camadas existente:
+
+- centro atual;
+- trajetória prevista;
+- pontos de previsão;
+- cone de incerteza;
+- trajetória passada, quando publicada;
+- watches/warnings oficiais, quando publicados;
+- leitura EOS cruzando casa, família consentida, lugares do plano, rotas e
+  preparação.
+
+**Hierarquia de UX**: quando houver ciclone relevante, a primeira leitura deve
+responder: "onde está, para onde vai, o que isso toca no meu mundo?". O detalhe
+vive no `DetentSheet` no mobile e num painel lateral no desktop, com fonte,
+horário UTC, distância, movimento, intensidade e bloco "Na sua área".
+
+**Regra crítica**: o cone é incerteza do **centro**, não área de impacto. A UI
+deve dizer isso perto do cone e nunca usar "fora do cone" como tranquilizador.
+Perigo real fica em camadas de impacto: alertas oficiais, vento, surge, flood,
+chuva e demais hazards.
+
+**Ações permitidas**: ver no mapa, reavaliar Preparação, ver plano relacionado,
+simular chegada em janela futura, avisar círculo e abrir fonte NHC. O EOS não
+infere evacuação; só repassa ordem oficial quando ela existir.
+
+**Tiering**: cone, trajetória, centro, pontos e watches/warnings oficiais do NHC
+ficam gratuitos. Premium pode cobrir histórico, análise comparativa, múltiplas
+bacias avançadas e vento animado premium, mas não esconder aviso oficial de
+segurança.
+
+**Não autorizado por D-223**: criar mapa separado para ciclone; inferir
+trajetória proprietária; misturar impacto com cone; rotular análise EOS como
+alerta oficial; pôr warning/cone oficial atrás de paywall; iniciar implementação
+antes da tarefa atual do Spine ser resolvida ou replanejada.
+
+---
+
 ## D-222 — A trava de duplicidade estava desligada, e o agendador quase não roda
 
 **Date**: 2026-08-28

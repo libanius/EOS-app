@@ -25,6 +25,14 @@ na cópia das notificações — rótulo congelado em português na detecção s
 "downgraded to Furacão Categoria 1" num telefone em inglês. **Guarde o dado
 estruturado; renderize no idioma de quem lê, na hora de ler.**
 
+**NHC no Mundo é camada operacional, não tela nova (D-223).** O EOS já tem
+geometria oficial de ciclone; a evolução correta é expor centro, trajetória,
+pontos, cone, trajetória passada e watches/warnings como camadas separadas,
+cruzadas com casa, família consentida, lugares do plano e preparação. O cone
+nunca pode ser apresentado como área de dano: é incerteza do centro. Impacto
+real vive em alertas, vento, surge, flood e chuva. Produtos oficiais do NHC
+ficam grátis; Premium pode ter histórico/análise avançada, não o warning.
+
 **Cron sub-diário no `vercel.json` derruba o deploy no plano Hobby (D-220).** Não
 é degradação silenciosa — é erro de validação que **falha a publicação inteira**:
 `Hobby accounts are limited to daily cron jobs`. O app parou de publicar por
