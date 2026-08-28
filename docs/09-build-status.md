@@ -10,8 +10,8 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Execução de Plano (EXEC) sobre Web/PWA |
-| **⚠ Pendência operacional (1 de 2)** | **Aplicar `supabase/migrations/20260828000000_ndl_dedup_arbiter.sql`** (D-222). Até aplicar, **o dedup e o cooldown dos alertas estão desligados**: `uq_ndl_user_dedup` é parcial, não arbitra `ON CONFLICT`, e toda escrita do log de entrega volta `42P10`. Prova: `npm run test:hazard-dedup` falha 5 de 6 antes, passa 6 de 6 depois. |
-| **⚠ Pendência operacional (2 de 2)** | **Rodar `supabase/pg_cron_hazard_scan.sql`** (D-222) no SQL Editor, incluindo o `vault.create_secret` do passo 2 com o mesmo `CRON_SECRET` da Vercel. O agendador do GitHub entrega **12,7%** do que promete (maior buraco medido: 11,6 h). O GitHub fica ligado até o pg_cron provar-se — ver ALERT-T08. |
+| **Migração aplicada** | ✅ `20260828000000_ndl_dedup_arbiter.sql` (D-222) — aplicada pelo dono em 2026-08-28 e verificada: `npm run test:hazard-dedup` passou de **1/6 para 6/6**, incluindo o controle negativo. Dedup e cooldown de 30 min voltaram a valer. |
+| **Agendador migrado** | ✅ pg_cron (D-222 / ALERT-T08) — `supabase/pg_cron_hazard_scan.sql` rodado pelo dono em 2026-08-28. **Disparo autônomo confirmado** às 17:20:03 e 17:40:03 UTC, três segundos após a marca dos 10 min, partindo de dentro do banco. Cadência real: 10 min (era mediana de 43 min com buracos de até 11,6 h). `CRON_SECRET` no Vault, não no corpo do job. |
 | **Current Task** | **AUTHOR-T01 — rascunho persistente em IndexedDB.** NOT STARTED — não iniciar sem ler `specs/PLAN-AUTHOR-001-autoria-do-plano.md`. AUTHOR-T02 fechou em 2026-08-19 (D-217); a fase EXEC fechou T00→T06, e EXEC-T07 (destino por identidade) fica atrás das fases de autoria. |
 | **Spec Ready** | `specs/PLAN-EXEC-001-execucao-de-plano.md` **v1.1** — execução de plano como modo operacional; D-212, D-217. |
 | **Spec Ready** | `specs/PLAN-AUTHOR-001-autoria-do-plano.md` — integridade do rascunho na autoria; D-217. |
