@@ -11,20 +11,41 @@
  * `/weather` redireciona para cá. O endereço antigo está em histórico e em
  * links internos, e ele é o caminho de quem quer saber se pode sair de casa.
  *
- * ── Dívida conhecida, e assumida ──────────────────────────────────────────
+ * ── Dívida paga em 2026-08-28 ─────────────────────────────────────────────
  *
- * O corpo desta tela é inteiramente em inglês, escrito antes do i18n existir
- * ("Weather Intelligence", "Allow location access"). Traduzir 790 linhas não
- * cabia nesta tarefa, e traduzir SÓ o cabeçalho produziria uma tela meio
- * portuguesa — pior que a de agora, porque prometeria o que não cumpre.
- * A faixa de navegação acima é bilíngue; o resto está registrado como pendência.
+ * O corpo desta tela era escrito antes do i18n e misturava os dois idiomas
+ * DENTRO da mesma carta: "Weather Intelligence" e "Allow location access" em
+ * inglês, "Salvar no Kit" e "Fonte oficial" em português, atividades em inglês
+ * (`lib/weather/engine.ts`) e kits em português (`lib/checklist.ts`).
+ *
+ * Junto vinham 13 sítios imperiais sem conversão — °F, mph, milhas, polegadas —
+ * e um relógio `en-US` de 12 horas, servidos igualmente a quem escolheu
+ * português. A crítica de 2026-08-20 deu 1 de 4 em "sistema ↔ mundo real" por
+ * isso, e a captura para a Play Store tornou o problema visível fora do app.
+ *
+ * Agora: todo texto vem de `lib/i18n.tsx`, e todo número passa por
+ * `lib/display-units.ts` — inglês/imperial como base (D-198/D-206), português/
+ * métrico quando escolhido.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ACTIVITIES, CATEGORY_LABELS, generateRecommendations } from '@/lib/weather/engine'
+import { ACTIVITIES, generateRecommendations } from '@/lib/weather/engine'
 import { KITS } from '@/lib/checklist'
+import { useLanguage, type MessageKey } from '@/lib/i18n'
+import {
+  formatClock,
+  formatDistance,
+  formatHour,
+  formatPrecip,
+  formatSpeed,
+  formatTemp,
+  speedValue,
+  formatVisibility,
+  unitSystemFor,
+  type UnitSystem,
+} from '@/lib/display-units'
 import type { WeatherSnapshot, ActivityId, ActivityCategory, WeatherRecommendation, RiskLevel } from '@/lib/weather/types'
-import LiveIntelligenceNetwork from '@/components/LiveIntelligenceNetwork'
+import LiveIntelligenceNetwork, { HEADLINE_KEY } from '@/components/LiveIntelligenceNetwork'
 import WorldNav from './WorldNav'
 import type { HazardEvent, HazardClass, UpcomingPrecipitationResult, HazardNetworkSnapshot } from '@/lib/hazards/types'
 
@@ -43,23 +64,31 @@ const RISK_BG: Record<RiskLevel, string> = {
   high:     'rgba(255,140,66,0.10)',
   critical: 'rgba(255,107,107,0.10)',
 }
-const RISK_LABEL: Record<RiskLevel, string> = {
-  low: 'LOW', medium: 'MEDIUM', high: 'HIGH', critical: 'CRITICAL',
+const RISK_LABEL_KEY: Record<RiskLevel, MessageKey> = {
+  low: 'alerts.riskLow', medium: 'alerts.riskMedium', high: 'alerts.riskHigh', critical: 'alerts.riskCritical',
 }
 
 // Visual classification (D-043) — official warnings must read differently from
-// detected events, forecasts, and EOS analysis.
-const HAZARD_CLASS_META: Record<HazardClass, { label: string; color: string }> = {
-  OFFICIAL_WARNING: { label: 'OFFICIAL WARNING', color: '#ff6b6b' },
-  WATCH:            { label: 'WATCH',            color: '#ffb347' },
-  ADVISORY:         { label: 'ADVISORY',         color: '#7c6bff' },
-  DETECTED_EVENT:   { label: 'DETECTED EVENT',   color: '#56c2e6' },
-  FORECAST:         { label: 'FORECAST',         color: '#8b9dff' },
-  EOS_RISK_ANALYSIS:{ label: 'EOS RISK ANALYSIS',color: '#00e5a0' },
+// detected events, forecasts, and EOS analysis. A cor é do desenho e não muda
+// com o idioma; só o rótulo é traduzido.
+const HAZARD_CLASS_COLOR: Record<HazardClass, string> = {
+  OFFICIAL_WARNING:  '#ff6b6b',
+  WATCH:             '#ffb347',
+  ADVISORY:          '#7c6bff',
+  DETECTED_EVENT:    '#56c2e6',
+  FORECAST:          '#8b9dff',
+  EOS_RISK_ANALYSIS: '#00e5a0',
 }
 
-const PRECIP_INTENSITY_LABEL: Record<string, string> = {
-  none: '', light: 'leve', moderate: 'moderada', heavy: 'forte',
+const PRECIP_INTENSITY_KEY: Record<string, MessageKey | null> = {
+  none: null,
+  light: 'alerts.intensityLight',
+  moderate: 'alerts.intensityModerate',
+  heavy: 'alerts.intensityHeavy',
+}
+
+const CONFIDENCE_KEY: Record<string, MessageKey> = {
+  low: 'alerts.confLow', medium: 'alerts.confMedium', high: 'alerts.confHigh',
 }
 
 const CATEGORIES: ActivityCategory[] = [
@@ -68,14 +97,18 @@ const CATEGORIES: ActivityCategory[] = [
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function fmtTime(iso: string) {
-  return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
-}
-function fmtHour(iso: string) {
-  return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', hour12: true })
-}
-function fmtDate(dateStr: string) {
-  return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+/**
+ * A data curta do bloco de 3 dias.
+ *
+ * Fica aqui e não em `display-units` porque depende do `Intl` da data completa,
+ * e não de conversão de unidade nenhuma — misturar as duas coisas num módulo só
+ * porque ambas "formatam" é o começo de um utilitário que ninguém entende.
+ */
+function fmtDate(dateStr: string, language: 'pt' | 'en') {
+  return new Date(dateStr + 'T12:00:00').toLocaleDateString(
+    language === 'pt' ? 'pt-BR' : 'en-US',
+    { weekday: 'short', month: 'short', day: 'numeric' },
+  )
 }
 function aqiColor(aqi: number | null): string {
   if (aqi == null) return '#71717a'
@@ -89,6 +122,7 @@ function aqiColor(aqi: number | null): string {
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function RiskBadge({ risk }: { risk: RiskLevel }) {
+  const { t } = useLanguage()
   return (
     <span style={{
       fontSize: 10, fontWeight: 800, letterSpacing: '0.1em',
@@ -96,12 +130,13 @@ function RiskBadge({ risk }: { risk: RiskLevel }) {
       background: RISK_BG[risk], color: RISK_COLOR[risk],
       border: `1px solid ${RISK_COLOR[risk]}44`,
     }}>
-      {RISK_LABEL[risk]}
+      {t(RISK_LABEL_KEY[risk])}
     </span>
   )
 }
 
 function RecommendationCard({ rec, onSave }: { rec: WeatherRecommendation; onSave?: (items: string[]) => void }) {
+  const { t } = useLanguage()
   const [open, setOpen] = useState(false)
   const color = RISK_COLOR[rec.risk]
   return (
@@ -135,7 +170,7 @@ function RecommendationCard({ rec, onSave }: { rec: WeatherRecommendation; onSav
 
           {rec.factors.length > 0 && (
             <div style={{ marginBottom: 10 }}>
-              <p style={{ margin: '0 0 6px', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: '#71717a', textTransform: 'uppercase' }}>Data Used</p>
+              <p style={{ margin: '0 0 6px', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: '#71717a', textTransform: 'uppercase' }}>{t('alerts.dataUsed')}</p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {rec.factors.map((f, i) => (
                   <span key={i} style={{
@@ -154,12 +189,12 @@ function RecommendationCard({ rec, onSave }: { rec: WeatherRecommendation; onSav
           {rec.checklist.length > 0 && (
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                <p style={{ margin: 0, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: '#71717a', textTransform: 'uppercase' }}>Checklist</p>
+                <p style={{ margin: 0, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: '#71717a', textTransform: 'uppercase' }}>{t('alerts.checklist')}</p>
                 {onSave && (
                   <button onClick={() => onSave(rec.checklist)} style={{
                     fontSize: 10, padding: '3px 8px', background: `${AC}18`, border: `1px solid ${AC}44`,
                     borderRadius: 12, color: AC, fontWeight: 700, cursor: 'pointer',
-                  }}>+ Salvar no Kit</button>
+                  }}>{t('alerts.saveToKit')}</button>
                 )}
               </div>
               {rec.checklist.map((item, i) => (
@@ -181,30 +216,36 @@ function RecommendationCard({ rec, onSave }: { rec: WeatherRecommendation; onSav
 
 // ─── Rain nowcast card (D-043) ────────────────────────────────────────────────
 
-const CONFIDENCE_LABEL: Record<string, string> = { low: 'baixa', medium: 'média', high: 'alta' }
-
 function RainNowcast({ precip }: { precip: UpcomingPrecipitationResult | null }) {
+  const { t } = useLanguage()
   if (!precip || precip.eventType === 'no_precipitation') return null
   const cyan = '#56c2e6'
   const prob = Math.round(precip.probability * 100)
-  const intensity = PRECIP_INTENSITY_LABEL[precip.intensity] || ''
+  const intensityKey = PRECIP_INTENSITY_KEY[precip.intensity] ?? null
+  const intensity = intensityKey ? t(intensityKey) : ''
   let title: string
   if (precip.eventType === 'rain_starting_soon') {
-    title = `Chuva prevista para começar em aproximadamente ${precip.startsInMinutes} minutos.`
+    title = t('alerts.rainStarting', { n: precip.startsInMinutes ?? 0 })
   } else if (precip.eventType === 'rain_ongoing') {
-    title = `Chuva em andamento${precip.expectedDurationMinutes ? ` — deve durar cerca de ${precip.expectedDurationMinutes} min` : ''}.`
+    title = precip.expectedDurationMinutes
+      ? t('alerts.rainOngoingFor', { n: precip.expectedDurationMinutes })
+      : t('alerts.rainOngoing')
   } else {
-    title = 'Chuva diminuindo nos próximos minutos.'
+    title = t('alerts.rainEasing')
   }
   return (
     <div style={{ background: 'rgba(86,194,230,0.08)', border: `1px solid ${cyan}44`, borderRadius: 18, padding: '10px 14px', marginBottom: 12 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
-        <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.1em', color: cyan }}>RAIN NOWCAST</span>
+        <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.1em', color: cyan }}>{t('alerts.rainNowcast')}</span>
         <span style={{ fontSize: 10, color: '#71717a', fontFamily: "'DM Mono', ui-monospace, monospace" }}>{precip.source}</span>
       </div>
       <p style={{ margin: 0, fontSize: 13, color: '#f0f0f8', fontWeight: 600, lineHeight: 1.4 }}>{title}</p>
       <p style={{ margin: '4px 0 0', fontSize: 11, color: '#a1a1aa' }}>
-        {intensity && `Intensidade ${intensity} · `}{prob}% de probabilidade · confiança {CONFIDENCE_LABEL[precip.confidence] ?? precip.confidence}
+        {t('alerts.rainMeta', {
+          intensity,
+          prob,
+          confidence: CONFIDENCE_KEY[precip.confidence] ? t(CONFIDENCE_KEY[precip.confidence]) : precip.confidence,
+        })}
       </p>
     </div>
   )
@@ -212,8 +253,40 @@ function RainNowcast({ precip }: { precip: UpcomingPrecipitationResult | null })
 
 // ─── Classified hazard event card (D-043) ──────────────────────────────────────
 
-function HazardEventCard({ ev, focused }: { ev: HazardEvent; focused?: boolean }) {
-  const meta = HAZARD_CLASS_META[ev.visualClass] ?? HAZARD_CLASS_META.ADVISORY
+function HazardEventCard({ ev, focused, system, language }: { ev: HazardEvent; focused?: boolean; system: UnitSystem; language: 'pt' | 'en' }) {
+  const { t } = useLanguage()
+  const color = HAZARD_CLASS_COLOR[ev.visualClass] ?? HAZARD_CLASS_COLOR.ADVISORY
+  const meta = { color, label: t(`hazardClass.${ev.visualClass}` as MessageKey) }
+
+  /*
+   * O resumo do ciclone é RENDERIZADO aqui, das métricas, e não lido do texto
+   * que o provedor gravou.
+   *
+   * `lib/hazards/providers/nhc.ts` monta `summary` em inglês com mph e milhas,
+   * uma vez, no servidor — e o evento é o MESMO para toda a família, em
+   * qualquer idioma. Exibi-lo cru é a armadilha que o `docs/11-product-memory`
+   * já registrou duas vezes: "guarde o dado estruturado; renderize no idioma de
+   * quem lê, na hora de ler". `metrics` tem vento, pressão e classificação; a
+   * frase se monta com eles.
+   *
+   * Quando não há métrica — todo evento que não é ciclone — o texto da fonte
+   * continua sendo o melhor disponível, e é o que aparece. Um aviso oficial do
+   * NWS em inglês é o aviso oficial, e reescrevê-lo seria pior.
+   */
+  const m = ev.metrics
+  const summary =
+    ev.hazardType === 'tropical_cyclone' && m?.windMph
+      ? [
+          t('alerts.cycloneSummary', {
+            wind: formatSpeed(m.windMph, system),
+            pressure: m.pressureMb != null ? `${Math.round(m.pressureMb)} mb` : '—',
+            distance: ev.distanceMiles != null
+              ? t('alerts.cycloneDistance', { d: formatDistance(ev.distanceMiles, system) })
+              : '',
+          }),
+          t('alerts.cycloneConsult'),
+        ].join(' ')
+      : ev.summary
   return (
     <div id={focused ? 'weather-focused-alert' : undefined} style={{ background: focused ? `${meta.color}22` : `${meta.color}12`, border: focused ? `1px solid ${meta.color}` : `1px solid ${meta.color}44`, borderRadius: 16, padding: '10px 14px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 3 }}>
@@ -222,16 +295,18 @@ function HazardEventCard({ ev, focused }: { ev: HazardEvent; focused?: boolean }
           <span style={{ color: '#71717a', fontWeight: 600, marginLeft: 6, textTransform: 'uppercase' }}>· {ev.source}</span>
         </span>
         <span style={{ fontSize: 10, color: '#71717a', flexShrink: 0 }}>
-          {ev.distanceMiles != null ? `~${Math.round(ev.distanceMiles)} mi` : ev.expiresAt ? `expira ${fmtTime(ev.expiresAt)}` : ''}
+          {ev.distanceMiles != null
+            ? `~${formatDistance(ev.distanceMiles, system)}`
+            : ev.expiresAt ? t('alerts.expires', { time: formatClock(ev.expiresAt, language) }) : ''}
         </span>
       </div>
       <p style={{ margin: 0, fontSize: 13, color: '#f0f0f8', fontWeight: 600, lineHeight: 1.4 }}>{ev.title}</p>
-      {ev.summary && ev.summary !== ev.title && (
-        <p style={{ margin: '3px 0 0', fontSize: 11, color: '#a1a1aa', lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{ev.summary}</p>
+      {summary && summary !== ev.title && (
+        <p style={{ margin: '3px 0 0', fontSize: 11, color: '#a1a1aa', lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{summary}</p>
       )}
       {ev.officialUrl && (
         <a href={ev.officialUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10, color: meta.color, fontWeight: 700, textDecoration: 'none', display: 'inline-block', marginTop: 4 }}>
-          Fonte oficial →
+          {t('alerts.officialSource')}
         </a>
       )}
     </div>
@@ -244,6 +319,8 @@ function matchesFocusedAlert(focusedAlertId: string, candidate?: string | null) 
 }
 
 export default function AlertsPage() {
+  const { t, language } = useLanguage()
+  const system = unitSystemFor(language)
   const [snapshot, setSnapshot] = useState<WeatherSnapshot | null>(null)
   const [hazards, setHazards] = useState<HazardNetworkSnapshot | null>(null)
   const [loading, setLoading] = useState(false)
@@ -308,11 +385,11 @@ export default function AlertsPage() {
         fetch(`/api/weather-intelligence?lat=${lat}&lng=${lng}`),
         fetch(`/api/hazards?lat=${lat}&lng=${lng}`).catch(() => null),
       ])
-      if (!wRes.ok) { setError('Could not load weather data.'); return }
+      if (!wRes.ok) { setError(t('alerts.errWeather')); return }
       setSnapshot(await wRes.json())
       if (hRes && hRes.ok) setHazards(await hRes.json())
-    } catch { setError('Network error.') } finally { setLoading(false) }
-  }, [])
+    } catch { setError(t('alerts.errNetwork')) } finally { setLoading(false) }
+  }, [t])
 
   useEffect(() => {
     if (coords) fetchData(coords.lat, coords.lng)
@@ -373,7 +450,12 @@ export default function AlertsPage() {
           alert_count: snapshot.alerts.length,
         }),
       })
+      // `if (res.ok)` sozinho fazia a tela NÃO MUDAR quando a análise falhava:
+      // o spinner parava e nada aparecia, indistinguível de "ainda pensando".
       if (res.ok) setCustomResult(await res.json())
+      else setError(t('alerts.errAnalyze'))
+    } catch {
+      setError(t('alerts.errNetwork'))
     } finally { setCustomLoading(false) }
   }
 
@@ -386,10 +468,18 @@ export default function AlertsPage() {
         body: JSON.stringify({ kitType: saveKit, items: items.map((name) => ({ name })) }),
       })
       if (res.ok) {
-        setSavedMsg(`${items.length} itens salvos em ${KITS.find(k => k.type === saveKit)?.label ?? saveKit}`)
+        setSavedMsg(t('alerts.savedToKit', {
+          n: items.length,
+          kit: t(`kit.${saveKit}` as MessageKey),
+        }))
         setKitPicker(null)
         setTimeout(() => setSavedMsg(null), 4000)
+      } else {
+        // Antes: nada. O modal fechava a expectativa e o item não estava lá.
+        setError(t('alerts.errSave'))
       }
+    } catch {
+      setError(t('alerts.errNetwork'))
     } finally { setSaving(false) }
   }
 
@@ -409,9 +499,9 @@ export default function AlertsPage() {
       <div style={{ padding: '40px 20px', textAlign: 'center' }}>
       <div style={{ fontSize: 48, marginBottom: 16 }}>📍</div>
       <p style={{ color: '#a1a1aa', fontSize: 14, marginBottom: 12 }}>
-        Allow location access or set your location in your Emergency Profile.
+        {t('alerts.needLocation')}
       </p>
-      <a href="/family/ficha" style={{ color: AC, fontSize: 13, fontWeight: 700 }}>Set Location →</a>
+      <a href="/family/ficha" style={{ color: AC, fontSize: 13, fontWeight: 700 }}>{t('alerts.setLocation')}</a>
       </div>
     </div>
   )
@@ -429,15 +519,15 @@ export default function AlertsPage() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <div>
           <p style={{ margin: 0, fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: '#71717a', textTransform: 'uppercase' }}>
-            Weather Intelligence
+            {t('alerts.eyebrow')}
           </p>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
             <span style={{ fontSize: 11, color: locationSrc === 'gps' ? AC : '#71717a', fontWeight: 700 }}>
-              {locationSrc === 'gps' ? '◉ GPS' : '◎ Saved'}
+              {locationSrc === 'gps' ? `◉ ${t('alerts.locGps')}` : `◎ ${t('alerts.locSaved')}`}
             </span>
             {snapshot && (
               <span style={{ fontSize: 10, color: '#4b4b6a' }}>
-                · Updated {fmtTime(snapshot.fetched_at)}
+                · {t('alerts.updated', { time: formatClock(snapshot.fetched_at, language) })}
               </span>
             )}
           </div>
@@ -447,7 +537,7 @@ export default function AlertsPage() {
           disabled={loading}
           style={{ background: 'rgba(0,229,160,0.1)', border: '1px solid rgba(0,229,160,0.25)', color: AC, borderRadius: 14, padding: '7px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: loading ? 0.5 : 1 }}
         >
-          {loading ? '↻ Loading' : '↻ Refresh'}
+          {loading ? `↻ ${t('alerts.loading')}` : `↻ ${t('alerts.refresh')}`}
         </button>
       </div>
 
@@ -465,7 +555,7 @@ export default function AlertsPage() {
       {hazards && hazards.events.length > 0 ? (
         <div style={{ marginBottom: 12, display: 'grid', gap: 6 }}>
           {hazards.events.slice(0, 6).map(ev => (
-            <HazardEventCard key={ev.id} ev={ev} focused={matchesFocusedAlert(focusedAlertId, ev.officialUrl) || matchesFocusedAlert(focusedAlertId, ev.id)} />
+            <HazardEventCard key={ev.id} ev={ev} system={system} language={language} focused={matchesFocusedAlert(focusedAlertId, ev.officialUrl) || matchesFocusedAlert(focusedAlertId, ev.id)} />
           ))}
         </div>
       ) : (
@@ -475,8 +565,8 @@ export default function AlertsPage() {
             {snapshot!.alerts.map((alert, i) => (
               <div key={i} id={matchesFocusedAlert(focusedAlertId, alert.url) || matchesFocusedAlert(focusedAlertId, alert.id) ? 'weather-focused-alert' : undefined} style={{ background: RISK_BG[alert.severity === 'CRITICAL' ? 'critical' : alert.severity === 'HIGH' ? 'high' : 'medium'], border: `1px solid ${RISK_COLOR[alert.severity === 'CRITICAL' ? 'critical' : alert.severity === 'HIGH' ? 'high' : 'medium']}${matchesFocusedAlert(focusedAlertId, alert.url) || matchesFocusedAlert(focusedAlertId, alert.id) ? '' : '44'}`, borderRadius: 16, padding: '10px 14px', marginBottom: 6 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
-                  <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.1em', color: RISK_COLOR[alert.severity === 'CRITICAL' ? 'critical' : 'high'] }}>{alert.source} ALERT</span>
-                  {alert.expires && <span style={{ fontSize: 10, color: '#71717a' }}>Expires {fmtTime(alert.expires)}</span>}
+                  <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.1em', color: RISK_COLOR[alert.severity === 'CRITICAL' ? 'critical' : 'high'] }}>{alert.source} {t('alerts.alertSuffix')}</span>
+                  {alert.expires && <span style={{ fontSize: 10, color: '#71717a' }}>{t('alerts.expiresCap', { time: formatClock(alert.expires, language) })}</span>}
                 </div>
                 <p style={{ margin: 0, fontSize: 13, color: '#f0f0f8', fontWeight: 600, lineHeight: 1.4 }}>{alert.headline}</p>
               </div>
@@ -492,36 +582,39 @@ export default function AlertsPage() {
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
             <div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                <span style={{ fontSize: 56, fontWeight: 800, color: '#f0f0f8', lineHeight: 1 }}>{Math.round(cur.temp_f)}°</span>
-                <span style={{ fontSize: 22, color: '#71717a' }}>F</span>
+                <span style={{ fontSize: 56, fontWeight: 800, color: '#f0f0f8', lineHeight: 1 }}>{formatTemp(cur.temp_f, system, false)}</span>
+                <span style={{ fontSize: 22, color: '#71717a' }}>{system === 'metric' ? 'C' : 'F'}</span>
               </div>
               <div style={{ fontSize: 28, marginTop: -4 }}>{cur.condition_icon}</div>
               <p style={{ margin: '2px 0 0', fontSize: 13, color: '#a1a1aa' }}>{cur.condition}</p>
-              <p style={{ margin: '2px 0 0', fontSize: 12, color: '#71717a' }}>Feels like {Math.round(cur.feels_like_f)}°F</p>
+              <p style={{ margin: '2px 0 0', fontSize: 12, color: '#71717a' }}>{t('alerts.feelsLike', { v: formatTemp(cur.feels_like_f, system) })}</p>
             </div>
             <div style={{ textAlign: 'right' }}>
               <div style={{ marginBottom: 6 }}>
                 {cur.is_daytime
-                  ? <span style={{ fontSize: 11, color: '#ffee58', fontWeight: 700 }}>☀️ Daytime</span>
-                  : <span style={{ fontSize: 11, color: '#7ec8e3', fontWeight: 700 }}>🌙 Nighttime</span>}
+                  ? <span style={{ fontSize: 11, color: '#ffee58', fontWeight: 700 }}>☀️ {t('alerts.daytime')}</span>
+                  : <span style={{ fontSize: 11, color: '#7ec8e3', fontWeight: 700 }}>🌙 {t('alerts.nighttime')}</span>}
               </div>
-              {cur.sunrise_iso && <p style={{ margin: '0 0 2px', fontSize: 11, color: '#71717a' }}>🌅 {fmtTime(cur.sunrise_iso)}</p>}
-              {cur.sunset_iso  && <p style={{ margin: '0 0 2px', fontSize: 11, color: '#71717a' }}>🌇 {fmtTime(cur.sunset_iso)}</p>}
+              {cur.sunrise_iso && <p style={{ margin: '0 0 2px', fontSize: 11, color: '#71717a' }}>🌅 {formatClock(cur.sunrise_iso, language)}</p>}
+              {cur.sunset_iso  && <p style={{ margin: '0 0 2px', fontSize: 11, color: '#71717a' }}>🌇 {formatClock(cur.sunset_iso, language)}</p>}
             </div>
           </div>
 
           {/* Metrics grid */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
             {[
-              { label: 'Humidity',  value: `${cur.humidity_pct}%`,              icon: '💧' },
-              { label: 'Dew Point', value: `${Math.round(cur.dew_point_f)}°F`,  icon: '🌡' },
-              { label: 'Pressure',  value: `${Math.round(cur.pressure_hpa)} hPa`,icon: '⬇' },
-              { label: 'Wind',      value: `${Math.round(cur.wind_mph)} mph ${cur.wind_dir_label}`, icon: '💨' },
-              { label: 'Gusts',     value: `${Math.round(cur.wind_gust_mph)} mph`, icon: '🌬' },
-              { label: 'UV Index',  value: String(cur.uv_index),                icon: '☀' },
-              { label: 'Cloud',     value: `${cur.cloud_cover_pct}%`,           icon: '☁' },
-              { label: 'Visibility',value: `${cur.visibility_mi.toFixed(1)} mi`,icon: '👁' },
-              { label: 'Rain',      value: `${cur.precip_prob_pct}%`,           icon: '🌧' },
+              // hPa é a unidade da fonte nos dois sistemas: o NWS publica em
+              // hectopascal, e polegada de mercúrio seria inventar conversão
+              // onde a fonte não pede.
+              { label: t('alerts.humidity'),   value: `${cur.humidity_pct}%`,                                        icon: '💧' },
+              { label: t('alerts.dewPoint'),   value: formatTemp(cur.dew_point_f, system),                           icon: '🌡' },
+              { label: t('alerts.pressure'),   value: `${Math.round(cur.pressure_hpa)} hPa`,                         icon: '⬇' },
+              { label: t('alerts.wind'),       value: `${formatSpeed(cur.wind_mph, system)} ${cur.wind_dir_label}`,  icon: '💨' },
+              { label: t('alerts.gusts'),      value: formatSpeed(cur.wind_gust_mph, system),                        icon: '🌬' },
+              { label: t('alerts.uvIndex'),    value: String(cur.uv_index),                                          icon: '☀' },
+              { label: t('alerts.cloud'),      value: `${cur.cloud_cover_pct}%`,                                     icon: '☁' },
+              { label: t('alerts.visibility'), value: formatVisibility(cur.visibility_mi, system),                   icon: '👁' },
+              { label: t('alerts.rain'),       value: `${cur.precip_prob_pct}%`,                                     icon: '🌧' },
             ].map(({ label, value, icon }) => (
               <div key={label} style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 16, padding: '8px 10px' }}>
                 <p style={{ margin: '0 0 2px', fontSize: 10, color: '#71717a' }}>{icon} {label}</p>
@@ -533,7 +626,7 @@ export default function AlertsPage() {
           {/* Air Quality */}
           {aqi && aqi.us_aqi != null && (
             <div style={{ marginTop: 10, padding: '8px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: 12, color: '#a1a1aa' }}>💨 Air Quality</span>
+              <span style={{ fontSize: 12, color: '#a1a1aa' }}>💨 {t('alerts.airQuality')}</span>
               <div style={{ textAlign: 'right' }}>
                 <span style={{ fontSize: 13, fontWeight: 800, color: aqiColor(aqi.us_aqi) }}>AQI {aqi.us_aqi} — {aqi.category}</span>
                 {aqi.pm25 != null && <span style={{ fontSize: 10, color: '#71717a', marginLeft: 8 }}>PM2.5: {aqi.pm25.toFixed(1)}</span>}
@@ -546,15 +639,15 @@ export default function AlertsPage() {
       {/* ── Hourly Strip ── */}
       {snapshot && snapshot.hourly.length > 0 && (
         <div style={{ marginBottom: 12 }}>
-          <p style={{ margin: '0 0 8px', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: '#71717a', textTransform: 'uppercase' }}>Next 12 Hours</p>
+          <p style={{ margin: '0 0 8px', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: '#71717a', textTransform: 'uppercase' }}>{t('alerts.next12h')}</p>
           <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4 }}>
             {snapshot.hourly.slice(0, 12).map((h, i) => (
               <div key={i} style={{ minWidth: 58, flexShrink: 0, textAlign: 'center', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 16, padding: '8px 4px' }}>
-                <p style={{ margin: '0 0 3px', fontSize: 10, color: '#71717a' }}>{fmtHour(h.time_iso)}</p>
+                <p style={{ margin: '0 0 3px', fontSize: 10, color: '#71717a' }}>{formatHour(h.time_iso, language)}</p>
                 <div style={{ fontSize: 16 }}>{h.condition_icon}</div>
-                <p style={{ margin: '3px 0 2px', fontSize: 13, fontWeight: 700, color: '#f0f0f8' }}>{Math.round(h.temp_f)}°</p>
+                <p style={{ margin: '3px 0 2px', fontSize: 13, fontWeight: 700, color: '#f0f0f8' }}>{formatTemp(h.temp_f, system, false)}</p>
                 {h.precip_prob_pct > 0 && <p style={{ margin: 0, fontSize: 10, color: '#7ec8e3' }}>{h.precip_prob_pct}%</p>}
-                {h.wind_gust_mph > 20 && <p style={{ margin: 0, fontSize: 9, color: '#ffb347' }}>{Math.round(h.wind_gust_mph)}g</p>}
+                {h.wind_gust_mph > 20 && <p style={{ margin: 0, fontSize: 9, color: '#ffb347' }}>{speedValue(h.wind_gust_mph, system)}g</p>}
               </div>
             ))}
           </div>
@@ -564,14 +657,14 @@ export default function AlertsPage() {
       {/* ── 3-Day Forecast ── */}
       {snapshot && snapshot.daily.length > 0 && (
         <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 20, padding: '10px 14px', marginBottom: 16 }}>
-          <p style={{ margin: '0 0 8px', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: '#71717a', textTransform: 'uppercase' }}>3-Day Outlook</p>
+          <p style={{ margin: '0 0 8px', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: '#71717a', textTransform: 'uppercase' }}>{t('alerts.outlook3d')}</p>
           {snapshot.daily.map((d, i) => (
             <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: i < snapshot.daily.length - 1 ? 8 : 0, borderBottom: i < snapshot.daily.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none', marginBottom: i < snapshot.daily.length - 1 ? 8 : 0 }}>
-              <span style={{ fontSize: 13, color: '#a1a1aa', width: 80 }}>{i === 0 ? 'Today' : fmtDate(d.date)}</span>
+              <span style={{ fontSize: 13, color: '#a1a1aa', width: 80 }}>{i === 0 ? t('alerts.today') : fmtDate(d.date, language)}</span>
               <span style={{ fontSize: 18 }}>{d.condition ? (d.weather_code >= 95 ? '⛈' : d.weather_code >= 80 ? '🌧' : d.weather_code >= 61 ? '🌧' : d.weather_code >= 51 ? '🌦' : d.weather_code >= 45 ? '🌫' : d.weather_code >= 3 ? '☁️' : d.weather_code >= 2 ? '⛅' : '☀️') : '—'}</span>
               <span style={{ fontSize: 12, color: '#71717a' }}>UV {d.uv_max}</span>
-              {d.precip_sum_in > 0 && <span style={{ fontSize: 12, color: '#7ec8e3' }}>🌧 {d.precip_sum_in.toFixed(2)}&quot;</span>}
-              <span style={{ fontSize: 13, fontWeight: 700, color: '#f0f0f8' }}>{Math.round(d.temp_max_f)}° <span style={{ color: '#71717a', fontWeight: 400 }}>{Math.round(d.temp_min_f)}°</span></span>
+              {d.precip_sum_in > 0 && <span style={{ fontSize: 12, color: '#7ec8e3' }}>🌧 {formatPrecip(d.precip_sum_in, system)}</span>}
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#f0f0f8' }}>{formatTemp(d.temp_max_f, system, false)} <span style={{ color: '#71717a', fontWeight: 400 }}>{formatTemp(d.temp_min_f, system, false)}</span></span>
             </div>
           ))}
         </div>
@@ -580,7 +673,7 @@ export default function AlertsPage() {
       {/* ── Earthquakes (fallback only — otherwise shown as classified hazard events) ── */}
       {!hazards && (snapshot?.earthquakes ?? []).length > 0 && (
         <div style={{ background: 'rgba(255,107,107,0.06)', border: '1px solid rgba(255,107,107,0.2)', borderRadius: 18, padding: '10px 14px', marginBottom: 12 }}>
-          <p style={{ margin: '0 0 6px', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: '#ff8c8c', textTransform: 'uppercase' }}>🌍 Nearby Earthquakes (last 24h)</p>
+          <p style={{ margin: '0 0 6px', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: '#ff8c8c', textTransform: 'uppercase' }}>{t('alerts.quakes')}</p>
           {snapshot!.earthquakes.map((eq, i) => (
             <p key={i} style={{ margin: i > 0 ? '4px 0 0' : 0, fontSize: 12, color: '#d4d4d8' }}>M{eq.magnitude.toFixed(1)} — {eq.place}</p>
           ))}
@@ -589,14 +682,14 @@ export default function AlertsPage() {
 
       {/* ── Custom Activity ── */}
       <div style={{ marginBottom: 16 }}>
-        <p style={{ margin: '0 0 8px', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: '#71717a', textTransform: 'uppercase' }}>Custom Activity Analysis</p>
+        <p style={{ margin: '0 0 8px', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: '#71717a', textTransform: 'uppercase' }}>{t('alerts.customActivity')}</p>
         <div style={{ display: 'flex', gap: 8 }}>
           <input
             type="text"
             value={customActivity}
             onChange={e => { setCustomActivity(e.target.value); setCustomResult(null) }}
             onKeyDown={e => e.key === 'Enter' && void handleCustomActivity()}
-            placeholder="Ex: observar as estrelas, pesca noturna, trilha…"
+            placeholder={t('alerts.customPlaceholder')}
             style={{
               flex: 1, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)',
               borderRadius: 16, padding: '10px 14px', fontSize: 13, color: '#f0f0f8',
@@ -613,7 +706,7 @@ export default function AlertsPage() {
               flexShrink: 0,
             }}
           >
-            {customLoading ? '…' : 'Analisar'}
+            {customLoading ? '…' : t('alerts.analyze')}
           </button>
         </div>
 
@@ -634,11 +727,11 @@ export default function AlertsPage() {
               </div>
             )}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '4px 0 6px' }}>
-              <p style={{ margin: 0, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: '#71717a', textTransform: 'uppercase' }}>Checklist</p>
+              <p style={{ margin: 0, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: '#71717a', textTransform: 'uppercase' }}>{t('alerts.checklist')}</p>
               <button onClick={() => setKitPicker({ items: customResult.checklist })} style={{
                 fontSize: 10, padding: '3px 8px', background: `${AC}18`, border: `1px solid ${AC}44`,
                 borderRadius: 12, color: AC, fontWeight: 700, cursor: 'pointer',
-              }}>+ Salvar no Kit</button>
+              }}>{t('alerts.saveToKit')}</button>
             </div>
             {customResult.checklist.map((item, i) => (
               <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 4 }}>
@@ -653,10 +746,10 @@ export default function AlertsPage() {
       {/* ── Activity Toggles ── */}
       <div style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-          <p style={{ margin: 0, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: '#71717a', textTransform: 'uppercase' }}>Activity Intelligence</p>
+          <p style={{ margin: 0, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: '#71717a', textTransform: 'uppercase' }}>{t('alerts.activityIntel')}</p>
           {activeActivities.size > 0 && (
             <button onClick={() => setActiveActivities(new Set())} style={{ background: 'none', border: 'none', color: '#71717a', fontSize: 11, cursor: 'pointer', padding: 0 }}>
-              Clear all
+              {t('alerts.clearAll')}
             </button>
           )}
         </div>
@@ -673,13 +766,13 @@ export default function AlertsPage() {
                   style={{ background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', flex: 1, padding: 0 }}
                 >
                   <span style={{ fontSize: 12, fontWeight: 700, color: '#d4d4d8' }}>
-                    {CATEGORY_LABELS[cat]}
+                    {t(`weatherCat.${cat}` as MessageKey)}
                     {activeCount > 0 && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 800, color: AC }}>({activeCount})</span>}
                   </span>
                 </button>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   {isOpen && (
-                    <button onClick={() => selectAll(cat)} style={{ background: 'none', border: 'none', color: '#71717a', fontSize: 10, cursor: 'pointer', padding: 0 }}>All</button>
+                    <button onClick={() => selectAll(cat)} style={{ background: 'none', border: 'none', color: '#71717a', fontSize: 10, cursor: 'pointer', padding: 0 }}>{t('alerts.selectAllInGroup')}</button>
                   )}
                   <span style={{ color: '#71717a', fontSize: 13 }} onClick={() => toggleCategory(cat)}>{isOpen ? '▲' : '▼'}</span>
                 </div>
@@ -700,7 +793,7 @@ export default function AlertsPage() {
                           color: active ? '#0a0a0f' : '#a1a1aa',
                         }}
                       >
-                        {activity.icon} {activity.label}
+                        {activity.icon} {t(`activity.${activity.id}` as MessageKey)}
                       </button>
                     )
                   })}
@@ -715,12 +808,12 @@ export default function AlertsPage() {
       {activeActivities.size > 0 && (
         <div>
           <p style={{ margin: '0 0 10px', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: '#71717a', textTransform: 'uppercase' }}>
-            EOS Recommendations — {recommendations.length} activit{recommendations.length === 1 ? 'y' : 'ies'}
+            {t('alerts.recommendations')} — {recommendations.length === 1 ? t('alerts.recsOne') : t('alerts.recsMany', { n: recommendations.length })}
           </p>
 
           {!snapshot && (
             <div style={{ textAlign: 'center', padding: '24px 0', color: '#71717a', fontSize: 13 }}>
-              {loading ? '⏳ Loading weather data…' : '📡 Weather data needed for recommendations'}
+              {loading ? t('alerts.loadingWeather') : t('alerts.needWeather')}
             </div>
           )}
 
@@ -735,9 +828,9 @@ export default function AlertsPage() {
             return (critical > 0 || high > 0) ? (
               <div style={{ background: 'rgba(255,107,107,0.08)', border: '1px solid rgba(255,107,107,0.25)', borderRadius: 16, padding: '10px 14px', marginTop: 4 }}>
                 <p style={{ margin: 0, fontSize: 12, color: '#ff8c8c', fontWeight: 600 }}>
-                  {critical > 0 && `${critical} critical risk${critical > 1 ? 's' : ''}. `}
-                  {high > 0 && `${high} high risk${high > 1 ? 's' : ''}. `}
-                  Review before going out.
+                  {critical > 0 && `${t('alerts.criticalRisks', { n: critical })} `}
+                  {high > 0 && `${t('alerts.highRisks', { n: high })} `}
+                  {t('alerts.reviewBeforeOut')}
                 </p>
               </div>
             ) : null
@@ -748,7 +841,7 @@ export default function AlertsPage() {
       {activeActivities.size === 0 && snapshot && (
         <div style={{ textAlign: 'center', padding: '24px 16px', color: '#71717a', fontSize: 13 }}>
           <div style={{ fontSize: 32, marginBottom: 8 }}>☝️</div>
-          Select activities above to get intelligent recommendations.
+          {t('alerts.selectActivities')}
         </div>
       )}
 
@@ -756,11 +849,19 @@ export default function AlertsPage() {
           Network at the top of this screen (honest states, not optimistic). */}
       {snapshot && (
         <div style={{ marginTop: 20, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-          <p style={{ margin: '0 0 6px', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: '#4b4b6a', textTransform: 'uppercase' }}>Data Sources</p>
+          <p style={{ margin: '0 0 6px', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: '#4b4b6a', textTransform: 'uppercase' }}>{t('alerts.dataSources')}</p>
           <p style={{ margin: 0, fontSize: 11, color: '#71717a', lineHeight: 1.5 }}>
             {hazards
-              ? `${hazards.network.liveCount}/${hazards.network.totalChannels} canais ao vivo · ${hazards.network.headline.toLowerCase()}. Toque em “Live Intelligence Network” acima para ver o estado real de cada fonte.`
-              : 'Estado por canal disponível no “Live Intelligence Network” no topo desta tela.'}
+              ? `${t('alerts.channelsLive', {
+                  live: hazards.network.liveCount,
+                  total: hazards.network.totalChannels,
+                  // O título vem da CAUSA, não do texto pronto do servidor:
+                  // `network.headline` é a frase em inglês de `health.ts`, e
+                  // encaixá-la aqui produzia "canais ao vivo · using backup
+                  // weather source" numa sentença em português.
+                  headline: t(HEADLINE_KEY[hazards.network.headlineKey]).toLowerCase(),
+                })} ${t('alerts.channelsHint')}`
+              : t('alerts.channelsHint')}
           </p>
         </div>
       )}
@@ -776,9 +877,9 @@ export default function AlertsPage() {
             padding: 20, width: '100%', maxWidth: 440,
           }} onClick={(e) => e.stopPropagation()}>
             <p style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 700, color: '#f0f0f8' }}>
-              Salvar {kitPicker.items.length} itens no Kit
+              {t('alerts.saveNItems', { n: kitPicker.items.length })}
             </p>
-            <p style={{ margin: '0 0 14px', fontSize: 12, color: '#8a8a99' }}>Escolha o kit de destino:</p>
+            <p style={{ margin: '0 0 14px', fontSize: 12, color: '#8a8a99' }}>{t('alerts.chooseKit')}</p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
               {KITS.map((k) => (
                 <button key={k.type} onClick={() => setSaveKit(k.type)} style={{
@@ -788,7 +889,7 @@ export default function AlertsPage() {
                   color: saveKit === k.type ? k.color : '#8a8a99',
                   fontSize: 13, fontWeight: 600,
                 }}>
-                  {k.icon} {k.label}
+                  {k.icon} {t(`kit.${k.type}` as MessageKey)}
                 </button>
               ))}
             </div>
@@ -796,13 +897,13 @@ export default function AlertsPage() {
               <button onClick={() => setKitPicker(null)} style={{
                 flex: 1, padding: '10px 0', background: 'transparent', border: '1px solid #2a2a3a',
                 borderRadius: 16, color: '#8a8a99', fontSize: 13, cursor: 'pointer',
-              }}>Cancelar</button>
+              }}>{t('alerts.cancel')}</button>
               <button onClick={() => void saveToKit(kitPicker.items)} disabled={saving} style={{
                 flex: 2, padding: '10px 0', background: saving ? '#2a2a3a' : AC,
                 border: 'none', borderRadius: 16,
                 color: saving ? '#8a8a99' : '#0a0a0f',
                 fontSize: 13, fontWeight: 700, cursor: saving ? 'default' : 'pointer',
-              }}>{saving ? 'Salvando…' : 'Salvar'}</button>
+              }}>{saving ? t('alerts.saving') : t('alerts.save')}</button>
             </div>
           </div>
         </div>

@@ -1,5 +1,5 @@
 import { HAZARD_CONFIG } from './config'
-import type { HazardChannel, NetworkStatus, NetworkTone, ProviderStatus } from './types'
+import type { HazardChannel, NetworkHeadlineKey, NetworkStatus, NetworkTone, ProviderStatus } from './types'
 import type { ProviderResult } from './providers/interfaces'
 
 /**
@@ -29,29 +29,36 @@ export function aggregateNetworkStatus(channels: HazardChannel[], syncedAt: stri
   const notConfiguredCount = channels.filter(c => !c.configured).length
 
   let headline: string
+  let headlineKey: NetworkHeadlineKey
   let tone: NetworkTone
 
   if (reqDown.length > 0) {
     if (reqLive.length === 0) {
       headline = 'MONITORING WITH LIMITED COVERAGE'
+      headlineKey = 'limited_coverage'
       tone = 'red'
     } else {
       headline = `${reqLive.length} OF ${req.length} CHANNELS LIVE`
+      headlineKey = 'partial_channels'
       tone = 'amber'
     }
   } else if (reqFallback.length > 0) {
     headline = 'USING BACKUP WEATHER SOURCE'
+    headlineKey = 'backup_source'
     tone = 'amber'
   } else if (notConfiguredCount === 0) {
     headline = 'ALL SYSTEMS LIVE'
+    headlineKey = 'all_live'
     tone = 'mint'
   } else {
     headline = `${liveCount} OF ${channels.length} CHANNELS LIVE`
+    headlineKey = 'partial_channels'
     tone = 'mint'
   }
 
   return {
     headline,
+    headlineKey,
     tone,
     liveCount,
     configuredCount,

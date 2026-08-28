@@ -28,6 +28,7 @@
     "test:invite": "node scripts/invite-link-test.mjs",
     "test:guardrails": "node scripts/guardrails-test.mjs",
     "test:hazard-dedup": "node scripts/hazard-dedup-test.mjs",
+    "test:alerts-i18n": "node scripts/alerts-i18n-test.mjs",
     "test:client-error": "npx tsx scripts/client-error-test.mjs",
     "test:grouping": "npx tsx scripts/error-grouping-test.mjs",
     "test:roster": "node scripts/roster-page-test.mjs",

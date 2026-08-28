@@ -188,8 +188,20 @@ export interface HazardChannel {
 
 export type NetworkTone = 'mint' | 'amber' | 'red' | 'muted'
 
+/**
+ * A causa do estado da rede, como DADO.
+ *
+ * `headline` continua existindo e continua em inglês: é o texto de base e o que
+ * os testes de `health.ts` asseguram. Mas ele é uma frase montada no servidor, e
+ * o servidor não sabe em que idioma a pessoa lê — a mesma lição que o
+ * `docs/11-product-memory` já registrou duas vezes. `headlineKey` é a razão em
+ * si; a tela escolhe as palavras.
+ */
+export type NetworkHeadlineKey = 'limited_coverage' | 'partial_channels' | 'backup_source' | 'all_live'
+
 export interface NetworkStatus {
   headline: string
+  headlineKey: NetworkHeadlineKey
   tone: NetworkTone
   liveCount: number
   configuredCount: number

@@ -10,6 +10,7 @@ import { HAZARD_CONFIG } from './config'
 import type { AirQualitySnapshot } from '@/lib/weather/types'
 import type { Coordinates, HazardEvent, HazardSeverity, UpcomingPrecipitationResult } from './types'
 import { tropicalStateLabel, type HazardTransition } from './transitions'
+import { formatDistance, formatSpeed, unitSystemFor } from '@/lib/display-units'
 
 const A = HAZARD_CONFIG.alerting
 
@@ -167,14 +168,21 @@ export interface NotificationCopy {
 export function notificationCopy(transition: HazardTransition, pt: boolean): NotificationCopy {
   const { event, kind, toState } = transition
   const name = stormName(event.title)
+  // A régua segue quem lê, como o texto (2026-08-28). O idioma já era honrado
+  // aqui desde a D-220; a UNIDADE não era — a mesma frase dizia "ventos de 74
+  // mph" para um telefone em português. Guardar o dado estruturado e renderizar
+  // no idioma de quem lê vale para o número tanto quanto para a palavra.
+  const system = unitSystemFor(pt ? 'pt' : 'en')
   const wind = event.metrics?.windMph
-  const windNote = wind ? (pt ? `, ventos de ${wind} mph` : `, sustained winds of ${wind} mph`) : ''
+  const windNote = wind
+    ? (pt ? `, ventos de ${formatSpeed(wind, system)}` : `, sustained winds of ${formatSpeed(wind, system)}`)
+    : ''
   const distance = event.distanceMiles
   const distanceNote =
     distance != null && event.hazardType === 'tropical_cyclone'
       ? pt
-        ? ` A ~${Math.round(distance)} mi de você.`
-        : ` ~${Math.round(distance)} mi from you.`
+        ? ` A ~${formatDistance(distance, system)} de você.`
+        : ` ~${formatDistance(distance, system)} from you.`
       : ''
 
   switch (event.hazardType) {

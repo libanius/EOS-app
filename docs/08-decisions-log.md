@@ -4,6 +4,105 @@
 
 ---
 
+## D-225 — Uma tela fala um idioma só, e a régua segue quem lê
+
+**Date**: 2026-08-28
+**Status**: DECIDED / IMPLEMENTADO (leva 1 de 3)
+**Roadmap**: I18N-T01
+**Spec**: alinhado a D-198 (inglês é o padrão) e D-206
+
+**Context**: as capturas para a Play Store (Faixa 1) expuseram fora do app o que
+a crítica de 2026-08-20 já pontuara com 1 de 4 em "sistema ↔ mundo real": a tela
+de Alertas misturava os dois idiomas **dentro da mesma carta** e servia °F, mph,
+milhas e relógio de 12 h para quem havia escolhido português.
+
+A varredura seguinte mostrou que o problema era maior e ia na direção oposta à
+suposta: com o inglês como padrão (D-198), **oito telas vivas têm texto cravado
+em português** — `MemberSheet`, `CircleSheets`, `RouteDraw`, `DetentSheet`,
+`ChecklistDialogs`, `MapPointPicker`, `PlanChart` — e um americano, que é o
+usuário padrão, recebia português ao abrir a ficha de um familiar. Ao mesmo
+tempo, as 30 atividades de `lib/weather/engine.ts` só existiam em inglês e os 5
+kits de `lib/checklist.ts` só em português: as duas listas aparecem na mesma
+tela.
+
+**Decision (1) — a unidade segue o idioma, na borda.** `lib/display-units.ts`,
+novo: inglês → imperial (°F, mph, mi, relógio de 12 h), português → métrico (°C,
+km/h, km, 24 h). O dado permanece imperial em memória, porque imperial é o que
+NWS, NHC, USGS e FEMA entregam; converter na entrada seria brigar com a fonte a
+cada comparação. Fatores exatos (milha = 1609,344 m), e ausência nunca vira
+zero — `formatTemp(0)` é `0°F`, `formatTemp(null)` é `—` (mesma lição do D-174).
+
+**Decision (2) — não é o `lib/units.ts`.** Aquele arquivo é a régua de ÁGUA da
+FEMA (D-158/D-159), com litro no banco e galão na tela. São dois assuntos que só
+parecem um; juntá-los criaria a segunda verdade sobre água que o D-158 existe
+para impedir. `formatVolume` foi deliberadamente **removido** do módulo novo.
+
+**Decision (3) — texto do servidor vira DADO, não frase.** Três lugares
+gravavam sentença pronta em inglês e a tela exibia crua:
+`providers/nhc.ts:summary` ("winds 40 mph … ~2273 mi from you"),
+`health.ts:headline` ("USING BACKUP WEATHER SOURCE") e a linha "Fontes de dados"
+da AlertsPage, que injetava esse headline dentro de uma sentença em português.
+Agora o resumo do ciclone é renderizado de `HazardEvent.metrics` e o estado da
+rede de `NetworkStatus.headlineKey` — ambos no idioma de quem lê. É a regra que
+o `docs/11-product-memory.md` já registrara duas vezes: **guarde o dado
+estruturado; renderize no idioma de quem lê, na hora de ler.**
+
+`headline` continua existindo, em inglês, como texto de base — é o que os testes
+de `health.ts` asseguram e o que um log deve mostrar.
+
+**Decision (4) — a cópia do push também converte.** `alerting.ts` já honrava o
+idioma desde a D-220, mas dizia "ventos de 74 mph" em português. A régua segue
+quem lê tanto quanto a palavra.
+
+**Decision (5) — tipo duplicado é contrato que ninguém assinou.**
+`LiveIntelligenceNetwork.tsx` mantinha cópias locais de `ProviderStatus`,
+`Channel` e `NetworkStatus`, escritas à mão. Elas já haviam divergido:
+`headlineKey` nasceu no tipo canônico e a tela não o enxergava, então o
+compilador não podia avisar. Passam a vir de `lib/hazards/types.ts`.
+
+**Consequence — duas lições sobre o teste, não sobre o app.** `npm run
+test:alerts-i18n` nasceu e **passou 9/9 numa tela que ainda exibia
+"Multi-source hazard monitoring"**: as sondas só continham palavras da própria
+AlertsPage, e a Live Intelligence Network é outro componente. Uma lista de
+sondas escrita a partir do que se lembra de ter traduzido mede a memória do
+autor, não a tela. Depois, a sonda `'ago'` acusou defeito inexistente por casar
+dentro de "AGORA" e de "29 de ago." — a comparação passou a ser por limite de
+palavra, com as bordas checadas contra a classe de letras acentuadas, porque
+`\b` do JS não entende acento.
+
+**Não autorizado por D-225**: gravar frase montada em idioma nenhum dentro de
+`hazard_events` ou `NetworkStatus`; converter unidade na entrada em vez da
+borda; duplicar a régua de água em `display-units`; recriar tipos locais
+espelhando `lib/hazards/types.ts`; escrever sonda de idioma que case no meio de
+palavra.
+
+---
+
+## D-224 — WV2-T32 entra agora, antes da autoria de plano
+
+**Date**: 2026-08-28
+**Status**: DECIDED
+**Roadmap**: WV2-T32
+**Spec**: `docs/hazard-data-architecture.md`, `docs/16-hybrid-world-dashboard.md`
+
+**Context**: depois da D-223, o dono confirmou que quer implementar agora a
+experiência NHC operacional por camadas no Mundo. O `Current Task` anterior era
+AUTHOR-T01, mas a demanda explícita do dono reordena o próximo trabalho visível.
+
+**Decision**: WV2-T32 pode entrar em implementação imediatamente. AUTHOR-T01
+permanece válido, mas deixa de ser o bloqueador deste turno e volta para a fila
+após esta entrega ou novo replanejamento.
+
+**Escopo autorizado agora**:
+
+- quebrar a camada monolítica de ciclone em subcamadas de centro, cone,
+  trajetória, pontos, trajeto passado e watches/warnings;
+- adicionar legenda operacional NHC no painel de Camadas;
+- preservar compatibilidade com o estado salvo antigo `cyclone`;
+- não criar previsão proprietária, nem inferir evacuação.
+
+---
+
 ## D-223 — O NHC vira camadas operacionais, não outro mapa
 
 **Date**: 2026-08-28

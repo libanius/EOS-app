@@ -266,7 +266,19 @@ describe('notificationCopy', () => {
     const [t] = detectTransitions({ previous: new Map([[before.id, stored(before)]]), current: [after] })
     const copy = notificationCopy(t, true)
     expect(copy.body).toContain('foi elevado a Tempestade Tropical')
+    // D-225: a régua segue quem lê. Este teste exigia "46 mph" DENTRO de uma
+    // frase em português — congelava o defeito em vez de proteger o acerto.
+    expect(copy.body).toContain('74 km/h')
+    expect(copy.body).not.toContain('mph')
+  })
+
+  it('mantém imperial para quem lê em inglês (D-225)', () => {
+    const before = cyclone('Moke', 'TD', 30)
+    const after = cyclone('Moke', 'TS', 46)
+    const [t] = detectTransitions({ previous: new Map([[before.id, stored(before)]]), current: [after] })
+    const copy = notificationCopy(t, false)
     expect(copy.body).toContain('46 mph')
+    expect(copy.body).not.toContain('km/h')
   })
 
   it('renders rain intensity in the reader language, not the detection language', () => {

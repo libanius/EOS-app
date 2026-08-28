@@ -1,38 +1,27 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useLanguage, type MessageKey } from '@/lib/i18n'
+import type {
+  HazardChannel,
+  NetworkHeadlineKey,
+  NetworkStatus,
+  ProviderStatus as HazardProviderStatus,
+} from '@/lib/hazards/types'
 
 // ─── Types (mirror lib/hazards/types.ts, kept local to the client) ────────────
 
-type ProviderStatus = 'live' | 'syncing' | 'degraded' | 'offline' | 'not_configured' | 'unavailable_here'
-
-interface Channel {
-  key: string
-  label: string
-  dataType: string
-  status: ProviderStatus
-  required: boolean
-  configured: boolean
-  usingFallback: boolean
-  primaryProvider: string
-  activeProvider?: string
-  fallbackProvider?: string
-  official: boolean
-  lastSuccessAt?: string
-  dataAgeSeconds?: number
-  message?: string
-}
-
-interface NetworkStatus {
-  headline: string
-  tone: 'mint' | 'amber' | 'red' | 'muted'
-  liveCount: number
-  configuredCount: number
-  totalChannels: number
-  degradedCount: number
-  notConfiguredCount: number
-  syncedAt: string
-}
+/*
+ * Os tipos vêm de `lib/hazards/types.ts`, a fonte única.
+ *
+ * Este arquivo mantinha CÓPIAS locais de `ProviderStatus`, `Channel` e
+ * `NetworkStatus`, escritas à mão a partir do que a rota devolvia. Elas já
+ * tinham começado a divergir: `headlineKey` nasceu no tipo canônico e esta tela
+ * não o enxergava, então o compilador não podia avisar que a cópia estava
+ * velha. Um tipo duplicado é um contrato que ninguém assinou.
+ */
+type ProviderStatus = HazardProviderStatus
+type Channel = HazardChannel
 
 interface Snapshot {
   channels: Channel[]
@@ -48,13 +37,27 @@ const C = {
   text: '#F0F0F8', muted: '#6B6B8A',
 }
 
-const STATUS_META: Record<ProviderStatus, { label: string; color: string }> = {
-  live: { label: 'LIVE', color: C.mint },
-  syncing: { label: 'SYNCING', color: C.purple },
-  degraded: { label: 'DEGRADED', color: C.amber },
-  offline: { label: 'OFFLINE', color: C.red },
-  not_configured: { label: 'NOT CONFIGURED', color: C.muted },
-  unavailable_here: { label: 'UNAVAILABLE HERE', color: C.muted },
+// A cor é do desenho e não muda com o idioma; só o rótulo é traduzido.
+const STATUS_META: Record<ProviderStatus, { key: MessageKey; color: string }> = {
+  live: { key: 'lin.statusLive', color: C.mint },
+  syncing: { key: 'lin.statusSyncing', color: C.purple },
+  degraded: { key: 'lin.statusDegraded', color: C.amber },
+  offline: { key: 'lin.statusOffline', color: C.red },
+  not_configured: { key: 'lin.statusNotConfigured', color: C.muted },
+  unavailable_here: { key: 'lin.statusUnavailableHere', color: C.muted },
+}
+
+/**
+ * Exportado porque a linha "Fontes de dados" da AlertsPage precisa do MESMO
+ * título, no mesmo idioma. Ela injetava `network.headline` cru — a frase em
+ * inglês do servidor — dentro de uma sentença em português, e saía
+ * "6 de 9 canais ao vivo · using backup weather source".
+ */
+export const HEADLINE_KEY: Record<NetworkHeadlineKey, MessageKey> = {
+  limited_coverage: 'lin.headlineLimited',
+  partial_channels: 'lin.headlinePartial',
+  backup_source: 'lin.headlineBackup',
+  all_live: 'lin.headlineAllLive',
 }
 
 const TONE_COLOR: Record<NetworkStatus['tone'], string> = {
@@ -63,12 +66,14 @@ const TONE_COLOR: Record<NetworkStatus['tone'], string> = {
 
 const MONO = "'DM Mono', ui-monospace, 'SF Mono', monospace"
 
-function ageLabel(iso?: string): string {
+type Translate = (key: MessageKey, params?: Record<string, string | number>) => string
+
+function ageLabel(iso: string | undefined, t: Translate): string {
   if (!iso) return '—'
   const secs = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 1000))
-  if (secs < 60) return `${secs} sec ago`
-  if (secs < 3600) return `${Math.round(secs / 60)} min ago`
-  return `${Math.round(secs / 3600)} h ago`
+  if (secs < 60) return t('lin.secAgo', { n: secs })
+  if (secs < 3600) return t('lin.minAgo', { n: Math.round(secs / 60) })
+  return t('lin.hAgo', { n: Math.round(secs / 3600) })
 }
 
 // A discrete geometric mark per channel (no emojis).
@@ -84,6 +89,7 @@ function ChannelMark({ color }: { color: string }) {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function LiveIntelligenceNetwork({ lat, lng }: { lat: number | null; lng: number | null }) {
+  const { t } = useLanguage()
   const [snap, setSnap] = useState<Snapshot | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(false)
@@ -140,9 +146,9 @@ export default function LiveIntelligenceNetwork({ lat, lng }: { lat: number | nu
       <div style={styles.card}>
         <div style={styles.headerRow}>
           <span style={{ ...styles.dot, background: C.muted }} />
-          <span style={styles.title}>LIVE INTELLIGENCE NETWORK</span>
+          <span style={styles.title}>{t('lin.title')}</span>
         </div>
-        <p style={styles.subtitle}>Defina sua localização para ativar o monitoramento multi-canal.</p>
+        <p style={styles.subtitle}>{t('lin.needLocation')}</p>
       </div>
     )
   }
@@ -152,7 +158,7 @@ export default function LiveIntelligenceNetwork({ lat, lng }: { lat: number | nu
       <div style={styles.card} aria-busy>
         <div style={styles.headerRow}>
           <span style={{ ...styles.dot, background: C.purple }} />
-          <span style={styles.title}>LIVE INTELLIGENCE NETWORK</span>
+          <span style={styles.title}>{t('lin.title')}</span>
         </div>
         <p style={styles.subtitle}>{error ? 'Falha ao sincronizar. Toque para tentar novamente.' : 'Conectando aos canais…'}</p>
         {error && <button onClick={() => void load(true)} style={styles.retry}>Retry</button>}
@@ -163,6 +169,18 @@ export default function LiveIntelligenceNetwork({ lat, lng }: { lat: number | nu
   const { channels, network } = snap
   const toneColor = TONE_COLOR[network.tone]
   const active = channels[highlight] ?? channels[0]
+
+  /*
+   * O título do estado é RENDERIZADO da causa, não lido do texto do servidor.
+   *
+   * `network.headline` chega pronto e em inglês de `lib/hazards/health.ts` — e o
+   * servidor não sabe em que idioma esta pessoa lê. `headlineKey` carrega a
+   * RAZÃO ("está usando fonte reserva"), e a frase se monta aqui, com os
+   * números que já vieram no mesmo objeto.
+   */
+  const headline = network.headlineKey === 'partial_channels'
+    ? t('lin.headlinePartial', { live: network.liveCount, total: network.totalChannels })
+    : t(HEADLINE_KEY[network.headlineKey])
   const activeColor = STATUS_META[active.status].color
 
   return (
@@ -184,13 +202,13 @@ export default function LiveIntelligenceNetwork({ lat, lng }: { lat: number | nu
               boxShadow: `0 0 8px ${toneColor}`,
             }}
           />
-          <span style={styles.title}>LIVE INTELLIGENCE NETWORK</span>
+          <span style={styles.title}>{t('lin.title')}</span>
           <span style={{ ...styles.chevron, transform: expanded ? 'rotate(180deg)' : 'none' }} aria-hidden>⌄</span>
         </div>
-        <p style={styles.subtitle}>Multi-source hazard monitoring</p>
+        <p style={styles.subtitle}>{t('lin.subtitle')}</p>
 
         <div style={{ ...styles.statusLine, color: toneColor }}>
-          <span style={{ fontFamily: MONO, fontWeight: 700, letterSpacing: '0.04em' }}>{network.headline}</span>
+          <span style={{ fontFamily: MONO, fontWeight: 700, letterSpacing: '0.04em' }}>{headline}</span>
         </div>
 
         {/* Rotating highlighted channel */}
@@ -199,23 +217,23 @@ export default function LiveIntelligenceNetwork({ lat, lng }: { lat: number | nu
           <div style={{ minWidth: 0, flex: 1 }}>
             <div style={styles.rotatorLabel}>{active.label.toUpperCase()}</div>
             <div style={styles.rotatorMeta}>
-              <span style={{ ...styles.statusPill, color: activeColor }}>{STATUS_META[active.status].label}</span>
-              <span style={styles.metaDim}>Last signal: {ageLabel(active.lastSuccessAt ?? network.syncedAt)}</span>
+              <span style={{ ...styles.statusPill, color: activeColor }}>{t(STATUS_META[active.status].key)}</span>
+              <span style={styles.metaDim}>{t('lin.lastSignal', { age: ageLabel(active.lastSuccessAt ?? network.syncedAt, t) })}</span>
             </div>
           </div>
         </div>
 
         <div style={styles.footerRow}>
-          <span style={styles.footerStat}><b style={{ color: C.mint, fontFamily: MONO }}>{network.liveCount}</b> live</span>
-          {network.degradedCount > 0 && <span style={styles.footerStat}><b style={{ color: C.amber, fontFamily: MONO }}>{network.degradedCount}</b> degraded</span>}
-          {network.notConfiguredCount > 0 && <span style={styles.footerStat}><b style={{ color: C.muted, fontFamily: MONO }}>{network.notConfiguredCount}</b> to configure</span>}
-          <span style={{ ...styles.footerStat, marginLeft: 'auto', fontFamily: MONO, color: C.muted }}>{ageLabel(network.syncedAt)}</span>
+          <span style={styles.footerStat}><b style={{ color: C.mint, fontFamily: MONO }}>{network.liveCount}</b> {t('lin.live')}</span>
+          {network.degradedCount > 0 && <span style={styles.footerStat}><b style={{ color: C.amber, fontFamily: MONO }}>{network.degradedCount}</b> {t('lin.degraded')}</span>}
+          {network.notConfiguredCount > 0 && <span style={styles.footerStat}><b style={{ color: C.muted, fontFamily: MONO }}>{network.notConfiguredCount}</b> {t('lin.toConfigure')}</span>}
+          <span style={{ ...styles.footerStat, marginLeft: 'auto', fontFamily: MONO, color: C.muted }}>{ageLabel(network.syncedAt, t)}</span>
         </div>
       </button>
 
       {/* Expanded per-channel panel */}
       {expanded && (
-        <div style={styles.expandWrap} role="region" aria-label="Channel details">
+        <div style={styles.expandWrap} role="region" aria-label={t('lin.channelDetails')}>
           {channels.map(ch => {
             const meta = STATUS_META[ch.status]
             return (
@@ -224,24 +242,24 @@ export default function LiveIntelligenceNetwork({ lat, lng }: { lat: number | nu
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={styles.channelTop}>
                     <span style={styles.channelName}>{ch.label}</span>
-                    {ch.official && <span style={styles.officialBadge}>OFFICIAL SOURCE</span>}
+                    {ch.official && <span style={styles.officialBadge}>{t('lin.officialSource')}</span>}
                   </div>
                   <div style={styles.channelType}>{ch.dataType}</div>
                   {ch.message && <div style={styles.channelMsg}>{ch.message}</div>}
                   {ch.usingFallback && ch.fallbackProvider && (
-                    <div style={styles.channelMsg}>Fallback ativo: {ch.fallbackProvider}</div>
+                    <div style={styles.channelMsg}>{t('lin.fallbackActive', { provider: ch.fallbackProvider })}</div>
                   )}
                   <div style={styles.channelMetaRow}>
-                    <span style={{ fontFamily: MONO, color: C.muted }}>{ageLabel(ch.lastSuccessAt)}</span>
+                    <span style={{ fontFamily: MONO, color: C.muted }}>{ageLabel(ch.lastSuccessAt, t)}</span>
                     <span style={{ fontFamily: MONO, color: C.muted }}>· {ch.activeProvider ?? ch.primaryProvider}</span>
                   </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
                   <span style={{ ...styles.statusPill, color: meta.color, borderColor: meta.color + '55', border: '1px solid', padding: '2px 8px', borderRadius: 999 }}>
-                    {meta.label}
+                    {t(meta.key)}
                   </span>
                   {(ch.status === 'offline' || ch.status === 'degraded') && (
-                    <button onClick={() => void load(true)} disabled={loading} style={styles.retrySmall}>Retry</button>
+                    <button onClick={() => void load(true)} disabled={loading} style={styles.retrySmall}>{t('lin.retry')}</button>
                   )}
                 </div>
               </div>
