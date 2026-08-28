@@ -59,6 +59,32 @@ export interface ScanSummary {
   durationMs: number
 }
 
+/**
+ * No write in this pipeline is allowed to fail quietly (D-222).
+ *
+ * The dedup defect hid behind `await db.from(…).upsert(…)` with the result
+ * thrown away. Postgres was refusing every row with 42P10 — the unique index
+ * was partial, and a partial index cannot arbitrate `ON CONFLICT` unless the
+ * statement repeats its predicate, which PostgREST never emits — while the scan
+ * went on reporting `pushed: 1` into an empty table.
+ *
+ * It survived because these writes look like bookkeeping and are not:
+ * `notification_delivery_log` IS the dedup and IS the cooldown. Losing the
+ * write does not lose a record of the suppression, it removes the suppression.
+ * So a failed write has to reach the summary the scheduler prints, where a
+ * human sees it.
+ */
+function guard(
+  summary: ScanSummary,
+  where: string,
+  result: { error: { message: string; code?: string } | null },
+): boolean {
+  if (!result.error) return true
+  const code = result.error.code ? ` [${result.error.code}]` : ''
+  summary.errors.push(`write ${where}${code}: ${result.error.message}`)
+  return false
+}
+
 interface TargetUser {
   userId: string
   plan: Plan
@@ -182,11 +208,17 @@ async function loadPrevious(
   }
 }
 
-async function persist(db: SupabaseClient, scanKey: string, events: HazardEvent[], transitions: HazardTransition[]) {
+async function persist(
+  db: SupabaseClient,
+  scanKey: string,
+  events: HazardEvent[],
+  transitions: HazardTransition[],
+  summary: ScanSummary,
+) {
   const now = new Date().toISOString()
 
   if (events.length) {
-    await db.from('hazard_events').upsert(
+    guard(summary, 'hazard_events', await db.from('hazard_events').upsert(
       events.map(e => ({
         id: e.id,
         source: e.source,
@@ -215,19 +247,23 @@ async function persist(db: SupabaseClient, scanKey: string, events: HazardEvent[
         last_seen_at: now,
       })),
       { onConflict: 'id' },
-    )
+    ))
   }
 
   // An event that ended stops owning this location, so the next run does not
   // report it as "cleared" over and over.
   const clearedIds = transitions.filter(t => t.kind === 'cleared').map(t => t.event.id)
   if (clearedIds.length) {
-    await db.from('hazard_events').update({ scan_key: null }).in('id', clearedIds)
+    guard(
+      summary,
+      'hazard_events.scan_key',
+      await db.from('hazard_events').update({ scan_key: null }).in('id', clearedIds),
+    )
   }
 
   if (!transitions.length) return new Map<string, string>()
 
-  const { data } = await db
+  const { data, error: transitionsError } = await db
     .from('hazard_transitions')
     .insert(
       transitions.map(t => ({
@@ -244,6 +280,8 @@ async function persist(db: SupabaseClient, scanKey: string, events: HazardEvent[
       })),
     )
     .select('id, hazard_event_id, kind')
+
+  guard(summary, 'hazard_transitions', { error: transitionsError })
 
   const ids = new Map<string, string>()
   for (const row of data ?? []) {
@@ -456,7 +494,13 @@ async function deliver(
           return r.status === 'rejected' && (r.reason as { statusCode?: number })?.statusCode === 410
         })
         .map(s => s.endpoint)
-      if (dead.length) await db.from('push_subscriptions').delete().in('endpoint', dead)
+      if (dead.length) {
+        guard(
+          summary,
+          'push_subscriptions.delete',
+          await db.from('push_subscriptions').delete().in('endpoint', dead),
+        )
+      }
 
       if (ok) {
         summary.pushed += 1
@@ -479,7 +523,19 @@ async function deliver(
   if (rows.length) {
     // onConflict on the (user_id, dedup_key) unique index: a race between two
     // overlapping runs resolves into one row instead of a duplicate push.
-    await db.from('notification_delivery_log').upsert(rows, { onConflict: 'user_id,dedup_key', ignoreDuplicates: true })
+    //
+    // That index has to be TOTAL. It shipped partial (`WHERE dedup_key IS NOT
+    // NULL`) and Postgres refused every batch with 42P10, which is what made
+    // dedup and cooldown inert until D-222. `npm run test:hazard-dedup` is the
+    // regression, and `guard` is why a repeat would be visible in one run
+    // instead of four days later.
+    guard(
+      summary,
+      'notification_delivery_log',
+      await db
+        .from('notification_delivery_log')
+        .upsert(rows, { onConflict: 'user_id,dedup_key', ignoreDuplicates: true }),
+    )
   }
 }
 
@@ -492,7 +548,7 @@ async function scanOne(db: SupabaseClient, target: ScanTarget, summary: ScanSumm
     const transitions = detectTransitions({ previous, current: events, ownedIds })
     summary.transitions += transitions.length
 
-    const transitionIds = await persist(db, target.scanKey, events, transitions)
+    const transitionIds = await persist(db, target.scanKey, events, transitions, summary)
     if (transitions.length) await deliver(db, target, transitions, transitionIds, summary)
   } catch (err) {
     summary.errors.push(`${target.scanKey}: ${err instanceof Error ? err.message : 'scan error'}`)

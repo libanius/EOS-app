@@ -112,11 +112,28 @@ falha alto em vez de fingir que rodou.
 > entre o merge e o fim do build falha uma vez com 404, e a seguinte já
 > encontra a rota no ar.
 
-### Opção B — pg_cron no Supabase (custo zero, sem depender do GitHub)
+### Opção B — pg_cron no Supabase ← **ESCOLHIDA (D-222)**
 
-Roda dentro do próprio banco. O bloco pronto está comentado no final da
-migration — troque `<SEU-DOMINIO>` e `<CRON_SECRET>` e execute **depois** do
-deploy:
+> **Por que a Opção A deixou de bastar.** Medido na API do GitHub em 2026-08-28,
+> sobre 87,7 h reais de histórico: **67 execuções onde caberiam 526** — 12,7% do
+> agendado —, intervalo mediano de 43 min e **maior buraco de 11,6 h**, com
+> **zero falhas**. Elas não falham; não acontecem. O GitHub estrangula
+> `schedule` em repositório gratuito sem aviso e sem sinal de erro, e o painel
+> fica verde enquanto isso. Para um motor de alerta, 11,6 h de janela cega é o
+> produto não existindo. Some-se a isso a desativação automática de workflows
+> agendados após 60 dias sem commit.
+>
+> A Opção A **continua ligada** como andaime, até o pg_cron provar-se — ver
+> ALERT-T08. Rodar as duas é seguro depois da D-222, que devolveu o dedup.
+
+**O arquivo pronto é [`supabase/pg_cron_hazard_scan.sql`](../supabase/pg_cron_hazard_scan.sql)**
+— idempotente, com os passos de conferência e com o `CRON_SECRET` guardado no
+**Vault** em vez do corpo do job (`cron.job.command` é texto legível em
+catálogo, backup e dump). Ele não é uma migration de propósito: depende de um
+segredo deste ambiente, e rodá-lo num banco local agendaria chamadas para a
+produção.
+
+O esqueleto, para referência (o arquivo tem a versão completa e comentada):
 
 ```sql
 CREATE EXTENSION IF NOT EXISTS pg_cron;

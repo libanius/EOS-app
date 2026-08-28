@@ -10,15 +10,18 @@
 | Field | Value |
 |---|---|
 | **Current Phase** | Execução de Plano (EXEC) sobre Web/PWA |
+| **⚠ Pendência operacional (1 de 2)** | **Aplicar `supabase/migrations/20260828000000_ndl_dedup_arbiter.sql`** (D-222). Até aplicar, **o dedup e o cooldown dos alertas estão desligados**: `uq_ndl_user_dedup` é parcial, não arbitra `ON CONFLICT`, e toda escrita do log de entrega volta `42P10`. Prova: `npm run test:hazard-dedup` falha 5 de 6 antes, passa 6 de 6 depois. |
+| **⚠ Pendência operacional (2 de 2)** | **Rodar `supabase/pg_cron_hazard_scan.sql`** (D-222) no SQL Editor, incluindo o `vault.create_secret` do passo 2 com o mesmo `CRON_SECRET` da Vercel. O agendador do GitHub entrega **12,7%** do que promete (maior buraco medido: 11,6 h). O GitHub fica ligado até o pg_cron provar-se — ver ALERT-T08. |
 | **Current Task** | **AUTHOR-T01 — rascunho persistente em IndexedDB.** NOT STARTED — não iniciar sem ler `specs/PLAN-AUTHOR-001-autoria-do-plano.md`. AUTHOR-T02 fechou em 2026-08-19 (D-217); a fase EXEC fechou T00→T06, e EXEC-T07 (destino por identidade) fica atrás das fases de autoria. |
 | **Spec Ready** | `specs/PLAN-EXEC-001-execucao-de-plano.md` **v1.1** — execução de plano como modo operacional; D-212, D-217. |
 | **Spec Ready** | `specs/PLAN-AUTHOR-001-autoria-do-plano.md` — integridade do rascunho na autoria; D-217. |
-| **⚠ Pendência operacional** | **Aplicar `supabase/migrations/20260813210000_profiles_auth_fk.sql`** (D-175). Limpa 9 perfis de teste vazios e cria a FK que impede a recorrência. Para com erro se encontrar órfão com dado. |
+| **Migração aplicada** | ✅ `20260813210000_profiles_auth_fk.sql` (D-175) — aplicada e verificada em 2026-08-28: **12 perfis para 12 contas, 0 órfãos**. A FK foi provada por controle negativo — inserir perfil sem conta devolve `23503 … viola profiles_id_auth_users_fkey`. |
 | **Migrações aplicadas** | `locations`, `holdings`, `kits`, `requirements`, `checklists.status` — todas verificadas por REST. |
 | **Migrações aplicadas** | As duas de Preparedness State **aplicadas em 2026-08-13** e verificadas por REST: `locations`, `holdings`, `kits`, `requirements` → 200. Nenhuma pendência operacional. |
-| **⚠️ Migration pendente** | `20260824000000_hazard_alerting.sql` — alertas por mudança (D-220). **Idempotente e autossuficiente**: cria/completa 6 tabelas + `profiles.language`, e substitui a `20260710010000_hazard_tables.sql`, que nunca foi aplicada. Até aplicar, a varredura não tem onde guardar memória e nenhum alerta de mudança é possível. Ver `docs/hazard-alerting-setup.md`. |
-| **⚠️ Env pendente** | `CRON_SECRET` — na Vercel **e** nos secrets do GitHub Actions (mesmo valor). Sem ela `/api/cron/hazard-scan` responde 503 e não roda, de propósito. |
-| **Last Completed Task** | **ALERT-T01→T04 / D-220 — alertas por mudança com push real na tela de bloqueio (2026-08-24)** |
+| **Migração aplicada** | ✅ `20260824000000_hazard_alerting.sql` — aplicada pelo dono e **verificada por REST em 2026-08-28**: as 6 tabelas e as 9 colunas novas (`hazard_events.metrics/scan_key/last_seen_at`, `notification_delivery_log.transition_id/dedup_key/detail`, `user_hazard_preferences.basin_wide_tropical/push_enabled`, `profiles.language`) respondem 200. |
+| **Env verificada** | ✅ `CRON_SECRET` — a nota de pendência estava **velha**. Sondado em 2026-08-28: a rota de produção responde `401` (e não `503`) a um token errado, logo está setada na Vercel; e o workflow *Hazard scan* soma 67 execuções com **zero falhas**, o que só é possível com o segredo do GitHub batendo com o da Vercel. |
+| **Last Completed Task** | **ALERT-T08 + ALERT-T09 / D-222 — a trava de duplicidade volta a existir, e o agendador sai do GitHub (2026-08-28)** |
+| | **ALERT-T01→T04 / D-220 — alertas por mudança com push real na tela de bloqueio (2026-08-24)** |
 | | **D-188 / COMMS-T12 — lista, thread e conversa individual (2026-08-15)** |
 | | **AUTHOR-T02 / D-217 — confirmar ponto deixa de ser bloqueado por precisão (2026-08-19)** |
 | | **D-221 — vento sempre começa desligado; controle do vento para de sumir sozinho (2026-08-19)** |

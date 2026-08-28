@@ -4,6 +4,88 @@
 
 ---
 
+## D-222 — A trava de duplicidade estava desligada, e o agendador quase não roda
+
+**Date**: 2026-08-28
+**Status**: DECIDED / IMPLEMENTADO — depende da migration `20260828000000_ndl_dedup_arbiter.sql` e de rodar `supabase/pg_cron_hazard_scan.sql`
+**Roadmap**: ALERT-T08, ALERT-T09
+**Spec**: `docs/hazard-alerting-setup.md`
+
+**Context**: verificação das pendências de lançamento em 2026-08-28. As
+migrations da D-220/D-175/D-132 estavam todas aplicadas e uma varredura real
+disparada à mão respondeu `locations: 1 · transitions: 2 · pushed: 1 ·
+errors: []` em 1,7 s — o motor funciona ponta a ponta. Só que
+`notification_delivery_log` tinha **0 linhas**.
+
+**O defeito (1) — o árbitro inválido.** A `20260824000000_hazard_alerting.sql`
+criou a trava como índice **parcial**:
+
+```sql
+CREATE UNIQUE INDEX uq_ndl_user_dedup
+  ON notification_delivery_log (user_id, dedup_key) WHERE dedup_key IS NOT NULL;
+```
+
+O Postgres só aceita índice parcial como árbitro de `ON CONFLICT` se a
+instrução repetir o predicado, e o parâmetro `on_conflict` do PostgREST — que é
+o que o supabase-js emite — não repete. Medido em produção com controle
+negativo: o upsert exato do código devolve `400 / 42P10`, um insert simples
+devolve `201`.
+
+**Decision (1) — o índice passa a ser total.** O predicado não comprava nada:
+com `NULLS DISTINCT` (o padrão), um índice único já aceita quantas linhas com
+`dedup_key` nulo forem precisas. Ele só quebrava o árbitro.
+
+**Por que isso era grave e não cosmético**: `notification_delivery_log` não é
+relatório do dedup, **é** o dedup. `seen` lê essa tabela; `lastSentAt`
+(cooldown de 30 min) lê essa tabela. Com a escrita falhando, a mesma transição
+podia acordar a família na tela de bloqueio a cada passada, para sempre — que é
+literalmente o defeito do concorrente que a D-220 cita como diferencial ("Lala
+rebaixada para Categoria 1", duas vezes, em dias diferentes). E "por que eu não
+fui avisado?" ficou sem resposta possível, porque toda supressão se grava ali.
+
+**O defeito (2) — a falha era muda.** `lib/hazards/scan.ts` escrevia com
+`await db.from(…).upsert(…)` e descartava o retorno. Quatro dias de 400 sem uma
+única linha de log, com o resumo relatando `pushed: 1` e o painel do GitHub
+todo verde.
+
+**Decision (2) — nenhuma escrita do pipeline falha calada.** Um helper `guard`
+empurra qualquer erro de escrita para `summary.errors`, que é o que o agendador
+imprime. Aplicado às cinco escritas: `hazard_events`, `hazard_events.scan_key`,
+`hazard_transitions`, `push_subscriptions.delete` e
+`notification_delivery_log`. Um caso igual passa a aparecer numa passada, não
+em quatro dias.
+
+**O defeito (3) — o agendador entrega 12,7% do que promete.** Medido na API do
+GitHub sobre 87,7 h reais: 67 execuções onde caberiam 526, intervalo mediano de
+43 min, **maior buraco de 11,6 h**, e zero falhas. Elas não falham — não
+acontecem. O GitHub estrangula `schedule` em repositório gratuito sem aviso, e
+ainda desativa workflows agendados após 60 dias sem commit.
+
+**Decision (3) — o agendador vem para o banco, via pg_cron.** Custo zero, sem
+depender de conta de terceiro, e é a Opção B que a própria
+`docs/hazard-alerting-setup.md` já documentava. O `CRON_SECRET` vai para o
+**Vault**, não para o corpo do job: `cron.job.command` é texto legível em
+catálogo, backup e dump.
+
+**Decision (4) — o GitHub Actions fica ligado até o pg_cron provar-se.**
+Desligar o único agendador que funciona antes do novo entregar seria trocar
+12,7% por 0%. Rodar os dois só é seguro depois da Decision (1), e é exatamente
+para isso que o dedup existe. A remoção do bloco `schedule:` fica em ALERT-T08,
+com critério objetivo: 24 h de respostas a cada 10 min em `net._http_response`.
+
+**Consequence**: `npm run test:hazard-dedup` nasce como regressão contra o banco
+real — 5 asserções mais um controle negativo que prova que a asserção principal
+mede o índice, e não a boa vontade do PostgREST. Rodado **antes** da migration,
+falha 5 de 6; é assim que se sabe que ele serve para alguma coisa.
+
+**Não autorizado por D-222**: recriar `uq_ndl_user_dedup` como índice parcial;
+escrever no banco dentro de `lib/hazards/scan.ts` sem passar por `guard`; pôr o
+`CRON_SECRET` em claro no corpo do job do pg_cron; remover o `schedule:` do
+GitHub antes do critério de ALERT-T08; acrescentar cron sub-diário ao
+`vercel.json` (conta Hobby rejeita o deploy inteiro).
+
+---
+
 ## D-221 — O vento sempre começa desligado, e seu controle não some sozinho
 
 **Date**: 2026-08-19
