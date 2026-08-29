@@ -16,12 +16,12 @@ export const FEATURE_GATES = {
   // ── Monitoring — tier breakdowns defined in D-025 ────────────────────────
   monitoring_weather: 'free',      // NWS severe weather + active alerts
   monitoring_earthquake: 'free',   // USGS earthquakes
-  monitoring_aqi: 'family',        // AirNow air quality index
-  monitoring_fire: 'family',       // NASA FIRMS satellite fire detection
-  monitoring_fema: 'family',       // FEMA disaster declarations + active shelters
+  monitoring_aqi: 'family',        // Open-Meteo AQI — implementado (o rótulo dizia AirNow, que exige chave)
+  monitoring_fire: 'family',       // TODO: NASA EONET (sem chave); FIRMS exigiria MAP_KEY
+  monitoring_fema: 'family',       // abrigos OK; declarações de desastre TODO via OpenFEMA (sem chave)
   monitoring_multilocal: 'family', // Monitor circle members' locations
-  monitoring_cdc: 'premium',       // CDC disease / outbreak surveillance
-  monitoring_fda: 'premium',       // FDA drug + food recalls
+  monitoring_cdc: 'premium',       // TODO — conjunto Socrata avaliado em 2026-08-29 está parado em 2023
+  monitoring_fda: 'premium',       // TODO: openFDA (sem chave, 29 mil recalls, tem campo de estado)
   // D-220: gratuito para todos. Um aviso de furacão que só chega para quem
   // pagou não é um produto de segurança — é um upsell com roupa de alerta.
   // Revisitar quando/se a monetização exigir, mas o padrão é avisar todo mundo.

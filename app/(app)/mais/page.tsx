@@ -17,7 +17,20 @@ const LANG_OPTIONS: Array<{ value: Language; labelKey: 'settings.portuguese' | '
 
 // ─── Plan feature rows ────────────────────────────────────────────────────────
 
-type FeatureRow = { key: MessageKey; requiredPlan: Plan }
+/**
+ * `soon` marca o que a ficha do plano AINDA NÃO entrega.
+ *
+ * Cinco linhas desta lista prometiam monitoramento que não existia em lugar
+ * nenhum do código — NASA FIRMS, CDC e FDA apareciam só em `feature-gates.ts`,
+ * como rótulo, sem nada que buscasse dado. Com o Stripe em modo LIVE, isso
+ * deixa de ser imprecisão de copy e vira cobrança por coisa inexistente.
+ *
+ * O selo é deliberadamente feio e fica ANTES do nome do plano: um recurso por
+ * vir não pode competir visualmente com um entregue, senão o cadeado de
+ * "assine para ter" e o "ainda não fizemos" viram a mesma coisa aos olhos de
+ * quem está decidindo pagar.
+ */
+type FeatureRow = { key: MessageKey; requiredPlan: Plan; soon?: true }
 
 const FREE_FEATURES: FeatureRow[] = [
   { key: 'settings.planFeatures.analise_ia', requiredPlan: 'free' },
@@ -28,16 +41,16 @@ const FAMILY_FEATURES: FeatureRow[] = [
   { key: 'settings.planFeatures.circulos', requiredPlan: 'family' },
   { key: 'settings.planFeatures.qr_emergencia', requiredPlan: 'family' },
   { key: 'settings.planFeatures.monitoring_aqi', requiredPlan: 'family' },
-  { key: 'settings.planFeatures.monitoring_fire', requiredPlan: 'family' },
-  { key: 'settings.planFeatures.monitoring_fema', requiredPlan: 'family' },
+  { key: 'settings.planFeatures.monitoring_fire', requiredPlan: 'family', soon: true },
+  { key: 'settings.planFeatures.monitoring_fema', requiredPlan: 'family', soon: true },
   { key: 'settings.planFeatures.monitoring_multilocal', requiredPlan: 'family' },
 ]
 const PREMIUM_FEATURES: FeatureRow[] = [
   { key: 'settings.planFeatures.animated_wind', requiredPlan: 'premium' },
   { key: 'settings.planFeatures.monitoring_push', requiredPlan: 'premium' },
   { key: 'settings.planFeatures.monitoring_history', requiredPlan: 'premium' },
-  { key: 'settings.planFeatures.monitoring_cdc', requiredPlan: 'premium' },
-  { key: 'settings.planFeatures.monitoring_fda', requiredPlan: 'premium' },
+  { key: 'settings.planFeatures.monitoring_cdc', requiredPlan: 'premium', soon: true },
+  { key: 'settings.planFeatures.monitoring_fda', requiredPlan: 'premium', soon: true },
   { key: 'settings.planFeatures.exportar_ficha', requiredPlan: 'premium' },
 ]
 
@@ -337,20 +350,22 @@ export default function SettingsPage() {
           </div>
 
           <div style={styles.featureList}>
-            {[...FREE_FEATURES, ...FAMILY_FEATURES, ...PREMIUM_FEATURES].map(({ key, requiredPlan }) => {
+            {[...FREE_FEATURES, ...FAMILY_FEATURES, ...PREMIUM_FEATURES].map(({ key, requiredPlan, soon }) => {
               const accessible = canAccess(
                 key.replace('settings.planFeatures.', '') as Parameters<typeof canAccess>[0],
                 userPlan,
               )
               return (
                 <div key={key} style={styles.featureRow}>
-                  <span style={accessible ? styles.featureCheck : styles.featureLock}>
-                    {accessible ? '✓' : '🔒'}
+                  {/* Por vir não recebe ✓: o visto é a promessa cumprida. */}
+                  <span style={soon ? styles.featureLock : accessible ? styles.featureCheck : styles.featureLock}>
+                    {soon ? '◷' : accessible ? '✓' : '🔒'}
                   </span>
-                  <span style={{ ...styles.featureName, ...(accessible ? {} : styles.featureNameLocked) }}>
+                  <span style={{ ...styles.featureName, ...(accessible && !soon ? {} : styles.featureNameLocked) }}>
                     {t(key)}
                   </span>
-                  {!accessible && (
+                  {soon && <span style={styles.featureSoon}>{t('settings.planFeatureSoon')}</span>}
+                  {!accessible && !soon && (
                     <span style={{ ...styles.featurePlan, color: PLAN_COLOR[requiredPlan] }}>
                       {t(PLAN_NAME_KEY[requiredPlan])}
                     </span>
@@ -617,6 +632,8 @@ const styles: Record<string, React.CSSProperties> = {
   featureName: { fontSize: 14, flex: 1, color: '#f5f5f5' },
   featureNameLocked: { color: '#52525b' },
   featurePlan: { fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', flexShrink: 0 },
+  // Cinza neutro, sem a cor do plano: "em breve" não é um convite a pagar.
+  featureSoon: { fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', flexShrink: 0, color: '#71717a', border: '1px solid #3f3f46', borderRadius: 999, padding: '1px 7px' },
   upgradeBtn: { width: '100%', padding: '14px 24px', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: 14, color: '#22c55e', fontSize: 15, fontWeight: 650, cursor: 'pointer', letterSpacing: '-0.01em' },
   billingBanner: { padding: '12px 16px', borderRadius: 14, fontSize: 14, fontWeight: 600, marginBottom: 16, border: '1px solid' },
   billingSuccess: { background: 'rgba(34,197,94,0.1)', borderColor: 'rgba(34,197,94,0.35)', color: '#22c55e' },
