@@ -4,6 +4,80 @@
 
 ---
 
+## D-226 — A ficha de planos passa a dizer a verdade, e três fontes abertas entram
+
+**Date**: 2026-08-29
+**Status**: DECIDED / IMPLEMENTADO
+**Roadmap**: MON-T01
+**Spec**: `docs/hazard-data-architecture.md`
+
+**Context**: o levantamento do monitoramento encontrou cinco linhas na lista de
+planos prometendo vigilância que **não existia em lugar nenhum do código**.
+`NASA`, `CDC` e `FDA` apareciam só em `lib/feature-gates.ts`, como rótulo, sem
+nada que buscasse dado. Com o Stripe em modo LIVE, isso deixa de ser imprecisão
+de copy: é cobrança por coisa inexistente, e risco na revisão da loja antes de
+ser risco de consumidor.
+
+**Decision (1) — o que dá para cumprir de graça, cumpre-se agora.** Testadas ao
+vivo em 2026-08-29, sem chave:
+
+| Fonte | Chave? | Entrou? |
+|---|---|---|
+| NASA **EONET** (incêndios ativos) | não | ✅ |
+| **OpenFEMA** (declarações de desastre) | não | ✅ |
+| **openFDA** (recalls) | não | ✅ |
+| CDC Socrata | não | ❌ conjunto avaliado parado em 2023 |
+| AirNow | **sim** | ❌ `Request not authenticated` |
+
+**Decision (2) — EONET no lugar do FIRMS.** O rótulo prometia NASA FIRMS, que
+exige `MAP_KEY`. O EONET, da mesma NASA, publica os mesmos incêndios sem chave.
+E entrega o **evento curado** ("Wildfire THE RADIO TOWER, Miami-Dade") em vez do
+pixel térmico bruto — menos falso positivo, e um nome que a pessoa reconhece no
+noticiário.
+
+**Decision (3) — AirNow vira Open-Meteo no rótulo.** A qualidade do ar já
+funcionava, via Open-Meteo. O rótulo nomeava o provedor errado. Corrigir o
+rótulo cumpre a promessa sem código novo e sem cadastro nenhum.
+
+**Decision (4) — o que não vai ser feito agora ganha selo "Em breve".** `◷` no
+lugar do `✓`, em cinza neutro, **sem a cor do plano**: um recurso por vir não
+pode competir visualmente com um entregue, senão "assine para ter" e "ainda não
+fizemos" viram a mesma coisa para quem está decidindo pagar. Sobram CDC e o
+canal FEMA IPAWS (que exige COG).
+
+**Decision (5) — só incêndio acorda.** `wildfire` entra em
+`DEFAULT_ALERT_TYPES`; `disaster_declaration` e `recall` ficam **de fora de
+propósito**. A declaração reconhece o que já passou e destrava auxílio — não é
+uma coisa a fazer agora. E a FDA publica ~29 mil recalls: push disso gastaria a
+única coisa que um app de emergência não pode gastar, que é a certeza de que
+vibrar significa sério. Só Classe I entra sequer na tela.
+
+**Decision (6) — gravidade antes de recência.** A lista de eventos era ordenada
+só por `updatedAt`, o que bastava quando toda fonte publicava emergência. A FDA
+publica todo dia e um furacão se atualiza a cada seis horas; a tela mostra os
+seis primeiros. Sem esta mudança, "recall de cápsula" apareceria acima de
+"furacão categoria 3". Some-se teto por fonte: 5 incêndios, 3 recalls.
+
+**Decision (7) — nenhum canal afirma o que não sabe.** O EONET dá o ponto do
+incêndio, não o perímetro nem a direção — então o EOS reporta distância e
+**nunca** "o fogo vem na sua direção", que exigiria dado de perímetro e vento.
+A openFDA tem `state` da EMPRESA, não da distribuição — então o EOS **não
+promete recorte local** para recalls. Fora dos EUA, a FEMA responde
+`unavailable_here`, que é diferente de `offline`.
+
+**Consequence**: a rede foi de 9 para **12 canais**, de 6 para **9 ao vivo**.
+`npm run test:open-sources` prova as três contra as APIs reais, com controle
+negativo (um ponto no meio do Pacífico não pode ter incêndio "perto") e uma
+asserção de que nenhuma chave existia no ambiente — senão o teste não provaria
+gratuidade.
+
+**Não autorizado por D-226**: push de recall ou de declaração de desastre;
+inferir avanço de incêndio a partir de um ponto; filtrar recall pelo estado da
+empresa como se fosse distribuição; apresentar declaração da FEMA como
+`OFFICIAL_WARNING`; anunciar CDC ou AirNow como entregues.
+
+---
+
 ## D-225 — Uma tela fala um idioma só, e a régua segue quem lê
 
 **Date**: 2026-08-28

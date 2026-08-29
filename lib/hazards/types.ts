@@ -19,6 +19,12 @@ export type HazardSource =
   | 'openweather'
   | 'open-meteo'
   | 'fema_ipaws'
+  // Três fontes abertas, sem chave, entram em D-226 para cumprir o que a ficha
+  // de planos já prometia. EONET substitui o FIRMS do rótulo antigo, que exigiria
+  // MAP_KEY e deixaria a promessa parada esperando um cadastro.
+  | 'nasa_eonet'
+  | 'fema_openfema'
+  | 'openfda'
   | 'eos'
 
 // Where the statement's authority comes from — drives the visual classification.

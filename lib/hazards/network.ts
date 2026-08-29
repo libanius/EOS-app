@@ -6,6 +6,9 @@ import { nwsProvider } from './providers/nws'
 import { usgsProvider } from './providers/usgs'
 import { nhcProvider } from './providers/nhc'
 import { openMeteoNowcastProvider } from './providers/open-meteo-nowcast'
+import { nasaEonetProvider } from './providers/nasa-eonet'
+import { femaDeclarationsProvider } from './providers/fema-declarations'
+import { openFdaProvider } from './providers/openfda'
 import {
   weatherKitProvider,
   accuWeatherNowcastProvider,
@@ -21,6 +24,11 @@ import type {
   ProviderStatus,
   UpcomingPrecipitationResult,
 } from './types'
+
+/** Do mais grave para o menos grave. Empate desempata pelo relógio. */
+const SEVERITY_RANK: Record<string, number> = {
+  extreme: 5, severe: 4, moderate: 3, minor: 2, info: 1,
+}
 
 // In-memory cache to avoid hammering upstream feeds (respects rate limits).
 interface CacheEntry { snapshot: HazardNetworkSnapshot; expiresAt: number }
@@ -42,7 +50,7 @@ export async function getHazardNetwork(location: Coordinates, opts: { force?: bo
   const hit = cache.get(key)
   if (!opts.force && hit && Date.now() < hit.expiresAt) return hit.snapshot
 
-  const [forecast, nowcast, nws, usgs, nhc, lightning, shakeAlert, ipaws] = await Promise.all([
+  const [forecast, nowcast, nws, usgs, nhc, lightning, shakeAlert, ipaws, wildfire, declarations, recalls] = await Promise.all([
     timedForecast(location),
     openMeteoNowcastProvider.getMinuteForecast(location),
     nwsProvider.getEvents(location),
@@ -51,6 +59,11 @@ export async function getHazardNetwork(location: Coordinates, opts: { force?: bo
     xweatherLightningProvider.getRecentStrikes(location, HAZARD_CONFIG.lightning.attentionMiles, new Date(Date.now() - 1_800_000)),
     shakeAlertProvider.getActiveWarning(location),
     femaIpawsProvider.getEvents(location),
+    // D-226 — três fontes abertas, sem chave. Em paralelo com o resto: uma
+    // delas lenta não pode atrasar o aviso de tempo severo.
+    nasaEonetProvider.getEvents(location),
+    femaDeclarationsProvider.getEvents(location),
+    openFdaProvider.getEvents(location),
   ])
 
   const now = new Date().toISOString()
@@ -179,6 +192,52 @@ export async function getHazardNetwork(location: Coordinates, opts: { force?: bo
       official: true,
       message: shakeAlert.message,
     },
+    // ── D-226 · três fontes abertas, sem chave ───────────────────────────
+    {
+      key: 'wildfire',
+      label: 'NASA EONET · Active Wildfires',
+      dataType: 'Satellite-tracked fire events',
+      status: wildfire.status,
+      required: false,
+      configured: true,
+      usingFallback: false,
+      primaryProvider: 'nasa_eonet',
+      activeProvider: 'nasa_eonet',
+      official: true,
+      lastSuccessAt: wildfire.lastSuccessAt,
+      dataAgeSeconds: wildfire.dataAgeSeconds,
+      message: wildfire.message,
+    },
+    {
+      key: 'fema-declarations',
+      label: 'FEMA · Federal Disaster Declarations',
+      dataType: 'Declared disasters + assistance',
+      status: declarations.status,
+      required: false,
+      configured: true,
+      usingFallback: false,
+      primaryProvider: 'fema_openfema',
+      activeProvider: 'fema_openfema',
+      official: true,
+      lastSuccessAt: declarations.lastSuccessAt,
+      dataAgeSeconds: declarations.dataAgeSeconds,
+      message: declarations.message,
+    },
+    {
+      key: 'fda-recalls',
+      label: 'FDA · Drug and Food Recalls',
+      dataType: 'Class I recalls',
+      status: recalls.status,
+      required: false,
+      configured: true,
+      usingFallback: false,
+      primaryProvider: 'openfda',
+      activeProvider: 'openfda',
+      official: true,
+      lastSuccessAt: recalls.lastSuccessAt,
+      dataAgeSeconds: recalls.dataAgeSeconds,
+      message: recalls.message,
+    },
     {
       key: 'eos-engine',
       label: 'EOS Engine · Risk Analysis',
@@ -193,9 +252,28 @@ export async function getHazardNetwork(location: Coordinates, opts: { force?: bo
     },
   ]
 
-  const events: HazardEvent[] = [...nws.data, ...usgs.data, ...nhc.data, ...ipaws.data]
+  const events: HazardEvent[] = [
+    ...nws.data, ...usgs.data, ...nhc.data, ...ipaws.data,
+    ...wildfire.data, ...declarations.data, ...recalls.data,
+  ]
     .concat(shakeAlert.data ? [shakeAlert.data] : [])
-    .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))
+    /*
+     * Gravidade antes de recência (D-226).
+     *
+     * A ordem era só por `updatedAt`, o que bastava quando toda fonte publicava
+     * emergência. Com recalls e declarações entrando, deixa de bastar: a FDA
+     * publica todo dia, um furacão se atualiza a cada seis horas, e a tela
+     * mostra os seis primeiros. Ordenar por relógio poria "recall de cápsula"
+     * acima de "furacão categoria 3" — e o topo da tela é o único lugar que
+     * muita gente lê.
+     *
+     * Dentro da mesma gravidade, o mais recente ganha, que é o comportamento
+     * anterior preservado.
+     */
+    .sort((a, b) => {
+      const peso = SEVERITY_RANK[b.severity] - SEVERITY_RANK[a.severity]
+      return peso !== 0 ? peso : Date.parse(b.updatedAt) - Date.parse(a.updatedAt)
+    })
 
   const snapshot: HazardNetworkSnapshot = {
     location,

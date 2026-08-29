@@ -24,6 +24,12 @@ export const DEFAULT_ALERT_TYPES = [
   'earthquake_tsunami',
   'air_quality',
   'precipitation',
+  // D-226: incêndio ativo perto muda a decisão de hoje, então acorda.
+  // `disaster_declaration` e `recall` ficam DE FORA de propósito: a primeira
+  // reconhece o que já passou e destrava auxílio; a segunda tem ~29 mil
+  // registros por ano. Push para qualquer uma das duas gastaria a única coisa
+  // que um app de emergência não pode gastar — a certeza de que vibrar é sério.
+  'wildfire',
 ] as const
 
 /** Maps an event onto the preference key that governs it. */
