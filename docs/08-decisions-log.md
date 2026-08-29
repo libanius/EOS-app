@@ -81,7 +81,7 @@ palavra.
 ## D-224 — WV2-T32 entra agora, antes da autoria de plano
 
 **Date**: 2026-08-28
-**Status**: DECIDED
+**Status**: DECIDED / IMPLEMENTADO em WV2-T32
 **Roadmap**: WV2-T32
 **Spec**: `docs/hazard-data-architecture.md`, `docs/16-hybrid-world-dashboard.md`
 
@@ -100,6 +100,11 @@ após esta entrega ou novo replanejamento.
 - adicionar legenda operacional NHC no painel de Camadas;
 - preservar compatibilidade com o estado salvo antigo `cyclone`;
 - não criar previsão proprietária, nem inferir evacuação.
+
+**Implementation**: concluído em 2026-08-29. O mapa passou a expor `pastTrack`
+e `watchWarnings` do NHC, o painel de Camadas ganhou toggles separados e legenda
+operacional, e o mapa ganhou popups oficiais ao tocar cone, trajetória, pontos,
+trajeto passado e watches/warnings. `test:weather` passou 19/19.
 
 ---
 

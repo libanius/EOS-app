@@ -32,6 +32,10 @@ cruzadas com casa, família consentida, lugares do plano e preparação. O cone
 nunca pode ser apresentado como área de dano: é incerteza do centro. Impacto
 real vive em alertas, vento, surge, flood e chuva. Produtos oficiais do NHC
 ficam grátis; Premium pode ter histórico/análise avançada, não o warning.
+WV2-T32 implementou o primeiro corte: subcamadas e legenda operacional no painel
+de Camadas, mais popups oficiais no mapa. Probabilidade de desenvolvimento
+pré-ciclone e wind speed probabilities oficiais ainda são próximos feeds de
+dados; a legenda já ensina os thresholds, mas o EOS não inventa esses polígonos.
 
 **Cron sub-diário no `vercel.json` derruba o deploy no plano Hobby (D-220).** Não
 é degradação silenciosa — é erro de validação que **falha a publicação inteira**:

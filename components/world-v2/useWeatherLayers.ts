@@ -74,7 +74,15 @@ export function useWeatherLayers(
   const [alerts, setAlerts] = useState<LocatedAlert[]>([])
 
   useEffect(() => {
-    if (!coords || !layers.cyclone) return
+    const wantsCyclone =
+      layers.cyclone ||
+      layers.cycloneCenter ||
+      layers.cycloneCone ||
+      layers.cycloneTrack ||
+      layers.cyclonePoints ||
+      layers.cyclonePastTrack ||
+      layers.cycloneWarnings
+    if (!coords || !wantsCyclone) return
     let cancelled = false
 
     const load = () => {
@@ -91,7 +99,16 @@ export function useWeatherLayers(
     }, CYCLONE_REFRESH_MS)
 
     return () => { cancelled = true; clearInterval(timer) }
-  }, [coords, layers.cyclone])
+  }, [
+    coords,
+    layers.cyclone,
+    layers.cycloneCenter,
+    layers.cycloneCone,
+    layers.cycloneTrack,
+    layers.cyclonePoints,
+    layers.cyclonePastTrack,
+    layers.cycloneWarnings,
+  ])
 
   useEffect(() => {
     if (!coords || (!layers.wind && !layers.windImpact)) return

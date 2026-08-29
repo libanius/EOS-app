@@ -12,8 +12,8 @@
 | **Current Phase** | Execução de Plano (EXEC) sobre Web/PWA |
 | **Migração aplicada** | ✅ `20260828000000_ndl_dedup_arbiter.sql` (D-222) — aplicada pelo dono em 2026-08-28 e verificada: `npm run test:hazard-dedup` passou de **1/6 para 6/6**, incluindo o controle negativo. Dedup e cooldown de 30 min voltaram a valer. |
 | **Agendador migrado** | ✅ pg_cron (D-222 / ALERT-T08) — `supabase/pg_cron_hazard_scan.sql` rodado pelo dono em 2026-08-28. **Disparo autônomo confirmado** às 17:20:03 e 17:40:03 UTC, três segundos após a marca dos 10 min, partindo de dentro do banco. Cadência real: 10 min (era mediana de 43 min com buracos de até 11,6 h). `CRON_SECRET` no Vault, não no corpo do job. |
-| **Current Task** | **AUTHOR-T01 — rascunho persistente em IndexedDB.** NOT STARTED — não iniciar sem ler `specs/PLAN-AUTHOR-001-autoria-do-plano.md`. AUTHOR-T02 fechou em 2026-08-19 (D-217); a fase EXEC fechou T00→T06, e EXEC-T07 (destino por identidade) fica atrás das fases de autoria. |
-| **Planned Direction** | **D-223 / WV2-T32 — Camadas NHC operacionais no Mundo.** Planejado em 2026-08-28: NHC entra como camadas separadas de centro, trajetória, pontos, cone, trajetória passada e watches/warnings, com cruzamento contra casa/família/plano/preparação. Não altera a tarefa corrente. |
+| **Current Task** | **AUTHOR-T01 — rascunho persistente em IndexedDB.** Volta a ser a próxima tarefa após WV2-T32; não iniciar sem ler `specs/PLAN-AUTHOR-001-autoria-do-plano.md`. |
+| **Last Completed Task** | **WV2-T32 / D-223+D-224 — Camadas NHC operacionais no Mundo (2026-08-29)** — centro, cone, trajetória, pontos, passado e watches/warnings viraram subcamadas; legenda operacional NHC adicionada; popups oficiais no mapa; `test:weather` 19/19. |
 | **Spec Ready** | `specs/PLAN-EXEC-001-execucao-de-plano.md` **v1.1** — execução de plano como modo operacional; D-212, D-217. |
 | **Spec Ready** | `specs/PLAN-AUTHOR-001-autoria-do-plano.md` — integridade do rascunho na autoria; D-217. |
 | **Migração aplicada** | ✅ `20260813210000_profiles_auth_fk.sql` (D-175) — aplicada e verificada em 2026-08-28: **12 perfis para 12 contas, 0 órfãos**. A FK foi provada por controle negativo — inserir perfil sem conta devolve `23503 … viola profiles_id_auth_users_fkey`. |
@@ -21,7 +21,7 @@
 | **Migrações aplicadas** | As duas de Preparedness State **aplicadas em 2026-08-13** e verificadas por REST: `locations`, `holdings`, `kits`, `requirements` → 200. Nenhuma pendência operacional. |
 | **Migração aplicada** | ✅ `20260824000000_hazard_alerting.sql` — aplicada pelo dono e **verificada por REST em 2026-08-28**: as 6 tabelas e as 9 colunas novas (`hazard_events.metrics/scan_key/last_seen_at`, `notification_delivery_log.transition_id/dedup_key/detail`, `user_hazard_preferences.basin_wide_tropical/push_enabled`, `profiles.language`) respondem 200. |
 | **Env verificada** | ✅ `CRON_SECRET` — a nota de pendência estava **velha**. Sondado em 2026-08-28: a rota de produção responde `401` (e não `503`) a um token errado, logo está setada na Vercel; e o workflow *Hazard scan* soma 67 execuções com **zero falhas**, o que só é possível com o segredo do GitHub batendo com o da Vercel. |
-| **Last Completed Task** | **ALERT-T08 + ALERT-T09 / D-222 — a trava de duplicidade volta a existir, e o agendador sai do GitHub (2026-08-28)** |
+| | **ALERT-T08 + ALERT-T09 / D-222 — a trava de duplicidade volta a existir, e o agendador sai do GitHub (2026-08-28)** |
 | | **ALERT-T01→T04 / D-220 — alertas por mudança com push real na tela de bloqueio (2026-08-24)** |
 | | **D-188 / COMMS-T12 — lista, thread e conversa individual (2026-08-15)** |
 | | **AUTHOR-T02 / D-217 — confirmar ponto deixa de ser bloqueado por precisão (2026-08-19)** |

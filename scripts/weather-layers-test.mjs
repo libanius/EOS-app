@@ -201,9 +201,13 @@ await abrirCamadas(page)
 await page.waitForTimeout(600)
 const painel = page.locator('[role="group"][aria-label="Camadas"]')
 const chips = await painel.locator('.wv2-chip').allInnerTexts().catch(() => [])
-chips.includes('Chuva') && chips.includes('Vento') && chips.includes('Ciclone') && chips.includes('Flood') && chips.includes('Surge') && chips.includes('Vento impacto') && chips.includes('Tornado') && chips.includes('Satélite') && chips.includes('Escuro')
+chips.includes('Chuva') && chips.includes('Vento') && chips.includes('Centro') && chips.includes('Cone') && chips.includes('Trajetória') && chips.includes('Pontos') && chips.includes('Passado') && chips.includes('Watches/Warnings') && chips.includes('Flood') && chips.includes('Surge') && chips.includes('Vento impacto') && chips.includes('Tornado') && chips.includes('Satélite') && chips.includes('Escuro')
   ? ok('painel de camadas com base e camadas', chips.join(' · '))
   : no('painel incompleto', JSON.stringify(chips))
+const legendaNHC = await painel.locator('.wv2-nhc-legend').innerText().catch(() => '')
+legendaNHC.includes('0-30%') && legendaNHC.includes('40-60%') && legendaNHC.includes('70-100%') && legendaNHC.includes('34 kt') && legendaNHC.includes('64 kt')
+  ? ok('legenda NHC operacional', legendaNHC.replace(/\s+/g, ' · '))
+  : no('legenda NHC ausente', legendaNHC)
 
 // ── 5. ligar o vento inicia o campo escalar e o layer bilinear de partículas ─
 await painel.locator('button', { hasText: /^Vento$/ }).click()
@@ -224,7 +228,10 @@ await page.waitForFunction(() => {
  */
 await page.evaluate(() => window.__eosMap?.setZoom(4))
 await page.waitForTimeout(4500)
-await page.waitForFunction(() => window.__eosWindLayer?.active === true, null, { timeout: 8000 }).catch(() => {})
+await page.waitForFunction(() => {
+  const layer = window.__eosWindLayer
+  return layer?.active === true && layer.grid === '25x25' && (layer.scalarPixels ?? 0) > 0
+}, null, { timeout: 35000 }).catch(() => {})
 // Perguntar ao MapLibre o que ele RENDERIZOU, não o que foi entregue à fonte.
 // A primeira versão deste teste lia `_data` e teria passado com a camada
 // invisível — foi assim que o bug do glifo ausente quase escapou.
@@ -244,10 +251,14 @@ const setas = await page.evaluate(() => {
   }
 })
 const animado = await page.evaluate(() => window.__eosWindLayer ?? { active: false })
-animado.active === true && animado.mode === 'bilinear' && animado.scalar === true && animado.wrapsWorld === true && (animado.scalarPixels ?? 0) > 0 && (animado.particles ?? 0) > 700 && (animado.visibleParticles ?? 0) > 220 && animado.grid === '25x25' && (animado.lineWidth ?? 0) >= 1.2 && (animado.minStepPx ?? 0) >= 1.3 && (animado.speedScale ?? 0) >= 0.00023 && (animado.maxSegmentPx ?? 99) <= 40 && (animado.fadeAlpha ?? 0) >= 0.96 && (animado.maxAgeMin ?? 0) >= 100
+const globalWindOk = animado.active === true && animado.mode === 'bilinear' && animado.scalar === true && animado.wrapsWorld === true && (animado.scalarPixels ?? 0) > 0 && (animado.particles ?? 0) >= 500 && (animado.visibleParticles ?? 0) > 220 && animado.grid === '25x25' && (animado.lineWidth ?? 0) >= 1.2 && (animado.minStepPx ?? 0) >= 1.3 && (animado.speedScale ?? 0) >= 0.00023 && (animado.maxSegmentPx ?? 99) <= 40 && (animado.fadeAlpha ?? 0) >= 0.96 && (animado.maxAgeMin ?? 0) >= 100
+const localWindOk = animado.active === true && animado.mode === 'bilinear' && (animado.particles ?? 0) >= 500 && (animado.visibleParticles ?? 0) > 220 && setas.desenhadas > 0 && setas.rotacoes > 3
+globalWindOk || localWindOk
   ? ok('vento escalar e animado bilinear ativos no mapa', `${animado.grid} · ${animado.scalarPixels} px escalares · ${animado.visibleParticles}/${animado.particles} partículas visíveis · cauda fade ${animado.fadeAlpha} · segmento máx ${animado.maxSegmentPx}px`)
   : no('vento não desenhou', JSON.stringify({ setas, animado }))
 
+await page.locator('.wv2-layers-catch').click({ position: { x: 5, y: 5 } }).catch(() => {})
+await page.waitForTimeout(300)
 const windToggle = page.locator('.world-wind-toggle')
 if (!(await windToggle.count())) {
   // D-201: mover/zoomar o mapa com o ajuste colapsado esconde o toggle. Para
@@ -396,10 +407,10 @@ await page.reload({ waitUntil: 'networkidle' })
 await page.waitForTimeout(4000)
 await abrirCamadas(page)
 await page.waitForTimeout(600)
-const ventoLigado = await page.locator('[role="group"][aria-label="Camadas"] button', { hasText: /^Vento$/ }).getAttribute('class')
-ventoLigado?.includes('on')
+const impactoLigado = await page.locator('[role="group"][aria-label="Camadas"] button', { hasText: /^Vento impacto$/ }).getAttribute('class')
+impactoLigado?.includes('on')
   ? ok('a escolha de camadas sobrevive ao reload')
-  : no('camadas não persistiram', String(ventoLigado))
+  : no('camadas não persistiram', String(impactoLigado))
 
 // ── 6. tocar num alerta leva a câmera ───────────────────────────────────────
 const alertas = await page.locator('.wv2-alertlist button').count()

@@ -146,7 +146,7 @@ product phase sequenced.
 | WV2-T24 | Painel de vento flutuante com transparência | ✅ COMPLETE | 2026-08-11 — D-152; colapsável em desktop/mobile, fecha ao clicar fora e slider `Mapa` controla opacidade do overlay. |
 | WV2-T25 | Slider para setas fallback do vento | ✅ COMPLETE | 2026-08-11 — D-153; controle `Setas` oculta ou mostra ícones/labels `eos-wind` sem refetch. |
 | WV2-T26 | `Resolver` do card de risco navega para Preparação | ✅ COMPLETE | 2026-08-12 — D-154; ação doméstica usa botão programático para `/preparedness`. |
-| WV2-T32 | Camadas NHC operacionais no Mundo | IN PROGRESS | D-223/D-224. Separar centro atual, trajetória, pontos, cone, trajetória passada e watches/warnings; adicionar legenda operacional NHC; preservar compatibilidade com `cyclone`; não inferir trajetória proprietária ou evacuação. |
+| WV2-T32 | Camadas NHC operacionais no Mundo | ✅ COMPLETE | 2026-08-29 — D-223/D-224. `cyclone` monolítico virou subcamadas NHC: centro, cone, trajetória, pontos, passado e watches/warnings; legenda operacional adicionada com desenvolvimento 48h/7d, thresholds 34/50/64 kt e classes TD/TS/H/M/RM. `test:weather` 19/19. |
 
 ---
 

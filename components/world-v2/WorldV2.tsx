@@ -89,7 +89,18 @@ const COPY = {
     layerWind: 'Vento',
     premiumTag: 'PREMIUM',
     windPremiumNote: 'Vento animado exige Premium.',
-    layerCyclone: 'Ciclone',
+    layerCyclone: 'NHC',
+    layerCycloneCenter: 'Centro',
+    layerCycloneCone: 'Cone',
+    layerCycloneTrack: 'Trajetória',
+    layerCyclonePoints: 'Pontos',
+    layerCyclonePast: 'Passado',
+    layerCycloneWarnings: 'Watches/Warnings',
+    nhcLegendTitle: 'Legenda NHC',
+    nhcLegendCone: 'Cone: incerteza do centro, não área de dano.',
+    nhcLegendFormation: 'Desenvolvimento: amarelo 0-30%, laranja 40-60%, vermelho 70-100% em 48h ou 7 dias.',
+    nhcLegendWind: 'Probabilidade de vento: 34 kt força tropical, 50 kt vento forte, 64 kt força de furacão.',
+    nhcLegendStatus: 'TD depressão · TS tempestade · H furacão · M furacão maior · RM remanescentes.',
     layerFlood: 'Flood',
     layerSurge: 'Surge',
     layerWindImpact: 'Vento impacto',
@@ -172,7 +183,18 @@ const COPY = {
     layerWind: 'Wind',
     premiumTag: 'PREMIUM',
     windPremiumNote: 'Animated wind requires Premium.',
-    layerCyclone: 'Cyclone',
+    layerCyclone: 'NHC',
+    layerCycloneCenter: 'Center',
+    layerCycloneCone: 'Cone',
+    layerCycloneTrack: 'Track',
+    layerCyclonePoints: 'Points',
+    layerCyclonePast: 'Past',
+    layerCycloneWarnings: 'Watches/Warnings',
+    nhcLegendTitle: 'NHC legend',
+    nhcLegendCone: 'Cone: uncertainty of the center, not the damage area.',
+    nhcLegendFormation: 'Development: yellow 0-30%, orange 40-60%, red 70-100% in 48h or 7 days.',
+    nhcLegendWind: 'Wind probability: 34 kt tropical-storm force, 50 kt strong wind, 64 kt hurricane force.',
+    nhcLegendStatus: 'TD depression · TS storm · H hurricane · M major hurricane · RM remnants.',
     layerFlood: 'Flood',
     layerSurge: 'Surge',
     layerWindImpact: 'Wind impact',
@@ -219,6 +241,15 @@ const STATE_LABEL = {
   en: { safe: 'Stable', watch: 'Watch', warning: 'Warning', critical: 'Critical' },
 } as const
 
+const NHC_LAYER_KEYS = [
+  'cycloneCenter',
+  'cycloneCone',
+  'cycloneTrack',
+  'cyclonePoints',
+  'cyclonePastTrack',
+  'cycloneWarnings',
+] as const
+
 export default function WorldV2() {
   const router = useRouter()
   const { language } = useLanguage()
@@ -259,8 +290,20 @@ export default function WorldV2() {
       const stored = localStorage.getItem('eos-map-layers')
       if (stored) {
         const parsed = JSON.parse(stored) as Partial<MapLayerState>
-        storedLayersRef.current = parsed
-        setLayers(current => ({ ...current, ...parsed, wind: false }))
+        const hasNewCycloneKeys = NHC_LAYER_KEYS.some(key => typeof parsed[key] === 'boolean')
+        const legacyCyclone = typeof parsed.cyclone === 'boolean' && !hasNewCycloneKeys
+          ? {
+              cycloneCenter: parsed.cyclone,
+              cycloneCone: parsed.cyclone,
+              cycloneTrack: parsed.cyclone,
+              cyclonePoints: parsed.cyclone,
+              cyclonePastTrack: false,
+              cycloneWarnings: parsed.cyclone,
+            }
+          : {}
+        const migrated = { ...parsed, ...legacyCyclone, cyclone: false }
+        storedLayersRef.current = migrated
+        setLayers(current => ({ ...current, ...migrated, wind: false }))
       }
     } catch { /* private mode ou JSON velho */ }
   }, [])
@@ -306,6 +349,7 @@ export default function WorldV2() {
       return next
     })
   }
+  const nhcLayerOn = NHC_LAYER_KEYS.some(key => layers[key])
   const [layersOpen, setLayersOpen] = useState(false)
 
   /*
@@ -800,11 +844,34 @@ export default function WorldV2() {
                 </button>
                 <button type="button" className={`wv2-chip${layers.radar ? ' on' : ''}`} onClick={() => toggleLayer('radar')}>{c.layerRadar}</button>
                 <button type="button" className={`wv2-chip${layers.alerts ? ' on' : ''}`} onClick={() => toggleLayer('alerts')}>{c.layerAlerts}</button>
-                <button type="button" className={`wv2-chip${layers.cyclone ? ' on' : ''}`} onClick={() => toggleLayer('cyclone')}>{c.layerCyclone}</button>
                 <button type="button" className={`wv2-chip${layers.flood ? ' on' : ''}`} onClick={() => toggleLayer('flood')}>{c.layerFlood}</button>
                 <button type="button" className={`wv2-chip${layers.surge ? ' on' : ''}`} onClick={() => toggleLayer('surge')}>{c.layerSurge}</button>
                 <button type="button" className={`wv2-chip${layers.windImpact ? ' on' : ''}`} onClick={() => toggleLayer('windImpact')}>{c.layerWindImpact}</button>
                 <button type="button" className={`wv2-chip${layers.tornado ? ' on' : ''}`} onClick={() => toggleLayer('tornado')}>{c.layerTornado}</button>
+              </div>
+
+              <div className="wv2-nhc-layers">
+                <p className="t-caps ink-3">{c.layerCyclone}</p>
+                <div className="row">
+                  <button type="button" className={`wv2-chip${layers.cycloneCenter ? ' on' : ''}`} onClick={() => toggleLayer('cycloneCenter')}>{c.layerCycloneCenter}</button>
+                  <button type="button" className={`wv2-chip${layers.cycloneCone ? ' on' : ''}`} onClick={() => toggleLayer('cycloneCone')}>{c.layerCycloneCone}</button>
+                  <button type="button" className={`wv2-chip${layers.cycloneTrack ? ' on' : ''}`} onClick={() => toggleLayer('cycloneTrack')}>{c.layerCycloneTrack}</button>
+                  <button type="button" className={`wv2-chip${layers.cyclonePoints ? ' on' : ''}`} onClick={() => toggleLayer('cyclonePoints')}>{c.layerCyclonePoints}</button>
+                  <button type="button" className={`wv2-chip${layers.cyclonePastTrack ? ' on' : ''}`} onClick={() => toggleLayer('cyclonePastTrack')}>{c.layerCyclonePast}</button>
+                  <button type="button" className={`wv2-chip${layers.cycloneWarnings ? ' on' : ''}`} onClick={() => toggleLayer('cycloneWarnings')}>{c.layerCycloneWarnings}</button>
+                </div>
+                <div className="wv2-nhc-legend" aria-label={c.nhcLegendTitle}>
+                  <p className="t-caps ink-2">{c.nhcLegendTitle}</p>
+                  <div className="wv2-nhc-key">
+                    <span><i className="low" />0-30%</span>
+                    <span><i className="mid" />40-60%</span>
+                    <span><i className="high" />70-100%</span>
+                  </div>
+                  <p className="t-foot ink-3">{c.nhcLegendFormation}</p>
+                  <p className="t-foot ink-3">{c.nhcLegendCone}</p>
+                  <p className="t-foot ink-3">{c.nhcLegendWind}</p>
+                  <p className="t-foot ink-3">{c.nhcLegendStatus}</p>
+                </div>
               </div>
 
               {!windAllowed && <p className="t-foot ink-3">{c.windPremiumNote}</p>}
@@ -822,7 +889,7 @@ export default function WorldV2() {
                 noutra bacia, com o mesmo destaque de um a 300 km, insinua uma
                 ameaça que não existe.
               */}
-              {layers.cyclone && cyclones && !cyclones.empty && cyclones.storms.map(storm => (
+              {nhcLayerOn && cyclones && !cyclones.empty && cyclones.storms.map(storm => (
                 <button
                   key={storm.id}
                   type="button"
@@ -842,11 +909,11 @@ export default function WorldV2() {
                   {c.backHome}
                 </button>
               )}
-              {layers.cyclone && cyclones?.empty && <p className="t-foot ink-3">{c.noStorm}</p>}
-              {layers.cyclone && cyclones && !cyclones.empty && <p className="t-foot ink-3">{c.coneNote}</p>}
+              {nhcLayerOn && cyclones?.empty && <p className="t-foot ink-3">{c.noStorm}</p>}
+              {nhcLayerOn && cyclones && !cyclones.empty && <p className="t-foot ink-3">{c.coneNote}</p>}
               {/* Desenho incompleto tem que se anunciar: um cone que não carregou
                   é indistinguível de um cone que não existe. */}
-              {layers.cyclone && cyclones?.missing?.length ? (
+              {nhcLayerOn && cyclones?.missing?.length ? (
                 <p className="t-foot warn">{c.partial}</p>
               ) : null}
             </motion.div>

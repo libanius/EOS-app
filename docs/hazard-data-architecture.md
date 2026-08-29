@@ -96,6 +96,12 @@ lugares do plano, rotas e preparação, respondendo "o que isso toca no meu
 mundo?". A ausência de ciclone ativo é resposta correta (`empty: true`), não
 erro.
 
+Primeiro incremento autorizado por D-224: separar os toggles/visibilidade no
+cliente e adicionar a legenda operacional. Probabilidade de desenvolvimento
+pré-ciclone (Graphical Tropical Weather Outlook) e probabilidades oficiais de
+vento por shapefile/KMZ entram como próxima evolução de dados, porque exigem
+feed próprio além do `CurrentStorms.json`/MapServer já consumido.
+
 ---
 
 ## Regra crítica "ALL SYSTEMS LIVE"

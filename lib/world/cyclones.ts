@@ -56,6 +56,8 @@ export type CycloneSnapshot = {
   cone: GeoJSON.FeatureCollection | null
   track: GeoJSON.FeatureCollection | null
   forecastPoints: GeoJSON.FeatureCollection | null
+  pastTrack: GeoJSON.FeatureCollection | null
+  watchWarnings: GeoJSON.FeatureCollection | null
   /** Nenhum ciclone ativo é uma resposta CORRETA, não uma falha. */
   empty: boolean
   /** Produtos que o NHC tem mas não conseguimos buscar. Vazio é o normal. */
@@ -183,6 +185,8 @@ export async function getCyclones(
       cone: null,
       track: null,
       forecastPoints: null,
+      pastTrack: null,
+      watchWarnings: null,
       empty: true,
       error: 'nhc_unreachable',
     }
@@ -227,14 +231,18 @@ export async function getCyclones(
       cone: null,
       track: null,
       forecastPoints: null,
+      pastTrack: null,
+      watchWarnings: null,
       empty: true,
     }
   }
 
-  const [cone, track, forecastPoints] = await Promise.all([
+  const [cone, track, forecastPoints, pastTrack, watchWarnings] = await Promise.all([
     geojson(LAYER.forecastCone, signal),
     geojson(LAYER.forecastTrack, signal),
     geojson(LAYER.forecastPoints, signal),
+    geojson(LAYER.pastTrack, signal),
+    geojson(LAYER.watchWarning, signal),
   ])
 
   // Quais produtos não vieram por FALHA (e não por não existirem). A UI usa isto
@@ -252,6 +260,8 @@ export async function getCyclones(
     cone,
     track,
     forecastPoints,
+    pastTrack,
+    watchWarnings,
     empty: false,
     missing,
   }

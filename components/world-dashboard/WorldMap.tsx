@@ -19,7 +19,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState, type FormEvent, type MouseEvent, type PointerEvent } from 'react'
-import type { Map as MLMap, Marker as MLMarker } from 'maplibre-gl'
+import type { Map as MLMap, MapLayerMouseEvent, Marker as MLMarker } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { useRisk } from '@/components/v2/RiskProvider'
 import { getMapConfig } from '@/lib/world/providers'
@@ -250,6 +250,15 @@ function short(text: string, max = 38) {
   return text.length <= max ? text : `${text.slice(0, max - 1).trim()}…`
 }
 
+function propText(feature: { properties?: unknown } | undefined, keys: string[], fallback = '') {
+  const properties = feature?.properties as Record<string, unknown> | undefined
+  for (const key of keys) {
+    const value = properties?.[key]
+    if (value !== undefined && value !== null && String(value).trim()) return String(value).trim()
+  }
+  return fallback
+}
+
 type CycloneWindTarget = Pick<CycloneStorm, 'id' | 'name' | 'lat' | 'lng' | 'windKmh' | 'headingDeg' | 'speedKmh'>
 
 function featurePoint(feature: GeoJSON.Feature): { lat: number; lng: number } | null {
@@ -428,7 +437,14 @@ export type MapLayerState = {
   radar: boolean
   alerts: boolean
   wind: boolean
+  /** Legacy aggregate kept for saved localStorage compatibility. */
   cyclone: boolean
+  cycloneCenter: boolean
+  cycloneCone: boolean
+  cycloneTrack: boolean
+  cyclonePoints: boolean
+  cyclonePastTrack: boolean
+  cycloneWarnings: boolean
   flood: boolean
   surge: boolean
   windImpact: boolean
@@ -439,7 +455,13 @@ export const DEFAULT_LAYERS: MapLayerState = {
   radar: true,
   alerts: true,
   wind: false,
-  cyclone: true,
+  cyclone: false,
+  cycloneCenter: true,
+  cycloneCone: true,
+  cycloneTrack: true,
+  cyclonePoints: true,
+  cyclonePastTrack: false,
+  cycloneWarnings: true,
   flood: true,
   surge: true,
   windImpact: false,
@@ -1178,11 +1200,12 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
 
         map.on('load', () => {
           if (cancelled || !map) return
+          const liveMap = map
           const cur = centerRef.current ?? center
 
           if (cfg.hasTerrain && cfg.terrainSource) {
-            if (!map.getSource('eos-dem')) map.addSource('eos-dem', { type: 'raster-dem', url: cfg.terrainSource })
-            map.setTerrain({ source: 'eos-dem', exaggeration: 1.2 })
+            if (!liveMap.getSource('eos-dem')) liveMap.addSource('eos-dem', { type: 'raster-dem', url: cfg.terrainSource })
+            liveMap.setTerrain({ source: 'eos-dem', exaggeration: 1.2 })
           }
 
           map.addSource('eos-route', { type: 'geojson', data: EMPTY_LINE })
@@ -1215,6 +1238,14 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
             layout: { 'line-cap': 'round', 'line-join': 'round' },
             paint: { 'line-color': '#ff453a', 'line-width': 2.6, 'line-opacity': 0.9 },
           })
+          map.addSource('eos-cyclone-past-track', { type: 'geojson', data: EMPTY_FC })
+          map.addLayer({
+            id: 'eos-cyclone-past-track',
+            type: 'line',
+            source: 'eos-cyclone-past-track',
+            layout: { 'line-cap': 'round', 'line-join': 'round' },
+            paint: { 'line-color': '#ffffff', 'line-width': 1.6, 'line-opacity': 0.5, 'line-dasharray': [1.2, 1.4] },
+          })
 
           map.addSource('eos-cyclone-points', { type: 'geojson', data: EMPTY_FC })
           map.addLayer({
@@ -1240,6 +1271,103 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
               'text-allow-overlap': false,
             },
             paint: { 'text-color': '#ffffff', 'text-halo-color': '#000000', 'text-halo-width': 1.4 },
+          })
+          map.addSource('eos-cyclone-warnings', { type: 'geojson', data: EMPTY_FC })
+          map.addLayer({
+            id: 'eos-cyclone-warnings-fill',
+            type: 'fill',
+            source: 'eos-cyclone-warnings',
+            paint: {
+              'fill-color': [
+                'match',
+                ['downcase', ['coalesce', ['get', 'tcww'], ['get', 'type'], ['get', 'prod_type'], '']],
+                'hurricane warning', '#ff453a',
+                'hurricane watch', '#ff2d55',
+                'tropical storm warning', '#0a84ff',
+                'tropical storm watch', '#ffd60a',
+                '#ff9f0a',
+              ],
+              'fill-opacity': 0.2,
+            },
+          })
+          map.addLayer({
+            id: 'eos-cyclone-warnings-line',
+            type: 'line',
+            source: 'eos-cyclone-warnings',
+            paint: {
+              'line-color': [
+                'match',
+                ['downcase', ['coalesce', ['get', 'tcww'], ['get', 'type'], ['get', 'prod_type'], '']],
+                'hurricane warning', '#ff453a',
+                'hurricane watch', '#ff2d55',
+                'tropical storm warning', '#0a84ff',
+                'tropical storm watch', '#ffd60a',
+                '#ff9f0a',
+              ],
+              'line-width': 2.2,
+              'line-opacity': 0.9,
+            },
+          })
+
+          const nhcPopup = async (
+            event: MapLayerMouseEvent,
+            kind: 'cone' | 'track' | 'point' | 'past' | 'warning',
+          ) => {
+            const pt = typeof document !== 'undefined' && document.documentElement.lang?.startsWith('pt')
+            const feature = event.features?.[0]
+            const titleByKind = {
+              cone: pt ? 'Cone de incerteza' : 'Cone of uncertainty',
+              track: pt ? 'Trajetória prevista' : 'Forecast track',
+              point: pt ? 'Ponto de previsão' : 'Forecast point',
+              past: pt ? 'Trajeto passado' : 'Past track',
+              warning: propText(feature, ['tcww', 'type', 'prod_type', 'status'], pt ? 'Watch/Warning oficial' : 'Official watch/warning'),
+            }
+            const bodyByKind = {
+              cone: pt
+                ? 'Produto oficial NHC. Mostra onde o centro pode passar; vento, chuva e dano podem ir além.'
+                : 'Official NHC product. Shows where the center may pass; wind, rain and damage can extend beyond it.',
+              track: pt
+                ? 'Linha oficial do centro previsto. O EOS não interpola nem melhora esta previsão.'
+                : 'Official forecast center line. EOS does not interpolate or improve this forecast.',
+              point: pt
+                ? `Válido: ${propText(feature, ['validtime', 'fcstprd', 'flabel', 'dvlbl'], 'NHC')}`
+                : `Valid: ${propText(feature, ['validtime', 'fcstprd', 'flabel', 'dvlbl'], 'NHC')}`,
+              past: pt
+                ? 'Contexto histórico do sistema. Não é gatilho de ação por si só.'
+                : 'Historical storm context. Not an action trigger by itself.',
+              warning: pt
+                ? 'Alerta ou vigilância oficial. Use Impacto/Alertas para entender perigo real na sua área.'
+                : 'Official watch or warning. Use Impact/Alerts to understand real hazard in your area.',
+            }
+            const maplibregl = (await import('maplibre-gl')).default
+            const el = document.createElement('div')
+            el.className = 'eos-nhc-popup'
+            const title = document.createElement('strong')
+            title.textContent = titleByKind[kind]
+            const body = document.createElement('span')
+            body.textContent = bodyByKind[kind]
+            const source = document.createElement('em')
+            source.textContent = 'NOAA National Hurricane Center'
+            el.append(title, body, source)
+            new maplibregl.Popup({ closeButton: true, closeOnClick: true, maxWidth: '260px' })
+              .setLngLat(event.lngLat)
+              .setDOMContent(el)
+              .addTo(liveMap)
+          }
+          const clickableCycloneLayers: Array<[string, Parameters<typeof nhcPopup>[1]]> = [
+            ['eos-cyclone-cone', 'cone'],
+            ['eos-cyclone-cone-line', 'cone'],
+            ['eos-cyclone-track', 'track'],
+            ['eos-cyclone-points', 'point'],
+            ['eos-cyclone-points-label', 'point'],
+            ['eos-cyclone-past-track', 'past'],
+            ['eos-cyclone-warnings-fill', 'warning'],
+            ['eos-cyclone-warnings-line', 'warning'],
+          ]
+          clickableCycloneLayers.forEach(([layerId, kind]) => {
+            liveMap.on('click', layerId, event => { void nhcPopup(event, kind) })
+            liveMap.on('mouseenter', layerId, () => { liveMap.getCanvas().style.cursor = 'pointer' })
+            liveMap.on('mouseleave', layerId, () => { liveMap.getCanvas().style.cursor = '' })
           })
 
           // ── Vento: seta rotacionada por leitura ──
@@ -1508,16 +1636,25 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
       if (source) source.setData(data ?? empty)
     }
 
-    const on = Boolean(layers?.cyclone) && Boolean(cyclones) && !cyclones?.empty
-    set('eos-cyclone-cone', on ? cyclones?.cone ?? null : null)
-    set('eos-cyclone-track', on ? cyclones?.track ?? null : null)
-    set('eos-cyclone-points', on ? cyclones?.forecastPoints ?? null : null)
+    const hasCyclones = Boolean(cyclones) && !cyclones?.empty
+    const legacyOn = Boolean(layers?.cyclone)
+    const centerOn = hasCyclones && (Boolean(layers?.cycloneCenter) || legacyOn)
+    const coneOn = hasCyclones && (Boolean(layers?.cycloneCone) || legacyOn)
+    const trackOn = hasCyclones && (Boolean(layers?.cycloneTrack) || legacyOn)
+    const pointsOn = hasCyclones && (Boolean(layers?.cyclonePoints) || legacyOn)
+    const pastOn = hasCyclones && Boolean(layers?.cyclonePastTrack)
+    const warningsOn = hasCyclones && (Boolean(layers?.cycloneWarnings) || legacyOn)
+    set('eos-cyclone-cone', coneOn ? cyclones?.cone ?? null : null)
+    set('eos-cyclone-track', trackOn ? cyclones?.track ?? null : null)
+    set('eos-cyclone-points', pointsOn ? cyclones?.forecastPoints ?? null : null)
+    set('eos-cyclone-past-track', pastOn ? cyclones?.pastTrack ?? null : null)
+    set('eos-cyclone-warnings', warningsOn ? cyclones?.watchWarnings ?? null : null)
 
     // O olho da tempestade é um marcador próprio, com a seta do rumo: "para onde
     // ela vai" é a pergunta, e um ponto sem direção não responde.
     stormMarkersRef.current.forEach(m => m.remove())
     stormMarkersRef.current = []
-    if (on && cyclones?.storms.length) {
+    if (centerOn && cyclones?.storms.length) {
       void (async () => {
         const maplibregl = (await import('maplibre-gl')).default
         for (const storm of activeCycloneTargets) {
@@ -1539,7 +1676,17 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
         }
       })()
     }
-  }, [cyclones, activeCycloneTargets, layers?.cyclone])
+  }, [
+    cyclones,
+    activeCycloneTargets,
+    layers?.cyclone,
+    layers?.cycloneCenter,
+    layers?.cycloneCone,
+    layers?.cycloneTrack,
+    layers?.cyclonePoints,
+    layers?.cyclonePastTrack,
+    layers?.cycloneWarnings,
+  ])
 
   /**
    * Vento: uma seta por leitura, apontando PARA ONDE ele sopra.
