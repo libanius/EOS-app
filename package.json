@@ -44,7 +44,8 @@
     "backfill:prep": "tsx scripts/backfill-preparedness.ts",
     "test:cutover-gate": "tsx scripts/cutover-equivalence.ts",
     "bench:rag": "node scripts/rag-bench.mjs",
-    "check:push": "npx tsx scripts/push-credentials-check.ts"
+    "check:push": "npx tsx scripts/push-credentials-check.ts",
+    "setup:push": "node scripts/push-credentials-setup.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.86.1",

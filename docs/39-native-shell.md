@@ -161,14 +161,33 @@ node -e "console.log(JSON.stringify(require('/caminho/para/o-arquivo.json')))" |
 
 ### 4.3 Onde as variáveis moram
 
-Painel da Vercel → projeto `eos-app` → **Settings** → **Environment Variables**.
-Adicionar cada uma em **Production** (e em Preview, se quiser testar builds de
-preview).
+**Caminho recomendado — um comando, com validação:**
+
+```bash
+npm run setup:push -- \
+  --p8 ~/Downloads/AuthKey_ABC123DEFG.p8 \
+  --team ZZZZ999999 \
+  --sa ~/Downloads/<projeto>-firebase-adminsdk-<hash>.json
+```
+
+O script valida antes de subir — o `.p8` tem de **assinar de verdade** (arquivo
+truncado passa no teste de "começa com BEGIN" e falha na Apple), o Key ID sai do
+nome do próprio arquivo, e o JSON precisa ter os três campos. `--dry-run` valida
+sem escrever nada.
+
+E o conteúdo das chaves **nunca é impresso nem passa como argumento**: vai do
+arquivo direto para o stdin do `vercel env add`. Argumento de linha de comando
+aparece em `ps` e no histórico do shell; quem tem o `.p8` pode notificar todo
+aparelho do EOS.
+
+**Caminho manual:** painel da Vercel → projeto `eos-app` → **Settings** →
+**Environment Variables**, cada uma em **Production** (e em Preview, se quiser
+testar builds de preview).
 
 > ⚠️ **Variável nova não alcança um deploy que já existe.** Depois de adicionar,
-> é preciso **redeployar** — Deployments → ⋯ no mais recente → Redeploy. Sem
-> isso a produção continua sem elas, e o sintoma é exatamente o mesmo de não
-> tê-las configurado.
+> é preciso **redeployar** — `vercel --prod`, ou Deployments → ⋯ no mais recente
+> → Redeploy. Sem isso a produção continua sem elas, e o sintoma é exatamente o
+> mesmo de não tê-las configurado.
 
 Colar valor com quebra de linha (o `.p8`) funciona no formulário da Vercel: o
 código aceita tanto quebra real quanto `\n` literal (`normalizarPem`).
@@ -205,8 +224,8 @@ Nada abaixo é código. É conta, chave e assinatura.
 | 1 | Conta Apple Developer (US$ 99/ano) | developer.apple.com | tudo no iOS |
 | 2 | Conta Google Play (US$ 25, uma vez) | play.google.com/console | tudo no Android |
 | 3 | App ID `app.eos.family` com **Push Notifications** e **Associated Domains** | portal Apple | push e deep link |
-| 4 | Chave `.p8` da APNs → `APNS_*` na Vercel | portal Apple → Vercel | push no iOS |
-| 5 | `FCM_SERVICE_ACCOUNT_JSON` + `google-services.json` | Firebase | push no Android |
+| 4 | Chave `.p8` da APNs → `APNS_*` na Vercel | portal Apple → `npm run setup:push` | push no iOS |
+| 5 | `FCM_SERVICE_ACCOUNT_JSON` + `google-services.json` | Firebase → `npm run setup:push` | push no Android |
 | 6 | ~~Aplicar `20260831000000_push_devices.sql`~~ | SQL Editor do Supabase | ✅ **APLICADA** em 2026-08-31, verificada por REST (HTTP 200, tabela vazia) |
 | 7 | Keystore de release do Android (guardar fora do repositório) | máquina local | publicar |
 | 8 | `/.well-known/apple-app-site-association` e `/.well-known/assetlinks.json` | `public/` do app web | deep links |
