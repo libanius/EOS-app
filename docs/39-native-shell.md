@@ -81,11 +81,39 @@ loja. Ele também reprova origem `localhost`, recurso remoto dentro do
 Sem elas o app instala, abre e funciona — e **não notifica**. É o único
 item verdadeiramente bloqueante do lançamento.
 
+> **Antes de confiar em qualquer valor colado aqui: `npm run check:push`.**
+> Ele manda uma requisição real para a Apple e para o Google usando um token de
+> destinatário que **não existe**, e traduz a resposta. "Token inválido" é a
+> melhor resposta possível: significa que a autenticação passou por inteiro e só
+> o destinatário — que inventamos — foi recusado. Nenhuma notificação chega a
+> ninguém.
+>
+> Isto existe porque credencial errada aqui **não dá erro, dá silêncio**: o app
+> instala, abre, registra o aparelho, e a notificação simplesmente não chega.
+
 ### 4.1 APNs (iOS) — sem Firebase, por decisão
 
-Portal da Apple → Certificates, Identifiers & Profiles → **Keys** → nova chave
-com *Apple Push Notifications service (APNs)* marcado. O `.p8` é baixado **uma
-única vez**.
+**Passo a passo**, em [developer.apple.com/account](https://developer.apple.com/account)
+→ *Certificates, Identifiers & Profiles*:
+
+1. **Identifiers** → **+** → *App IDs* → *App* → Continue
+   - Description: `EOS`
+   - Bundle ID: **Explicit** → `app.eos.family` (tem de ser idêntico ao
+     `appId` de `capacitor.config.ts`)
+   - Marcar **Push Notifications** e **Associated Domains**
+   - Continue → Register
+2. **Keys** → **+**
+   - Key Name: `EOS Push`
+   - Marcar **Apple Push Notifications service (APNs)**
+   - Continue → Register → **Download**
+
+> ⚠️ O `.p8` baixa **uma vez só**. A Apple nunca mais o disponibiliza. Perdeu,
+> revoga a chave e cria outra.
+
+3. Os três identificadores:
+   - **Key ID** — os 10 caracteres no nome do arquivo `AuthKey_XXXXXXXXXX.p8`
+   - **Team ID** — canto superior direito do portal, ou a aba *Membership*
+   - **Bundle ID** — `app.eos.family`
 
 | Variável | O que é |
 |---|---|
@@ -104,15 +132,67 @@ com *Apple Push Notifications service (APNs)* marcado. O `.p8` é baixado **uma
 
 ### 4.2 FCM (Android)
 
-Console do Firebase → projeto → Configurações → **Contas de serviço** → gerar
-nova chave privada. Baixa um JSON.
+Em [console.firebase.google.com](https://console.firebase.google.com):
+
+1. **Criar projeto** (ou usar um existente) → nome `EOS`
+2. **Adicionar app** → ícone do Android
+   - Nome do pacote: `app.eos.family`
+   - Baixar `google-services.json` → colocar em `native/android/app/`
+3. ⚙️ **Configurações do projeto** → aba **Contas de serviço** → **Gerar nova
+   chave privada** → baixa um JSON
+
+> **Não adicione um app iOS aqui.** O EOS fala com a APNs direto (D-228 §3), e
+> criar o app iOS no Firebase só acrescentaria o Google ao caminho de uma
+> notificação de iPhone — a lista de terceiros da `docs/38` §1.5 é curta de
+> propósito.
+
+O JSON inteiro vira o valor de `FCM_SERVICE_ACCOUNT_JSON`. Para achatá-lo numa
+linha antes de colar:
+
+```bash
+node -e "console.log(JSON.stringify(require('/caminho/para/o-arquivo.json')))" | pbcopy
+```
 
 | Variável | O que é |
 |---|---|
 | `FCM_SERVICE_ACCOUNT_JSON` | o JSON inteiro, em uma linha |
 
-E o `google-services.json` (Configurações → app Android → `app.eos.family`) vai
-em `native/android/app/google-services.json`. Ele **não** é versionado.
+`google-services.json` **não** é versionado — está no `.gitignore` da casca.
+
+### 4.3 Onde as variáveis moram
+
+Painel da Vercel → projeto `eos-app` → **Settings** → **Environment Variables**.
+Adicionar cada uma em **Production** (e em Preview, se quiser testar builds de
+preview).
+
+> ⚠️ **Variável nova não alcança um deploy que já existe.** Depois de adicionar,
+> é preciso **redeployar** — Deployments → ⋯ no mais recente → Redeploy. Sem
+> isso a produção continua sem elas, e o sintoma é exatamente o mesmo de não
+> tê-las configurado.
+
+Colar valor com quebra de linha (o `.p8`) funciona no formulário da Vercel: o
+código aceita tanto quebra real quanto `\n` literal (`normalizarPem`).
+
+### 4.4 Conferir
+
+```bash
+vercel env pull .env.vercel.local          # arquivo À PARTE, ver aviso abaixo
+npm run check:push -- --env .env.vercel.local
+```
+
+> `vercel env pull .env.local` **sobrescreve** o seu `.env.local` sem perguntar,
+> e ele guarda chaves que podem não estar na Vercel. Puxe para outro arquivo.
+
+O que o verificador responde, e o que cada resposta significa:
+
+| Resposta | Significa |
+|---|---|
+| `BadDeviceToken` / `INVALID_ARGUMENT` | ✅ **Credenciais válidas.** Só o token fantasma foi recusado. |
+| `InvalidProviderToken` (403) | Key ID, Team ID e `.p8` não combinam entre si |
+| `TopicDisallowed` | O bundle não está autorizado para esta chave |
+| `ExpiredProviderToken` | Relógio da máquina fora de hora |
+| `invalid_grant` no Google | Chave revogada ou JSON de outro projeto |
+| `403` no envio FCM | Falta o papel *Firebase Cloud Messaging API Admin*, ou a API está desativada |
 
 ---
 
@@ -127,7 +207,7 @@ Nada abaixo é código. É conta, chave e assinatura.
 | 3 | App ID `app.eos.family` com **Push Notifications** e **Associated Domains** | portal Apple | push e deep link |
 | 4 | Chave `.p8` da APNs → `APNS_*` na Vercel | portal Apple → Vercel | push no iOS |
 | 5 | `FCM_SERVICE_ACCOUNT_JSON` + `google-services.json` | Firebase | push no Android |
-| 6 | Aplicar `20260831000000_push_devices.sql` | SQL Editor do Supabase | **todo** o push nativo |
+| 6 | ~~Aplicar `20260831000000_push_devices.sql`~~ | SQL Editor do Supabase | ✅ **APLICADA** em 2026-08-31, verificada por REST (HTTP 200, tabela vazia) |
 | 7 | Keystore de release do Android (guardar fora do repositório) | máquina local | publicar |
 | 8 | `/.well-known/apple-app-site-association` e `/.well-known/assetlinks.json` | `public/` do app web | deep links |
 | 9 | No Xcode: ligar as capacidades e adicionar `pt-BR.lproj`/`en.lproj` ao alvo | Xcode | push, links, i18n do diálogo |

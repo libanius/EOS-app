@@ -43,7 +43,8 @@
     "test:dual-write": "tsx scripts/dual-write-test.ts",
     "backfill:prep": "tsx scripts/backfill-preparedness.ts",
     "test:cutover-gate": "tsx scripts/cutover-equivalence.ts",
-    "bench:rag": "node scripts/rag-bench.mjs"
+    "bench:rag": "node scripts/rag-bench.mjs",
+    "check:push": "npx tsx scripts/push-credentials-check.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.86.1",
