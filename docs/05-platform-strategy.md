@@ -1,7 +1,8 @@
 # 05 — Platform Strategy
 
-> Last updated: 2026-08-03
-> Decision: D-084 — EOS Platform, not parallel apps.
+> Last updated: 2026-08-31
+> Decisões: D-084 — EOS Platform, not parallel apps; **D-228** — a casca nativa
+> é Capacitor, e existe para ser a camada 4 desta página, não um segundo produto.
 
 ---
 
@@ -48,36 +49,47 @@ Current Web/PWA responsibilities:
 
 ---
 
-## Planned Platform: Native Mobile
+## Plataforma ativa: Casca Nativa (iOS e Android)
 
-**Status**: Planned. Blocked by **G-03 — Mobile Readiness**.
+**Status**: Iniciada em 2026-08-31. G-03 **CLEARED**. Runtime: **Capacitor**
+(D-228). Spec operacional: `docs/39-native-shell.md`.
 
-`/mobile/` contains template/conceptual React Native files and LoRa-related
-experiments. It is **not** a runnable initialized mobile app. `npx react-native
-init`, Expo, and Capacitor have not been adopted.
+A casca é a **camada 4** desta página, e nada além dela. Carrega o Next.js que
+já está em produção e acrescenta só a borda que o navegador não alcança. Ela não
+tem tela própria: toda tela nova continua nascendo no app web.
 
-Native mobile should start only after the owner clears G-03 and after the core
-work it will wrap is stable enough to justify a maintained second runtime.
+React Native foi avaliado e recusado. Com `middleware.ts`, sessão Supabase por
+cookie SSR e ~50 telas renderizadas no servidor, portar não seria portar — seria
+reescrever o produto num segundo runtime, criando os produtos paralelos que a
+D-084 proíbe. `/mobile/` continua sendo protótipo conceitual, não produto.
 
-Native mobile exists to add capabilities the PWA cannot reliably own:
+O que a casca acrescenta, e por quê:
 
-- APNs/FCM native push;
-- background location under platform permission rules;
-- secure credential storage;
-- camera/QR integrations;
-- native share/contact affordances where approved;
-- app-store packaging, review, and release flow;
-- optional native widgets/Live Activities/Dynamic Island after core launch.
+| Capacidade | Estado | Por que o navegador não serve |
+|---|---|---|
+| Push APNs/FCM | ✅ código pronto (MOB-T03) | Nem o WKWebView nem o WebView do Android implementam `PushManager`. Dentro do app de loja o Web Push não degrada: não existe. |
+| Cofre offline | ✅ MOB-T04 | O app abre e mostra ficha e plano com zero rede, lendo armazenamento nativo. |
+| Geolocalização | ✅ MOB-T05 | Permissão do sistema, com texto revisado. **Sem** segundo plano, por decisão (D-228 §6). |
+| Deep links | ✅ declarados | Falta o `.well-known` na origem (MOB-T06). |
+| Empacotamento e release | ⏳ MOB-T06 — dono | Contas, chaves e assinatura. Nada de código. |
+| Widgets / Live Activities | BLOQUEADO | Só depois do app publicado e estável. |
 
-App Store and Google Play submission remain blocked until the native shell is
-initialized, reviewed against platform policy, and validated with the shared EOS
-core.
+**Armazenamento seguro** ficou deliberadamente de fora: a sessão é o cookie do
+Supabase dentro do WebView, gerido pelo sistema. Não há credencial que a casca
+precise guardar por conta própria, e inventar um cofre para ela seria criar
+superfície de ataque sem comprar segurança.
+
+A submissão às lojas depende agora **apenas** dos passos de conta e credencial
+listados em `docs/39` §5.
 
 ---
 
 ## Future Platform: Automotive Companion
 
 **Status**: Future. Blocked by **G-06 — Automotive Readiness**.
+
+> A pré-condição "o núcleo móvel existe" foi satisfeita pela D-228. O gate
+> **não** cai junto: continua bloqueado por decisão própria do dono.
 
 CarPlay and Android Auto are **companion modes**, not full EOS clients.
 
@@ -116,14 +128,21 @@ Comms inside the Web/PWA product and LoRa/Mesh hardware are separate decisions:
 The ESP32 firmware and mobile BLE files in `/mobile/` are prototypes, not an
 integrated product surface.
 
+> A D-228 **não** destrava isto. A casca não instala plugin de BLE, e o
+> `LoRaBleService.ts` continua sendo código de React Native que nenhum runtime
+> deste projeto executa.
+
 ---
 
 ## Platform Gaps
 
 | Gap | Severity | Notes |
 |---|---|---|
-| Native mobile shell not initialized | HIGH | Blocked by G-03; `/mobile/` is template/conceptual code only |
-| App Store / Google Play release path not defined | HIGH | Requires native shell, privacy review, store policy review, and release process |
+| ~~Native mobile shell not initialized~~ | RESOLVIDO | D-228 / MOB-T01: casca Capacitor iniciada nas duas plataformas em 2026-08-31 |
+| Credenciais de push nativo ausentes | HIGH | `APNS_*` e `FCM_SERVICE_ACCOUNT_JSON` não configuradas: o app instala, abre e **não notifica**. `docs/39` §4 |
+| Migração `push_devices` não aplicada | HIGH | Sem ela, `POST /api/push/device` responde 503 e nenhum aparelho é registrado. `docs/39` §5 passo 6 |
+| Caminho de release das lojas | HIGH | Contas, App ID com capacidades, keystore, `.well-known`, ícones. MOB-T06, `docs/39` §5 |
+| Guideline 4.2 da Apple | MEDIUM | Casca que carrega site é rejeitável por funcionalidade mínima. Defesa: push nativo, cofre offline e geolocalização — capacidades que um navegador em iOS não tem. `docs/39` §6.3 |
 | Automotive policy not documented | MEDIUM | Requires G-06 before CarPlay/Android Auto work |
 | Mesh/LoRa priority not decided | MEDIUM | Blocked by G-05; app-level Comms can proceed separately |
 | Platform docs drift from current product | MEDIUM | D-084 establishes PHASE 0B as the reconciliation step |

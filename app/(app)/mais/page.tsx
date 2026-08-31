@@ -7,6 +7,9 @@ import { canAccess, type Plan } from '@/lib/feature-gates'
 import { createClient } from '@/lib/supabase/client'
 import { AFFILIATE_STORAGE_KEY, normalizeAffiliateCode } from '@/lib/affiliate'
 import MaisNav from '@/components/world-v2/MaisNav'
+import { isNativeShell } from '@/lib/native/bridge'
+import { desativarPushNativo, registrarPushNativo, tokenNativoSalvo } from '@/lib/native/push'
+import { limparCofre } from '@/lib/native/vault'
 
 // ─── Language selector ────────────────────────────────────────────────────────
 
@@ -79,6 +82,15 @@ export default function SettingsPage() {
   const en = language === 'en'
   const [plan, setPlan] = useState<Plan | null>(null)
   const [pushEnabled, setPushEnabled] = useState(false)
+  /*
+   * A casca só é detectável NO NAVEGADOR, e por isso vive em estado.
+   *
+   * `isNativeShell()` lê `window.Capacitor`, que não existe no servidor. Ler
+   * isso durante a renderização daria HTML diferente do servidor e do cliente —
+   * erro de hidratação, e a tela inteira remontando.
+   */
+  const [nativo, setNativo] = useState(false)
+  const [tokenNativo, setTokenNativo] = useState<string | null>(null)
   const [pushBusy, setPushBusy] = useState(false)
   const [pushMsg, setPushMsg] = useState('')
   const [email, setEmail] = useState<string | null>(null)
@@ -194,6 +206,15 @@ export default function SettingsPage() {
   const handleLogout = async () => {
     setBusy('logout')
     try {
+      /*
+       * O cofre offline sai JUNTO com a sessão (D-228 §5).
+       *
+       * Ele guarda tipo sanguíneo, alergias e medicamentos. Sem esta linha,
+       * sair da conta deixaria a ficha médica de uma família legível na tela
+       * offline do aparelho — para quem quer que abrisse o app depois, sem
+       * precisar de senha nenhuma.
+       */
+      await limparCofre()
       await createClient().auth.signOut()
       window.location.href = '/auth/login'
     } catch {
@@ -208,6 +229,8 @@ export default function SettingsPage() {
     if (!window.confirm(msg)) return
     setBusy('delete')
     try {
+      // O mesmo motivo do logout, e aqui não há volta: a conta deixou de existir.
+      await limparCofre()
       const res = await fetch('/api/account/delete', { method: 'POST' })
       if (!res.ok) {
         const d = await res.json().catch(() => ({}))
@@ -223,6 +246,24 @@ export default function SettingsPage() {
   }
 
   useEffect(() => {
+    /*
+     * Dentro da casca o caminho é OUTRO (D-228 §3).
+     *
+     * Nem o WKWebView do iOS nem o WebView do Android implementam
+     * `PushManager`, então o ramo de baixo nunca roda no app de loja — e sem
+     * este ramo o cartão de push apareceria permanentemente "Desativado" para
+     * quem instalou pela loja, sem botão que resolvesse.
+     */
+    if (isNativeShell()) {
+      setNativo(true)
+      tokenNativoSalvo()
+        .then(t => {
+          setTokenNativo(t)
+          setPushEnabled(!!t)
+        })
+        .catch(() => {})
+      return
+    }
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
     getPushServiceWorkerRegistration()
       .then(reg => reg.pushManager.getSubscription())
@@ -231,6 +272,49 @@ export default function SettingsPage() {
 
   const togglePush = async () => {
     setPushMsg('')
+
+    // ── Casca nativa: APNs/FCM em vez de Web Push (D-228 §3) ───────────────
+    if (nativo) {
+      setPushBusy(true)
+      try {
+        if (pushEnabled && tokenNativo) {
+          const ok = await desativarPushNativo(tokenNativo)
+          if (!ok) throw new Error(en ? 'Could not turn alerts off.' : 'Não foi possível desativar.')
+          setTokenNativo(null)
+          setPushEnabled(false)
+          setPushMsg(en ? 'Push alerts disabled on this device.' : 'Alertas push desativados neste dispositivo.')
+          return
+        }
+        const r = await registrarPushNativo()
+        if (r.status === 'registered') {
+          setTokenNativo(r.token)
+          setPushEnabled(true)
+          setPushMsg(en ? 'Push alerts enabled on this device.' : 'Alertas push ativados neste dispositivo.')
+          return
+        }
+        /*
+         * Cada recusa vira uma frase diferente de propósito. "Negado" e "demorou
+         * demais" pedem ações opostas da pessoa — abrir os Ajustes do sistema, ou
+         * simplesmente tentar de novo —, e uma mensagem única mandaria metade
+         * dela para o lugar errado.
+         */
+        setPushMsg(
+          r.status === 'denied'
+            ? (en
+                ? 'Notification permission was denied. Enable it for EOS in your device settings.'
+                : 'A permissão de notificação foi negada. Ative para o EOS nos ajustes do aparelho.')
+            : r.status === 'unavailable'
+              ? (en ? 'Push is not available in this build.' : 'Push não está disponível nesta versão do app.')
+              : (en ? 'Could not register this device. Try again.' : 'Não foi possível registrar este aparelho. Tente de novo.'),
+        )
+      } catch (e) {
+        setPushMsg(e instanceof Error ? e.message : (en ? 'Could not update push alerts.' : 'Não foi possível atualizar alertas push.'))
+      } finally {
+        setPushBusy(false)
+      }
+      return
+    }
+
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
       setPushMsg(en ? 'Push is not supported in this browser.' : 'Push não é suportado neste navegador.')
       return
@@ -465,8 +549,15 @@ export default function SettingsPage() {
           </div>
         )}
 
-        {/* Push notifications */}
-        {'serviceWorker' in (typeof navigator !== 'undefined' ? navigator : {}) && (
+        {/*
+          Push notifications.
+
+          `nativo ||` não é redundância: dentro da casca `serviceWorker` pode não
+          existir, e sem ele o cartão sumia justamente no app publicado nas lojas
+          — o único lugar onde o push nativo é o ÚNICO caminho até a tela de
+          bloqueio.
+        */}
+        {(nativo || 'serviceWorker' in (typeof navigator !== 'undefined' ? navigator : {})) && (
           <div style={{ ...styles.card, marginTop: 20 }}>
             <div style={styles.planHeader}>
               <div>

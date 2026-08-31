@@ -1,0 +1,42 @@
+# Casca nativa — o que é FONTE e o que é gerado (D-228).
+#
+# Os projetos `ios/` e `android/` ficam versionados de propósito: eles carregam
+# configuração escrita à mão que nenhum comando recria — AndroidManifest com as
+# permissões decididas, a ponte APNs no AppDelegate, os entitlements, o canal de
+# notificação. Rodar `cap add` de novo apagaria tudo isso em silêncio.
+#
+# O que sai daqui é só o que `cap sync` regenera a cada build.
+
+node_modules/
+
+# Assets web copiados de `www/` por `cap copy` — regenerados sempre.
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json
+android/app/src/main/assets/capacitor.plugins.json
+ios/App/App/public/
+ios/App/App/capacitor.config.json
+
+# Build do Android
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/capacitor-cordova-android-plugins/build/
+
+# Build do iOS
+ios/App/build/
+ios/App/Pods/
+ios/App/output/
+ios/App/App.xcworkspace/xcuserdata/
+ios/App/App.xcodeproj/xcuserdata/
+ios/App/App.xcodeproj/project.xcworkspace/xcuserdata/
+DerivedData/
+*.xcuserstate
+
+# NUNCA. A chave .p8 da APNs e o service account do FCM são credenciais de
+# envio: quem as tem pode notificar todo aparelho do EOS.
+*.p8
+google-services.json
+GoogleService-Info.plist
+*.keystore
+*.jks

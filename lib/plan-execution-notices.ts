@@ -1,4 +1,5 @@
 import webpush from 'web-push'
+import { enviarNativoParaUsuarios } from '@/lib/push-native-fanout'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import {
   createCommsNotifications,
@@ -16,7 +17,13 @@ const VAPID_SUBJECT = process.env.VAPID_SUBJECT ?? 'mailto:brightscalegroup@gmai
 
 type NoticeResult = {
   recipients: number
-  push: 'delivered' | 'failed' | 'unconfigured' | 'no_recipients' | 'no_device'
+  /*
+   * `native_only` entrou com a D-228: o aparelho da loja recebeu, e não há (ou
+   * não saiu) Web Push. Sem esse valor a resposta teria de escolher entre duas
+   * mentiras — `unconfigured`, que esconde uma entrega real, ou `delivered`,
+   * que atribui ao navegador o que foi para a APNs.
+   */
+  push: 'delivered' | 'failed' | 'unconfigured' | 'no_recipients' | 'no_device' | 'native_only'
 }
 
 type NoticeInput = {
@@ -82,8 +89,19 @@ export async function notifyPlanExecution({
     },
   })
 
+  /*
+   * Aparelhos da loja ANTES do guard de VAPID (D-228 §4): a casca não tem
+   * `PushManager`, e prender o push nativo à chave do Web Push desligaria a
+   * notificação do app publicado por uma credencial que ele não usa.
+   */
+  const nativo = await enviarNativoParaUsuarios(admin, recipients, {
+    title: `EOS · ${started ? 'Plano em execução' : resolved ? 'Plano resolvido' : 'Falso alarme'}`,
+    body,
+    url: `/dashboard?execution=${encodeURIComponent(executionId)}`,
+  })
+
   if (!VAPID_PUBLIC || !VAPID_PRIVATE) {
-    return { recipients: recipients.length, push: 'unconfigured' }
+    return { recipients: recipients.length, push: nativo.sent ? 'native_only' : 'unconfigured' }
   }
 
   const { data: subs } = await admin
@@ -92,7 +110,7 @@ export async function notifyPlanExecution({
     .in('user_id', recipients)
 
   if (!subs?.length) {
-    return { recipients: recipients.length, push: 'no_device' }
+    return { recipients: recipients.length, push: nativo.sent ? 'native_only' : 'no_device' }
   }
 
   webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE)

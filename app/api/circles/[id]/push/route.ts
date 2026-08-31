@@ -1,6 +1,8 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import webpush from 'web-push'
+import { enviarNativoParaUsuarios } from '@/lib/push-native-fanout'
 import { canAccess } from '@/lib/feature-gates'
 
 const VAPID_PUBLIC = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? ''
@@ -38,9 +40,44 @@ export async function POST(req: NextRequest, { params }: Ctx) {
   const memberIds = (members ?? []).map(m => m.user_id)
   if (!memberIds.length) return NextResponse.json({ sent: 0 })
 
-  const { data: subs } = await supabase.from('push_subscriptions')
+  /*
+   * ── O broadcast do círculo não chegava a ninguém (D-229) ────────────────
+   *
+   * Estas duas linhas liam `push_subscriptions` com o cliente do USUÁRIO. A
+   * única política da tabela é `auth.uid() = user_id` (migração de 2026-06-30),
+   * então a RLS devolvia no máximo a assinatura de quem estava enviando.
+   *
+   * O resultado: o alerta do administrador do círculo chegava ao próprio
+   * administrador — ou a ninguém — e a rota respondia `sent: 1` sem mentir sobre
+   * o que fez, só sobre o que significava. Nenhum membro jamais recebeu um
+   * alerta manual de círculo.
+   *
+   * O envio precisa de service role, como já acontece em todos os outros
+   * lugares que enviam push (`plans`, `simulation`, `plan-execution-notices`,
+   * `family/ping`). Esta rota era a única exceção, e por isso a única quebrada.
+   */
+  const admin = createAdminClient()
+  if (!admin) return NextResponse.json({ error: 'Push indisponível.' }, { status: 503 })
+
+  /*
+   * Aparelhos da loja primeiro, antes de qualquer saída baseada em assinatura
+   * de navegador — senão quem só tem o app publicado nunca receberia (D-228 §4).
+   */
+  const nativo = await enviarNativoParaUsuarios(admin, memberIds, {
+    title: body.title.trim(),
+    body: body.message.trim(),
+    url: '/circles',
+  })
+
+  const { data: subs } = await admin.from('push_subscriptions')
     .select('endpoint, p256dh, auth').in('user_id', memberIds)
-  if (!subs?.length) return NextResponse.json({ sent: 0, note: 'No subscribers' })
+  if (!subs?.length) {
+    return NextResponse.json({
+      sent: nativo.sent,
+      failed: nativo.failed,
+      ...(nativo.sent ? {} : { note: 'No subscribers' }),
+    })
+  }
 
   webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE)
   const payload = JSON.stringify({
@@ -57,7 +94,10 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     const r = results[i]
     return r.status === 'rejected' && (r.reason as { statusCode?: number })?.statusCode === 410
   }).map(s => s.endpoint)
-  if (deadEndpoints.length) await supabase.from('push_subscriptions').delete().in('endpoint', deadEndpoints)
+  if (deadEndpoints.length) await admin.from('push_subscriptions').delete().in('endpoint', deadEndpoints)
 
-  return NextResponse.json({ sent, failed: results.length - sent })
+  return NextResponse.json({
+    sent: sent + nativo.sent,
+    failed: results.length - sent + nativo.failed,
+  })
 }

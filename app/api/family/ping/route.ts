@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import webpush from 'web-push'
+import { enviarNativoParaUsuarios } from '@/lib/push-native-fanout'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { PING_PRESETS, type PingPreset } from '@/lib/family-ping'
@@ -116,9 +117,19 @@ export async function POST(request: NextRequest) {
     metadata: { preset, conversation_id: conversa?.id ?? null },
   })
 
+  /*
+   * Aparelhos da loja ANTES do guard de VAPID (D-228 §4): dentro da casca não
+   * existe `PushManager`, então APNs/FCM é o único caminho até eles.
+   */
+  const nativo = await enviarNativoParaUsuarios(admin, [body.toUserId], {
+    title: `EOS · ${sender?.name ?? 'Família'}`,
+    body: text,
+    url: '/family',
+  })
+
   if (!VAPID_PUBLIC || !VAPID_PRIVATE) {
     // A mensagem chegou; só não vibra. Dizer "não entregou" aqui seria mentira.
-    return NextResponse.json({ ok: true, sent: text, reason: 'in_app_only', push: 'unconfigured', conversationId: conversa?.id ?? null })
+    return NextResponse.json({ ok: true, sent: text, reason: 'in_app_only', push: nativo.sent ? 'native' : 'unconfigured', conversationId: conversa?.id ?? null })
   }
 
   const { data: subs } = await admin
@@ -129,7 +140,7 @@ export async function POST(request: NextRequest) {
     .eq('user_id', body.toUserId)
 
   if (!subs?.length) {
-    return NextResponse.json({ ok: true, sent: text, reason: 'in_app_only', push: 'no_device', conversationId: conversa?.id ?? null })
+    return NextResponse.json({ ok: true, sent: text, reason: 'in_app_only', push: nativo.sent ? 'native' : 'no_device', conversationId: conversa?.id ?? null })
   }
 
   webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE)

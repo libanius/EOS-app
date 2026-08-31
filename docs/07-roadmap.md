@@ -146,7 +146,7 @@ product phase sequenced.
 | WV2-T24 | Painel de vento flutuante com transparência | ✅ COMPLETE | 2026-08-11 — D-152; colapsável em desktop/mobile, fecha ao clicar fora e slider `Mapa` controla opacidade do overlay. |
 | WV2-T25 | Slider para setas fallback do vento | ✅ COMPLETE | 2026-08-11 — D-153; controle `Setas` oculta ou mostra ícones/labels `eos-wind` sem refetch. |
 | WV2-T26 | `Resolver` do card de risco navega para Preparação | ✅ COMPLETE | 2026-08-12 — D-154; ação doméstica usa botão programático para `/preparedness`. |
-| WV2-T32 | Camadas NHC operacionais no Mundo | ✅ COMPLETE | 2026-08-29 — D-223/D-224. `cyclone` monolítico virou subcamadas NHC: centro, cone, trajetória, pontos, passado e watches/warnings; legenda operacional adicionada com desenvolvimento 48h/7d, thresholds 34/50/64 kt e classes TD/TS/H/M/RM. `test:weather` 19/19. |
+| WV2-T32 | Camadas NHC operacionais no Mundo | ✅ COMPLETE | 2026-08-29 — D-223/D-224/D-227. `cyclone` monolítico virou subcamadas NHC: centro, cone, trajetória, pontos, passado, watches/warnings, wind radii, 34/50/64kt WSP, chegada inicial/provável de ventos TS e desenvolvimento tropical. Legenda operacional adicionada. Primeiro corte: `test:weather` 19/19; follow-up D-227 validado por provider real + lint/type-check + `test:weather` 20/20. |
 
 ---
 
@@ -427,23 +427,29 @@ precisa funcionar exatamente quando o EOS não funciona.*
 
 ---
 
-## Phase 3 — Mobile App (React Native)
+## Casca Nativa — iOS e Android (MOB)
 
-*Goal: Initialize the native mobile shell only after G-03 is cleared, then wrap the shared EOS core with platform-specific capabilities.*
+*Objetivo: publicar o EOS nas duas lojas adaptando a borda, sem duplicar o núcleo.*
 
-> Blocked until Gate G-03 is cleared. D-084 explicitly does **not** authorize
-> `react-native init`, Expo, Capacitor, or store submission.
+> Gate **G-03 CLEARED** em 2026-08-31 pelo dono. Runtime: **Capacitor** (D-228).
+> Spec: `docs/39-native-shell.md`. A casca carrega o Next.js de produção e
+> acrescenta só o que o navegador não alcança.
 
-| Task ID | Task | Status |
-|---|---|---|
-| M-T01 | Choose native shell approach and initialize only after G-03 | BLOCKED |
-| M-T02 | Install mobile dependencies (llama.rn, RNFS, Zustand, NetInfo, etc.) | BLOCKED |
-| M-T03 | Integrate `/mobile/eos-intelligence-layer.ts` | BLOCKED |
-| M-T04 | Implement LOCAL_AI mode with llama.rn | BLOCKED |
-| M-T05 | Wire up SURVIVAL mode (same Rules Engine, no server) | BLOCKED |
-| M-T06 | Auth with Supabase JWT in SecureStore | BLOCKED |
-| M-T07 | Implement LoRa BLE bridge screen (`mobile/screens/LoRaMeshScreen.tsx`) | BLOCKED |
-| M-T08 | Submit to App Store and Google Play | BLOCKED |
+| Task ID | Task | Status | Notes |
+|---|---|---|---|
+| MOB-T01 | Casca Capacitor iniciada nas duas plataformas | ✅ COMPLETE | 2026-08-31 — D-228. `native/` com workspace próprio (fora do build da Vercel), `capacitor.config.ts` com `errorPath`, projetos iOS (SwiftPM, sem CocoaPods) e Android versionados. Android: `POST_NOTIFICATIONS`, localização só em primeiro plano, `allowBackup=false`, canal `eos_alerts` em `IMPORTANCE_HIGH`, ícone de status monocromático, App Links. iOS: ponte APNs no `AppDelegate`, entitlements ligados ao alvo no `project.pbxproj`, `UIBackgroundModes`, textos de permissão em PT/EN, `ITSAppUsesNonExemptEncryption`. `native/scripts/native-shell-check.mjs` guarda os contratos entre arquivos que nenhum compilador liga — validado com teste negativo. |
+| MOB-T02 | Ponte nativa no app web | ✅ COMPLETE | 2026-08-31 — `lib/native/bridge.ts`. Fala com `window.Capacitor`, **nunca** por import: `@capacitor/*` não entra no `package.json` da raiz nem no bundle de quem usa o navegador. Degrada para "web" em silêncio e nunca lança. 10 testes. |
+| MOB-T03 | Push nativo ponta a ponta | ✅ COMPLETE (código) | 2026-08-31 — D-228 §3. `push_devices` + `POST/DELETE /api/push/device` + `lib/push-native.ts` (APNs HTTP/2 ES256 e FCM v1 RS256, **sem SDK**, sem Firebase no iOS) + `lib/push-native-fanout.ts` ligado nas 7 chamadas antigas, inclusive `hazards/scan.ts`. Regra central: **apagar token exige certeza** — `BadDeviceToken` e `INVALID_ARGUMENT` não removem, porque são indistinguíveis de erro de configuração. 22 testes. **Pendências do dono: aplicar a migração e configurar `APNS_*` / `FCM_SERVICE_ACCOUNT_JSON`** (docs/39 §4-5). |
+| MOB-T04 | Cofre offline nativo | ✅ COMPLETE | 2026-08-31 — D-228 §5. O app abre e mostra ficha e plano com zero rede. Espelhado em `Preferences` (nativo, não da origem — é a única ponte até a tela embutida no binário). Mescla por seção: gravar a ficha não apaga o plano. Sai junto com a sessão no logout e na exclusão. 19 testes. |
+| MOB-T05 | Geolocalização e permissões nativas | ✅ COMPLETE | 2026-08-31 — plugin instalado e permissões declaradas nas duas plataformas, **sem localização em segundo plano** (D-228 §6): a varredura roda no servidor sobre a última posição (D-220), então "sempre" não compraria capacidade e é a maior fonte de rejeição da categoria. O guarda reprova se alguém adicionar. |
+| MOB-T06 | Caminho de release nas lojas | ⏳ PENDENTE — DONO | Nada de código. Contas Apple/Google, App ID com as capacidades, chave `.p8`, `google-services.json`, keystore, `.well-known`, ícones. Lista completa em `docs/39` §5. |
+| MOB-T07 | Convergir as 7 chamadas de push em `sendPush()` | PENDENTE | Dívida da D-119 que a D-228 não pagou: `hazards/scan.ts`, `plans`, `plans/[id]`, `simulation`, `family/ping`, `plan-execution-notices`, `circles/[id]/push` ainda falam com `web-push` direto. O leque aditivo impede que isso bloqueie o lançamento, mas cada rota continua escolhendo seu próprio cliente Supabase — que foi exatamente como a **D-229** passou despercebida. |
+| MOB-T08 | Widgets, Live Activities e Dynamic Island | BLOQUEADO | Só depois de o app estar publicado e estável nas duas lojas. |
+
+> **M-T01 … M-T08 (React Native): SUPERSEDED por D-228.** As premissas
+> morreram junto: llama.rn, SecureStore próprio e telas RN pressupunham um
+> segundo runtime que a D-228 recusou. A tela de LoRa (`M-T07`) continua viva
+> como intenção, mas depende de G-05 e de plugin BLE que esta casca não instala.
 
 ---
 

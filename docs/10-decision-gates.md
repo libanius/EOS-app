@@ -1,6 +1,6 @@
 # 10 — Decision Gates
 
-> Last updated: 2026-08-03
+> Last updated: 2026-08-31
 
 > Gates block entire phases or major features. They require explicit decisions before work can proceed.
 
@@ -48,9 +48,16 @@ products instead of platform adapters.
 **Blocks**: Native mobile shell, App Store submission, Google Play submission,
 native push, native background location, and mobile-only secure storage work.
 
-**Status**: OPEN — D-084 keeps Web/PWA as the primary validation surface.
-`/mobile/` contains template/conceptual files only; no React Native, Expo, or
-Capacitor project is initialized.
+**Status**: **CLEARED** — liberado pelo dono em 2026-08-31 (D-228).
+
+A casca escolhida é **Capacitor**, não React Native: o núcleo continua sendo o
+Next.js que já está em produção, e a casca só adiciona a borda que o navegador
+não alcança (push APNs/FCM, cofre offline nativo, geolocalização, deep links).
+A alternativa RN foi recusada por exigir reescrever ~50 telas e a autenticação,
+o que criaria os produtos paralelos que a D-084 proíbe.
+
+O que esta liberação **não** destrava: G-05 (LoRa/BLE) e G-06 (Automotive)
+seguem OPEN por decisão própria. `/mobile/` continua protótipo, não produto.
 
 ---
 
@@ -92,8 +99,10 @@ companion surfaces. They cannot host the full EOS product.
 **Blocks**: CarPlay, Android Auto, and any automotive-specific UI or release
 work.
 
-**Status**: OPEN — blocked until the native mobile core exists, platform rules
-are reviewed, and the owner approves a restricted companion scope.
+**Status**: OPEN — a pré-condição "native mobile core" foi satisfeita pela
+D-228, mas o gate **não** cai junto: continua bloqueado até que as regras de
+CarPlay/Android Auto sejam revisadas e o dono aprove um escopo de companheiro
+restrito.
 
 **Allowed direction**: status, route handoff, check-in, limited communication,
 and plan execution state.

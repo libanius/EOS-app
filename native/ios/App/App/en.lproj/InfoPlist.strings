@@ -1,0 +1,3 @@
+/* Permission dialog text, English. */
+"NSLocationWhenInUseUsageDescription" = "EOS uses your location to warn you about hazards near you, find shelters, and route your family plan. Only while the app is open.";
+"CFBundleDisplayName" = "EOS";

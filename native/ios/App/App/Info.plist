@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CAPACITOR_DEBUG</key>
+	<string>$(CAPACITOR_DEBUG)</string>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>pt-BR</string>
+	<key>CFBundleDisplayName</key>
+        <string>EOS</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+    <false/>
+    <key>UISceneConfigurations</key>
+    <dict>
+      <key>UIWindowSceneSessionRoleApplication</key>
+      <array>
+        <dict>
+            <key>UISceneConfigurationName</key>
+            <string>Default Configuration</string>
+            <key>UISceneDelegateClassName</key>
+            <string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
+            <key>UISceneStoryboardFile</key>
+            <string>Main</string>
+        </dict>
+      </array>
+    </dict>
+	</dict>
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
+	<key>UIMainStoryboardFile</key>
+	<string>Main</string>
+	<key>UIRequiredDeviceCapabilities</key>
+	<array>
+		<string>arm64</string>
+	</array>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UIViewControllerBasedStatusBarAppearance</key>
+	<true/>
+	<!--
+	  ══ Adições do EOS (D-228 / MOB-T01) ═══════════════════════════════════
+
+	  Toda chave abaixo é lida pela revisão da App Store. As de uso (`Usage
+	  Description`) aparecem literalmente no diálogo de permissão: texto vago
+	  aqui é motivo documentado de rejeição, e pior, é a frase que decide se a
+	  família autoriza ou não. Elas estão localizadas em
+	  `pt-BR.lproj/InfoPlist.strings` e `en.lproj/InfoPlist.strings`; o texto
+	  aqui é o fallback.
+	-->
+
+	<!--
+	  Localização SÓ em primeiro plano. Não existe `AlwaysAndWhenInUse` e isso é
+	  decisão (D-228 §6): a varredura de perigo roda no servidor sobre a última
+	  posição conhecida (D-220), então "sempre" não compraria capacidade alguma —
+	  só a justificativa em vídeo e a maior fonte de rejeição da categoria.
+	-->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>O EOS usa sua localização para avisar de perigos perto de você, encontrar abrigos e traçar a rota do plano da família. Só enquanto o app está aberto.</string>
+
+	<!--
+	  `remote-notification` permite que um alerta acorde o app para atualizar o
+	  risco antes de a pessoa tocar na notificação. Sem isto o conteúdo só chega
+	  quando o app é aberto à mão — tarde demais para o que este app faz.
+	-->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
+
+	<!--
+	  Sem isto a Apple pergunta sobre criptografia de exportação a CADA envio de
+	  build. O EOS usa só HTTPS padrão do sistema, que é a isenção prevista.
+	-->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+
+	<!--
+	  A casca carrega uma origem HTTPS. Nenhuma exceção de ATS é declarada de
+	  propósito: a sessão do Supabase viaja neste WebView.
+	-->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<false/>
+	</dict>
+
+</dict>
+</plist>

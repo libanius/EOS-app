@@ -1,0 +1,4 @@
+/* Texto do diálogo de permissão, em português. É a frase que decide se a
+   família autoriza — não é legenda técnica. */
+"NSLocationWhenInUseUsageDescription" = "O EOS usa sua localização para avisar de perigos perto de você, encontrar abrigos e traçar a rota do plano da família. Só enquanto o app está aberto.";
+"CFBundleDisplayName" = "EOS";

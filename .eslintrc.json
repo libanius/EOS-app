@@ -20,5 +20,5 @@
   "settings": {
     "react": { "version": "detect" }
   },
-  "ignorePatterns": ["node_modules/", ".next/", "out/"]
+  "ignorePatterns": ["node_modules/", ".next/", "out/", "native/"]
 }

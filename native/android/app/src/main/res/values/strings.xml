@@ -1,0 +1,15 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">EOS</string>
+    <string name="title_activity_main">EOS</string>
+    <string name="package_name">app.eos.family</string>
+    <string name="custom_url_scheme">app.eos.family</string>
+
+    <!-- Host dos App Links. Precisa bater com a origem de `capacitor.config.ts`. -->
+    <string name="deep_link_host">eos-app-fawn.vercel.app</string>
+
+    <!-- O canal existe em código (MainActivity); aqui só o id que o FCM usa por padrão. -->
+    <string name="default_notification_channel_id">eos_alerts</string>
+    <string name="default_notification_channel_name">Alertas do EOS</string>
+    <string name="default_notification_channel_description">Perigos próximos, avisos do círculo e execução de plano.</string>
+</resources>

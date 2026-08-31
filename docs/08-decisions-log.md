@@ -4,6 +4,139 @@
 
 ---
 
+## D-229 — O alerta manual do círculo nunca chegou a ninguém
+
+**Date**: 2026-08-31
+**Status**: DECIDED / CORRIGIDO
+**Roadmap**: MOB-T03 (achado durante)
+**Arquivo**: `app/api/circles/[id]/push/route.ts`
+
+**Context**: ao ligar o push nativo nas sete chamadas que ainda falam com
+`web-push` direto, uma delas se recusou a funcionar pelo motivo errado. A rota
+que envia o alerta manual do administrador do círculo lia `push_subscriptions`
+com o cliente **do usuário**:
+
+```ts
+const { data: subs } = await supabase.from('push_subscriptions')
+  .select('endpoint, p256dh, auth').in('user_id', memberIds)
+```
+
+A tabela tem uma política só, desde 2026-06-30:
+`USING (auth.uid() = user_id)`. Com o cliente do usuário, a RLS devolve no
+máximo **a assinatura de quem está enviando**.
+
+**O alcance**: o alerta de emergência do administrador do círculo chegava ao
+próprio administrador, ou a ninguém. A rota respondia `sent: 1` — sem mentir
+sobre o que fez, só sobre o que aquilo significava. Nenhum membro de círculo
+jamais recebeu um alerta manual desde que o recurso existe.
+
+Todas as outras seis chamadas de push do produto usam `createAdminClient()`
+(`plans`, `plans/[id]`, `simulation`, `plan-execution-notices`, `family/ping`,
+`error-alerts`). Esta era a única exceção, e por isso a única quebrada.
+
+**Decision**: a rota passa a usar service role para ler as assinaturas e para
+remover as mortas, com a autorização continuando em código de aplicação — papel
+de Admin no círculo e plano com `monitoring_push`, ambos já verificados antes.
+É o mesmo padrão das outras seis.
+
+**Por que entrou junto da D-228, e não depois**: o leque nativo precisa
+enxergar os aparelhos de todos os membros. Com o cliente do usuário ele
+herdaria exatamente o mesmo defeito — eu estaria escrevendo código novo já
+sabendo que ele não funcionaria.
+
+**Como não voltar**: nenhum teste cobria isto porque o defeito é invisível fora
+do banco — a chamada tem sucesso, o array volta curto, e nada indica que a RLS
+o encurtou. Fica como dívida registrada em MOB-T07: quando as sete chamadas
+convergirem para `sendPush()`, o cliente deixa de ser escolha de cada rota.
+
+---
+
+## D-228 — O EOS vira app de loja por adaptação, não por reescrita
+
+**Date**: 2026-08-31
+**Status**: DECIDED / EM IMPLEMENTAÇÃO
+**Gate**: G-03 — Mobile Readiness → **CLEARED pelo dono**
+**Roadmap**: MOB-T01 … MOB-T06 (substitui M-T01 … M-T08)
+**Spec**: `docs/05-platform-strategy.md`, `docs/39-native-shell.md`
+
+**Context**: o dono liberou a G-03 e pediu apps nativos para Android e iOS. O
+roadmap previa React Native desde a Phase 3, escrita quando o EOS ainda era
+pouco mais que um esqueleto. Hoje ele é um Next.js 14 App Router com
+`middleware.ts`, sessão Supabase por cookie SSR e cerca de cinquenta telas
+renderizadas no servidor.
+
+Levar isso para React Native não seria portar: seria **reescrever o produto**.
+Nenhuma tela sobrevive, a autenticação por cookie não existe no RN, e todo
+consumo server-side teria de ser refeito como cliente de API. O resultado seriam
+dois produtos com o mesmo nome, divergindo a cada semana — precisamente o que a
+**D-084** proíbe em uma frase: *"must not split into separate Web, iOS, Android,
+Automotive, and Mesh products"*.
+
+**Decision (1) — Capacitor, e o roadmap se corrige.** A casca nativa carrega o
+app que já existe e adiciona só a borda que o navegador não alcança. Isso não é
+concessão: é literalmente a camada 4 que a `docs/05` já descrevia — *"Platform
+Adapters — platform-specific capabilities only"*. A regra da casa continua
+valendo sem asterisco: **constrói-se o núcleo uma vez; adapta-se a borda por
+plataforma.** As tarefas M-T01…M-T08 ficam SUPERSEDED; o que era premissa delas
+(llama.rn, SecureStore próprio, telas RN) morre junto.
+
+**Decision (2) — a casca mora em `native/`, fora do build da Vercel.** Workspace
+com `package.json` próprio, e `native/` no `.vercelignore`. Não é gosto de
+organização: com `ios/` e `android/` na raiz, o `next build` passa a ver dois
+projetos nativos, e a Vercel a enviá-los em todo deploy. Nenhum dos dois tem
+motivo para saber que o outro existe.
+
+**Decision (3) — push nativo é APNs direto, não Firebase no iOS.** No Android o
+FCM v1 é obrigatório. No iOS havia a saída fácil — SDK do Firebase, um caminho
+de envio só. Recusada. A `docs/38` §1.5 enumera cada terceiro que recebe dado
+das famílias, e esse documento existe porque a lista é curta de propósito. Pôr o
+Google no meio de uma notificação de iPhone acrescentaria um nome a ela em troca
+de conveniência de servidor. Com APNs direto o token vai para a Apple e para
+mais ninguém. Custa duas implementações de JWT — ES256 para a Apple, RS256 para
+o Google — ambas em `node:crypto`, sem dependência nova.
+
+**Decision (4) — o Web Push não sai; ele passa a ser um dos destinos.**
+`sendPush()` continua sendo a única porta de envio (D-119) e passa a abrir em
+dois: assinaturas de navegador e aparelhos nativos. Quem chama não muda. O
+contador de `noDevice` passa a olhar os dois — do contrário, quem instalou o app
+da loja e desativou o push do navegador apareceria como "sem aparelho" para
+sempre, e a D-119 foi escrita justamente para que "não enviei" nunca se
+confunda com "enviei".
+
+**Decision (5) — o app abre sem rede, e isso é requisito, não polimento.** A
+casca carrega uma origem remota; se a rede cair, um WebView normal mostra a
+página de erro do sistema. Para um app de emergência isso é falha de produto:
+a hora em que a pessoa mais precisa do plano é exatamente a hora em que a torre
+caiu.
+
+Então o app espelha um **cofre** — ficha de emergência e plano da família — no
+armazenamento **nativo** (Preferences), e a página de fallback embutida no
+binário lê esse cofre e mostra o conteúdo sem tocar na rede. O caminho tem de
+ser nativo: o app remoto vive em `https://…vercel.app` e o fallback vive na
+origem local do binário. São origens diferentes — IndexedDB e localStorage de um
+não são visíveis ao outro. O armazenamento nativo é do aplicativo, não da
+origem, e é a única ponte entre os dois.
+
+**Decision (6) — sem localização em segundo plano.** A `docs/38` §1.1 já havia
+concluído que a varredura de perigo roda no servidor sobre a última posição
+conhecida, e que isso não é *background location*. A casca não pede a permissão
+"sempre": só "enquanto em uso". A permissão de segundo plano exige justificativa
+em vídeo e é a maior fonte de rejeição da categoria — e aqui ela não compraria
+capacidade nenhuma.
+
+**Consequences**:
+- G-03 fica CLEARED; G-06 (Automotive) deixa de estar bloqueada por ausência de
+  núcleo móvel, mas continua bloqueada por decisão própria do dono;
+- G-05 (LoRa) **não** é destravada. `/mobile/` continua protótipo; o BLE depende
+  de plugin nativo que esta casca não instala;
+- passa a existir um segundo runtime para manter. Era o custo que a G-03
+  guardava, e o dono o assumiu explicitamente;
+- a revisão da Apple (Guideline 4.2) vira risco real de uma casca web. A defesa
+  não é retórica — é push nativo na tela de bloqueio, cofre offline e
+  geolocalização nativa, tudo ausente de um navegador em iOS.
+
+---
+
 ## D-226 — A ficha de planos passa a dizer a verdade, e três fontes abertas entram
 
 **Date**: 2026-08-29
@@ -149,6 +282,41 @@ palavra, com as bordas checadas contra a classe de letras acentuadas, porque
 borda; duplicar a régua de água em `display-units`; recriar tipos locais
 espelhando `lib/hazards/types.ts`; escrever sonda de idioma que case no meio de
 palavra.
+
+---
+
+## D-227 — WSP, wind radii, arrival time e outlook também são produto NHC
+
+**Date**: 2026-08-29
+**Status**: DECIDED / IMPLEMENTADO como follow-up de WV2-T32
+**Roadmap**: WV2-T32 follow-up
+**Spec**: `docs/hazard-data-architecture.md`
+
+**Context**: após a implementação inicial de WV2-T32, o dono apontou que o mapa
+operacional do NHC também oferece `34kt WSP`, `50kt WSP`, `64kt WSP`,
+`Initial Wind Radii`, `Forecast Wind Radii`, `Earliest Reasonable Arrival Time
+of TS Winds`, `Most Likely Arrival Time of TS Winds` e desenvolvimento tropical.
+Esses itens estavam só explicados na legenda ou ausentes.
+
+**Decision**: esses produtos entram como camadas reais do Mundo, usando o mesmo
+MapServer oficial do NHC:
+
+- `Past Track` usa a layer 11, não a layer 9;
+- `Initial Wind Radii` usa layer 16;
+- `Forecast Wind Radii` usa layer 15;
+- `Earliest Reasonable Arrival Time` usa layer 18;
+- `Most Likely Arrival Time` usa layer 19;
+- `34/50/64kt WSP` usam layers 30/31/32;
+- desenvolvimento tropical usa layers 3 e 33 do Seven-Day Outlook.
+
+**Guardrail**: WSP e arrival time são forecast oficial/probabilístico. A UI pode
+mostrar probabilidade, threshold e horário, mas não traduz isso em ordem de
+evacuação nem em certeza de impacto.
+
+**Implementation**: `/api/world/cyclones` expõe os novos produtos como
+FeatureCollections separadas; `WorldMap` desenha cada uma como subcamada
+MapLibre com popup oficial; o painel `MUNDO > Camadas > NHC` controla cada
+produto. Validação: `npm run test:weather` 20/20.
 
 ---
 

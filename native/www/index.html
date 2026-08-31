@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>EOS — sem conexão</title>
+<!--
+  A tela que aparece quando a rede não responde (D-228 §5).
+
+  Ela NÃO é uma cópia do EOS. É o mínimo que precisa existir sem rede nenhuma:
+  a ficha de emergência e o plano da família, lidos do cofre NATIVO — não do
+  IndexedDB, que pertence à origem remota e é invisível daqui.
+
+  Por isso não há framework, nem fonte remota, nem imagem externa. Tudo que esta
+  página precisa está dentro do binário. Um único `fetch` a qualquer lugar aqui
+  seria um defeito: é a página do momento em que não há para onde buscar.
+-->
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --border: #232331;
+    --text: #f4f4f5;
+    --muted: #9b9ba7;
+    --accent: #22c55e;
+    --warn: #f59e0b;
+    --danger: #ef4444;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); }
+  body {
+    font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding: max(24px, env(safe-area-inset-top)) 20px max(24px, env(safe-area-inset-bottom));
+    max-width: 640px;
+    margin: 0 auto;
+  }
+  .status {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 13px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
+    color: var(--warn); margin-bottom: 20px;
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--warn); flex: none; }
+  h1 { font-size: 26px; line-height: 1.2; margin: 0 0 10px; letter-spacing: -.02em; }
+  .lede { color: var(--muted); margin: 0 0 24px; }
+  button {
+    width: 100%; padding: 14px 18px; border-radius: 12px; border: 0;
+    background: var(--accent); color: #05140a; font: inherit; font-weight: 700;
+    cursor: pointer; margin-bottom: 12px;
+  }
+  button.ghost { background: transparent; border: 1px solid var(--border); color: var(--text); font-weight: 600; }
+  section {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 16px 18px; margin: 12px 0;
+  }
+  section h2 {
+    font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--muted); margin: 0 0 12px;
+  }
+  dl { margin: 0; display: grid; grid-template-columns: minmax(88px, auto) 1fr; gap: 8px 16px; }
+  dt { color: var(--muted); font-size: 13px; }
+  dd { margin: 0; overflow-wrap: anywhere; }
+  dd.critical { color: var(--danger); font-weight: 600; }
+  ol { margin: 0; padding-left: 20px; }
+  ol li { margin-bottom: 10px; }
+  ol li:last-child { margin-bottom: 0; }
+  .stamp { font-size: 12px; color: var(--muted); margin-top: 14px; }
+  .empty { color: var(--muted); margin: 0; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+  <div class="status"><span class="dot"></span><span id="s-status">Sem conexão</span></div>
+  <h1 id="s-title">O EOS está offline</h1>
+  <p class="lede" id="s-lede">Esta tela funciona sem rede. O que está abaixo foi salvo no aparelho na última vez que o app sincronizou.</p>
+
+  <button id="retry">Tentar de novo</button>
+
+  <p id="empty" class="empty" hidden>Nada foi salvo neste aparelho ainda. Abra o EOS uma vez com conexão para que a ficha e o plano fiquem disponíveis offline.</p>
+
+  <section id="ficha" hidden>
+    <h2 id="s-ficha">Ficha de emergência</h2>
+    <dl id="ficha-dl"></dl>
+  </section>
+
+  <section id="plano" hidden>
+    <h2 id="s-plano">Plano da família</h2>
+    <ol id="plano-ol"></ol>
+    <p class="stamp" id="plano-stamp"></p>
+  </section>
+
+  <p class="stamp" id="stamp"></p>
+
+<script>
+(function () {
+  'use strict'
+
+  /** A mesma chave que `lib/native/vault.ts` escreve. Mudar aqui exige mudar lá. */
+  var VAULT_KEY = 'eos.offline.vault.v1'
+
+  var PT = {
+    status: 'Sem conexão', title: 'O EOS está offline',
+    lede: 'Esta tela funciona sem rede. O que está abaixo foi salvo no aparelho na última vez que o app sincronizou.',
+    retry: 'Tentar de novo', ficha: 'Ficha de emergência', plano: 'Plano da família',
+    empty: 'Nada foi salvo neste aparelho ainda. Abra o EOS uma vez com conexão para que a ficha e o plano fiquem disponíveis offline.',
+    blood: 'Tipo sanguíneo', allergies: 'Alergias', meds: 'Medicamentos', notes: 'Observações',
+    contact: 'Contato de emergência', saved: 'Salvo em', version: 'versão'
+  }
+  var EN = {
+    status: 'Offline', title: 'EOS is offline',
+    lede: 'This screen works with no network. What follows was saved on this device the last time the app synced.',
+    retry: 'Try again', ficha: 'Emergency record', plano: 'Family plan',
+    empty: 'Nothing has been saved on this device yet. Open EOS once with a connection so the record and the plan become available offline.',
+    blood: 'Blood type', allergies: 'Allergies', meds: 'Medications', notes: 'Notes',
+    contact: 'Emergency contact', saved: 'Saved on', version: 'version'
+  }
+
+  function text(id, value) {
+    var el = document.getElementById(id)
+    if (el) el.textContent = value
+  }
+
+  function row(dl, label, value, critical) {
+    if (!value) return
+    var dt = document.createElement('dt')
+    dt.textContent = label
+    var dd = document.createElement('dd')
+    dd.textContent = value
+    if (critical) dd.className = 'critical'
+    dl.appendChild(dt)
+    dl.appendChild(dd)
+  }
+
+  document.getElementById('retry').addEventListener('click', function () {
+    // `reload()` volta para a origem remota configurada, não para esta página.
+    window.location.reload()
+  })
+
+  function render(vault) {
+    var t = vault && vault.lang === 'en' ? EN : PT
+    text('s-status', t.status); text('s-title', t.title); text('s-lede', t.lede)
+    text('s-ficha', t.ficha); text('s-plano', t.plano); text('empty', t.empty)
+    document.getElementById('retry').textContent = t.retry
+    document.documentElement.lang = vault && vault.lang === 'en' ? 'en' : 'pt-BR'
+
+    var temAlgo = false
+
+    var f = vault && vault.ficha
+    if (f) {
+      var dl = document.getElementById('ficha-dl')
+      row(dl, 'Nome', f.name)
+      // Tipo sanguíneo e alergias saem em vermelho: quem lê esta tela numa
+      // emergência pode não ser o dono do telefone.
+      row(dl, t.blood, f.bloodType, true)
+      row(dl, t.allergies, f.allergies, true)
+      row(dl, t.meds, f.medications)
+      row(dl, t.notes, f.medicalNotes)
+      row(dl, t.contact, f.emergencyContact)
+      if (dl.children.length) {
+        document.getElementById('ficha').hidden = false
+        temAlgo = true
+      }
+    }
+
+    var p = vault && vault.plan
+    if (p && p.steps && p.steps.length) {
+      var ol = document.getElementById('plano-ol')
+      for (var i = 0; i < p.steps.length; i++) {
+        var li = document.createElement('li')
+        li.textContent = p.steps[i]
+        ol.appendChild(li)
+      }
+      var carimbo = []
+      if (p.title) carimbo.push(p.title)
+      if (p.version) carimbo.push(t.version + ' ' + p.version)
+      text('plano-stamp', carimbo.join(' · '))
+      document.getElementById('plano').hidden = false
+      temAlgo = true
+    }
+
+    if (!temAlgo) {
+      document.getElementById('empty').hidden = false
+      return
+    }
+
+    if (vault && vault.savedAt) {
+      var d = new Date(vault.savedAt)
+      if (!isNaN(d.getTime())) text('stamp', t.saved + ' ' + d.toLocaleString())
+    }
+  }
+
+  /**
+   * O cofre vem do armazenamento NATIVO, não do web storage.
+   *
+   * O app remoto vive em `https://…` e esta página vive na origem local do
+   * binário. São origens distintas: o `localStorage` de uma não existe para a
+   * outra. `Preferences` pertence ao aplicativo, e é a única ponte entre as duas.
+   */
+  function carregar() {
+    var cap = window.Capacitor
+    var prefs = cap && cap.Plugins && cap.Plugins.Preferences
+    if (!prefs) { render(null); return }
+    prefs.get({ key: VAULT_KEY }).then(function (r) {
+      if (!r || !r.value) { render(null); return }
+      try { render(JSON.parse(r.value)) } catch (e) { render(null) }
+    }).catch(function () { render(null) })
+  }
+
+  if (window.Capacitor) carregar()
+  else document.addEventListener('deviceready', carregar, { once: true })
+  // Se a ponte nunca subir, a tela ainda tem de dizer algo em vez de ficar em branco.
+  setTimeout(function () { if (!document.getElementById('stamp').textContent && document.getElementById('empty').hidden && document.getElementById('ficha').hidden) render(null) }, 1500)
+})()
+</script>
+</body>
+</html>

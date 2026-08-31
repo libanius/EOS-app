@@ -8,6 +8,7 @@ import { EMPTY_ADDRESS, type Address } from '@/lib/address'
 import { useRealtimeSync } from '@/hooks/useRealtimeSync'
 import { saveSnapshot, loadSnapshot } from '@/lib/sync'
 import FamilyNav from '@/components/world-v2/FamilyNav'
+import { salvarCofre } from '@/lib/native/vault'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -150,6 +151,18 @@ export default function FichaPage() {
         }
         setFicha(f)
         saveSnapshot('ficha', f)
+        /*
+         * E no cofre NATIVO (D-228 §5).
+         *
+         * `saveSnapshot` guarda na origem `https://…`. A tela que o app mostra
+         * quando a rede cai vive na origem LOCAL do binário e não enxerga nada
+         * dali. Sem esta linha, a ficha de emergência — que é o conteúdo mais
+         * importante do app justamente quando não há rede — ficaria invisível
+         * exatamente na hora em que ela existe para ser lida.
+         *
+         * No navegador não faz nada e devolve `false`.
+         */
+        void salvarCofre({ ficha: f })
       }
     } finally {
       setLoading(false)

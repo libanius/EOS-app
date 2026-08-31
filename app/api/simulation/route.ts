@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import webpush from 'web-push'
+import { enviarNativoParaUsuarios } from '@/lib/push-native-fanout'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createCommsNotifications, getCircleName, getProfileName } from '@/lib/comms-notifications'
@@ -182,6 +183,23 @@ export async function POST(request: NextRequest) {
   }
 
   // Push is best-effort: the in-app poll shows the invite even if it fails.
+  if (invitedIds.length) {
+      /*
+       * Aparelhos da loja recebem FORA do guard de VAPID (D-228 §4).
+       *
+       * Dentro da casca nativa não existe `PushManager` — nem no WKWebView do
+       * iOS, nem no WebView do Android. APNs/FCM é o ÚNICO caminho até eles, e
+       * prendê-los à mesma condição do Web Push desligaria a notificação do app
+       * publicado por causa de uma credencial que ele nem usa.
+       */
+    const { data: autor } = await admin.from('profiles').select('name').eq('id', user.id).maybeSingle()
+    await enviarNativoParaUsuarios(admin, invitedIds, {
+      title: 'EOS · Treino da família',
+      body: `${autor?.name ?? 'Alguém'} iniciou uma simulação. Abra para participar.`,
+      url: '/dashboard',
+    })
+  }
+
   if (VAPID_PUBLIC && VAPID_PRIVATE) {
     const others = invitedIds
     if (others.length) {

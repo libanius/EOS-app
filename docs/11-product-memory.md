@@ -1,9 +1,46 @@
 # 11 — Product Memory
 
 > Non-obvious facts that don't belong in code comments but must survive across sessions.
-> Last updated: 2026-08-19
+> Last updated: 2026-08-31
 
 ---
+
+**Dentro da casca nativa, o Web Push não degrada — ele NÃO EXISTE (D-228).**
+Nem o WKWebView do iOS nem o WebView do Android implementam `PushManager`. Isso
+não é limitação de configuração nem coisa que uma permissão resolva: o objeto
+não está lá. Consequência prática que vale para toda funcionalidade futura: o
+app publicado nas lojas é o único lugar onde o caminho do navegador não é um
+plano B pior — é a ausência de plano. Sempre que uma tela depender de API de
+navegador, pergunte primeiro se ela existe no WebView.
+
+**Apagar um token de push exige certeza, não suspeita (D-228 §3).** Erro de
+configuração faz TODOS os aparelhos falharem ao mesmo tempo. Se falha virasse
+remoção, um `APNS_ENVIRONMENT` trocado apagaria a base inteira de iPhones num
+deploy, e a recuperação exigiria cada família reabrir o app. Por isso
+`BadDeviceToken` (APNs) e `INVALID_ARGUMENT` (FCM) **não** removem nada: os dois
+são indistinguíveis, pela resposta, de credencial errada. Só `Unregistered`/410 e
+`UNREGISTERED`/404 removem.
+
+**IndexedDB e `localStorage` pertencem à ORIGEM; `Preferences` pertence ao
+APLICATIVO (D-228 §5).** A casca carrega `https://…vercel.app`, mas a tela que
+aparece quando a rede cai vive na origem local do binário. São origens
+diferentes: nada que o app web guardou é visível de lá. O armazenamento nativo é
+a única ponte entre os dois, e é por isso que o cofre offline existe em vez de
+simplesmente "ler o cache que já temos".
+
+**Um cofre vazio nunca pode sobrescrever um cofre cheio (D-228 §5).** A causa
+mais provável de a ficha chegar vazia é a chamada de rede ter falhado —
+exatamente o evento que faz a pessoa precisar da tela offline. Gravar ali seria
+apagar o dado no instante em que ele passa a importar.
+
+**A porta única da D-119 nunca foi única (D-229).** `sendPush()` foi criada para
+consolidar o envio, mas SETE lugares continuaram falando com `web-push` direto —
+inclusive `hazards/scan.ts`, o caminho pelo qual o produto cumpre sua promessa.
+O custo apareceu na D-229: como cada rota escolhe seu próprio cliente Supabase,
+uma delas escolheu o do usuário, a RLS reduziu a lista à própria assinatura de
+quem enviava, e **nenhum membro de círculo jamais recebeu um alerta manual**. A
+falha era invisível: a chamada tem sucesso, o array volta curto, e nada indica
+que a RLS o encurtou. Dívida registrada em MOB-T07.
 
 **Um alerta é sobre MUDANÇA; um widget é sobre estado (D-220).** O EOS tinha as
 fontes certas (NHC, NWS, USGS, AQI, nowcast) e ainda assim não entregava o que o
@@ -36,6 +73,10 @@ WV2-T32 implementou o primeiro corte: subcamadas e legenda operacional no painel
 de Camadas, mais popups oficiais no mapa. Probabilidade de desenvolvimento
 pré-ciclone e wind speed probabilities oficiais ainda são próximos feeds de
 dados; a legenda já ensina os thresholds, mas o EOS não inventa esses polígonos.
+Follow-up D-227 fechou essa lacuna: WSP 34/50/64 kt, initial/forecast wind
+radii, arrival time inicial/provável e Seven-Day Outlook agora vêm do MapServer
+oficial do NHC como camadas reais. WSP/arrival continuam sendo forecast
+probabilístico, não ordem operacional.
 
 **Cron sub-diário no `vercel.json` derruba o deploy no plano Hobby (D-220).** Não
 é degradação silenciosa — é erro de validação que **falha a publicação inteira**:

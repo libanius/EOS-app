@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import webpush from 'web-push'
+import { enviarNativoParaUsuarios } from '@/lib/push-native-fanout'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { logError } from '@/lib/error-log'
@@ -536,6 +537,26 @@ export async function PUT(request: NextRequest) {
     .upsert({ plan_id: planId, member_user_id: user.id, acked_version: version, acked_at: new Date().toISOString() })
 
   // Moving a meeting point is a safety event, not a profile edit (doc 18 §6.3).
+  {
+    const { data: members } = await admin.from('circle_members').select('user_id').eq('circle_id', body.circleId)
+    const others = (members ?? []).map(m => m.user_id).filter(id => id !== user.id)
+    if (others.length) {
+      /*
+       * Aparelhos da loja recebem FORA do guard de VAPID (D-228 §4).
+       *
+       * Dentro da casca nativa não existe `PushManager` — nem no WKWebView do
+       * iOS, nem no WebView do Android. APNs/FCM é o ÚNICO caminho até eles, e
+       * prendê-los à mesma condição do Web Push desligaria a notificação do app
+       * publicado por causa de uma credencial que ele nem usa.
+       */
+      await enviarNativoParaUsuarios(admin, others, {
+        title: 'EOS · Plano da família mudou',
+        body: `O plano foi atualizado (v${version}). Abra para confirmar que você viu.`,
+        url: '/plan',
+      })
+    }
+  }
+
   if (VAPID_PUBLIC && VAPID_PRIVATE) {
     const { data: members } = await admin.from('circle_members').select('user_id').eq('circle_id', body.circleId)
     const others = (members ?? []).map(m => m.user_id).filter(id => id !== user.id)

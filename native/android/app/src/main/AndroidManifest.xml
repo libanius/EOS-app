@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Manifesto da casca Android do EOS (D-228).
+
+  Regra desta lista: nenhuma permissão entra "por precaução". Cada linha abaixo
+  paga por si na tela de Data safety da Play Store, e a `docs/38` existe porque
+  declarar demais é tão caro quanto declarar de menos.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application
+        android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:usesCleartextTraffic="false"
+        android:theme="@style/AppTheme">
+
+        <activity
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
+            android:name=".MainActivity"
+            android:label="@string/title_activity_main"
+            android:theme="@style/AppTheme.NoActionBarLaunch"
+            android:launchMode="singleTask"
+            android:exported="true">
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!--
+              App Links (MOB-T01).
+
+              `autoVerify` só passa a valer quando `/.well-known/assetlinks.json`
+              existir na origem com a impressão SHA-256 da chave de assinatura —
+              ver `docs/39-native-shell.md` §5. Até lá o Android mostra o seletor
+              "abrir com", que funciona; o que não funciona é o link do convite
+              de círculo abrir direto no app, e é por isso que isto já está aqui.
+            -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="@string/deep_link_host" />
+            </intent-filter>
+
+        </activity>
+
+        <!--
+          O ícone e a cor da notificação nativa.
+
+          Sem isto o Android usa o ícone do app inteiro em branco sobre branco na
+          barra de status — o alerta chega e não dá para ver o que chegou.
+        -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_stat_eos" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/eos_accent" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="@string/default_notification_channel_id" />
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths"></meta-data>
+        </provider>
+    </application>
+
+    <!-- Permissions -->
+
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!--
+      Notificação em tempo de execução (Android 13+). É a permissão que carrega o
+      produto: o alerta de perigo na tela de bloqueio é o motivo de o app existir.
+    -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!--
+      Localização APENAS em primeiro plano.
+
+      Não há `ACCESS_BACKGROUND_LOCATION` e isso é decisão, não esquecimento
+      (D-228 §6): a varredura de perigo roda no servidor sobre a última posição
+      conhecida (D-220), então a permissão de segundo plano não compraria
+      capacidade nenhuma — só a exigência de justificativa em vídeo e a maior
+      fonte de rejeição da categoria.
+    -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+
+    <!-- O aparelho sem GPS ainda é um aparelho válido: o EOS aceita endereço digitado. -->
+    <uses-feature android:name="android.hardware.location.gps" android:required="false" />
+
+</manifest>

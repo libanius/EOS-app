@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <!-- O mesmo verde do `theme_color` em `public/manifest.json`. -->
+    <color name="eos_accent">#22c55e</color>
+    <color name="eos_background">#0a0a0f</color>
+</resources>

@@ -1,7 +1,7 @@
 # 09 — Build Status
 
 > The single most important file for resuming a session. Read this first after AGENTS.md.
-> Last updated: 2026-08-19
+> Last updated: 2026-08-31
 
 ---
 
@@ -9,15 +9,20 @@
 
 | Field | Value |
 |---|---|
-| **Current Phase** | Execução de Plano (EXEC) sobre Web/PWA |
+| **Current Phase** | **Casca Nativa (MOB)** — o EOS deixou de ser só Web/PWA em 2026-08-31 (D-228). Execução de Plano (EXEC) segue viva no núcleo, que agora serve as duas superfícies. |
 | **Migração aplicada** | ✅ `20260828000000_ndl_dedup_arbiter.sql` (D-222) — aplicada pelo dono em 2026-08-28 e verificada: `npm run test:hazard-dedup` passou de **1/6 para 6/6**, incluindo o controle negativo. Dedup e cooldown de 30 min voltaram a valer. |
 | **Agendador migrado** | ✅ pg_cron (D-222 / ALERT-T08) — `supabase/pg_cron_hazard_scan.sql` rodado pelo dono em 2026-08-28. **Disparo autônomo confirmado** às 17:20:03 e 17:40:03 UTC, três segundos após a marca dos 10 min, partindo de dentro do banco. Cadência real: 10 min (era mediana de 43 min com buracos de até 11,6 h). `CRON_SECRET` no Vault, não no corpo do job. |
-| **Current Task** | **AUTHOR-T01 — rascunho persistente em IndexedDB.** Volta a ser a próxima tarefa após WV2-T32; não iniciar sem ler `specs/PLAN-AUTHOR-001-autoria-do-plano.md`. |
-| **Last Completed Task** | **WV2-T32 / D-223+D-224 — Camadas NHC operacionais no Mundo (2026-08-29)** — centro, cone, trajetória, pontos, passado e watches/warnings viraram subcamadas; legenda operacional NHC adicionada; popups oficiais no mapa; `test:weather` 19/19. |
+| **Current Task** | **MOB-T06 — release nas lojas. É tarefa do DONO, não de código.** Contas Apple/Google, App ID com Push e Associated Domains, chave `.p8`, `google-services.json`, keystore, `.well-known`, ícones. Lista fechada em `docs/39-native-shell.md` §5. |
+| **⚠️ Bloqueio operacional** | **A migração `20260831000000_push_devices.sql` NÃO foi aplicada.** Sem ela `POST /api/push/device` responde `503 push_devices_missing`, nenhum aparelho é gravado e **todo o push nativo fica inerte** — o Web Push continua intacto (degradação por `42P01`, nunca erro). É o passo 6 de `docs/39` §5. |
+| **⚠️ Bloqueio operacional** | **`APNS_*` e `FCM_SERVICE_ACCOUNT_JSON` não estão configuradas.** Com elas ausentes o app instala, abre e **não notifica**. `enviarParaAparelhos` conta esses aparelhos como **falha**, nunca como "sem aparelho" — a D-119 existe para que "não enviei" nunca se confunda com "enviei". |
+| **Próxima tarefa de código** | **AUTHOR-T01 — rascunho persistente em IndexedDB.** Não iniciar sem ler `specs/PLAN-AUTHOR-001-autoria-do-plano.md`. |
+| **Last Completed Task** | **MOB-T01…T05 / D-228 + D-229 — Apps nativos iOS e Android (2026-08-31)** — casca Capacitor nas duas plataformas em `native/` (workspace próprio, fora do build da Vercel); ponte `lib/native/` que fala com `window.Capacitor` sem entrar no bundle de quem usa navegador; push nativo ponta a ponta com APNs HTTP/2 e FCM v1 escritos em `node:crypto`, sem SDK e **sem Firebase no iOS**; leque aditivo ligado às 7 chamadas antigas, inclusive `hazards/scan.ts`; cofre offline que faz o app abrir e mostrar ficha e plano com zero rede. **D-229 achada no caminho**: o alerta manual do círculo lia `push_subscriptions` com o cliente do usuário e a RLS o reduzia à própria assinatura de quem enviava — nenhum membro jamais recebeu um. 49 testes novos (616 no total, 615 passando), lint e `next build` limpos. |
+| **Anterior** | **WV2-T32 / D-223+D-224+D-227 — Camadas NHC operacionais no Mundo (2026-08-29)** — centro, cone, trajetória, pontos, passado, watches/warnings, wind radii, 34/50/64kt WSP, chegada inicial/provável de ventos TS e desenvolvimento tropical viraram subcamadas; legenda operacional NHC adicionada; popups oficiais no mapa. Primeiro corte: `test:weather` 19/19; follow-up D-227 validado por provider real + lint/type-check + `test:weather` 20/20. |
 | **Spec Ready** | `specs/PLAN-EXEC-001-execucao-de-plano.md` **v1.1** — execução de plano como modo operacional; D-212, D-217. |
 | **Spec Ready** | `specs/PLAN-AUTHOR-001-autoria-do-plano.md` — integridade do rascunho na autoria; D-217. |
 | **Migração aplicada** | ✅ `20260813210000_profiles_auth_fk.sql` (D-175) — aplicada e verificada em 2026-08-28: **12 perfis para 12 contas, 0 órfãos**. A FK foi provada por controle negativo — inserir perfil sem conta devolve `23503 … viola profiles_id_auth_users_fkey`. |
 | **Migrações aplicadas** | `locations`, `holdings`, `kits`, `requirements`, `checklists.status` — todas verificadas por REST. |
+| **Falha de teste pré-existente** | `lib/__tests__/wind-scalar-field.test.ts` (1 de 616) falha por causa de alterações **não commitadas** em `components/world-v2/useWeatherLayers.ts`, anteriores à sessão da D-228 e sem relação com ela. Não foi tocada de propósito: mexer ali sobrescreveria trabalho em andamento de outra pessoa. |
 | **Migrações aplicadas** | As duas de Preparedness State **aplicadas em 2026-08-13** e verificadas por REST: `locations`, `holdings`, `kits`, `requirements` → 200. Nenhuma pendência operacional. |
 | **Migração aplicada** | ✅ `20260824000000_hazard_alerting.sql` — aplicada pelo dono e **verificada por REST em 2026-08-28**: as 6 tabelas e as 9 colunas novas (`hazard_events.metrics/scan_key/last_seen_at`, `notification_delivery_log.transition_id/dedup_key/detail`, `user_hazard_preferences.basin_wide_tropical/push_enabled`, `profiles.language`) respondem 200. |
 | **Env verificada** | ✅ `CRON_SECRET` — a nota de pendência estava **velha**. Sondado em 2026-08-28: a rota de produção responde `401` (e não `503`) a um token errado, logo está setada na Vercel; e o workflow *Hazard scan* soma 67 execuções com **zero falhas**, o que só é possível com o segredo do GitHub batendo com o da Vercel. |

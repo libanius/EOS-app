@@ -1,0 +1,30 @@
+{
+  "name": "eos-native",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Casca nativa iOS/Android do EOS (D-228). Workspace separado de proposito: o Next.js nao deve carregar dependencia de Capacitor no bundle nem no build da Vercel.",
+  "scripts": {
+    "sync": "cap sync",
+    "sync:ios": "cap sync ios",
+    "sync:android": "cap sync android",
+    "open:ios": "cap open ios",
+    "open:android": "cap open android",
+    "doctor": "cap doctor",
+    "check": "node scripts/native-shell-check.mjs"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.5.0",
+    "@capacitor/app": "8.1.1",
+    "@capacitor/core": "8.5.0",
+    "@capacitor/geolocation": "8.2.2",
+    "@capacitor/ios": "8.5.0",
+    "@capacitor/network": "8.0.1",
+    "@capacitor/preferences": "8.0.1",
+    "@capacitor/push-notifications": "8.1.2",
+    "@capacitor/splash-screen": "8.0.2",
+    "@capacitor/status-bar": "8.0.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.0"
+  }
+}

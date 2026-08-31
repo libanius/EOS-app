@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	  Capacidades da casca iOS do EOS (D-228 / MOB-T01).
+
+	  Este arquivo precisa estar ligado ao alvo no Xcode (Signing & Capabilities
+	  → Push Notifications e Associated Domains) e as duas capacidades precisam
+	  existir no App ID do portal da Apple. Ver `docs/39-native-shell.md` §5.
+	-->
+
+	<!--
+	  `development` aqui, e é de propósito.
+
+	  O Xcode troca para `production` sozinho no export de Release/App Store, e
+	  deixar `production` fixo quebra o push em todo build de desenvolvimento —
+	  o token vem do ambiente errado e a APNs responde `BadDeviceToken` sem
+	  explicar por quê. O servidor escolhe o host correspondente pela variável
+	  `APNS_ENVIRONMENT` (`lib/push-native.ts`).
+	-->
+	<key>aps-environment</key>
+	<string>development</string>
+
+	<!--
+	  Universal Links. Só passa a valer quando a origem servir
+	  `/.well-known/apple-app-site-association` com o App ID real — até lá o
+	  link do convite abre no Safari, que funciona, mas não abre o app.
+	-->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:eos-app-fawn.vercel.app</string>
+	</array>
+</dict>
+</plist>

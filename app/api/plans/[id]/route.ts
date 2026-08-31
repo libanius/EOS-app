@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import webpush from 'web-push'
+import { enviarNativoParaUsuarios } from '@/lib/push-native-fanout'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { logError } from '@/lib/error-log'
@@ -122,11 +123,21 @@ async function notifyCircle(
   actorId: string,
   planName: string,
 ) {
-  if (!VAPID_PUBLIC || !VAPID_PRIVATE) return
-
   const { data: members } = await admin.from('circle_members').select('user_id').eq('circle_id', circleId)
   const others = (members ?? []).map(m => m.user_id).filter(id => id !== actorId)
   if (!others.length) return
+
+  /*
+   * Aparelhos da loja ANTES do guard de VAPID (D-228 §4): dentro da casca não
+   * existe `PushManager`, então APNs/FCM é o único caminho até eles.
+   */
+  await enviarNativoParaUsuarios(admin, others, {
+    title: 'EOS · Um plano foi excluído',
+    body: `"${planName}" saiu dos planos da família. Abra para ver o que ficou.`,
+    url: '/preparedness/plano',
+  })
+
+  if (!VAPID_PUBLIC || !VAPID_PRIVATE) return
 
   const { data: subs } = await admin
     .from('push_subscriptions')

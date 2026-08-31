@@ -16,6 +16,7 @@
 // someone asks "why didn't I get the hurricane alert?", there is an answer.
 
 import webpush from 'web-push'
+import { enviarParaAparelhos, type NativeDevice } from '@/lib/push-native'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { canAccess, type Plan } from '@/lib/feature-gates'
@@ -387,6 +388,32 @@ async function deliver(
     subsByUser.set(s.user_id as string, list)
   }
 
+  /*
+   * Aparelhos nativos, ao lado das assinaturas de navegador (D-228 §4).
+   *
+   * Este é o caminho pelo qual o EOS cumpre a sua promessa: a varredura de
+   * perigo é o que põe "furacão a 40 km" na tela de bloqueio. Dentro da casca
+   * publicada nas lojas não existe `PushManager`, então sem esta leitura o app
+   * de loja seria o único lugar onde o produto não avisa.
+   *
+   * `42P01` (tabela ainda não criada) degrada para "sem aparelho nativo" — as
+   * migrações deste projeto são aplicadas à mão, e a janela entre o deploy e a
+   * aplicação não pode derrubar o Web Push que já funciona.
+   */
+  const { data: nativos, error: erroNativos } = await db
+    .from('push_devices')
+    .select('user_id, token, platform')
+    .in('user_id', userIds)
+  if (erroNativos && erroNativos.code !== '42P01') {
+    summary.errors.push(`push_devices: ${erroNativos.message}`)
+  }
+  const devicesByUser = new Map<string, NativeDevice[]>()
+  for (const d of nativos ?? []) {
+    const list = devicesByUser.get(d.user_id as string) ?? []
+    list.push({ token: d.token as string, platform: d.platform as 'ios' | 'android' })
+    devicesByUser.set(d.user_id as string, list)
+  }
+
   const log = (userId: string, t: HazardTransition, status: string, detail?: string) => {
     summary.suppressed[status] = (summary.suppressed[status] ?? 0) + 1
     return {
@@ -405,6 +432,7 @@ async function deliver(
   for (const user of target.users) {
     const prefs = preferences.get(user.userId) ?? DEFAULT_PREFERENCES
     const subs = subsByUser.get(user.userId) ?? []
+    const devices = devicesByUser.get(user.userId) ?? []
 
     // Already-delivered keys for this user — the trap that caught the
     // competitor, which sent the same downgrade twice on two different days.
@@ -462,11 +490,22 @@ async function deliver(
         rows.push(log(user.userId, t, 'suppressed_cooldown'))
         continue
       }
-      if (!subs.length) {
+      /*
+       * "Sem inscrição" passou a significar sem NENHUM destino — navegador ou
+       * aparelho da loja. Antes olhava só `subs`, e quem instalou o app nativo e
+       * nunca ligou o push do navegador seria registrado como inalcançável em
+       * toda transição, para sempre.
+       */
+      if (!subs.length && !devices.length) {
         rows.push(log(user.userId, t, 'no_subscription'))
         continue
       }
-      if (!vapidReady()) {
+      /*
+       * VAPID ausente só impede a entrega se não houver aparelho nativo: APNs e
+       * FCM não usam essa chave, e desistir aqui desligaria o push do app
+       * publicado por causa de uma credencial do outro transporte.
+       */
+      if (!vapidReady() && !devices.length) {
         // The transition is already recorded; only delivery is impossible.
         rows.push(log(user.userId, t, 'failed', 'VAPID keys missing'))
         continue
@@ -481,12 +520,33 @@ async function deliver(
         data: { url: copy.url, eventId: t.event.id, kind: t.kind },
       })
 
-      const results = await Promise.allSettled(
-        subs.map(s =>
-          webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload),
-        ),
-      )
-      const ok = results.some(r => r.status === 'fulfilled')
+      const results = vapidReady()
+        ? await Promise.allSettled(
+            subs.map(s =>
+              webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload),
+            ),
+          )
+        : []
+
+      /*
+       * O envio nativo carrega `copy.url` no lugar do `data` do Web Push. É o
+       * mesmo destino: tocar no alerta precisa levar à tela do perigo, não à
+       * última tela aberta.
+       */
+      const nativo = devices.length
+        ? await enviarParaAparelhos(devices, { title: copy.title, body: copy.body, url: copy.url })
+        : { sent: 0, failed: 0, dead: [] as string[], notConfigured: [] as Array<'ios' | 'android'> }
+
+      if (nativo.dead.length) {
+        guard(
+          summary,
+          'push_devices.delete',
+          await db.from('push_devices').delete().in('token', nativo.dead),
+        )
+      }
+
+      // Um destino que recebeu basta: a pessoa foi avisada.
+      const ok = results.some(r => r.status === 'fulfilled') || nativo.sent > 0
 
       const dead = subs
         .filter((_, i) => {

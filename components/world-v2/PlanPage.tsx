@@ -22,6 +22,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useLanguage } from '@/lib/i18n'
+import { salvarCofre } from '@/lib/native/vault'
 import { distanceKm, bearing, compassPoint } from '@/lib/world/shelters'
 import { formatDistance, googleMapsRouteUrlFromLineString, walkingMinutes } from '@/lib/world/navigation'
 import {
@@ -522,6 +523,17 @@ export default function PlanPage() {
           version: doc.plan.version ?? 0,
           syncedAt: new Date().toISOString(),
         })
+        /*
+         * E no cofre NATIVO, ao lado do IndexedDB (D-228 §5).
+         *
+         * Não é a mesma cópia com outro nome. O IndexedDB pertence à origem
+         * `https://…`; a tela que aparece quando a rede cai vive na origem
+         * LOCAL do binário e não enxerga nada dele. O armazenamento nativo é do
+         * aplicativo, não da origem, e é a única ponte entre os dois.
+         *
+         * No navegador não faz nada e devolve `false` — o caso normal.
+         */
+        void salvarCofre({ plan: doc, lang: language })
       }
     } catch {
       const cachedList = await getFamilyPlanList(id).catch(() => null)
@@ -539,7 +551,7 @@ export default function PlanPage() {
     } finally {
       setLoading(false)
     }
-  }, [applyDocument, loadPlanList])
+  }, [applyDocument, loadPlanList, language])
 
   useEffect(() => {
     if (!circleId) return
