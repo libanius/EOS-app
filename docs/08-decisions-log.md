@@ -4,6 +4,83 @@
 
 ---
 
+## D-230 — O motor de alerta só avisava quem estava com o app aberto
+
+**Date**: 2026-09-03
+**Status**: DECIDED / CORRIGIDO
+**Roadmap**: ALERT-T05
+**Arquivos**: `lib/hazards/scan.ts`, `lib/comms-notifications.ts`,
+`app/api/cron/weather-notifications/route.ts`
+
+**Context**: o dono relatou que, em Parkland, chovia forte e outros aplicativos
+notificaram — o EOS, não. O agendador estava verde: a varredura de hazard
+respondia HTTP 200 a cada passada, sem erro nenhum.
+
+O resumo da própria rota dizia o que ninguém tinha lido:
+
+```
+hazard-scan            {"locations":1,"usersConsidered":1,"transitions":0,"pushed":0,"errors":[]}
+weather-notifications  {"ok":true,"checked":12,"matched":4,"attempted":4}
+```
+
+Doze perfis com coordenada, na mesma passada em que o motor que **empurra para
+a tela de bloqueio** olhava para **um**.
+
+**A causa**: `collectTargets` lia só `last_location_*` — o ponto de GPS ao vivo
+— e só se ele fosse mais novo que sete dias:
+
+```ts
+.not('last_location_lat', 'is', null).gte('last_location_at', since)
+```
+
+Essa coluna é escrita por `POST /api/location`, chamada pelo `LocationReporter`,
+que só roda com **o app aberto em primeiro plano** e a permissão de localização
+já concedida. Ou seja: o motor de push avisava exatamente as pessoas que tinham
+acabado de olhar o app — e mais ninguém. É o inverso do que um push existe para
+fazer. Quem cadastrou o endereço e fechou o app saiu da varredura em sete dias e
+nunca mais voltou.
+
+O filtro estava na CONSULTA, e é isso que o tornou fatal: ele não escolhia um
+ponto pior, ele **apagava a pessoa da passada**. A linha nem voltava do banco,
+então não havia para onde recuar. `profiles.location_lat/lng` — o endereço
+geocodificado que a família digitou — ficava ali, ao lado, usado pelo cron de
+clima e invisível para o motor de alerta.
+
+**Decision (1) — o endereço é a reserva do GPS fresco.** A regra sai da consulta
+e vira `scanLocationFor()`, uma função pura e testada: GPS ao vivo enquanto for
+recente, endereço quando não for. O motivo original do corte continua de pé —
+uma coordenada de duas semanas atrás avisaria a família sobre uma cidade que ela
+já deixou — mas ele justifica descartar o **ponto velho**, nunca descartar a
+**pessoa**. Um endereço não envelhece desse jeito; é por isso que o cron de
+clima sempre o usou.
+
+GPS velho e nenhum endereço continua devolvendo nada. Silêncio ali é a resposta
+honesta; uma coordenada de duas semanas não é.
+
+**Decision (2) — a cobertura entra no resumo que o agendador imprime.** O
+defeito sobreviveu semanas porque `locations: 1` é indistinguível de um dia
+calmo num log verde. O resumo passa a trazer `coverage: { live, home,
+unlocatable }`. Uma passada que cobre uma casa de doze diz isso na mesma linha.
+
+**Decision (3) — `attempted` era um número que não media nada.** O cron de clima
+somava um por CHAMADA a `createCommsNotifications`, que engolia o erro do insert
+com um `console.warn`. `attempted: 4` lia igual se a linha entrou, se foi
+suprimida como repetida, ou se o Postgres a recusou — a mesma silenciosidade da
+**D-222**, com um contador por cima. A função passa a devolver
+`{ created, deduped, error }` e a rota reporta os três.
+
+**O que este ajuste NÃO faz**: o cron de clima continua sem enviar push — ele
+escreve na caixa de entrada, e só. Quem empurra para a tela de bloqueio é a
+varredura de hazard, que já lê NWS/IPAWS pela `network.ts`. Unificar os dois
+motores é a ALERT-T05 e continua pendente; corrigir a cobertura do motor que já
+empurra era o que estava entre o dono e o aviso de chuva.
+
+**Como não voltar**: `lib/__tests__/hazard-scan-targets.test.ts` — oito
+asserções sobre a escolha do ponto, incluindo a borda da janela e o caso de GPS
+velho sem endereço.
+
+---
+
 ## D-229 — O alerta manual do círculo nunca chegou a ninguém
 
 **Date**: 2026-08-31
