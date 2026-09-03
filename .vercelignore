@@ -19,4 +19,4 @@ scripts/*.png
 # `native/` tem workspace próprio, com os projetos Xcode e Gradle dentro. Nada
 # disso é servido pela web, e enviá-lo em todo deploy só aumenta o upload e o
 # risco de o `next build` topar com um segundo projeto na árvore.
-native
+/native

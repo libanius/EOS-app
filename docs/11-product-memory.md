@@ -1,7 +1,7 @@
 # 11 — Product Memory
 
 > Non-obvious facts that don't belong in code comments but must survive across sessions.
-> Last updated: 2026-08-31
+> Last updated: 2026-09-03
 
 ---
 
@@ -12,6 +12,12 @@ não está lá. Consequência prática que vale para toda funcionalidade futura:
 app publicado nas lojas é o único lugar onde o caminho do navegador não é um
 plano B pior — é a ausência de plano. Sempre que uma tela depender de API de
 navegador, pergunte primeiro se ela existe no WebView.
+
+**No `.vercelignore`, `native` também pega `lib/native` (2026-09-03).** A casca
+nativa raiz deve ser ignorada como `/native`, não `native`. Sem a barra inicial,
+o pacote enviado ao Vercel remove também `lib/native/bridge.ts`,
+`lib/native/push.ts` e `lib/native/vault.ts`; o build web então falha antes de
+compilar porque páginas do Next importam esses adaptadores web-safe.
 
 **Apagar um token de push exige certeza, não suspeita (D-228 §3).** Erro de
 configuração faz TODOS os aparelhos falharem ao mesmo tempo. Se falha virasse
