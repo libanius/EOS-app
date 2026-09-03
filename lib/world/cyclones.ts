@@ -24,7 +24,22 @@ const NHC_GIS =
   'https://mapservices.weather.noaa.gov/tropical/rest/services/tropical/NHC_tropical_weather_summary/MapServer'
 
 /** Camadas do MapServer do NHC, confirmadas ao vivo. */
-const LAYER = { forecastPoints: 5, forecastTrack: 6, forecastCone: 7, watchWarning: 8, pastTrack: 9 } as const
+const LAYER = {
+  outlookAreas: 3,
+  outlookMotion: 33,
+  forecastPoints: 5,
+  forecastTrack: 6,
+  forecastCone: 7,
+  watchWarning: 8,
+  pastTrack: 11,
+  forecastWindRadii: 15,
+  initialWindRadii: 16,
+  arrivalEarliest: 18,
+  arrivalMostLikely: 19,
+  wsp34: 30,
+  wsp50: 31,
+  wsp64: 32,
+} as const
 
 const CURRENT_STORMS = 'https://www.nhc.noaa.gov/CurrentStorms.json'
 
@@ -58,6 +73,15 @@ export type CycloneSnapshot = {
   forecastPoints: GeoJSON.FeatureCollection | null
   pastTrack: GeoJSON.FeatureCollection | null
   watchWarnings: GeoJSON.FeatureCollection | null
+  forecastWindRadii: GeoJSON.FeatureCollection | null
+  initialWindRadii: GeoJSON.FeatureCollection | null
+  arrivalEarliest: GeoJSON.FeatureCollection | null
+  arrivalMostLikely: GeoJSON.FeatureCollection | null
+  wsp34: GeoJSON.FeatureCollection | null
+  wsp50: GeoJSON.FeatureCollection | null
+  wsp64: GeoJSON.FeatureCollection | null
+  outlookAreas: GeoJSON.FeatureCollection | null
+  outlookMotion: GeoJSON.FeatureCollection | null
   /** Nenhum ciclone ativo é uma resposta CORRETA, não uma falha. */
   empty: boolean
   /** Produtos que o NHC tem mas não conseguimos buscar. Vazio é o normal. */
@@ -170,6 +194,61 @@ function num(value: unknown): number | null {
   return Number.isFinite(n) ? n : null
 }
 
+function percentMax(value: unknown): number | null {
+  const text = String(value ?? '').trim()
+  if (!text) return null
+  if (text.startsWith('<')) return Math.max(0, (num(text.slice(1)) ?? 5) - 1)
+  const numbers = text.match(/\d+(?:\.\d+)?/g)?.map(Number).filter(Number.isFinite) ?? []
+  return numbers.length ? Math.max(...numbers) : null
+}
+
+function decorateFeatures(
+  fc: GeoJSON.FeatureCollection | null,
+  mapProps: (props: Record<string, unknown>) => Record<string, unknown>,
+): GeoJSON.FeatureCollection | null {
+  if (!fc) return fc
+  return {
+    ...fc,
+    features: fc.features.map(feature => {
+      const props = (feature.properties ?? {}) as Record<string, unknown>
+      return { ...feature, properties: { ...props, ...mapProps(props) } }
+    }),
+  }
+}
+
+function decorateWsp(fc: GeoJSON.FeatureCollection | null, thresholdKt: 34 | 50 | 64): GeoJSON.FeatureCollection | null {
+  return decorateFeatures(fc, props => {
+    const label = String(props.percentage ?? '').trim()
+    return { thresholdKt, label, pctMax: percentMax(label) ?? 0 }
+  })
+}
+
+function decorateRadii(fc: GeoJSON.FeatureCollection | null, kind: 'initial' | 'forecast'): GeoJSON.FeatureCollection | null {
+  return decorateFeatures(fc, props => {
+    const radii = num(props.radii)
+    const tau = num(props.tau)
+    const valid = String(props.validtime ?? '').trim()
+    return {
+      kind,
+      thresholdKt: radii ?? 0,
+      label: `${radii ?? '—'} kt${tau !== null ? ` · +${tau}h` : ''}${valid ? ` · ${valid}` : ''}`,
+    }
+  })
+}
+
+function decorateArrival(fc: GeoJSON.FeatureCollection | null, kind: 'earliest' | 'mostLikely'): GeoJSON.FeatureCollection | null {
+  return decorateFeatures(fc, props => ({ kind, label: String(props.arrival_time ?? props.name ?? '').trim() }))
+}
+
+function decorateOutlook(fc: GeoJSON.FeatureCollection | null, kind: 'area' | 'motion'): GeoJSON.FeatureCollection | null {
+  return decorateFeatures(fc, props => ({
+    kind,
+    label: `${props.risk7day ?? '—'} · ${props.prob7day ?? '—'} 7d`,
+    risk2day: String(props.risk2day ?? '').toLowerCase(),
+    risk7day: String(props.risk7day ?? '').toLowerCase(),
+  }))
+}
+
 export async function getCyclones(
   user: { lat: number; lng: number } | null,
   signal?: AbortSignal,
@@ -187,6 +266,15 @@ export async function getCyclones(
       forecastPoints: null,
       pastTrack: null,
       watchWarnings: null,
+      forecastWindRadii: null,
+      initialWindRadii: null,
+      arrivalEarliest: null,
+      arrivalMostLikely: null,
+      wsp34: null,
+      wsp50: null,
+      wsp64: null,
+      outlookAreas: null,
+      outlookMotion: null,
       empty: true,
       error: 'nhc_unreachable',
     }
@@ -224,6 +312,10 @@ export async function getCyclones(
   // Sem ciclone ativo não há geometria para buscar — e três requisições que
   // devolveriam coleções vazias são três requisições desperdiçadas.
   if (!storms.length) {
+    const [outlookAreas, outlookMotion] = await Promise.all([
+      geojson(LAYER.outlookAreas, signal),
+      geojson(LAYER.outlookMotion, signal),
+    ])
     return {
       source: 'NOAA National Hurricane Center',
       fetchedAt,
@@ -233,16 +325,49 @@ export async function getCyclones(
       forecastPoints: null,
       pastTrack: null,
       watchWarnings: null,
+      forecastWindRadii: null,
+      initialWindRadii: null,
+      arrivalEarliest: null,
+      arrivalMostLikely: null,
+      wsp34: null,
+      wsp50: null,
+      wsp64: null,
+      outlookAreas: decorateOutlook(outlookAreas, 'area'),
+      outlookMotion: decorateOutlook(outlookMotion, 'motion'),
       empty: true,
     }
   }
 
-  const [cone, track, forecastPoints, pastTrack, watchWarnings] = await Promise.all([
+  const [
+    cone,
+    track,
+    forecastPoints,
+    pastTrack,
+    watchWarnings,
+    forecastWindRadii,
+    initialWindRadii,
+    arrivalEarliest,
+    arrivalMostLikely,
+    wsp34,
+    wsp50,
+    wsp64,
+    outlookAreas,
+    outlookMotion,
+  ] = await Promise.all([
     geojson(LAYER.forecastCone, signal),
     geojson(LAYER.forecastTrack, signal),
     geojson(LAYER.forecastPoints, signal),
     geojson(LAYER.pastTrack, signal),
     geojson(LAYER.watchWarning, signal),
+    geojson(LAYER.forecastWindRadii, signal),
+    geojson(LAYER.initialWindRadii, signal),
+    geojson(LAYER.arrivalEarliest, signal),
+    geojson(LAYER.arrivalMostLikely, signal),
+    geojson(LAYER.wsp34, signal),
+    geojson(LAYER.wsp50, signal),
+    geojson(LAYER.wsp64, signal),
+    geojson(LAYER.outlookAreas, signal),
+    geojson(LAYER.outlookMotion, signal),
   ])
 
   // Quais produtos não vieram por FALHA (e não por não existirem). A UI usa isto
@@ -260,8 +385,17 @@ export async function getCyclones(
     cone,
     track,
     forecastPoints,
-    pastTrack,
+    pastTrack: decorateFeatures(pastTrack, props => ({ label: String(props.stormtype ?? props.binnumber ?? 'Past track') })),
     watchWarnings,
+    forecastWindRadii: decorateRadii(forecastWindRadii, 'forecast'),
+    initialWindRadii: decorateRadii(initialWindRadii, 'initial'),
+    arrivalEarliest: decorateArrival(arrivalEarliest, 'earliest'),
+    arrivalMostLikely: decorateArrival(arrivalMostLikely, 'mostLikely'),
+    wsp34: decorateWsp(wsp34, 34),
+    wsp50: decorateWsp(wsp50, 50),
+    wsp64: decorateWsp(wsp64, 64),
+    outlookAreas: decorateOutlook(outlookAreas, 'area'),
+    outlookMotion: decorateOutlook(outlookMotion, 'motion'),
     empty: false,
     missing,
   }

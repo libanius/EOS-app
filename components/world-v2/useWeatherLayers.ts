@@ -81,7 +81,15 @@ export function useWeatherLayers(
       layers.cycloneTrack ||
       layers.cyclonePoints ||
       layers.cyclonePastTrack ||
-      layers.cycloneWarnings
+      layers.cycloneWarnings ||
+      layers.cycloneInitialWindRadii ||
+      layers.cycloneForecastWindRadii ||
+      layers.cycloneWsp34 ||
+      layers.cycloneWsp50 ||
+      layers.cycloneWsp64 ||
+      layers.cycloneArrivalEarliest ||
+      layers.cycloneArrivalMostLikely ||
+      layers.cycloneOutlook
     if (!coords || !wantsCyclone) return
     let cancelled = false
 
@@ -108,6 +116,14 @@ export function useWeatherLayers(
     layers.cyclonePoints,
     layers.cyclonePastTrack,
     layers.cycloneWarnings,
+    layers.cycloneInitialWindRadii,
+    layers.cycloneForecastWindRadii,
+    layers.cycloneWsp34,
+    layers.cycloneWsp50,
+    layers.cycloneWsp64,
+    layers.cycloneArrivalEarliest,
+    layers.cycloneArrivalMostLikely,
+    layers.cycloneOutlook,
   ])
 
   useEffect(() => {

@@ -97,10 +97,13 @@ mundo?". A ausência de ciclone ativo é resposta correta (`empty: true`), não
 erro.
 
 Primeiro incremento autorizado por D-224: separar os toggles/visibilidade no
-cliente e adicionar a legenda operacional. Probabilidade de desenvolvimento
-pré-ciclone (Graphical Tropical Weather Outlook) e probabilidades oficiais de
-vento por shapefile/KMZ entram como próxima evolução de dados, porque exigem
-feed próprio além do `CurrentStorms.json`/MapServer já consumido.
+cliente e adicionar a legenda operacional.
+
+Follow-up D-227: o MapServer oficial do NHC também alimenta como camadas reais
+`Initial Wind Radii`, `Forecast Wind Radii`, `34/50/64kt WSP`, `Earliest
+Reasonable Arrival Time`, `Most Likely Arrival Time` e `Seven-Day Outlook`.
+Esses produtos são forecast/probabilidade oficial; o EOS pode cruzar com casa,
+família e plano, mas não pode converter isso sozinho em ordem de evacuação.
 
 ---
 

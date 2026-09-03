@@ -96,6 +96,14 @@ const COPY = {
     layerCyclonePoints: 'Pontos',
     layerCyclonePast: 'Passado',
     layerCycloneWarnings: 'Watches/Warnings',
+    layerCycloneInitialWindRadii: 'Raios iniciais',
+    layerCycloneForecastWindRadii: 'Raios previstos',
+    layerCycloneWsp34: '34kt WSP',
+    layerCycloneWsp50: '50kt WSP',
+    layerCycloneWsp64: '64kt WSP',
+    layerCycloneArrivalEarliest: 'Chegada inicial',
+    layerCycloneArrivalMostLikely: 'Chegada provável',
+    layerCycloneOutlook: 'Desenvolvimento',
     nhcLegendTitle: 'Legenda NHC',
     nhcLegendCone: 'Cone: incerteza do centro, não área de dano.',
     nhcLegendFormation: 'Desenvolvimento: amarelo 0-30%, laranja 40-60%, vermelho 70-100% em 48h ou 7 dias.',
@@ -190,6 +198,14 @@ const COPY = {
     layerCyclonePoints: 'Points',
     layerCyclonePast: 'Past',
     layerCycloneWarnings: 'Watches/Warnings',
+    layerCycloneInitialWindRadii: 'Initial radii',
+    layerCycloneForecastWindRadii: 'Forecast radii',
+    layerCycloneWsp34: '34kt WSP',
+    layerCycloneWsp50: '50kt WSP',
+    layerCycloneWsp64: '64kt WSP',
+    layerCycloneArrivalEarliest: 'Earliest arrival',
+    layerCycloneArrivalMostLikely: 'Most likely arrival',
+    layerCycloneOutlook: 'Development',
     nhcLegendTitle: 'NHC legend',
     nhcLegendCone: 'Cone: uncertainty of the center, not the damage area.',
     nhcLegendFormation: 'Development: yellow 0-30%, orange 40-60%, red 70-100% in 48h or 7 days.',
@@ -248,6 +264,14 @@ const NHC_LAYER_KEYS = [
   'cyclonePoints',
   'cyclonePastTrack',
   'cycloneWarnings',
+  'cycloneInitialWindRadii',
+  'cycloneForecastWindRadii',
+  'cycloneWsp34',
+  'cycloneWsp50',
+  'cycloneWsp64',
+  'cycloneArrivalEarliest',
+  'cycloneArrivalMostLikely',
+  'cycloneOutlook',
 ] as const
 
 export default function WorldV2() {
@@ -299,6 +323,14 @@ export default function WorldV2() {
               cyclonePoints: parsed.cyclone,
               cyclonePastTrack: false,
               cycloneWarnings: parsed.cyclone,
+              cycloneInitialWindRadii: parsed.cyclone,
+              cycloneForecastWindRadii: false,
+              cycloneWsp34: false,
+              cycloneWsp50: false,
+              cycloneWsp64: false,
+              cycloneArrivalEarliest: false,
+              cycloneArrivalMostLikely: false,
+              cycloneOutlook: false,
             }
           : {}
         const migrated = { ...parsed, ...legacyCyclone, cyclone: false }
@@ -859,6 +891,14 @@ export default function WorldV2() {
                   <button type="button" className={`wv2-chip${layers.cyclonePoints ? ' on' : ''}`} onClick={() => toggleLayer('cyclonePoints')}>{c.layerCyclonePoints}</button>
                   <button type="button" className={`wv2-chip${layers.cyclonePastTrack ? ' on' : ''}`} onClick={() => toggleLayer('cyclonePastTrack')}>{c.layerCyclonePast}</button>
                   <button type="button" className={`wv2-chip${layers.cycloneWarnings ? ' on' : ''}`} onClick={() => toggleLayer('cycloneWarnings')}>{c.layerCycloneWarnings}</button>
+                  <button type="button" className={`wv2-chip${layers.cycloneInitialWindRadii ? ' on' : ''}`} onClick={() => toggleLayer('cycloneInitialWindRadii')}>{c.layerCycloneInitialWindRadii}</button>
+                  <button type="button" className={`wv2-chip${layers.cycloneForecastWindRadii ? ' on' : ''}`} onClick={() => toggleLayer('cycloneForecastWindRadii')}>{c.layerCycloneForecastWindRadii}</button>
+                  <button type="button" className={`wv2-chip${layers.cycloneWsp34 ? ' on' : ''}`} onClick={() => toggleLayer('cycloneWsp34')}>{c.layerCycloneWsp34}</button>
+                  <button type="button" className={`wv2-chip${layers.cycloneWsp50 ? ' on' : ''}`} onClick={() => toggleLayer('cycloneWsp50')}>{c.layerCycloneWsp50}</button>
+                  <button type="button" className={`wv2-chip${layers.cycloneWsp64 ? ' on' : ''}`} onClick={() => toggleLayer('cycloneWsp64')}>{c.layerCycloneWsp64}</button>
+                  <button type="button" className={`wv2-chip${layers.cycloneArrivalEarliest ? ' on' : ''}`} onClick={() => toggleLayer('cycloneArrivalEarliest')}>{c.layerCycloneArrivalEarliest}</button>
+                  <button type="button" className={`wv2-chip${layers.cycloneArrivalMostLikely ? ' on' : ''}`} onClick={() => toggleLayer('cycloneArrivalMostLikely')}>{c.layerCycloneArrivalMostLikely}</button>
+                  <button type="button" className={`wv2-chip${layers.cycloneOutlook ? ' on' : ''}`} onClick={() => toggleLayer('cycloneOutlook')}>{c.layerCycloneOutlook}</button>
                 </div>
                 <div className="wv2-nhc-legend" aria-label={c.nhcLegendTitle}>
                   <p className="t-caps ink-2">{c.nhcLegendTitle}</p>

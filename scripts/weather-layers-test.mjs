@@ -137,6 +137,17 @@ if (cyc.empty) {
   const cone = cyc.cone?.features?.[0]
   const track = cyc.track?.features?.[0]
   const pts = cyc.forecastPoints?.features ?? []
+  const officialProducts = {
+    pastTrack: Array.isArray(cyc.pastTrack?.features),
+    initialWindRadii: Array.isArray(cyc.initialWindRadii?.features),
+    forecastWindRadii: Array.isArray(cyc.forecastWindRadii?.features),
+    wsp34: Array.isArray(cyc.wsp34?.features),
+    wsp50: Array.isArray(cyc.wsp50?.features),
+    wsp64: Array.isArray(cyc.wsp64?.features),
+    arrivalEarliest: Array.isArray(cyc.arrivalEarliest?.features),
+    arrivalMostLikely: Array.isArray(cyc.arrivalMostLikely?.features),
+    outlookAreas: Array.isArray(cyc.outlookAreas?.features),
+  }
   // O NHC nem sempre publica os três produtos, e uma camada pode falhar. O que
   // não pode acontecer é falha silenciosa: `missing` diz o que caiu.
   const faltando = cyc.missing ?? []
@@ -146,6 +157,9 @@ if (cyc.empty) {
     : temAlgo
       ? no('geometria incompleta por falha de busca', `faltou: ${faltando.join(', ')}`)
       : no('geometria ausente', `cone=${cone?.geometry?.type} track=${track?.geometry?.type} pontos=${pts.length}`)
+  Object.values(officialProducts).every(Boolean)
+    ? ok('produtos NHC operacionais expostos na API', Object.entries(officialProducts).map(([k, v]) => `${k}=${v}`).join(' · '))
+    : no('produtos NHC ausentes no contrato', JSON.stringify(officialProducts))
 }
 
 // ── 3. vento em grade ───────────────────────────────────────────────────────
@@ -201,7 +215,7 @@ await abrirCamadas(page)
 await page.waitForTimeout(600)
 const painel = page.locator('[role="group"][aria-label="Camadas"]')
 const chips = await painel.locator('.wv2-chip').allInnerTexts().catch(() => [])
-chips.includes('Chuva') && chips.includes('Vento') && chips.includes('Centro') && chips.includes('Cone') && chips.includes('Trajetória') && chips.includes('Pontos') && chips.includes('Passado') && chips.includes('Watches/Warnings') && chips.includes('Flood') && chips.includes('Surge') && chips.includes('Vento impacto') && chips.includes('Tornado') && chips.includes('Satélite') && chips.includes('Escuro')
+chips.includes('Chuva') && chips.includes('Vento') && chips.includes('Centro') && chips.includes('Cone') && chips.includes('Trajetória') && chips.includes('Pontos') && chips.includes('Passado') && chips.includes('Watches/Warnings') && chips.includes('Raios iniciais') && chips.includes('Raios previstos') && chips.includes('34kt WSP') && chips.includes('50kt WSP') && chips.includes('64kt WSP') && chips.includes('Chegada inicial') && chips.includes('Chegada provável') && chips.includes('Desenvolvimento') && chips.includes('Flood') && chips.includes('Surge') && chips.includes('Vento impacto') && chips.includes('Tornado') && chips.includes('Satélite') && chips.includes('Escuro')
   ? ok('painel de camadas com base e camadas', chips.join(' · '))
   : no('painel incompleto', JSON.stringify(chips))
 const legendaNHC = await painel.locator('.wv2-nhc-legend').innerText().catch(() => '')

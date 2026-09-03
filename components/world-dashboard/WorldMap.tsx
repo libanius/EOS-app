@@ -445,6 +445,14 @@ export type MapLayerState = {
   cyclonePoints: boolean
   cyclonePastTrack: boolean
   cycloneWarnings: boolean
+  cycloneInitialWindRadii: boolean
+  cycloneForecastWindRadii: boolean
+  cycloneWsp34: boolean
+  cycloneWsp50: boolean
+  cycloneWsp64: boolean
+  cycloneArrivalEarliest: boolean
+  cycloneArrivalMostLikely: boolean
+  cycloneOutlook: boolean
   flood: boolean
   surge: boolean
   windImpact: boolean
@@ -462,6 +470,14 @@ export const DEFAULT_LAYERS: MapLayerState = {
   cyclonePoints: true,
   cyclonePastTrack: false,
   cycloneWarnings: true,
+  cycloneInitialWindRadii: true,
+  cycloneForecastWindRadii: false,
+  cycloneWsp34: false,
+  cycloneWsp50: false,
+  cycloneWsp64: false,
+  cycloneArrivalEarliest: false,
+  cycloneArrivalMostLikely: false,
+  cycloneOutlook: false,
   flood: true,
   surge: true,
   windImpact: false,
@@ -1308,10 +1324,88 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
               'line-opacity': 0.9,
             },
           })
+          const wspOpacity = ['interpolate', ['linear'], ['to-number', ['get', 'pctMax'], 0], 0, 0.04, 5, 0.08, 20, 0.14, 50, 0.24, 100, 0.34] as const
+          const addFillLine = (sourceId: string, fillId: string, lineId: string, color: string, opacity: unknown = 0.16) => {
+            liveMap.addSource(sourceId, { type: 'geojson', data: EMPTY_FC })
+            liveMap.addLayer({
+              id: fillId,
+              type: 'fill',
+              source: sourceId,
+              paint: { 'fill-color': color, 'fill-opacity': opacity as never },
+            })
+            liveMap.addLayer({
+              id: lineId,
+              type: 'line',
+              source: sourceId,
+              paint: { 'line-color': color, 'line-width': 1.4, 'line-opacity': 0.76 },
+            })
+          }
+          addFillLine('eos-cyclone-initial-radii', 'eos-cyclone-initial-radii-fill', 'eos-cyclone-initial-radii-line', '#ff9f0a', 0.13)
+          addFillLine('eos-cyclone-forecast-radii', 'eos-cyclone-forecast-radii-fill', 'eos-cyclone-forecast-radii-line', '#ffcc00', 0.09)
+          addFillLine('eos-cyclone-wsp34', 'eos-cyclone-wsp34-fill', 'eos-cyclone-wsp34-line', '#0a84ff', wspOpacity)
+          addFillLine('eos-cyclone-wsp50', 'eos-cyclone-wsp50-fill', 'eos-cyclone-wsp50-line', '#bf5af2', wspOpacity)
+          addFillLine('eos-cyclone-wsp64', 'eos-cyclone-wsp64-fill', 'eos-cyclone-wsp64-line', '#ff453a', wspOpacity)
+
+          map.addSource('eos-cyclone-arrival-earliest', { type: 'geojson', data: EMPTY_FC })
+          map.addLayer({
+            id: 'eos-cyclone-arrival-earliest',
+            type: 'line',
+            source: 'eos-cyclone-arrival-earliest',
+            paint: { 'line-color': '#64d2ff', 'line-width': 2, 'line-opacity': 0.9, 'line-dasharray': [1, 1.1] },
+          })
+          map.addLayer({
+            id: 'eos-cyclone-arrival-earliest-label',
+            type: 'symbol',
+            source: 'eos-cyclone-arrival-earliest',
+            layout: { 'symbol-placement': 'line', 'symbol-spacing': 180, 'text-field': ['get', 'label'], 'text-size': 10, 'text-allow-overlap': false },
+            paint: { 'text-color': '#ffffff', 'text-halo-color': '#00131c', 'text-halo-width': 1.4, 'text-opacity': 0.9 },
+          })
+          map.addSource('eos-cyclone-arrival-most-likely', { type: 'geojson', data: EMPTY_FC })
+          map.addLayer({
+            id: 'eos-cyclone-arrival-most-likely',
+            type: 'line',
+            source: 'eos-cyclone-arrival-most-likely',
+            paint: { 'line-color': '#30d158', 'line-width': 2.2, 'line-opacity': 0.9 },
+          })
+          map.addLayer({
+            id: 'eos-cyclone-arrival-most-likely-label',
+            type: 'symbol',
+            source: 'eos-cyclone-arrival-most-likely',
+            layout: { 'symbol-placement': 'line', 'symbol-spacing': 180, 'text-field': ['get', 'label'], 'text-size': 10, 'text-allow-overlap': false },
+            paint: { 'text-color': '#ffffff', 'text-halo-color': '#001c0b', 'text-halo-width': 1.4, 'text-opacity': 0.9 },
+          })
+
+          map.addSource('eos-cyclone-outlook-areas', { type: 'geojson', data: EMPTY_FC })
+          map.addLayer({
+            id: 'eos-cyclone-outlook-areas-fill',
+            type: 'fill',
+            source: 'eos-cyclone-outlook-areas',
+            paint: {
+              'fill-color': ['match', ['get', 'risk7day'], 'high', '#ff453a', 'medium', '#ff9f0a', 'low', '#ffd60a', '#ffd60a'],
+              'fill-opacity': 0.18,
+            },
+          })
+          map.addLayer({
+            id: 'eos-cyclone-outlook-areas-line',
+            type: 'line',
+            source: 'eos-cyclone-outlook-areas',
+            paint: {
+              'line-color': ['match', ['get', 'risk7day'], 'high', '#ff453a', 'medium', '#ff9f0a', 'low', '#ffd60a', '#ffd60a'],
+              'line-width': 1.8,
+              'line-opacity': 0.86,
+            },
+          })
+          map.addSource('eos-cyclone-outlook-motion', { type: 'geojson', data: EMPTY_FC })
+          map.addLayer({
+            id: 'eos-cyclone-outlook-motion',
+            type: 'line',
+            source: 'eos-cyclone-outlook-motion',
+            paint: { 'line-color': '#ffd60a', 'line-width': 2, 'line-opacity': 0.85, 'line-dasharray': [2, 1.2] },
+          })
 
           const nhcPopup = async (
             event: MapLayerMouseEvent,
-            kind: 'cone' | 'track' | 'point' | 'past' | 'warning',
+            kind: 'cone' | 'track' | 'point' | 'past' | 'warning' | 'radii' | 'wsp' | 'arrival' | 'outlook',
           ) => {
             const pt = typeof document !== 'undefined' && document.documentElement.lang?.startsWith('pt')
             const feature = event.features?.[0]
@@ -1321,6 +1415,10 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
               point: pt ? 'Ponto de previsão' : 'Forecast point',
               past: pt ? 'Trajeto passado' : 'Past track',
               warning: propText(feature, ['tcww', 'type', 'prod_type', 'status'], pt ? 'Watch/Warning oficial' : 'Official watch/warning'),
+              radii: pt ? 'Raio de vento NHC' : 'NHC wind radii',
+              wsp: `${propText(feature, ['thresholdKt'], '—')} kt WSP`,
+              arrival: pt ? 'Chegada de ventos TS' : 'Arrival of TS winds',
+              outlook: pt ? 'Desenvolvimento tropical' : 'Tropical development',
             }
             const bodyByKind = {
               cone: pt
@@ -1338,6 +1436,18 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
               warning: pt
                 ? 'Alerta ou vigilância oficial. Use Impacto/Alertas para entender perigo real na sua área.'
                 : 'Official watch or warning. Use Impact/Alerts to understand real hazard in your area.',
+              radii: pt
+                ? propText(feature, ['label'], 'Campo oficial de vento associado ao aviso atual.')
+                : propText(feature, ['label'], 'Official wind field associated with the current advisory.'),
+              wsp: pt
+                ? `${propText(feature, ['label'], 'Probabilidade oficial')} de ventos de pelo menos ${propText(feature, ['thresholdKt'], '—')} kt nas próximas janelas do NHC.`
+                : `${propText(feature, ['label'], 'Official probability')} of winds at least ${propText(feature, ['thresholdKt'], '—')} kt in the NHC forecast window.`,
+              arrival: pt
+                ? `Linha de chegada de vento de tempestade tropical: ${propText(feature, ['label', 'arrival_time'], 'NHC')}.`
+                : `Tropical-storm-force wind arrival line: ${propText(feature, ['label', 'arrival_time'], 'NHC')}.`,
+              outlook: pt
+                ? `Chance de desenvolvimento: 48h ${propText(feature, ['prob2day'], '—')} (${propText(feature, ['risk2day'], '—')}), 7 dias ${propText(feature, ['prob7day'], '—')} (${propText(feature, ['risk7day'], '—')}).`
+                : `Development chance: 48h ${propText(feature, ['prob2day'], '—')} (${propText(feature, ['risk2day'], '—')}), 7 days ${propText(feature, ['prob7day'], '—')} (${propText(feature, ['risk7day'], '—')}).`,
             }
             const maplibregl = (await import('maplibre-gl')).default
             const el = document.createElement('div')
@@ -1363,6 +1473,23 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
             ['eos-cyclone-past-track', 'past'],
             ['eos-cyclone-warnings-fill', 'warning'],
             ['eos-cyclone-warnings-line', 'warning'],
+            ['eos-cyclone-initial-radii-fill', 'radii'],
+            ['eos-cyclone-initial-radii-line', 'radii'],
+            ['eos-cyclone-forecast-radii-fill', 'radii'],
+            ['eos-cyclone-forecast-radii-line', 'radii'],
+            ['eos-cyclone-wsp34-fill', 'wsp'],
+            ['eos-cyclone-wsp34-line', 'wsp'],
+            ['eos-cyclone-wsp50-fill', 'wsp'],
+            ['eos-cyclone-wsp50-line', 'wsp'],
+            ['eos-cyclone-wsp64-fill', 'wsp'],
+            ['eos-cyclone-wsp64-line', 'wsp'],
+            ['eos-cyclone-arrival-earliest', 'arrival'],
+            ['eos-cyclone-arrival-earliest-label', 'arrival'],
+            ['eos-cyclone-arrival-most-likely', 'arrival'],
+            ['eos-cyclone-arrival-most-likely-label', 'arrival'],
+            ['eos-cyclone-outlook-areas-fill', 'outlook'],
+            ['eos-cyclone-outlook-areas-line', 'outlook'],
+            ['eos-cyclone-outlook-motion', 'outlook'],
           ]
           clickableCycloneLayers.forEach(([layerId, kind]) => {
             liveMap.on('click', layerId, event => { void nhcPopup(event, kind) })
@@ -1644,11 +1771,28 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
     const pointsOn = hasCyclones && (Boolean(layers?.cyclonePoints) || legacyOn)
     const pastOn = hasCyclones && Boolean(layers?.cyclonePastTrack)
     const warningsOn = hasCyclones && (Boolean(layers?.cycloneWarnings) || legacyOn)
+    const initialRadiiOn = hasCyclones && (Boolean(layers?.cycloneInitialWindRadii) || legacyOn)
+    const forecastRadiiOn = hasCyclones && Boolean(layers?.cycloneForecastWindRadii)
+    const wsp34On = hasCyclones && Boolean(layers?.cycloneWsp34)
+    const wsp50On = hasCyclones && Boolean(layers?.cycloneWsp50)
+    const wsp64On = hasCyclones && Boolean(layers?.cycloneWsp64)
+    const arrivalEarliestOn = hasCyclones && Boolean(layers?.cycloneArrivalEarliest)
+    const arrivalMostLikelyOn = hasCyclones && Boolean(layers?.cycloneArrivalMostLikely)
+    const outlookOn = Boolean(layers?.cycloneOutlook)
     set('eos-cyclone-cone', coneOn ? cyclones?.cone ?? null : null)
     set('eos-cyclone-track', trackOn ? cyclones?.track ?? null : null)
     set('eos-cyclone-points', pointsOn ? cyclones?.forecastPoints ?? null : null)
     set('eos-cyclone-past-track', pastOn ? cyclones?.pastTrack ?? null : null)
     set('eos-cyclone-warnings', warningsOn ? cyclones?.watchWarnings ?? null : null)
+    set('eos-cyclone-initial-radii', initialRadiiOn ? cyclones?.initialWindRadii ?? null : null)
+    set('eos-cyclone-forecast-radii', forecastRadiiOn ? cyclones?.forecastWindRadii ?? null : null)
+    set('eos-cyclone-wsp34', wsp34On ? cyclones?.wsp34 ?? null : null)
+    set('eos-cyclone-wsp50', wsp50On ? cyclones?.wsp50 ?? null : null)
+    set('eos-cyclone-wsp64', wsp64On ? cyclones?.wsp64 ?? null : null)
+    set('eos-cyclone-arrival-earliest', arrivalEarliestOn ? cyclones?.arrivalEarliest ?? null : null)
+    set('eos-cyclone-arrival-most-likely', arrivalMostLikelyOn ? cyclones?.arrivalMostLikely ?? null : null)
+    set('eos-cyclone-outlook-areas', outlookOn ? cyclones?.outlookAreas ?? null : null)
+    set('eos-cyclone-outlook-motion', outlookOn ? cyclones?.outlookMotion ?? null : null)
 
     // O olho da tempestade é um marcador próprio, com a seta do rumo: "para onde
     // ela vai" é a pergunta, e um ponto sem direção não responde.
@@ -1686,6 +1830,14 @@ export default function WorldMap({ plateUrl, family = [], shelters = [], guidanc
     layers?.cyclonePoints,
     layers?.cyclonePastTrack,
     layers?.cycloneWarnings,
+    layers?.cycloneInitialWindRadii,
+    layers?.cycloneForecastWindRadii,
+    layers?.cycloneWsp34,
+    layers?.cycloneWsp50,
+    layers?.cycloneWsp64,
+    layers?.cycloneArrivalEarliest,
+    layers?.cycloneArrivalMostLikely,
+    layers?.cycloneOutlook,
   ])
 
   /**
