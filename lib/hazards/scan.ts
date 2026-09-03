@@ -52,6 +52,17 @@ function prefersPt(language: unknown): boolean {
 export interface ScanSummary {
   locations: number
   usersConsidered: number
+  /*
+   * Where each scanned person's point came from — a live fix or the home
+   * address — and how many had a coordinate on file that this run could not
+   * use (a stale fix, no address behind it).
+   *
+   * `locations: 1` is what a silent engine looks like in a green log, and it
+   * looked like exactly that while eleven of twelve families were never
+   * scanned. A run that covers one household out of twelve should say so on
+   * the same line the scheduler already prints.
+   */
+  coverage: { live: number; home: number; unlocatable: number }
   transitions: number
   pushed: number
   suppressed: Record<string, number>
@@ -105,8 +116,66 @@ export function scanKeyFor(lat: number, lng: number): string {
 
 // ─── 1. Where to look ─────────────────────────────────────────────────────────
 
-async function collectTargets(db: SupabaseClient): Promise<ScanTarget[]> {
-  const since = new Date(Date.now() - A.locationMaxAgeDays * 86_400_000).toISOString()
+export interface ProfileLocationRow {
+  location_lat?: number | null
+  location_lng?: number | null
+  last_location_lat?: number | null
+  last_location_lng?: number | null
+  last_location_at?: string | null
+}
+
+export interface ScanLocation {
+  lat: number
+  lng: number
+  source: 'live' | 'home'
+}
+
+function finite(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value)
+}
+
+/**
+ * Which point to scan for one profile — and the reason the alerting engine was
+ * silent for almost everybody (2026-09-03).
+ *
+ * The scan used to read ONLY `last_location_*`, the live GPS fix, and only when
+ * it was less than `locationMaxAgeDays` old. That column is written by
+ * `LocationReporter`, which runs exclusively while the app is OPEN in the
+ * foreground with geolocation already granted. So the push engine warned only
+ * the people who had recently been looking at the app — the exact inverse of
+ * what a push is for. Measured in production on this date: the address-based
+ * weather cron checked 12 profiles in the same pass where this scan reported
+ * `locations: 1, usersConsidered: 1`. Eleven families had a hazard engine that
+ * never once looked at where they live.
+ *
+ * The home address is the fallback, not an equal: a live fix, while it is
+ * fresh, is where the person actually is. Past that window it is discarded for
+ * the reason it always was — it would alert a family about a city they left two
+ * weeks ago — and `profiles.location_lat/lng`, the geocoded address the family
+ * typed in, takes over. An address does not go stale in that way, which is why
+ * the weather cron has always used it.
+ *
+ * A stale fix with no address on file still yields nothing. Silence there is
+ * the honest answer; a two-week-old coordinate is not.
+ */
+export function scanLocationFor(profile: ProfileLocationRow, now = Date.now()): ScanLocation | null {
+  const lat = profile.last_location_lat
+  const lng = profile.last_location_lng
+  const at = profile.last_location_at ? Date.parse(profile.last_location_at) : NaN
+  if (finite(lat) && finite(lng) && Number.isFinite(at) && now - at <= A.locationMaxAgeDays * 86_400_000) {
+    return { lat, lng, source: 'live' }
+  }
+
+  const homeLat = profile.location_lat
+  const homeLng = profile.location_lng
+  if (finite(homeLat) && finite(homeLng)) {
+    return { lat: homeLat, lng: homeLng, source: 'home' }
+  }
+
+  return null
+}
+
+async function collectTargets(db: SupabaseClient, summary: ScanSummary): Promise<ScanTarget[]> {
   const byKey = new Map<string, ScanTarget>()
 
   const add = (lat: number, lng: number, user: TargetUser) => {
@@ -119,20 +188,30 @@ async function collectTargets(db: SupabaseClient): Promise<ScanTarget[]> {
     byKey.set(scanKey, { scanKey, location: { lat, lng }, users: [user] })
   }
 
-  // Profiles with a recent fix. A stale coordinate is worse than none — it would
-  // alert a family about a city they left two weeks ago.
-  const { data: profiles } = await db
+  /*
+   * The freshness rule moved OUT of the query and into `scanLocationFor`.
+   *
+   * As a `.gte('last_location_at', since)` filter it did not select a better
+   * point, it deleted the person from the run — the row never came back, so
+   * there was nothing left to fall back to. Reading both pairs and deciding per
+   * profile is what makes the address a fallback instead of dead columns.
+   */
+  const { data: profiles, error: profilesError } = await db
     .from('profiles')
-    .select('id, plan, language, last_location_lat, last_location_lng, last_location_at')
-    .not('last_location_lat', 'is', null)
-    .not('last_location_lng', 'is', null)
-    .gte('last_location_at', since)
+    .select('id, plan, language, location_lat, location_lng, last_location_lat, last_location_lng, last_location_at')
+    .or('location_lat.not.is.null,last_location_lat.not.is.null')
+
+  // Losing this read means scanning nobody. Reported, never swallowed (D-222).
+  if (profilesError) summary.errors.push(`read profiles: ${profilesError.message}`)
 
   for (const p of profiles ?? []) {
-    const lat = p.last_location_lat as number | null
-    const lng = p.last_location_lng as number | null
-    if (lat == null || lng == null) continue
-    add(lat, lng, {
+    const point = scanLocationFor(p as ProfileLocationRow)
+    if (!point) {
+      summary.coverage.unlocatable += 1
+      continue
+    }
+    summary.coverage[point.source] += 1
+    add(point.lat, point.lng, {
       userId: p.id as string,
       plan: ((p.plan as Plan | null) ?? 'free'),
       pt: prefersPt(p.language),
@@ -140,7 +219,14 @@ async function collectTargets(db: SupabaseClient): Promise<ScanTarget[]> {
   }
 
   // Places explicitly watched (the grandparents' house, the kids' school).
-  const { data: subs } = await db.from('hazard_subscriptions').select('user_id, lat, lng')
+  const { data: subs, error: subsError } = await db.from('hazard_subscriptions').select('user_id, lat, lng')
+  // `42P01` (table not created yet) degrades to "nobody watches an extra place",
+  // the same way `push_devices` does below: this project's migrations are applied
+  // by hand, and the window between deploy and migration must not paint every run
+  // red. Any other failure is real and gets reported.
+  if (subsError && subsError.code !== '42P01') {
+    summary.errors.push(`read hazard_subscriptions: ${subsError.message}`)
+  }
   if (subs?.length) {
     const ids = Array.from(new Set(subs.map(s => s.user_id as string)))
     const { data: subProfiles } = await db.from('profiles').select('id, plan, language').in('id', ids)
@@ -624,6 +710,7 @@ export async function runHazardScan(): Promise<ScanSummary> {
   const summary: ScanSummary = {
     locations: 0,
     usersConsidered: 0,
+    coverage: { live: 0, home: 0, unlocatable: 0 },
     transitions: 0,
     pushed: 0,
     suppressed: {},
@@ -651,7 +738,7 @@ export async function runHazardScan(): Promise<ScanSummary> {
     summary.errors.push('VAPID keys missing — transitions recorded, no push sent')
   }
 
-  const targets = await collectTargets(db)
+  const targets = await collectTargets(db, summary)
   summary.locations = targets.length
   summary.usersConsidered = new Set(targets.flatMap(t => t.users.map(u => u.userId))).size
 

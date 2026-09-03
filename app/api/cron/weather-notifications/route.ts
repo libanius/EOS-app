@@ -57,7 +57,14 @@ export async function GET(request: Request) {
 
   let checked = 0
   let matched = 0
+  // `created` and `deduped` are what the inbox actually received. The old
+  // counter was named `attempted` and incremented once per CALL — it read the
+  // same whether the row landed, was suppressed as a repeat, or was refused by
+  // Postgres. "attempted: 4" over an empty table is not a metric, it is the
+  // D-222 silence with a number attached.
   let created = 0
+  let deduped = 0
+  const failures: string[] = []
 
   for (const profile of profiles) {
     const lat = profile.location_lat as number
@@ -69,7 +76,7 @@ export async function GET(request: Request) {
 
     for (const alert of relevant) {
       const sourceKey = sourceKeyFor(alert, lat, lng)
-      await createCommsNotifications({
+      const outcome = await createCommsNotifications({
         admin,
         recipientIds: [profile.id],
         scope: 'weather',
@@ -88,7 +95,9 @@ export async function GET(request: Request) {
           lng: Number(lng.toFixed(3)),
         },
       })
-      created += 1
+      created += outcome.created
+      deduped += outcome.deduped
+      if (outcome.error) failures.push(outcome.error)
     }
   }
 
@@ -111,7 +120,11 @@ export async function GET(request: Request) {
     ok: true,
     checked,
     matched,
-    attempted: created,
+    created,
+    deduped,
+    // Distinct messages only: one broken migration would otherwise repeat
+    // itself once per profile and bury the rest of the summary.
+    failures: Array.from(new Set(failures)),
     pruned: erroPoda ? `erro: ${erroPoda.message}` : (podados ?? 0),
     errorAlert: alerta,
   })

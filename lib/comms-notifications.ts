@@ -47,6 +47,13 @@ type NotifyInput = {
   metadata?: Record<string, unknown>
 }
 
+/** What actually happened — rows written, rows already there, why none landed. */
+export type CommsNotificationResult = {
+  created: number
+  deduped: number
+  error: string | null
+}
+
 export async function getCircleMemberIds(admin: AdminClient, circleId: string) {
   const { data } = await admin.from('circle_members').select('user_id').eq('circle_id', circleId)
   return Array.from(new Set(((data ?? []) as Array<{ user_id: string }>).map(row => row.user_id).filter(Boolean)))
@@ -83,10 +90,11 @@ export async function createCommsNotifications({
   sourceKey = null,
   excludeActor = true,
   metadata = {},
-}: NotifyInput) {
+}: NotifyInput): Promise<CommsNotificationResult> {
   let unique = Array.from(new Set(recipientIds.filter(id => id && (!excludeActor || id !== actorId))))
-  if (!unique.length) return
+  if (!unique.length) return { created: 0, deduped: 0, error: null }
 
+  let deduped = 0
   if (sourceKey) {
     const { data } = await admin
       .from('circle_notifications')
@@ -94,8 +102,9 @@ export async function createCommsNotifications({
       .eq('source_key', sourceKey)
       .in('recipient_id', unique)
     const existing = new Set(((data ?? []) as Array<{ recipient_id: string }>).map(row => row.recipient_id))
+    deduped = unique.filter(id => existing.has(id)).length
     unique = unique.filter(id => !existing.has(id))
-    if (!unique.length) return
+    if (!unique.length) return { created: 0, deduped, error: null }
   }
 
   const nextMetadata = {
@@ -119,7 +128,14 @@ export async function createCommsNotifications({
 
   const { error } = await admin.from('circle_notifications').insert(rows)
   if (error) {
-    // Migration may not be applied in every environment during rollout.
+    // Migration may not be applied in every environment during rollout, so a
+    // failed insert must not throw — but it must not vanish either. A caller
+    // that reports "4 alerts sent" while every row was refused is the D-222
+    // defect wearing a different hat, so the outcome comes back to the caller
+    // and the log line stays for the environments nobody is watching.
     console.warn('[comms-notifications] insert skipped:', error.message)
+    return { created: 0, deduped, error: error.message }
   }
+
+  return { created: rows.length, deduped, error: null }
 }
