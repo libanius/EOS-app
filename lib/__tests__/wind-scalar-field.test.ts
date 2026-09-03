@@ -55,8 +55,22 @@ describe('D-221 — vento começa desligado e o controle não some sozinho', () 
 
   it('não restaura o vento a partir do armazenamento', () => {
     expect(worldV2).not.toContain('storedLayersRef.current?.wind')
-    // a montagem continua forçando desligado
-    expect(worldV2).toContain('setLayers(current => ({ ...current, ...parsed, wind: false }))')
+    /*
+     * A montagem continua forçando desligado — e o que se exige aqui é ISSO, não
+     * o nome da variável intermediária.
+     *
+     * Esta asserção era um `toContain` do texto literal com `...parsed`. O
+     * `0dad47a` (camadas NHC) acrescentou a migração das chaves antigas de
+     * ciclone e, de passagem, renomeou `parsed` para `migrated`. O `wind: false`
+     * nunca saiu do lugar: a garantia da D-221 seguiu inteira e o teste passou a
+     * falhar mesmo assim, deixando o `main` vermelho da #144 à #149.
+     *
+     * Um teste que casa código-fonte literal cai numa renomeação e acusa o que
+     * não aconteceu — "o vento voltou a ser herdado" era falso enquanto ele
+     * falhava. O spread do meio fica como `\w+` porque quem ele espalha é
+     * detalhe de implementação; `wind: false` depois dele é a promessa.
+     */
+    expect(worldV2).toMatch(/setLayers\(current => \(\{ \.\.\.current, \.\.\.\w+, wind: false \}\)\)/)
   })
 
   it('plano desconhecido não manda o assinante para o muro de pagamento', () => {
