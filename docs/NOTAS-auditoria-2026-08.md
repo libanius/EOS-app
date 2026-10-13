@@ -4,8 +4,8 @@
 > o que o EOS tem, o que ele diz que tem, e o que fazer com a diferença.
 >
 > Os dois documentos de referência, se quiser conferir alguma linha:
-> - [34-lista-de-features.md](34-lista-de-features.md) — as 137 features enumeradas, com prova
-> - [33-inventario-de-verdade.md](33-inventario-de-verdade.md) — a leitura crítica, o que vale vender
+> - [34-feature-list.md](34-feature-list.md) — as 137 features enumeradas, com prova
+> - [33-truth-inventory.md](33-truth-inventory.md) — a leitura crítica, o que vale vender
 >
 > Contexto: **zero clientes**. Nada aqui é urgência de reembolso. É material
 > para decidir posicionamento antes da primeira campanha.

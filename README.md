@@ -61,8 +61,8 @@ EOS runs as a **fallback chain**, not a feature toggle. The rules engine always 
 ## Engineering at a glance
 
 - **34 screens, 70 API routes, 37 database tables** (inventory of August 2026)
-- **Automated tests:** browser tests run against the production database plus unit suites with 200+ tests; every marketing claim is traced to a test in [`docs/33-inventario-de-verdade.md`](docs/33-inventario-de-verdade.md)
-- **140+ roadmap tasks delivered**, with decisions logged in [`docs/08-decisions-log.md`](docs/08-decisions-log.md)
+- **Automated tests:** browser tests run against the production database plus unit suites with 200+ tests; features are audited against named tests in the [truth inventory](docs/33-truth-inventory.md) and the [complete feature list](docs/34-feature-list.md)
+- **140+ roadmap tasks delivered**, with every product decision logged
 - Privacy by design: location, health and children's data mapped field by field for store review
 
 ## Roadmap
@@ -89,7 +89,7 @@ npm run dev
 **Required:** `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SITE_URL`, `OPENAI_API_KEY`
 **Optional:** `OPENAI_MODEL`, `CRON_SECRET`, `STRIPE_*`, `SENTRY_DSN`, and weather provider keys (WeatherKit, AccuWeather, Xweather) — see `.env.example`.
 
-Product documentation lives in [`docs/`](docs/) — vision, MVP scope, data model, decisions log, build status and the feature inventory.
+Product documentation lives in [`docs/`](docs/) — vision, MVP scope, data model, decisions log, build status and the feature inventory. The [truth inventory](docs/33-truth-inventory.md) and [feature list](docs/34-feature-list.md) are in English; the internal engineering log is still mostly in Portuguese.
 
 ## Contact
 
