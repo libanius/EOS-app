@@ -39,6 +39,8 @@ const FREE_FEATURES: FeatureRow[] = [
   { key: 'settings.planFeatures.analise_ia', requiredPlan: 'free' },
   { key: 'settings.planFeatures.monitoring_weather', requiredPlan: 'free' },
   { key: 'settings.planFeatures.monitoring_earthquake', requiredPlan: 'free' },
+  // D-220: push é de todos. Listado no Premium, parecia upsell de alerta.
+  { key: 'settings.planFeatures.monitoring_push', requiredPlan: 'free' },
 ]
 const FAMILY_FEATURES: FeatureRow[] = [
   { key: 'settings.planFeatures.circulos', requiredPlan: 'family' },
@@ -50,11 +52,11 @@ const FAMILY_FEATURES: FeatureRow[] = [
 ]
 const PREMIUM_FEATURES: FeatureRow[] = [
   { key: 'settings.planFeatures.animated_wind', requiredPlan: 'premium' },
-  { key: 'settings.planFeatures.monitoring_push', requiredPlan: 'premium' },
-  { key: 'settings.planFeatures.monitoring_history', requiredPlan: 'premium' },
+  // STORE-T02: nenhum código entrega histórico de 30 dias nem PDF (2026-11-01).
+  { key: 'settings.planFeatures.monitoring_history', requiredPlan: 'premium', soon: true },
   { key: 'settings.planFeatures.monitoring_cdc', requiredPlan: 'premium', soon: true },
   { key: 'settings.planFeatures.monitoring_fda', requiredPlan: 'premium', soon: true },
-  { key: 'settings.planFeatures.exportar_ficha', requiredPlan: 'premium' },
+  { key: 'settings.planFeatures.exportar_ficha', requiredPlan: 'premium', soon: true },
 ]
 
 const ADMIN_LINKS = [

@@ -47,6 +47,11 @@ Em ordem. Nenhuma exige colar senha ou token em conversa.
    dá 404.
 7. **Decisão de produto: países de lançamento.** Define a cobrança no iOS
    (compra dentro do app vs. link para o Stripe) — STORE-T07.
+8. **Decisão de produto: o que o Premium (US$ 19,90) entrega.** Com a copy
+   honesta (STORE-T02), o único benefício exclusivo aplicado no código é o
+   vento animado; CDC/FDA, histórico de alertas e PDF estão "em breve".
+   Opções: manter e entregar, baixar o preço, ou pausar novas assinaturas
+   Premium até haver entrega.
 
 ---
 
