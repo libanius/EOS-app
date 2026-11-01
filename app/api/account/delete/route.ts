@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { cancelBillingBeforeDeletion, removeNonCascadingData } from '@/lib/account-deletion'
+import { getStripe } from '@/lib/stripe'
+import { logError } from '@/lib/error-log'
 
 // ─── POST /api/account/delete ─────────────────────────────────────────────────
 // Deletes the authenticated user's own account and ALL associated data.
@@ -22,6 +25,19 @@ export async function POST() {
 
   const uid = user.id
   const admin = createServiceClient(url, key)
+
+  // Cobrança primeiro (STORE-T03). Se não der para cancelar, nada é apagado.
+  const billing = await cancelBillingBeforeDeletion(uid, admin, getStripe())
+  if (!billing.ok) {
+    await logError('account:delete:billing', new Error(billing.detail), { userId: uid, context: { reason: billing.reason } })
+    return NextResponse.json(
+      {
+        error: 'billing_cancel_failed',
+        message: 'Não conseguimos cancelar sua assinatura agora, então nada foi apagado. Tente de novo em alguns minutos.',
+      },
+      { status: 502 },
+    )
+  }
 
   try {
     // Dependency order: action_plans → scenarios → domain rows → circles → profile → auth user.
@@ -46,6 +62,10 @@ export async function POST() {
     await admin.from('push_subscriptions').delete().eq('user_id', uid)
     // Unlink this user from anyone else's family member cards.
     await admin.from('family_members').update({ linked_user_id: null }).eq('linked_user_id', uid)
+
+    // Storage e error_log não caem em cascata a partir de auth.users.
+    const residue = await removeNonCascadingData(uid, admin)
+    if (residue.length) await logError('account:delete:residue', new Error(residue.join('; ')), { context: { cancelled: billing.cancelled.length } })
 
     await admin.from('profiles').delete().eq('id', uid)
 

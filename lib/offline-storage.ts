@@ -99,6 +99,33 @@ async function getDB(): Promise<EOSDB | null> {
   return dbPromise
 }
 
+/**
+ * Apaga o banco offline inteiro (STORE-T03).
+ *
+ * Ele guarda nome, local, planos da família com endereços e checklist. Sair da
+ * conta ou excluí-la deixava tudo legível neste aparelho para quem abrisse o
+ * app depois. Nunca lança: limpeza que falha não pode impedir a saída.
+ * `onblocked` também resolve — outra aba aberta segura a exclusão, que termina
+ * sozinha quando ela fechar.
+ */
+export async function clearOfflineStorage(): Promise<void> {
+  if (!isBrowser()) return
+  try {
+    if (dbPromise) (await dbPromise).close()
+  } catch {
+    /* banco já fechado ou nunca aberto */
+  }
+  dbPromise = null
+  await new Promise<void>(resolve => {
+    try {
+      const req = indexedDB.deleteDatabase(DB_NAME)
+      req.onsuccess = req.onerror = req.onblocked = () => resolve()
+    } catch {
+      resolve()
+    }
+  })
+}
+
 // ─── Profile & inventory ─────────────────────────────────────────────────────
 
 export async function saveProfile(p: StoredProfile): Promise<void> {

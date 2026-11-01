@@ -10,6 +10,7 @@ import MaisNav from '@/components/world-v2/MaisNav'
 import { isNativeShell } from '@/lib/native/bridge'
 import { desativarPushNativo, registrarPushNativo, tokenNativoSalvo } from '@/lib/native/push'
 import { limparCofre } from '@/lib/native/vault'
+import { clearOfflineStorage } from '@/lib/offline-storage'
 
 // ─── Language selector ────────────────────────────────────────────────────────
 
@@ -217,6 +218,8 @@ export default function SettingsPage() {
        * precisar de senha nenhuma.
        */
       await limparCofre()
+      // O banco offline do navegador também tem planos com endereço (STORE-T03).
+      await clearOfflineStorage()
       await createClient().auth.signOut()
       window.location.href = '/auth/login'
     } catch {
@@ -226,8 +229,8 @@ export default function SettingsPage() {
 
   const handleDeleteAccount = async () => {
     const msg = en
-      ? 'Delete your account permanently? This erases your profile, family, inventory and checklist. This cannot be undone.'
-      : 'Excluir sua conta permanentemente? Isso apaga seu perfil, família, inventário e checklist. Não dá para desfazer.'
+      ? 'Delete your account permanently? This cancels your subscription and erases your profile, family, plans, inventory and checklist — including what is saved on this device. This cannot be undone.'
+      : 'Excluir sua conta permanentemente? Isso cancela sua assinatura e apaga seu perfil, família, planos, inventário e checklist — inclusive o que está salvo neste aparelho. Não dá para desfazer.'
     if (!window.confirm(msg)) return
     setBusy('delete')
     try {
@@ -236,10 +239,19 @@ export default function SettingsPage() {
       const res = await fetch('/api/account/delete', { method: 'POST' })
       if (!res.ok) {
         const d = await res.json().catch(() => ({}))
-        alert((en ? 'Error deleting account: ' : 'Erro ao excluir conta: ') + (d.error ?? res.status))
+        // `billing_cancel_failed`: a assinatura não foi cancelada e por isso NADA foi apagado.
+        const detail = d.error === 'billing_cancel_failed'
+          ? (en ? 'We could not cancel your subscription, so nothing was deleted. Please try again in a few minutes.' : d.message)
+          : (d.error ?? res.status)
+        alert((en ? 'Error deleting account: ' : 'Erro ao excluir conta: ') + detail)
         setBusy(null)
         return
       }
+      // A conta não existe mais: nada dela fica neste aparelho.
+      await clearOfflineStorage()
+      try {
+        if ('caches' in window) await Promise.all((await caches.keys()).map(k => caches.delete(k)))
+      } catch { /* sem Cache Storage neste navegador */ }
       window.location.href = '/auth/login'
     } catch {
       alert(en ? 'Network error.' : 'Erro de rede.')

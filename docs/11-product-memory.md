@@ -30,6 +30,16 @@ há Docker para Supabase local nem segundo projeto. Leitura do EOS funciona por
 PostgREST com a chave secreta do `.env.local` — que NÃO executa SQL. DDL hoje só
 pelo SQL Editor do dono ou por um PAT do EOS em variável de ambiente.
 
+**Excluir conta: cobrança primeiro, ou nada (STORE-T03).** Uma conta apagada
+com assinatura viva continua cobrando alguém que já não consegue entrar para
+cancelar, e o webhook reconcilia pelo perfil — que não existiria mais. Por isso
+`cancelBillingBeforeDeletion` roda antes de qualquer `delete`, e falha do
+Stripe aborta a exclusão inteira.
+
+**O logout não apagava o IndexedDB (até 2026-11-01).** O cofre nativo saía com a
+sessão (D-228 §5), mas o banco `eos` do navegador — planos com endereço,
+checklist — ficava no aparelho. Agora `clearOfflineStorage()` roda nos dois.
+
 **O repositório é PÚBLICO (2026-11-01).** Qualquer coisa commitada — inclusive
 em docs e scripts de teste — é publicada. A `main` não tem proteção de branch.
 
