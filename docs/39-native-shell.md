@@ -271,8 +271,9 @@ login, por decisão de produto, para ser lido por um socorrista. Se ainda assim
 incomodar, a correção é trocar `Preferences` por arquivo com
 `isExcludedFromBackup` — trabalho pequeno, mas é decisão sua.
 
-**6.2 A ficha médica no prompt da OpenAI.** Continua pendente da `docs/38` §1.2 e
-agora vale para duas lojas em vez de uma. A recomendação de lá não mudou: uma
+**6.2 A ficha médica no prompt da OpenAI.** ✅ Decidida em 2026-11-01 (D-231 /
+STORE-T01): opção 2, desligada por padrão. Texto histórico abaixo. Continuava pendente da `docs/38` §1.2 e
+valia para duas lojas em vez de uma. A recomendação de lá não mudou: uma
 chave "o Pilot pode ler minha ficha médica", desligada por padrão.
 
 **6.3 Guideline 4.2 da Apple.** Uma casca que carrega um site é rejeitável por

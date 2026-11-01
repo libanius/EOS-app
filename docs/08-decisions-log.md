@@ -4,6 +4,75 @@
 
 ---
 
+## D-231 — Prontidão para a App Store passa à frente da autoria; a IA só lê saúde com consentimento
+
+**Date**: 2026-11-01
+**Status**: DECIDED (direção do dono no pedido de 2026-11-01: "preparar a primeira versão para a App Store"; "é necessário verificar consentimento explícito")
+**Roadmap**: STORE-T01…T08 (nova trilha), antes de AUTHOR-T01
+**Arquivos**: `lib/ai-health-consent.ts`, `app/api/profile/ai-consent/route.ts`,
+rotas de IA (`pilot/chat`, `ai/readiness`, `analyze`, `checklist/generate`,
+`family-members/suggest-tags`), `app/(app)/mais/page.tsx`, `app/(legal)/privacy/page.tsx`,
+`supabase/migrations/20261101000000_ai_health_consent.sql`
+
+**Context**: auditoria de 2026-11-01 sobre o commit `13dd51b` (624 testes
+verdes, lint, tipos e build limpos). A conclusão antiga de que "MOB-T06 só
+depende de credenciais" está incompleta. Há bloqueios de **código e de
+conteúdo** que reprovam a revisão da Apple independentemente de contas e chaves:
+
+1. **Dado de saúde sai para a OpenAI sem consentimento.** Cinco rotas mandam
+   tipo sanguíneo, alergias, medicamentos, condições, notas médicas e
+   mobilidade reduzida para o modelo — quatro de forma automática (Pilot,
+   prontidão, análise, checklist) e uma por gesto (sugestão de tags). A ficha
+   de OUTRAS pessoas do círculo e da casa também entra no prompt de quem
+   pergunta. Nenhuma tela pede permissão, e a política de privacidade não nomeia
+   a OpenAI. A Guideline 5.1.2(i) exige revelar e obter permissão explícita
+   antes de compartilhar dado pessoal com IA de terceiros; 5.1.3 trata dado de
+   saúde como categoria sensível. `docs/38` §1.2 e `docs/39` §6.2 já haviam
+   deixado a decisão aberta e recomendado a opção 2.
+2. A landing anuncia "Vigilância CDC/FDA", "histórico de 30 dias" e "exportar
+   ficha PDF" sem entrega comprovada (2.3 / 3.1 — e cobrança LIVE).
+3. A exclusão de conta não cancela a assinatura Stripe e apaga explicitamente
+   só uma parte das tabelas (5.1.1(v)).
+4. `/.well-known/apple-app-site-association` responde 404.
+5. Next 14.2.35 (fim de vida) acumula avisos críticos do `npm audit`.
+6. A `main` de um repositório **público** está sem proteção de branch.
+
+**Decision**:
+
+1. Abre-se a trilha **STORE** à frente da AUTHOR-T01. A AUTHOR é integridade de
+   rascunho e continua valendo; não é bloqueio de revisão de loja e volta logo
+   depois que a trilha STORE não tiver item de código pendente.
+2. **STORE-T01 — a IA só lê dado de saúde de quem consentiu.** Opção 2 da
+   `docs/38` §1.2, com três regras:
+   - **Desligado por padrão.** Ninguém migra "consentido". `profiles.ai_health_consent_at`
+     nulo = não; preenchido = quando a pessoa disse sim.
+   - **O consentimento é de quem é DONO do dado**, não de quem pergunta. O
+     Pilot de A só leva a ficha de B se B consentiu; um dependente sem conta
+     segue o consentimento de quem cuida dele.
+   - **Fecha na dúvida.** Coluna ausente, leitura falha ou service-role
+     indisponível → ninguém consentiu. O modelo é avisado de que existem
+     fichas não compartilhadas, para que "não sabemos" nunca vire "não tem"
+     (D-174).
+   Só o que vai PARA O PROMPT é filtrado. O motor determinístico local (regras,
+   guard, cobertura) continua lendo a casa inteira — ele não sai do servidor.
+   A sugestão de tags, que só existe para mandar nota médica ao modelo, passa
+   a recusar com `403 ai_health_consent_required` em vez de enviar.
+3. A política de privacidade passa a nomear a OpenAI como subprocessador,
+   dizer o que é enviado e para quê, e que dado de saúde só vai com o
+   consentimento.
+
+**Consequence**: até a migração ser aplicada (decisão do dono — não há
+ambiente de homologação: sem Docker local e sem segundo projeto Supabase), o
+Pilot **deixa de ler ficha médica para todo mundo**. É a direção segura e é
+reversível pela própria pessoa assim que a coluna existir. As demais respostas
+continuam idênticas.
+
+**Not decided here (precisa do dono)**: países de lançamento e, com eles, o
+caminho de cobrança no iOS (IAP vs. link externo, Guideline 3.1.1/3.1.3);
+proteção da `main`; Team ID para o AASA; upgrade major do Next (STORE-T05).
+
+---
+
 ## D-230 — O motor de alerta só avisava quem estava com o app aberto
 
 **Date**: 2026-09-03

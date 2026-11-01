@@ -1,7 +1,7 @@
 # PENDÊNCIAS DO DONO — ações que só você pode executar
 
 > Status geral: **Stripe Live ativo; providers opcionais pendentes**. O código está pronto e no ar (auto-deploy). As pendências restantes são rotação de segredos expostos e providers opcionais de hazard.
-> Última atualização: 2026-08-19.
+> Última atualização: 2026-11-01.
 
 > **Atualização 2026-08-19**: pendências antigas de migration D-135 foram
 > rechecadas por REST service-role e estão resolvidas: `family_plan_roles.for_member_id`
@@ -12,6 +12,41 @@
 
 > **Migrations resolvidas** (2026-07-17), **Stripe Test mode validado ponta-a-ponta** (2026-07-20) e **Stripe Live cutover concluído** (2026-07-21). O que ainda depende do dono: rotacionar segredos expostos durante a operação, chaves opcionais de provider (WeatherKit/Xweather/etc.) e autorizações externas (ShakeAlert/FEMA). O Personal Access Token Supabase usado em 2026-07-17 deve ser **revogado/rotacionado** pelo dono após o uso (Dashboard → Account → Tokens).
 > Histórico: o `supabase` CLI logado neste ambiente pertence a outra conta (só enxerga BrightScaleWeb / bolt-native / Abre-USA); por isso o CLI não alcança o projeto EOS. A via que funcionou foi o PAT + Management API.
+
+---
+
+## ★ 2026-11-01 — Pendências para a primeira versão na App Store (D-231)
+
+Em ordem. Nenhuma exige colar senha ou token em conversa.
+
+1. **Aplicar `supabase/migrations/20261101000000_ai_health_consent.sql`** —
+   Dashboard do projeto **EOS** (`alxurmgpyxjhvnliivbf`) → SQL Editor → colar →
+   Run. Uma coluna, sem backfill. Antes disso a chave "IA e dados de saúde" em
+   `/mais` mostra "indisponível" e o Pilot não lê ficha médica de ninguém.
+   Conferir depois: `profiles?select=ai_health_consent_at&limit=1` → 200.
+2. **Acesso administrativo do agente ao EOS (opcional, recomendado)** — o
+   `supabase` CLI desta máquina está em outra conta. Para o agente rodar SQL
+   de leitura (FKs, cascatas, políticas) sem tocar nos outros projetos: criar
+   um PAT em supabase.com → Account → Access Tokens, e salvar FORA do Git, no
+   seu terminal: `export SUPABASE_ACCESS_TOKEN=...` só na sessão do EOS (ou
+   `supabase login` numa conta que tenha o EOS — isso troca a conta do CLI para
+   os outros projetos também, por isso o PAT por variável é o caminho seguro).
+3. **Vercel CLI** — está deslogado. `vercel login` (conta do projeto
+   `eos-app`) para o agente ler variáveis e logs; nada é publicado sem sua
+   autorização.
+4. **GitHub** — o repositório é **público** e a `main` não tem proteção.
+   Settings → Branches → Add rule `main`: exigir PR e o check `CI`. Instalar o
+   `gh` (`brew install gh`, depois `gh auth login`) se quiser que o agente abra PRs.
+5. **Xcode** — não está instalado (só Command Line Tools). App Store → Xcode →
+   abrir uma vez e aceitar a licença; depois
+   `sudo xcode-select -s /Applications/Xcode.app`. Sem isso não há archive nem
+   TestFlight.
+6. **Apple Developer** (US$ 99/ano — custo novo) → Team ID, App ID
+   `app.eos.family` com Push + Associated Domains, chave `.p8`
+   (`docs/39` §4-5). O Team ID destrava o `apple-app-site-association`, que hoje
+   dá 404.
+7. **Decisão de produto: países de lançamento.** Define a cobrança no iOS
+   (compra dentro do app vs. link para o Stripe) — STORE-T07.
 
 ---
 

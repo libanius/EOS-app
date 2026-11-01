@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server'
 import OpenAI from 'openai'
 import { createClient } from '@/lib/supabase/server'
 import { getHousehold } from '@/lib/household'
+import { healthOwnerOf, loadAiHealthConsent, mayShareHealth } from '@/lib/ai-health-consent'
 import { ensureProfile } from '@/lib/ensure-profile'
 import { getOpenAIModel } from '@/lib/openai'
 import { getRelevantChunks } from '@/lib/knowledge'
@@ -593,6 +594,32 @@ export async function POST(request: NextRequest) {
   // 4. Rules Engine — ALWAYS before LLM
   const rulesResult = RulesEngine.evaluate(ctx)
 
+  /*
+   * O que vai para o PROMPT: a casa como a IA tem permissão de vê-la (D-231).
+   *
+   * As regras são recalculadas sobre essa casa porque o texto delas também é
+   * dado de saúde ("Membro(s) com condição médica"). A prioridade final não
+   * perde nada: `parseStructuredResponse` escala a resposta do modelo pelas regras
+   * COMPLETAS (`rulesResult`). A ficha não autorizada é dita como tal, para o
+   * modelo não ler vazio como "ninguém toma remédio" (D-174).
+   */
+  const consent = await loadAiHealthConsent(household.people.map(healthOwnerOf))
+  const aiCtx: QueryContext = {
+    ...ctx,
+    family: family.map((m, i) =>
+      mayShareHealth(healthOwnerOf(household.people[i]), consent)
+        ? m
+        : {
+            ...m,
+            medical_conditions: [],
+            medications: [],
+            mobility_impaired: false,
+            medical_notes: 'ficha médica não autorizada para a IA — pode haver necessidade',
+          },
+    ),
+  }
+  const aiRules = RulesEngine.evaluate(aiCtx)
+
   // 5. Knowledge retrieval — bias the query toward the chosen agent's craft.
   const agent = body.agent
   const ragQuery = agent ? `${body.scenario} ${AGENT_PERSONAS[agent].ragHints}` : body.scenario
@@ -609,9 +636,9 @@ export async function POST(request: NextRequest) {
     const weatherContext = typeof lat === 'number' && typeof lng === 'number'
       ? await buildWeatherContext(lat, lng)
       : 'Sem localização definida — sem dados de clima. Peça à pessoa para definir a localização na Ficha se o clima for relevante.'
-    systemPrompt = buildAgentPrompt(ctx, agent, knowledgeChunks, weatherContext)
+    systemPrompt = buildAgentPrompt(aiCtx, agent, knowledgeChunks, weatherContext)
   } else {
-    systemPrompt = buildSystemPrompt(ctx, rulesResult, knowledgeChunks)
+    systemPrompt = buildSystemPrompt(aiCtx, aiRules, knowledgeChunks)
   }
 
   // 7. Stream response

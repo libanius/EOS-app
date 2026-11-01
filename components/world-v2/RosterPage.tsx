@@ -137,6 +137,8 @@ const COPY = {
     healthPlaceholder: 'Ex.: diabetes tipo 2, usa insulina; asma leve no inverno',
     healthWhy: 'Escreva com suas palavras. O EOS sugere as etiquetas.',
     suggest: 'Sugerir etiquetas',
+    suggestNeedsConsent: 'A sugestão usa a OpenAI e só funciona se você autorizar a IA a ler dados de saúde.',
+    suggestConsentLink: 'Autorizar em Mais',
     analyzing: 'Lendo…',
     tagsHint: 'Toque para incluir ou remover:',
     medications: 'Medicamentos',
@@ -217,6 +219,8 @@ const COPY = {
     healthPlaceholder: 'e.g. type 2 diabetes, uses insulin; mild asthma in winter',
     healthWhy: 'Write it in your own words. EOS suggests the tags.',
     suggest: 'Suggest tags',
+    suggestNeedsConsent: 'Suggestions use OpenAI and only work if you allow the AI to read health data.',
+    suggestConsentLink: 'Allow in More',
     analyzing: 'Reading…',
     tagsHint: 'Tap to include or remove:',
     medications: 'Medications',
@@ -289,6 +293,8 @@ export default function RosterPage() {
   const [formError, setFormError] = useState<string | null>(null)
   const [suggested, setSuggested] = useState<string[]>([])
   const [suggesting, setSuggesting] = useState(false)
+  // D-231: o servidor recusou por falta de autorização. Para de tentar no blur.
+  const [suggestNeedsConsent, setSuggestNeedsConsent] = useState(false)
   const [medInput, setMedInput] = useState('')
   const [confirmRemove, setConfirmRemove] = useState(false)
   const [scanOpen, setScanOpen] = useState(false)
@@ -451,6 +457,8 @@ export default function RosterPage() {
         const { tags } = (await res.json()) as { tags: string[] }
         setSuggested(tags)
         setForm(f => ({ ...f, medical_conditions: tags }))
+      } else if (res.status === 403) {
+        setSuggestNeedsConsent(true)
       }
     } finally {
       setSuggesting(false)
@@ -826,7 +834,7 @@ export default function RosterPage() {
                   placeholder={c.healthPlaceholder}
                   onChange={e => setForm(f => ({ ...f, medical_notes: e.target.value }))}
                   onBlur={() => {
-                    if (form.medical_notes.trim().length >= 15 && suggested.length === 0) void suggestTags()
+                    if (form.medical_notes.trim().length >= 15 && suggested.length === 0 && !suggestNeedsConsent) void suggestTags()
                   }}
                   disabled={isPending}
                 />
@@ -839,6 +847,11 @@ export default function RosterPage() {
               >
                 {suggesting ? c.analyzing : `✦ ${c.suggest}`}
               </Pill>
+              {suggestNeedsConsent && (
+                <p role="status" className="t-foot ink-3">
+                  {c.suggestNeedsConsent} <Link href="/mais">{c.suggestConsentLink}</Link>
+                </p>
+              )}
 
               {suggested.length > 0 && (
                 <div className="field">

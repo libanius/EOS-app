@@ -64,6 +64,11 @@ memória. Onde há dúvida, ela está escrita como dúvida.
 > Minha recomendação é a **2**. Ela preserva a função para quem quer, e dado de
 > saúde sair do aparelho por padrão é o tipo de coisa que uma família descobre
 > depois e não perdoa.
+>
+> ✅ **Decidido em 2026-11-01 — D-231 / STORE-T01: opção 2.** Chave "IA e dados
+> de saúde" em `/mais`, desligada por padrão; o consentimento é do dono da
+> ficha. No formulário: saúde **compartilhada com terceiros (OpenAI) apenas
+> com permissão do usuário**, finalidade *funcionalidade do app*, opcional.
 
 ### 1.3 Crianças
 

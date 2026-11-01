@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { syncRequirements } from '@/lib/requirements-sync'
 import { ensureProfile } from '@/lib/ensure-profile'
 import { getOpenAIClient, getOpenAIModel } from '@/lib/openai'
+import { healthOwnerOf, householdForAi, loadAiHealthConsent } from '@/lib/ai-health-consent'
 import { enforceRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
 import { getHousehold } from '@/lib/household'
 import { getRelevantChunks } from '@/lib/knowledge'
@@ -81,6 +82,9 @@ export async function POST(req: NextRequest) {
   }
 
   const familySize = Math.max(1, household.size)
+  // `input` vira prompt: saúde só de quem autorizou a IA (D-231). Quem não
+  // autorizou entra como necessidade oculta — e oculta conta como necessidade.
+  const householdIa = householdForAi(household, await loadAiHealthConsent(household.people.map(healthOwnerOf)))
   const input: ChecklistGenerateInput = {
     kitType,
     scenarioType,
@@ -98,8 +102,8 @@ export async function POST(req: NextRequest) {
      * preparar a menos custa a pessoa.
      */
     hasMedicalConditions:
-      household.needsHidden > 0 ||
-      family.some(
+      householdIa.needsHidden > 0 ||
+      householdIa.people.some(
         (m) =>
           m.medicalConditions.length > 0 ||
           m.medications.length > 0 ||

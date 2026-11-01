@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getHousehold } from '@/lib/household'
+import { healthOwnerOf, householdForAi, loadAiHealthConsent } from '@/lib/ai-health-consent'
 import { createClient } from '@/lib/supabase/server'
 import { getOpenAIClient, getOpenAIModel } from '@/lib/openai'
 
@@ -65,7 +66,9 @@ export async function GET() {
     )
   }
 
-  const family = household.people
+  // Tudo daqui para baixo vira prompt: a casa como a IA tem permissão de vê-la (D-231).
+  const householdIa = householdForAi(household, await loadAiHealthConsent(household.people.map(healthOwnerOf)))
+  const family = householdIa.people
   const inventory = {
     water_liters: household.inventory.waterLiters,
     // A engine trabalha em dias; `foodPersonDays` divide pelo tamanho da casa.
@@ -80,7 +83,7 @@ export async function GET() {
   // Necessidade que não podemos ler conta como necessidade: veja o mesmo
   // raciocínio em `checklist/generate`.
   const specialNeedsCount =
-    household.needsHidden +
+    householdIa.needsHidden +
     family.filter(
       (member) =>
         member.isInfant ||
@@ -135,7 +138,7 @@ ${JSON.stringify(
       special_needs_count: specialNeedsCount,
       // Dito ao modelo em vez de escondido: "não sabemos" não é "não tem", e um
       // analista que confunde os dois recomenda menos do que a casa precisa.
-      needs_unknown_for: household.needsHidden,
+      needs_unknown_for: householdIa.needsHidden,
       contributing_inventories: household.inventory.contributors,
       members: family.map(m => ({
         name: m.name,

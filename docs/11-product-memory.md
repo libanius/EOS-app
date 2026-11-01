@@ -1,7 +1,37 @@
 # 11 — Product Memory
 
 > Non-obvious facts that don't belong in code comments but must survive across sessions.
-> Last updated: 2026-09-03
+> Last updated: 2026-11-01
+
+---
+
+**Quem autoriza a IA a ler uma ficha médica é o DONO da ficha, não quem pergunta (D-231).**
+O Pilot de A lê, por desenho, a ficha de B quando B mora junto ou aprovou família
+íntima. Esse consentimento é para A ver — não para a OpenAI ver. Por isso
+`lib/ai-health-consent.ts` resolve o dono de cada linha (`userId ?? dependsOn`)
+e consulta o consentimento DELE. E quem não autorizou é marcado como oculto
+mesmo sem ter nada a esconder: marcar só quem tem condição já revelaria que tem.
+
+**Só o prompt é filtrado; o motor local continua vendo tudo (D-231).** Regras,
+guard e cobertura rodam no servidor e não mandam nada a ninguém. Em `analyze`
+as regras são recalculadas sobre a casa filtrada só para o TEXTO do prompt
+("Membro(s) com condição médica" também é dado de saúde); a prioridade exibida
+continua escalada pelas regras completas. Qualquer rota nova de IA precisa
+passar a casa por `householdForAi` antes de escrever uma linha sobre saúde.
+
+**`42703` é o estado normal enquanto a migração do consentimento não for
+aplicada (2026-11-01).** Verificado no banco real. O código lê isso como
+"ninguém consentiu" e não grava no `error_log`. A tela de `/mais` diz
+"indisponível" em vez de fingir que gravou.
+
+**O `supabase` CLI desta máquina não alcança o EOS, e não há onde homologar
+migração (2026-11-01).** A conta logada vê só BrightScale/Abre-USA/Scanner; não
+há Docker para Supabase local nem segundo projeto. Leitura do EOS funciona por
+PostgREST com a chave secreta do `.env.local` — que NÃO executa SQL. DDL hoje só
+pelo SQL Editor do dono ou por um PAT do EOS em variável de ambiente.
+
+**O repositório é PÚBLICO (2026-11-01).** Qualquer coisa commitada — inclusive
+em docs e scripts de teste — é publicada. A `main` não tem proteção de branch.
 
 ---
 

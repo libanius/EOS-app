@@ -9,6 +9,7 @@ import { evaluateGuard } from '@/lib/pilot-guard'
 import { getRelevantChunks } from '@/lib/knowledge'
 import { formatGallons, GALLON_SHORT } from '@/lib/units'
 import { buildPilotCircleRecord, buildPilotFamilyRecord, type CircleVisibleMemberRecord } from '@/lib/pilot-family-record'
+import { healthOwnerOf, householdForAi, loadAiHealthConsent, mayShareHealth, redactProfileHealthForAi } from '@/lib/ai-health-consent'
 
 /**
  * POST /api/pilot/chat — the Pilot's conversational layer.
@@ -251,6 +252,9 @@ async function loadPilotCircleRecord(userId: string, pt: boolean) {
     .select('id, name, location, blood_type, allergies, emergency_contact_name, emergency_contact_phone, medical_notes, medications')
     .in('id', profileIds)
 
+  // Compartilhar no círculo não autoriza a IA: quem decide é o dono da ficha (D-231).
+  const consent = await loadAiHealthConsent(profileIds, admin)
+
   const circleNameById = new Map((circles ?? []).map(c => [c.id as string, (c.name as string | null) ?? '']))
   const profileById = new Map<string, CircleProfile>()
   for (const profile of profiles ?? []) profileById.set(profile.id as string, profile as CircleProfile)
@@ -267,6 +271,8 @@ async function loadPilotCircleRecord(userId: string, pt: boolean) {
       const isMe = member.user_id === userId
       const familyApproved = hasFamilyAccess(member, userId)
       const medicalShared = familyApproved
+      const medicalWithheld = medicalShared && !mayShareHealth(member.user_id, consent)
+      const medicalForAi = medicalShared && !medicalWithheld
       const contactShared = familyApproved
       const locationShared = isMe || fields.includes('location')
 
@@ -277,13 +283,14 @@ async function loadPilotCircleRecord(userId: string, pt: boolean) {
         isMe,
         familyAccessApproved: familyApproved && !isMe,
         medicalShared,
+        medicalWithheld,
         contactShared,
         locationShared,
         location: locationShared ? (profile?.location ?? null) : null,
-        blood_type: medicalShared ? (profile?.blood_type ?? null) : null,
-        allergies: medicalShared ? (profile?.allergies ?? null) : null,
-        medications: medicalShared ? (profile?.medications ?? null) : null,
-        medical_notes: medicalShared ? (profile?.medical_notes ?? null) : null,
+        blood_type: medicalForAi ? (profile?.blood_type ?? null) : null,
+        allergies: medicalForAi ? (profile?.allergies ?? null) : null,
+        medications: medicalForAi ? (profile?.medications ?? null) : null,
+        medical_notes: medicalForAi ? (profile?.medical_notes ?? null) : null,
         emergency_contact_name: contactShared ? (profile?.emergency_contact_name ?? null) : null,
         emergency_contact_phone: contactShared ? (profile?.emergency_contact_phone ?? null) : null,
       }
@@ -667,9 +674,17 @@ export async function POST(request: NextRequest) {
       getHousehold(user.id),
       loadPilotCircleRecord(user.id, pt),
     ])
+    /*
+     * O prompt vê a casa como a IA tem permissão de vê-la (D-231). `casa`, a
+     * inteira, continua indo para o guard — ele é local e não sai do servidor.
+     */
+    const consent = await loadAiHealthConsent([user.id, ...casaLida.people.map(healthOwnerOf)])
+    const casaIa = householdForAi(casaLida, consent)
+    const fichaIa = redactProfileHealthForAi(profile ?? null, user.id, consent)
     familyRecord = buildPilotFamilyRecord({
-      profile: profile ?? null,
-      members: casaLida.people.map(p => ({
+      profile: fichaIa.profile,
+      profileHealthWithheld: fichaIa.withheld,
+      members: casaIa.people.map(p => ({
         name: p.name,
         age: p.age,
         medical_conditions: p.medicalConditions,
@@ -682,6 +697,7 @@ export async function POST(request: NextRequest) {
         cared_for_by: p.dependsOn
           ? casaLida.people.find(o => o.userId === p.dependsOn)?.name ?? null
           : null,
+        health_withheld: !mayShareHealth(healthOwnerOf(p), consent),
       })),
       pt,
     })
@@ -699,13 +715,13 @@ export async function POST(request: NextRequest) {
         ? `\n(Mora nesta casa e ainda NÃO está no EOS: ${casa.pendingNames.join(', ')}. Essas pessoas não recebem alerta e não aparecem no mapa. Vale citar isso quando for relevante para o que foi perguntado — sem repetir em toda resposta.)`
         : `\n(Lives in this household and is NOT in EOS yet: ${casa.pendingNames.join(', ')}. They receive no alerts and do not appear on the map. Worth mentioning when relevant to the question — not in every answer.)`
     }
-    if (casa.needsHidden > 0) {
+    if (casaIa.needsHidden > 0) {
       // O Pilot precisa saber a diferença entre "ninguém precisa" e "não posso
       // ver". Sem isto ele responderia com confiança sobre uma casa que não
       // conhece — que é o pior jeito de responder sobre remédio.
       familyRecord += pt
-        ? `\n(${casa.needsHidden} pessoa(s) da casa não compartilharam a ficha: pode haver necessidade que não aparece aqui.)`
-        : `\n(${casa.needsHidden} household member(s) have not shared their record: needs may exist that are not listed here.)`
+        ? `\n(${casaIa.needsHidden} pessoa(s) da casa não compartilharam a ficha ou não a autorizaram para a IA: pode haver necessidade que não aparece aqui.)`
+        : `\n(${casaIa.needsHidden} household member(s) have not shared their record or not authorised it for AI: needs may exist that are not listed here.)`
     }
     circleRecord = visibleCircleRecord
   } catch {

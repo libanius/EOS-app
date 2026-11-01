@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getOpenAIClient, getOpenAIModel } from '@/lib/openai'
+import { loadAiHealthConsent } from '@/lib/ai-health-consent'
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
@@ -16,6 +17,16 @@ export async function POST(req: NextRequest) {
 
   const notes = body.medical_notes?.trim() ?? ''
   if (!notes) return NextResponse.json({ tags: [] })
+
+  /*
+   * Esta rota existe só para mandar nota médica ao modelo (D-231). Sem a
+   * autorização de quem preenche a ficha, ela recusa — não envia "só desta
+   * vez". O dependente segue quem cuida dele, e quem cuida é quem está aqui.
+   */
+  const consent = await loadAiHealthConsent([user.id])
+  if (!consent.has(user.id)) {
+    return NextResponse.json({ error: 'ai_health_consent_required', tags: [] }, { status: 403 })
+  }
 
   try {
     const openai = getOpenAIClient()

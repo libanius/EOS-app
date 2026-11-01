@@ -28,6 +28,8 @@ type FamilyMemberFicha = {
   has_account?: boolean | null
   /** Quem responde por esta pessoa, quando ela não tem conta. */
   cared_for_by?: string | null
+  /** O dono da ficha não autorizou a IA a ler saúde (D-231). Não é "não consta". */
+  health_withheld?: boolean | null
 }
 
 export type CircleVisibleMemberRecord = {
@@ -37,6 +39,8 @@ export type CircleVisibleMemberRecord = {
   isMe?: boolean | null
   familyAccessApproved?: boolean | null
   medicalShared: boolean
+  /** Compartilhada no círculo, mas o dono não autorizou a IA (D-231). */
+  medicalWithheld?: boolean | null
   contactShared: boolean
   locationShared: boolean
   location?: string | null
@@ -58,14 +62,26 @@ const text = (value: string | null | undefined, empty: string) => {
   return clean || empty
 }
 
+/*
+ * "Não consta" e "não autorizado" são frases opostas (D-174, D-231).
+ *
+ * Uma ficha que o dono não liberou para a IA chega aqui vazia — e se o rótulo
+ * fosse o de campo vazio, o modelo concluiria que a pessoa não toma remédio
+ * nenhum. O rótulo diz o motivo, para que ele trate como desconhecido.
+ */
+const withheldLabel = (pt: boolean) =>
+  pt ? 'não autorizada para a IA (pode haver necessidade)' : 'not authorised for AI (needs may exist)'
+
 export function buildPilotFamilyRecord({
   profile,
   members,
   pt,
+  profileHealthWithheld = false,
 }: {
   profile: ProfileFicha | null
   members: FamilyMemberFicha[]
   pt: boolean
+  profileHealthWithheld?: boolean
 }) {
   const empty = pt ? 'não consta' : 'not recorded'
   const lines: string[] = []
@@ -73,10 +89,14 @@ export function buildPilotFamilyRecord({
   lines.push(pt ? 'FICHA MASTER DO USUÁRIO:' : 'USER MASTER RECORD:')
   lines.push(pt ? `- Nome: ${text(profile?.name, empty)}` : `- Name: ${text(profile?.name, empty)}`)
   lines.push(pt ? `- Local/endereço: ${text(profile?.location, empty)}` : `- Location/address: ${text(profile?.location, empty)}`)
-  lines.push(pt ? `- Tipo sanguíneo: ${text(profile?.blood_type, empty)}` : `- Blood type: ${text(profile?.blood_type, empty)}`)
-  lines.push(pt ? `- Alergias: ${list(profile?.allergies, empty)}` : `- Allergies: ${list(profile?.allergies, empty)}`)
-  lines.push(pt ? `- Medicamentos: ${list(profile?.medications, empty)}` : `- Medications: ${list(profile?.medications, empty)}`)
-  lines.push(pt ? `- Notas médicas: ${text(profile?.medical_notes, empty)}` : `- Medical notes: ${text(profile?.medical_notes, empty)}`)
+  if (profileHealthWithheld) {
+    lines.push(pt ? `- Ficha médica: ${withheldLabel(pt)}` : `- Medical record: ${withheldLabel(pt)}`)
+  } else {
+    lines.push(pt ? `- Tipo sanguíneo: ${text(profile?.blood_type, empty)}` : `- Blood type: ${text(profile?.blood_type, empty)}`)
+    lines.push(pt ? `- Alergias: ${list(profile?.allergies, empty)}` : `- Allergies: ${list(profile?.allergies, empty)}`)
+    lines.push(pt ? `- Medicamentos: ${list(profile?.medications, empty)}` : `- Medications: ${list(profile?.medications, empty)}`)
+    lines.push(pt ? `- Notas médicas: ${text(profile?.medical_notes, empty)}` : `- Medical notes: ${text(profile?.medical_notes, empty)}`)
+  }
   lines.push(
     pt
       ? `- Contato de emergência: ${text(profile?.emergency_contact_name, empty)} · ${text(profile?.emergency_contact_phone, empty)}`
@@ -124,6 +144,14 @@ export function buildPilotFamilyRecord({
       member.is_infant ? (pt ? 'bebê' : 'infant') : '',
       member.mobility_impaired ? (pt ? 'mobilidade reduzida' : 'reduced mobility') : '',
     ].filter(Boolean)
+    if (member.health_withheld) {
+      lines.push(
+        pt
+          ? `- ${text(member.name, empty)}: idade ${member.age ?? empty}; ficha médica ${withheldLabel(pt)}${flags.length ? `; ${flags.join(', ')}` : ''}.`
+          : `- ${text(member.name, empty)}: age ${member.age ?? empty}; medical record ${withheldLabel(pt)}${flags.length ? `; ${flags.join(', ')}` : ''}.`,
+      )
+      return
+    }
     lines.push(
       pt
         ? `- ${text(member.name, empty)}: idade ${member.age ?? empty}; condições ${list(member.medical_conditions, empty)}; medicamentos ${list(member.medications, empty)}; notas ${text(member.medical_notes, empty)}${flags.length ? `; ${flags.join(', ')}` : ''}.`
@@ -166,7 +194,11 @@ export function buildPilotCircleRecord({
     const familyAccess = member.familyAccessApproved
       ? (pt ? ' · Família íntima aprovada' : ' · intimate family approved')
       : ''
-    const medical = member.medicalShared
+    const medical = member.medicalShared && member.medicalWithheld
+      ? pt
+        ? `ficha médica: ${withheldLabel(pt)}`
+        : `medical record: ${withheldLabel(pt)}`
+      : member.medicalShared
       ? pt
         ? `ficha médica: tipo sanguíneo ${text(member.blood_type, empty)}; alergias ${list(member.allergies, empty)}; medicamentos ${list(member.medications, empty)}; notas ${text(member.medical_notes, empty)}`
         : `medical record: blood type ${text(member.blood_type, empty)}; allergies ${list(member.allergies, empty)}; medications ${list(member.medications, empty)}; notes ${text(member.medical_notes, empty)}`

@@ -418,6 +418,8 @@ export default function SettingsPage() {
           </div>
         </div>
 
+        <AiHealthConsentCard en={en} />
+
         {/* Plan */}
         <div style={{ ...styles.card, marginTop: 20 }}>
           <div style={styles.planHeader}>
@@ -694,6 +696,98 @@ function urlBase64ToUint8Array(base64String: string) {
   const output = new Uint8Array(rawData.length)
   for (let i = 0; i < rawData.length; i += 1) output[i] = rawData.charCodeAt(i)
   return output
+}
+
+// ─── IA e dados de saúde (STORE-T01 · D-231) ─────────────────────────────────
+
+type AiConsentState = { available: boolean; consented: boolean; consentedAt: string | null }
+
+/**
+ * A chave que decide se a ficha médica vai para a OpenAI.
+ *
+ * Desligada por padrão, e a tela diz em uma frase o que muda nos dois estados —
+ * consentimento que a pessoa não entende não é consentimento. O texto nomeia o
+ * terceiro e lista os campos; "dados para melhorar sua experiência" não diria
+ * nada a ninguém.
+ */
+function AiHealthConsentCard({ en }: { en: boolean }) {
+  const [state, setState] = useState<AiConsentState | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    fetch('/api/profile/ai-consent', { cache: 'no-store' })
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => setState(d ? (d as AiConsentState) : { available: false, consented: false, consentedAt: null }))
+      .catch(() => setState({ available: false, consented: false, consentedAt: null }))
+  }, [])
+
+  const toggle = async () => {
+    if (!state?.available) return
+    setBusy(true); setError('')
+    try {
+      const res = await fetch('/api/profile/ai-consent', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ consent: !state.consented }),
+      })
+      const d = await res.json().catch(() => ({}))
+      if (res.ok) setState(d as AiConsentState)
+      else setError(en ? 'Could not save. Nothing changed — try again.' : 'Não foi possível gravar. Nada mudou — tente de novo.')
+    } catch {
+      setError(en ? 'Network error. Nothing changed.' : 'Erro de rede. Nada mudou.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const on = state?.consented === true
+  const color = on ? '#22c55e' : '#71717a'
+
+  return (
+    <div style={{ ...styles.card, marginTop: 20 }}>
+      <div style={styles.planHeader}>
+        <div>
+          <h2 style={styles.sectionTitle}>{en ? 'AI and health data' : 'IA e dados de saúde'}</h2>
+          <p style={styles.help}>
+            {en
+              ? 'The Pilot and the analyses use OpenAI, a third-party service, to write answers. With this on, EOS sends OpenAI your blood type, allergies, medications, conditions and medical notes — and those of the dependants you added — to tailor the answers. With it off, none of that is sent and the AI is told there is data it cannot see. Your emergency card and what you share with your circle do not change.'
+              : 'O Pilot e as análises usam a OpenAI, um serviço de terceiros, para escrever as respostas. Com esta opção ligada, o EOS envia à OpenAI seu tipo sanguíneo, alergias, medicamentos, condições e notas médicas — e os dos dependentes que você cadastrou — para personalizar as respostas. Desligada, nada disso é enviado e a IA é avisada de que existem dados que ela não vê. Sua ficha de emergência e o que você compartilha com o círculo não mudam.'}
+          </p>
+        </div>
+        <span style={{ ...styles.planBadge, color, borderColor: color + '44', background: color + '18' }}>
+          {state === null ? '…' : on ? (en ? 'Allowed' : 'Autorizado') : (en ? 'Not allowed' : 'Não autorizado')}
+        </span>
+      </div>
+
+      {state && !state.available ? (
+        <p role="status" style={{ margin: 0, color: '#f59e0b', fontSize: 13, lineHeight: 1.45 }}>
+          {en
+            ? 'This option is not available on the server yet. Until it is, no health data is sent to the AI.'
+            : 'Esta opção ainda não está disponível no servidor. Enquanto isso, nenhum dado de saúde é enviado à IA.'}
+        </p>
+      ) : (
+        <button
+          type="button"
+          role="switch"
+          aria-checked={on}
+          onClick={toggle}
+          disabled={busy || state === null}
+          style={{ ...styles.upgradeBtn, ...(on ? { background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.2)', color: '#f5f5f5' } : {}) }}
+        >
+          {busy
+            ? (en ? 'Saving…' : 'Gravando…')
+            : on
+              ? (en ? 'Withdraw permission' : 'Retirar autorização')
+              : (en ? 'Allow the AI to read my health data' : 'Autorizar a IA a ler minha saúde')}
+        </button>
+      )}
+      {error && <p role="alert" style={{ margin: '10px 0 0', color: '#ef4444', fontSize: 13 }}>{error}</p>}
+      <Link href="/privacy" style={{ display: 'inline-block', marginTop: 12, color: '#a1a1aa', fontSize: 13 }}>
+        {en ? 'Details in the Privacy Policy' : 'Detalhes na Política de Privacidade'}
+      </Link>
+    </div>
+  )
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────

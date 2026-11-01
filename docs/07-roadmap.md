@@ -266,6 +266,26 @@ permite cache.*
 
 ---
 
+## Prontidão para a App Store (STORE)
+
+*Goal: o que reprova a revisão da Apple independentemente de contas e chaves.*
+
+> Decisão: **D-231** (2026-11-01). Vem **antes** da AUTHOR-T01. Auditoria do
+> commit `13dd51b`. Separa o que é código (agente) do que é conta/decisão (dono).
+
+| Task ID | Task | Status | Notes |
+|---|---|---|---|
+| STORE-T01 | IA só lê dado de saúde com consentimento explícito | ✅ COMPLETE (código) | 2026-11-01 — D-231. `profiles.ai_health_consent_at`, desligado por padrão; consentimento do DONO do dado (dependente segue o cuidador); fecha na dúvida. Filtro único em `lib/ai-health-consent.ts` aplicado a `pilot/chat` (ficha própria, casa e círculo), `ai/readiness`, `analyze` (regras do prompt recalculadas; prioridade final segue as regras completas), `checklist/generate` e `suggest-tags` (403, e o disparo automático no blur para). Cartão "IA e dados de saúde" em `/mais`; `/api/profile/ai-consent` GET/PUT; política de privacidade nomeia a OpenAI, remove a Anthropic (nunca usada, D-011) e declara a ficha pública por QR. 13 testes novos com controle negativo (filtro desligado → 5 falhas); 637/637. **Verificado contra o banco real (só leitura)**: a coluna ausente responde `42703`, que o código trata como "ninguém consentiu". **Pendência do dono: aplicar `20261101000000_ai_health_consent.sql`** — até lá a chave mostra "indisponível" e nenhum dado de saúde vai à IA. Tela logada não exercitada em navegador nem no iPhone. |
+| STORE-T02 | Landing para de prometer o que não entrega | PENDING | "Vigilância CDC/FDA", "histórico de 30 dias", "exportar ficha PDF" — ainda no ar em 2026-11-01. Alinhar com `lib/feature-gates.ts`/`/mais` (D-226 já marcou `soon` lá). |
+| STORE-T03 | Exclusão de conta completa | PENDING | Cancelar assinatura Stripe antes de apagar; inventário de tabelas com dado do usuário vs. `ON DELETE CASCADE` (exige SQL — sem PAT do EOS hoje); limpar cofre/IndexedDB/caches no cliente. Testar só com conta descartável. |
+| STORE-T04 | `apple-app-site-association` | BLOCKED — DONO | Responde 404. Precisa do Team ID (docs/39 §5.1). Rota dinâmica por env, no mesmo padrão do `assetlinks.json`, pode ser preparada antes. |
+| STORE-T05 | Next 14.2.35 → 15.5.x (avisos críticos do audit) | PENDING | Major: APIs assíncronas (`cookies()`/`headers()`/`params`). Sentry 9.47.1→9.47.2 é patch, sem túnel configurado (aviso não se aplica). MapLibre 5→6 é major; o código não usa `setHTML` (aviso não se aplica hoje). Nunca `audit fix --force`. |
+| STORE-T06 | Proteção da `main` + CI obrigatório | BLOCKED — DONO | Repositório público, `main` sem proteção (API do GitHub, 2026-11-01). Ação de conta. |
+| STORE-T07 | Cobrança no iOS | BLOCKED — DONO | Depende dos países de lançamento (3.1.1 / 3.1.3 / link externo nos EUA). Stripe LIVE no web segue intacto. |
+| STORE-T08 | Prova em aparelho | BLOCKED — DONO | Sem Xcode instalado nesta máquina (só Command Line Tools), sem conta Apple Developer, sem `APNS_*`. Nada de APNs, archive ou TestFlight está comprovado. |
+
+---
+
 ## Autoria do Plano — integridade do rascunho (PLAN-AUTHOR)
 
 *Goal: fazer a superfície de autoria cumprir a tese da própria feature — o plano
