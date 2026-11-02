@@ -14,7 +14,7 @@ import {
   type PilotMode, type PilotSource,
 } from '@/lib/pilot-voice'
 import { buildPilotCircleRecord, buildPilotFamilyRecord, type CircleVisibleMemberRecord } from '@/lib/pilot-family-record'
-import { healthOwnerOf, householdForAi, loadAiHealthConsent, mayShareHealth, redactProfileHealthForAi } from '@/lib/ai-health-consent'
+import { healthOwnerOf, householdForAi, householdSummaryForAi, loadAiHealthConsent, mayShareHealth, redactProfileHealthForAi } from '@/lib/ai-health-consent'
 
 /**
  * POST /api/pilot/chat — the Pilot's conversational layer.
@@ -676,6 +676,9 @@ export async function POST(request: NextRequest) {
     inventory: { waterLiters: 0, foodPersonDays: 0, fuelLiters: 0, batteryPercent: 0, hasMedicalKit: false, hasCommunicationDevice: false, contributors: 0 },
     reachable: [], needsHidden: 0, pendingNames: [], duplicates: [], known: false,
   }
+  // A mesma casa com a saúde filtrada pelo consentimento (D-231). É ela que
+  // vira texto no prompt; `casa` fica para o guard e as contas locais.
+  let casaPrompt = casa
   try {
     const [{ data: profile }, casaLida, visibleCircleRecord] = await Promise.all([
       supabase
@@ -717,6 +720,7 @@ export async function POST(request: NextRequest) {
       pt,
     })
     casa = casaLida
+    casaPrompt = casaIa
     /*
      * Quem mora na casa e ainda não está no EOS (D-130).
      *
@@ -777,14 +781,8 @@ export async function POST(request: NextRequest) {
    * reservas. O que ele não decide mais é quem é a família: isso exige ler
    * conta de outra pessoa, e só o servidor pode.
    */
-  const bebes = casa.people.some(p => p.isInfant)
-  const comCondicao = casa.people.some(p => p.medicalConditions.length > 0 || p.medications.length > 0)
-  const semMobilidade = casa.people.filter(p => p.mobilityImpaired).length
-
   const household = casa.known
-    ? (pt
-        ? `Pessoas: ${casa.size}. Bebês: ${bebes ? 'sim' : 'não'}. Condições médicas: ${comCondicao ? 'sim' : 'não'}. Mobilidade reduzida: ${semMobilidade}.`
-        : `People: ${casa.size}. Infants: ${bebes ? 'yes' : 'no'}. Medical conditions: ${comCondicao ? 'yes' : 'no'}. Mobility impaired: ${semMobilidade}.`)
+    ? householdSummaryForAi(casaPrompt, pt)
     // Sem a casa montada, o honesto é dizer que não sabe — e NÃO repetir o
     // palpite do cliente, que é o que produzia a contradição.
     : (pt

@@ -74,6 +74,26 @@ export function householdForAi(household: Household, consented: ReadonlySet<stri
   }
 }
 
+/**
+ * A linha-resumo da casa no prompt. Recebe a casa JÁ filtrada por
+ * `householdForAi`: o agregado ("tem condição médica: sim") também é dado de
+ * saúde e não sai sem consentimento.
+ *
+ * Com ficha oculta e nada visível, a resposta é "não informado", não "não" —
+ * a IA não pode transformar "não sabemos" em "não tem" (D-174).
+ */
+export function householdSummaryForAi(household: Household, pt: boolean): string {
+  const bebes = household.people.some(p => p.isInfant)
+  const comCondicao = household.people.some(p => p.medicalConditions.length > 0 || p.medications.length > 0)
+  const semMobilidade = household.people.filter(p => p.mobilityImpaired).length
+  const oculto = household.needsHidden > 0
+  const condicao = comCondicao ? (pt ? 'sim' : 'yes') : oculto ? (pt ? 'não informado' : 'not disclosed') : (pt ? 'não' : 'no')
+  const mobilidade = oculto ? `${semMobilidade}${pt ? ' (ou mais: há ficha não informada)' : ' (or more: some records not disclosed)'}` : String(semMobilidade)
+  return pt
+    ? `Pessoas: ${household.size}. Bebês: ${bebes ? 'sim' : 'não'}. Condições médicas: ${condicao}. Mobilidade reduzida: ${mobilidade}.`
+    : `People: ${household.size}. Infants: ${bebes ? 'yes' : 'no'}. Medical conditions: ${condicao}. Mobility impaired: ${mobilidade}.`
+}
+
 type HealthFields = {
   blood_type?: string | null
   allergies?: string[] | null

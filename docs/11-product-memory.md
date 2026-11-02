@@ -12,6 +12,8 @@ O Pilot de A lê, por desenho, a ficha de B quando B mora junto ou aprovou famí
 e consulta o consentimento DELE. E quem não autorizou é marcado como oculto
 mesmo sem ter nada a esconder: marcar só quem tem condição já revelaria que tem.
 
+**Agregado também é saúde (D-231, 2026-11-02).** "Condições médicas: sim" ou a contagem de mobilidade reduzida revelam saúde tanto quanto a lista. Toda linha de prompt sobre a casa sai de `householdForAi`, nunca de `casa` — e com ficha oculta o agregado é "não informado", não "não".
+
 **Só o prompt é filtrado; o motor local continua vendo tudo (D-231).** Regras,
 guard e cobertura rodam no servidor e não mandam nada a ninguém. Em `analyze`
 as regras são recalculadas sobre a casa filtrada só para o TEXTO do prompt

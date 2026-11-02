@@ -6,6 +6,7 @@ import type { Household, HouseholdPerson } from '../household'
 import {
   healthOwnerOf,
   householdForAi,
+  householdSummaryForAi,
   loadAiHealthConsent,
   redactPersonForAi,
   redactProfileHealthForAi,
@@ -112,6 +113,29 @@ describe('redação para a IA', () => {
     expect(fora.withheld).toBe(true)
     expect(fora.profile).toEqual({ name: 'Paulo', location: 'Parkland', blood_type: null, allergies: null, medications: null, medical_notes: null })
     expect(redactProfileHealthForAi(ficha, 'a', new Set(['a']))).toEqual({ profile: ficha, withheld: false })
+  })
+})
+
+describe('linha-resumo da casa no prompt', () => {
+  const casa = household([person({ userId: 'a', isMe: true }), person({ userId: 'b', isInfant: true })])
+
+  it('sem consentimento, nem o agregado de saúde sai — e não vira "não"', () => {
+    const linha = householdSummaryForAi(householdForAi(casa, new Set()), true)
+    expect(linha).toContain('Condições médicas: não informado')
+    expect(linha).not.toContain('Condições médicas: sim')
+    expect(linha).not.toMatch(/Mobilidade reduzida: 2/)
+    // O que não é saúde continua: tamanho e bebê mudam o plano.
+    expect(linha).toContain('Pessoas: 2. Bebês: sim.')
+  })
+
+  it('com consentimento de todos, o resumo é o real', () => {
+    expect(householdSummaryForAi(householdForAi(casa, new Set(['a', 'b'])), false))
+      .toBe('People: 2. Infants: yes. Medical conditions: yes. Mobility impaired: 2.')
+  })
+
+  it('casa sem condição e sem ficha oculta diz "não"', () => {
+    const limpa = household([person({ userId: 'a', medicalConditions: [], medications: [], mobilityImpaired: false })])
+    expect(householdSummaryForAi(limpa, true)).toContain('Condições médicas: não. Mobilidade reduzida: 0.')
   })
 })
 
