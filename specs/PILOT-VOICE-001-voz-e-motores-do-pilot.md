@@ -398,3 +398,8 @@ critérios de §7. Achado da implementação (Regra 4): o limite de uso da rota 
 verificado antes de ler a mensagem, então uma conta no limite diário não chegaria
 ao cartão de crise do servidor. Isso está coberto porque o cliente detecta a
 crise antes de chamar a rede; o cartão nunca depende da rota.
+
+**Decisão do dono (2026-11-02):** o VOICE-T01 foi para produção (PR #7) antes do
+VOICE-T02. O conjunto de avaliação segue como próxima fase e, ao existir, roda
+contra o que já está em produção; qualquer reprovação em pergunta de piso de
+segurança vira correção imediata.
