@@ -398,14 +398,11 @@ provenance.
 
 ---
 
-## Migration written, NOT YET APPLIED
+## Preparedness requirements & kits (PREP-T05 / D-161) — applied
 
-> ⚠️ **`kits` e `requirements` ainda não existem no banco de produção.**
-> `supabase/migrations/20260813120000_preparedness_requirements_kits.sql`
-> (PREP-T05 / D-161) está escrita e commitada; **o dono aplica no SQL Editor**.
-> Verificado em 2026-08-13: as duas respondem 404.
-> Nada quebra sem ela — nenhum código lê essas tabelas ainda.
-> **Ao aplicar, mova as duas para "Core Tables" e apague este bloco.**
+> ✅ **`kits` e `requirements` existem no banco de produção.**
+> Migração `supabase/migrations/20260813120000_preparedness_requirements_kits.sql`.
+> Verificado pelo dono no SQL Editor em **2026-11-02** (`to_regclass` = true).
 
 | Table | Shape | Purpose |
 |---|---|---|

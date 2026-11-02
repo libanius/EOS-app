@@ -1,7 +1,17 @@
 # PENDÊNCIAS DO DONO — ações que só você pode executar
 
 > Status geral: **Stripe Live ativo; providers opcionais pendentes**. O código está pronto e no ar (auto-deploy). As pendências restantes são rotação de segredos expostos e providers opcionais de hazard.
-> Última atualização: 2026-08-19.
+> Última atualização: 2026-11-02.
+
+> **Verificação do banco 2026-11-02 (SQL Editor, pelo dono):** `push_devices`,
+> `kits`, `requirements`, `pilot_events`, `notification_delivery_log` e
+> `plan_sessions` existem; 16 perfis para 16 contas (nenhum órfão); o job
+> pg_cron do hazard-scan está agendado. **Nenhuma migração pendente.**
+>
+> **O que continua pendente com o dono, em ordem:**
+> 1. Rotacionar segredos expostos (Vercel, Supabase PAT, Stripe Live, MapTiler) — repositório é público.
+> 2. Credenciais de push nativo `APNS_*` e `FCM_SERVICE_ACCOUNT_JSON` (`npm run setup:push`).
+> 3. MOB-T06: contas Apple/Google, chave .p8, keystore e imagens das lojas (`docs/39` §5).
 
 > **Atualização 2026-08-19**: pendências antigas de migration D-135 foram
 > rechecadas por REST service-role e estão resolvidas: `family_plan_roles.for_member_id`
