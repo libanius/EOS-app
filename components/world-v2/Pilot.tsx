@@ -39,6 +39,7 @@ import {
   type PilotVerdict,
 } from './pilot-engine'
 import type { PilotDestination, PilotMemoryProposal, PilotTask } from '@/app/api/pilot/chat/route'
+import { crisisCard, detectCrisis, PILOT_HISTORY, type PilotSource } from '@/lib/pilot-voice'
 import { bearing, compassPoint, distanceKm } from '@/lib/world/shelters'
 import { directionsUrl, formatDistance } from '@/lib/world/navigation'
 
@@ -62,6 +63,7 @@ type Message = {
   tasks?: PilotTask[]
   memory?: PilotMemoryProposal[]
   destinations?: PilotDestination[]
+  sources?: PilotSource[]
   caveat?: string
 }
 
@@ -368,6 +370,18 @@ export default function Pilot({
     setDraft('')
     push({ id: nextId(), role: 'user', text: question })
 
+    /*
+     * PILOT-VOICE-001 regra 9 / E20: o cartão de crise não depende de rede,
+     * de modelo nem de cota. Roda aqui, antes de tudo, com a mesma detecção
+     * do servidor.
+     */
+    if (detectCrisis(question)) {
+      const card = crisisCard(pt)
+      push({ id: nextId(), role: 'pilot', kind: 'chat', text: card.reply, sources: card.sources })
+      scrollToEnd()
+      return
+    }
+
     if (!online) {
       // A degradação honesta também é métrica: quantas perguntas o produto
       // recebe sem rede diz se a promessa "responde quando a rede caiu" está
@@ -382,7 +396,7 @@ export default function Pilot({
     setBusy(true)
     const history = [...messages, { id: 'x', role: 'user' as const, text: question }]
       .filter(m => m.role === 'user' || m.text)
-      .slice(-8)
+      .slice(-PILOT_HISTORY)
       .map(m => ({ role: m.role === 'user' ? ('user' as const) : ('assistant' as const), content: m.text }))
 
     try {
@@ -550,7 +564,7 @@ export default function Pilot({
         }
         if (evento === 'done') {
           const d = dados as unknown as {
-            reply?: string; tasks?: PilotTask[]; memory?: PilotMemoryProposal[]; destinations?: PilotDestination[]
+            reply?: string; tasks?: PilotTask[]; memory?: PilotMemoryProposal[]; destinations?: PilotDestination[]; sources?: PilotSource[]
           }
           replace(idResposta, m => ({
             ...m,
@@ -558,6 +572,7 @@ export default function Pilot({
             tasks: d.tasks?.length ? d.tasks : undefined,
             memory: d.memory?.length ? d.memory : undefined,
             destinations: d.destinations?.length ? d.destinations : undefined,
+            sources: d.sources?.length ? d.sources : undefined,
           }))
           /*
            * Confiança (spec §19): a resposta chegou, e depois de quanto tempo.
@@ -721,6 +736,12 @@ export default function Pilot({
                     )}
 
                     {message.caveat && <p className="chat-caveat t-foot">{message.caveat}</p>}
+
+                    {message.sources && message.sources.length > 0 && (
+                      <p className="chat-sources t-foot ink-3">
+                        {(pt ? 'Fonte: ' : 'Source: ') + message.sources.map(s => s.label).join(' · ')}
+                      </p>
+                    )}
 
                     {message.tasks && (
                       <div className="chat-tasks">
