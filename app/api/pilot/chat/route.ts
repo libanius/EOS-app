@@ -8,6 +8,11 @@ import { getHousehold, householdDays } from '@/lib/household'
 import { evaluateGuard } from '@/lib/pilot-guard'
 import { getRelevantChunks } from '@/lib/knowledge'
 import { formatGallons, GALLON_SHORT } from '@/lib/units'
+import {
+  crisisCard, detectCrisis, detectDistress, normalizeMode, normalizeSources,
+  PILOT_HISTORY, toneLine, voiceBlock,
+  type PilotMode, type PilotSource,
+} from '@/lib/pilot-voice'
 import { buildPilotCircleRecord, buildPilotFamilyRecord, type CircleVisibleMemberRecord } from '@/lib/pilot-family-record'
 
 /**
@@ -443,29 +448,6 @@ function situationReport(ctx: Body['context']): string {
   return lines.join('\n')
 }
 
-/**
- * Tone is a function of the risk index — the single most requested behaviour of
- * this screen. A calm day deserves a teacher; a critical hour deserves an
- * instructor who leads with the verb.
- */
-const TONE: Record<Body['context']['riskState'], { pt: string; en: string }> = {
-  safe: {
-    pt: 'Tom CALMO e didático. Há tempo de sobra. Explique o porquê das coisas, ensine, e proponha UMA melhoria por vez. Pode usar 3 a 5 frases.',
-    en: 'CALM, teaching tone. There is plenty of time. Explain the why, teach, propose ONE improvement at a time. 3 to 5 sentences is fine.',
-  },
-  watch: {
-    pt: 'Tom ATENTO. Priorize. Frases curtas. Diga o que fazer nesta semana, não algum dia.',
-    en: 'ALERT tone. Prioritise. Short sentences. Say what to do this week, not someday.',
-  },
-  warning: {
-    pt: 'Tom FOCADO e diretivo. Sem preâmbulo. Passos numerados, no máximo 4. Comece pela ação mais urgente.',
-    en: 'FOCUSED, directive tone. No preamble. Numbered steps, at most 4. Lead with the most urgent action.',
-  },
-  critical: {
-    pt: 'Tom IMPERATIVO. A primeira frase é uma ordem de ação, com verbo no imperativo. No máximo 3 passos. Zero teoria, zero explicação. Vidas primeiro, bens depois.',
-    en: 'IMPERATIVE tone. The first sentence is an action order in the imperative. At most 3 steps. Zero theory. Lives first, property second.',
-  },
-}
 
 /**
  * Salvage a readable answer from a truncated or malformed payload.
@@ -492,11 +474,13 @@ function normalizeTaskKind(kind: unknown): PilotTask['kind'] {
   return kind === 'resource' || kind === 'plan_review' || kind === 'comms_setup' ? kind : 'task'
 }
 
-function extractJson(raw: string, pt: boolean): { reply: string; tasks: PilotTask[]; destinations: PilotDestination[]; memory: PilotMemoryProposal[] } {
+type Extracted = { reply: string; mode: PilotMode; sources: PilotSource[]; tasks: PilotTask[]; destinations: PilotDestination[]; memory: PilotMemoryProposal[] }
+
+function extractJson(raw: string, pt: boolean): Extracted {
   const match = raw.match(/\{[\s\S]*\}/)
-  if (!match) return { reply: salvageReply(raw), tasks: [], destinations: [], memory: [] }
+  if (!match) return { reply: salvageReply(raw), mode: 'chat', sources: [], tasks: [], destinations: [], memory: [] }
   try {
-    const parsed = JSON.parse(match[0]) as { reply?: string; tasks?: unknown; destinations?: unknown; memory?: unknown }
+    const parsed = JSON.parse(match[0]) as { reply?: string; mode?: unknown; sources?: unknown; tasks?: unknown; destinations?: unknown; memory?: unknown }
     const tasks = Array.isArray(parsed.tasks)
       ? (parsed.tasks as PilotTask[])
           .filter(t => t && typeof t.name === 'string' && t.name.trim())
@@ -541,9 +525,16 @@ function extractJson(raw: string, pt: boolean): { reply: string; tasks: PilotTas
             proposal_md: String(m.proposal_md).trim().slice(0, 1200),
           }))
       : []
-    return { reply: String(parsed.reply ?? salvageReply(raw)).trim(), tasks, destinations, memory }
+    return {
+      reply: String(parsed.reply ?? salvageReply(raw)).trim(),
+      mode: normalizeMode(parsed.mode),
+      sources: normalizeSources(parsed.sources),
+      tasks,
+      destinations,
+      memory,
+    }
   } catch {
-    return { reply: salvageReply(raw), tasks: [], destinations: [], memory: [] }
+    return { reply: salvageReply(raw), mode: 'chat', sources: [], tasks: [], destinations: [], memory: [] }
   }
 }
 
@@ -629,6 +620,30 @@ export async function POST(request: NextRequest) {
   const { messages = [], context } = body
   if (!context || !messages.length) {
     return NextResponse.json({ error: 'messages e context são obrigatórios.' }, { status: 400 })
+  }
+
+  /*
+   * PISO, regra 9 (PILOT-VOICE-001 / E20): risco à própria vida.
+   *
+   * Vem ANTES do modelo, do limite de uso e de qualquer leitura de banco. É um
+   * cartão fixo e revisado: nada aqui pode depender da OpenAI estar de pé, da
+   * cota do dia ou de a ficha carregar. A mesma detecção roda no cliente para
+   * funcionar sem rede.
+   */
+  {
+    const ultima = messages[messages.length - 1]?.content ?? ''
+    if (detectCrisis(ultima)) {
+      const card = crisisCard(context.pt)
+      const corpoCrise = { reply: card.reply, mode: 'chat' as const, sources: card.sources, tasks: [], destinations: [], memory: [], crisis: true }
+      if (request.nextUrl.searchParams.get('stream') === '1') {
+        const enc = new TextEncoder()
+        return new Response(
+          enc.encode(`event: delta\ndata: ${JSON.stringify({ text: card.reply })}\n\nevent: done\ndata: ${JSON.stringify(corpoCrise)}\n\n`),
+          { headers: { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache, no-transform' } },
+        )
+      }
+      return NextResponse.json(corpoCrise)
+    }
   }
 
   const openai = getOpenAIClient()
@@ -803,8 +818,9 @@ export async function POST(request: NextRequest) {
 
   const system = [
     pt
-      ? 'Você é o EOS Pilot: um especialista em preparação e resposta a emergências, falando com o chefe de uma família. Você instrui, não conversa fiado.'
-      : 'You are the EOS Pilot: an emergency preparedness and response specialist speaking to the head of a household. You instruct; you do not chat.',
+      ? 'Você é o EOS Pilot. Está conversando com alguém de uma família que usa o EOS para se preparar e se proteger.'
+      : 'You are the EOS Pilot, talking with someone from a household that uses EOS to prepare and stay safe.',
+    voiceBlock(pt),
     pt
       ? 'IDIOMA: responda SEMPRE no mesmo idioma da última mensagem do usuário. Se ele escreveu em português, responda em português.'
       : 'LANGUAGE: always answer in the language of the user last message.',
@@ -821,7 +837,7 @@ export async function POST(request: NextRequest) {
      * É o mesmo princípio do resto deste conserto: o servidor não pode quebrar
      * porque a tela mandou uma palavra que ele não conhece.
      */
-    (TONE[context.riskState] ?? TONE.watch)[pt ? 'pt' : 'en'],
+    toneLine(context.riskState, pt, detectDistress(question)),
     pt
       ? `SITUAÇÃO: índice de risco ${context.score ?? '—'} (${context.riskState}). ${context.headline}`
       : `SITUATION: risk index ${context.score ?? '—'} (${context.riskState}). ${context.headline}`,
@@ -867,11 +883,11 @@ export async function POST(request: NextRequest) {
      * não três parágrafos.
      */
     pt
-      ? 'QUANDO O USUÁRIO DISSER QUE VAI FAZER ALGO (trabalhar no telhado, cortar árvore, viajar, correr, soltar o barco, deixar a criança na escola), ANALISE A ATIVIDADE em vez de conversar: (a) veredito numa linha — pode, pode com cuidado, ou não faça; (b) POR QUE, citando os números reais que você tem (rajada, UV, chuva por hora, alerta ativo, ciclone); (c) a MELHOR JANELA de hoje, usando a série horária acima, ou diga que não há janela boa; (d) o que muda a resposta ("acima de 40 km/h de rajada, desça"). Trabalho em altura, água, fogo, eletricidade e estrada merecem o cuidado mais duro. Cada precaução concreta vira uma task.'
-      : 'WHEN THE USER SAYS THEY ARE GOING TO DO SOMETHING (roof work, tree cutting, driving, running, taking the boat out, school run), ANALYSE THE ACTIVITY instead of chatting: (a) one-line verdict — go, go with care, or do not; (b) WHY, citing the real numbers you have (gusts, UV, hourly rain, active alert, cyclone); (c) the BEST WINDOW today from the hourly series above, or say there is none; (d) what would change the answer ("above 40 km/h gusts, come down"). Work at height, water, fire, electricity and driving get the strictest care. Every concrete precaution becomes a task.',
+      ? 'QUANDO O USUÁRIO DISSER QUE VAI FAZER ALGO (trabalhar no telhado, cortar árvore, viajar, correr, soltar o barco, deixar a criança na escola), ANALISE A ATIVIDADE em vez de conversar: (a) veredito numa linha — pode, pode com cuidado, ou não faça; (b) POR QUE, citando os números reais que você tem (rajada, UV, chuva por hora, alerta ativo, ciclone); (c) a MELHOR JANELA de hoje, usando a série horária acima, ou diga que não há janela boa; (d) o que muda a resposta ("acima de 40 km/h de rajada, desça"). Trabalho em altura, água, fogo, eletricidade e estrada merecem o cuidado mais duro. Precaução que a pessoa precisa lembrar de fazer pode virar task.'
+      : 'WHEN THE USER SAYS THEY ARE GOING TO DO SOMETHING (roof work, tree cutting, driving, running, taking the boat out, school run), ANALYSE THE ACTIVITY instead of chatting: (a) one-line verdict — go, go with care, or do not; (b) WHY, citing the real numbers you have (gusts, UV, hourly rain, active alert, cyclone); (c) the BEST WINDOW today from the hourly series above, or say there is none; (d) what would change the answer ("above 40 km/h gusts, come down"). Work at height, water, fire, electricity and driving get the strictest care. A precaution the person must remember to do may become a task.',
     pt
-      ? 'MODO EDUCADOR SITUACIONAL: instrua em sequência lógica. Quando faltar contexto essencial, faça uma pergunta curta antes de concluir. Quando houver ação concreta, transforme em proposta de preparação; não diga apenas "considere". Classifique cada task com kind: resource para comprar/adquirir, task para fazer/verificar, plan_review para revisar plano familiar, comms_setup para rádio/comunicação.'
-      : 'SITUATIONAL EDUCATOR MODE: instruct in a logical sequence. When essential context is missing, ask one short question before concluding. When there is a concrete action, turn it into a preparedness proposal; do not only say "consider". Classify each task with kind: resource for acquiring supplies, task for doing/checking, plan_review for reviewing the family plan, comms_setup for radio/communication setup.',
+      ? 'MODO EDUCADOR SITUACIONAL: instrua em sequência lógica. Quando faltar contexto essencial, faça uma pergunta curta antes de concluir. Quando houver uma ação concreta que valha guardar, ofereça como proposta de preparação; fora isso, só explique. Classifique cada task com kind: resource para comprar/adquirir, task para fazer/verificar, plan_review para revisar plano familiar, comms_setup para rádio/comunicação.'
+      : 'SITUATIONAL EDUCATOR MODE: instruct in a logical sequence. When essential context is missing, ask one short question before concluding. When there is a concrete action worth keeping, offer it as a preparedness proposal; otherwise just explain. Classify each task with kind: resource for acquiring supplies, task for doing/checking, plan_review for reviewing the family plan, comms_setup for radio/communication setup.',
     pt
       ? 'MEMÓRIA DO PILOT: se o usuário disser uma preferência, restrição, rotina, equipamento recorrente, tolerância de risco, pessoa/necessidade familiar ou regra pessoal que será útil no futuro, proponha em memory. Não escreva como fato absoluto se foi incerto. Memory é proposta, não escrita automática.'
       : 'PILOT MEMORY: if the user states a preference, constraint, routine, recurring equipment, risk tolerance, family need, or personal rule that will be useful later, propose it in memory. Do not write uncertain statements as absolute facts. Memory is a proposal, not an automatic write.',
@@ -887,11 +903,11 @@ export async function POST(request: NextRequest) {
       ? 'ATIVIDADE vs RESERVAS: o veredito sobre uma atividade depende das condições que afetam AQUELA atividade — rajada, chuva, raio, UV, visibilidade, alerta oficial. O estoque da casa (água, comida, checklist) NÃO entra nesse veredito: ninguém deixa de subir no telhado porque tem pouca água guardada. Não vete uma atividade sem um número que justifique o veto; rajada baixa e céu limpo significam "pode".'
       : 'ACTIVITY vs RESERVES: the verdict on an activity depends on the conditions affecting THAT activity — gusts, rain, lightning, UV, visibility, official alerts. Household stock (water, food, checklist) does NOT belong in that verdict: nobody skips roof work because their water store is low. Never veto an activity without a number that justifies it; low gusts and clear sky mean "go".',
     pt
-      ? 'REGRAS INEGOCIÁVEIS: 1) Nunca invente abrigo, rota ou ordem de evacuação — evacuação só existe se houver ordem oficial. 2) Use os números reais da família acima; nada de conselho genérico. 3) Se faltar dado, diga que falta. 4) Nunca suavize um risco crítico. 5) NUNCA calcule distância, rumo ou coordenada por conta própria — use apenas os números já fornecidos acima. Ao mencionar direção ou distância, **copie o valor exato** que foi dado (ex.: "34.0 km a NO"); nunca parafraseie para outra direção nem arredonde o rumo. 6) Só cite posição de quem aparece na lista de posições consentidas.'
-      : 'NON-NEGOTIABLE RULES: 1) Never invent a shelter, route or evacuation order — evacuation exists only under an official order. 2) Use the real household numbers above; no generic advice. 3) If data is missing, say so — and NEVER express missing data as a number, especially not as zero: UNKNOWN and NONE are opposite statements. 4) Never soften a critical risk. 5) NEVER compute a distance, bearing or coordinate yourself — use only the numbers given above. When mentioning a direction or distance, **copy the exact value** you were given (e.g. "34.0 km NW"); never paraphrase it into a different direction or round the bearing. 6) Only cite the position of people who appear in the consented positions list.',
+      ? 'REGRAS INEGOCIÁVEIS: 1) Nunca invente abrigo, rota ou ordem de evacuação — evacuação só existe se houver ordem oficial. 2) Quando falar da casa, use os números reais acima; nunca invente dado da família. 3) Se faltar dado, diga que falta. 4) Nunca suavize um risco crítico. 5) NUNCA calcule distância, rumo ou coordenada por conta própria — use apenas os números já fornecidos acima. Ao mencionar direção ou distância, **copie o valor exato** que foi dado (ex.: "34.0 km a NO"); nunca parafraseie para outra direção nem arredonde o rumo. 6) Só cite posição de quem aparece na lista de posições consentidas.'
+      : 'NON-NEGOTIABLE RULES: 1) Never invent a shelter, route or evacuation order — evacuation exists only under an official order. 2) When talking about the household, use the real numbers above; never invent household data. 3) If data is missing, say so — and NEVER express missing data as a number, especially not as zero: UNKNOWN and NONE are opposite statements. 4) Never soften a critical risk. 5) NEVER compute a distance, bearing or coordinate yourself — use only the numbers given above. When mentioning a direction or distance, **copy the exact value** you were given (e.g. "34.0 km NW"); never paraphrase it into a different direction or round the bearing. 6) Only cite the position of people who appear in the consented positions list.',
     pt
-      ? 'Responda no mesmo idioma em que o usuário escreveu. RESPONDA SOMENTE com JSON, e o campo "reply" TEM QUE VIR PRIMEIRO no objeto — a interface mostra a resposta enquanto ela chega, e um campo antes dele atrasa a primeira palavra na tela: {"reply":"sua resposta","tasks":[{"name":"ação curta e executável","why":"por que","kind":"resource|task|plan_review|comms_setup","tier":"ESSENTIAL|MODERATE|EXCELLENT","quantity":1,"unit":null}],"memory":[{"title":"memória curta","reason":"por que isso ajuda no futuro","proposal_md":"- Preferência/regra/necessidade em Markdown"}],"destinations":[{"label":"nome do lugar","lat":0,"lng":0}]}. Inclua em tasks TODA ação concreta que você recomendar. Use memory somente para preferências/necessidades duráveis. Inclua em destinations TODO lugar para onde valha a pena ir — copiando as coordenadas exatas da lista acima, nunca inventando. Se não houver, use [].'
-      : 'Reply in the language the user wrote in. ANSWER ONLY with JSON, and the "reply" field MUST COME FIRST in the object — the interface renders the answer as it streams, and any field before it delays the first word on screen: {"reply":"your answer","tasks":[{"name":"short executable action","why":"why","kind":"resource|task|plan_review|comms_setup","tier":"ESSENTIAL|MODERATE|EXCELLENT","quantity":1,"unit":null}],"memory":[{"title":"short memory","reason":"why this helps later","proposal_md":"- Preference/rule/need in Markdown"}],"destinations":[{"label":"place name","lat":0,"lng":0}]}. Put EVERY concrete action into tasks. Use memory only for durable preferences/needs. Put in destinations EVERY place worth travelling to — copying exact coordinates from the list above, never inventing them. Use [] when there are none.',
+      ? 'Responda no mesmo idioma em que o usuário escreveu. RESPONDA SOMENTE com JSON, e o campo "reply" TEM QUE VIR PRIMEIRO no objeto — a interface mostra a resposta enquanto ela chega, e um campo antes dele atrasa a primeira palavra na tela: {"reply":"sua resposta","mode":"learn|decide|execute|chat","sources":[{"kind":"eos_data|official|general_practice","label":"de onde veio, ex.: Cruz Vermelha"}],"tasks":[{"name":"ação curta e executável","why":"por que","kind":"resource|task|plan_review|comms_setup","tier":"ESSENTIAL|MODERATE|EXCELLENT","quantity":1,"unit":null}],"memory":[{"title":"memória curta","reason":"por que isso ajuda no futuro","proposal_md":"- Preferência/regra/necessidade em Markdown"}],"destinations":[{"label":"nome do lugar","lat":0,"lng":0}]}. tasks pode ser [] — inclua só ações que valha guardar no checklist. Use memory somente para preferências/necessidades duráveis. Inclua em destinations TODO lugar para onde valha a pena ir — copiando as coordenadas exatas da lista acima, nunca inventando. Se não houver, use [].'
+      : 'Reply in the language the user wrote in. ANSWER ONLY with JSON, and the "reply" field MUST COME FIRST in the object — the interface renders the answer as it streams, and any field before it delays the first word on screen: {"reply":"your answer","mode":"learn|decide|execute|chat","sources":[{"kind":"eos_data|official|general_practice","label":"where it came from, e.g. Red Cross"}],"tasks":[{"name":"short executable action","why":"why","kind":"resource|task|plan_review|comms_setup","tier":"ESSENTIAL|MODERATE|EXCELLENT","quantity":1,"unit":null}],"memory":[{"title":"short memory","reason":"why this helps later","proposal_md":"- Preference/rule/need in Markdown"}],"destinations":[{"label":"place name","lat":0,"lng":0}]}. tasks may be [] — include only actions worth keeping on the checklist. Use memory only for durable preferences/needs. Put in destinations EVERY place worth travelling to — copying exact coordinates from the list above, never inventing them. Use [] when there are none.',
   ]
     .filter(Boolean)
     .join('\n\n')
@@ -902,7 +918,7 @@ export async function POST(request: NextRequest) {
       model,
       messages: [
         { role: 'system' as const, content: system },
-        ...messages.slice(-8).map(m => ({ role: m.role, content: m.content })),
+        ...messages.slice(-PILOT_HISTORY).map(m => ({ role: m.role, content: m.content })),
       ],
       // Os parâmetros dependem da família do modelo: os de raciocínio recusam
       // `max_tokens` e gastam o orçamento pensando antes de escrever.
@@ -958,7 +974,7 @@ export async function POST(request: NextRequest) {
             envia('done', { ...final, guard })
           } catch (e) {
             await logError('api/pilot/chat:stream', e, { userId: user.id })
-            envia('done', { reply: mostrado, tasks: [], destinations: [], memory: [], guard })
+            envia('done', { reply: mostrado, mode: 'chat', sources: [], tasks: [], destinations: [], memory: [], guard })
           } finally {
             controller.close()
           }
@@ -983,7 +999,7 @@ export async function POST(request: NextRequest) {
     }
 
     const raw = completion.choices[0]?.message?.content ?? ''
-    const { reply, tasks, destinations, memory } = extractJson(raw, pt)
+    const { reply, mode, sources, tasks, destinations, memory } = extractJson(raw, pt)
 
     /*
      * A regra crítica sobrepõe a IA (D-125 / PILOT-T03).
@@ -1000,6 +1016,8 @@ export async function POST(request: NextRequest) {
     const guard = evaluateGuard(casa, { pt, alerts: context.alerts?.length ?? 0 })
     return NextResponse.json({
       reply,
+      mode,
+      sources,
       tasks,
       destinations,
       memory,
