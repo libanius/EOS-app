@@ -320,7 +320,7 @@ O gráfico de trajetória da autonomia e o painel de sistemas do protótipo
 | # | Caso | Comportamento |
 |---|---|---|
 | E1 | Casa de tamanho desconhecido | O protocolo mostra os itens sem quantidade e um aviso "conte quem mora na casa" com link para Família. Nunca calcula com 1 pessoa (PREP-T07 fase 2, item 4). |
-| E2 | Família sem nenhum holding | Percentual 0%, barra de origem vazia, checklist todo `missing`. Nenhuma divisão por zero. |
+| E2 | Família sem nenhum holding | Percentual 0%, checklist todo `missing`, próxima ação aponta o primeiro item do degrau recomendado. Nenhuma divisão por zero. |
 | E3 | Holding com unidade não conversível | O item fica `unknown`, nunca `covered` e nunca zero (PREP-T06, critério 6). |
 | E4 | Família já adotou e o curador edita o protocolo | Itens novos aparecem como `proposed` na próxima visita. Itens removidos pelo curador **não** apagam requisitos já adotados. |
 | E5 | Adotar duas vezes (toque duplo, rede lenta) | Idempotente pela chave natural de `requirements`; nenhuma linha duplicada. |
