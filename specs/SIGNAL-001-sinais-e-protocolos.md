@@ -1,5 +1,5 @@
 # SPEC — SIGNAL-001: Sinais e Protocolos curados
-Version: 0.2 | Status: **Draft** (aguarda revisão do dono) | Author: Paulo Neto
+Version: 0.3 | Status: **Draft** (decisões D1–D5 fechadas pelo dono em 2026-11-03; aguarda aprovação para Ready) | Author: Paulo Neto
 
 > Regra 1: nenhum código antes de Ready. Este spec está **Draft**.
 > Regra 3: os edge cases ficam escritos aqui (§7) e não são descobertos no código.
@@ -107,8 +107,11 @@ quatro) e qual é o **degrau recomendado**.
 
 ### 3.3 A família vê o Sinal
 
-O Sinal aparece para a família na superfície decidida na §9 (D1), em um cartão
-com nível, data, título, resumo e "% pronto no degrau recomendado". O "% pronto"
+O Sinal aparece numa **aba nova na borda esquerda do MUNDO** (D1). A aba fica
+visível sobre o mapa, com a contagem de Sinais ativos da região; tocá-la abre um
+painel lateral com os cartões. A barra global de 5 destinos não muda (docs/35 §5).
+Cada cartão mostra nível, data, título, resumo e "% pronto no degrau
+recomendado", e abre a página do protocolo. O "% pronto"
 é calculado **sem** que a família tenha adotado nada: o motor de cobertura roda
 sobre os itens-modelo × os holdings atuais, em memória, sem gravar.
 
@@ -290,7 +293,14 @@ fixo) é decidido na §9 (D4).
 
 ## 6. Experiência (referência do protótipo)
 
-O protótipo define o padrão de experiência que os critérios da §8 verificam:
+**Visual (D2):** a aba de Sinais, o painel e a página do protocolo usam a
+linguagem visual do protótipo `docs/prototypes/base-da-familia-v1.html`, a
+mesma dos conceitos de execução: tema escuro único (azul-noite), menta como
+destaque com brilho, numerais condensados grandes, âmbar para a orientação da
+curadoria e vermelho só para queda ou perigo. Os tokens do protótipo viram
+tokens nomeados no código; nenhuma cor literal em componente.
+
+O protótipo define também o padrão de experiência que os critérios da §8 verificam:
 
 - número grande + rótulo de "rumo" (ex.: "06 dias / Rumo até 2 semanas");
 - degraus em pílulas D-03, D-14, D-30, D-90, com indicação de alcançado e próximo;
@@ -341,37 +351,31 @@ O gráfico de trajetória da autonomia e o painel de sistemas do protótipo
 11. Subir de degrau após adotar cria apenas `proposed`; nada vira `needed` sem toque do usuário.
 12. Push sai para `PREPARAR` e `AGIR` na região, uma única vez por Sinal; `MONITORAR` e `CONTEXTO` não notificam.
 13. Toda informação numérica e todo controle da página do protocolo têm dica explicativa acessível por hover, foco e toque longo.
-14. Todos os controles têm alvo ≥ 44 × 44 px e texto pequeno tem contraste ≥ 4,5:1 nos dois temas.
+14. Todos os controles têm alvo ≥ 44 × 44 px e texto pequeno tem contraste ≥ 4,5:1 sobre as superfícies do tema escuro (D2).
+17. No MUNDO, a aba de Sinais fica na borda esquerda, mostra a contagem de Sinais ativos da região, abre o painel por toque e por teclado, e não cobre os controles existentes do mapa.
+18. O Pilot recebe os Sinais ativos da região como fato fixo (D4); Sinais arquivados não entram nesse fato.
 15. O Pilot, perguntado sobre um Sinal publicado, responde com o texto da curadoria e oferece abrir o protocolo.
 16. Lint, type-check, testes e `next build` limpos; docs 06, 07, 09, 11 e 37 atualizados no mesmo PR (Regra 8).
 
 ---
 
-## 9. Decisões pendentes (bloqueiam Ready)
+## 9. Decisões (fechadas pelo dono em 2026-11-03)
 
-- **D1 — Onde o Sinal mora na navegação** (passa pelo Wren, Regra 11). A barra
-  global tem 5 destinos fixos (docs/35 §5). Opções:
-  (a) MUNDO › **Alertas**, ao lado dos alertas oficiais, com visual distinto (regra 10);
-  (b) PREPARAÇÃO › **Visão**, como "Sinais da curadoria" no topo da tela de decisão;
-  (c) cartão no MUNDO que leva para a página do protocolo em PREPARAÇÃO.
-  Recomendação: **(c)**. O Sinal responde "o que está acontecendo?" (MUNDO) e o
-  protocolo responde "estamos prontos?" (PREPARAÇÃO).
-- **D2 — Visual.** O protótipo usa a linguagem escura dos conceitos de execução
-  (menta sobre azul-noite). A preparação hoje segue o EDL BASALT. Opções:
-  (a) protocolo no BASALT, com os padrões de experiência da §6;
-  (b) adotar a linguagem de execução também na preparação.
-  Recomendação: **(a)**. A linguagem escura fica como assinatura do Modo Execução (PLAN-EXEC-001).
-- **D3 — Remédios e pets na autonomia.** Fora deste spec por padrão (§2.3).
-  Confirmar que fica fora, ou abrir uma decisão própria.
-- **D4 — Pilot.** Sinais publicados entram (a) no RAG do EDU (`lib/edu-rag.ts`)
-  ou (b) como fato fixo em `usePilotFacts`, limitado aos Sinais ativos da região.
-  Recomendação: **(b)** para os ativos, que são poucos e precisam de precisão, e
-  (a) para os arquivados.
-- ~~D5 — Kit por protocolo ou linha de base.~~ **Resolvido na revisão de
-  2026-11-03: linha de base.** Kit por protocolo poria o kit na chave natural e
-  duplicaria requisitos entre origens, contradizendo E6 e E7. Consequência: o
-  filtro por protocolo em "O que falta" lê o vínculo calculado (§3.5), não o
-  filtro de kit.
+- **D1 = aba no MUNDO.** Os Sinais aparecem numa aba nova na **borda esquerda
+  do MUNDO**, que abre um painel lateral (§3.3). A barra global não muda. O
+  formato exato do painel (largura, comportamento sobre o mapa, convivência com
+  as camadas) passa pelo Wren na SIGNAL-T00 (Regra 11): o lugar está decidido,
+  a forma é validada.
+- **D2 = visual do protótipo.** Aba, painel e página do protocolo usam a
+  linguagem do protótipo validado (§6), tema escuro único.
+- **D3 = fora.** Remédios e pets não entram na autonomia. A autonomia segue
+  mín(água, comida) (D-129).
+- **D4 = (b) + (a).** Sinais ativos da região entram como fato fixo em
+  `usePilotFacts`; arquivados vão para o RAG do EDU (`lib/edu-rag.ts`).
+- **D5 = linha de base.** Requisitos de protocolo têm `kit_id` e `scenario_id`
+  nulos. Kit por protocolo poria o kit na chave natural e duplicaria requisitos
+  entre origens, contradizendo E6 e E7. O filtro por protocolo em "O que falta"
+  lê o vínculo calculado (§3.5).
 
 ---
 

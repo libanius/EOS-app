@@ -6,7 +6,7 @@
 
 ## D-232 — Sinais e Protocolos: notícia vira preparo que se acumula (SIGNAL-001)
 
-**Data**: 2026-11-03. **Status**: PROPOSTO — aguarda aprovação do dono no PR.
+**Data**: 2026-11-03. **Status**: DECIDED (dono, 2026-11-03). Spec aguarda aprovação para Ready.
 **Spec**: `specs/SIGNAL-001-sinais-e-protocolos.md` (Draft).
 **Protótipo**: `docs/prototypes/base-da-familia-v1.html` (referência de experiência).
 
@@ -30,8 +30,15 @@ notícia em ação familiar, e o Pilot não sabia orientar.
 4. Trajetória da autonomia, "porquê" por aquisição, carrossel e painel de
    sistemas ficam fora e viram HOLDING-HISTORY-001, BASE-001 e SYSTEMS-001.
 
-**Pendente antes de Ready**: D1 a D5 da §9 do spec, com D1 (navegação) e D2
-(visual) passando pelo Wren (Regra 11).
+**Decisões do dono (§9 do spec)**:
+- D1: Sinais numa **aba nova na borda esquerda do MUNDO**, com painel lateral.
+  A barra global não muda. O Wren valida a forma do painel, não o lugar.
+- D2: aba, painel e protocolo usam o **visual do protótipo** (tema escuro,
+  linguagem dos conceitos de execução).
+- D3: remédios e pets **fora** da autonomia.
+- D4: Sinais ativos como fato fixo do Pilot; arquivados no RAG do EDU.
+- D5: requisitos de protocolo são de **linha de base** (sem kit), apontado na
+  revisão do PR #8.
 
 ---
 

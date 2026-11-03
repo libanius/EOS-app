@@ -432,12 +432,12 @@ precisa funcionar exatamente quando o EOS não funciona.*
 *Goal: transformar notícia em preparo proporcional que se acumula na casa, sem
 segunda conta de prontidão.*
 
-> Decisão: **D-232** (proposta). Spec **Draft**: `specs/SIGNAL-001-sinais-e-protocolos.md`.
+> Decisão: **D-232** (decidida pelo dono em 2026-11-03). Spec **Draft**: `specs/SIGNAL-001-sinais-e-protocolos.md`.
 > Nenhuma task começa antes do spec em Ready. D1 e D2 da §9 passam pelo Wren.
 
 | Task ID | Task | Status | Notes |
 |---|---|---|---|
-| SIGNAL-T00 | Revisão do spec + Wren (D1 navegação, D2 visual) | PENDING | Fecha D1–D5 da §9. Saída: spec Ready. |
+| SIGNAL-T00 | Aprovação do spec + Wren valida o painel lateral do MUNDO | PENDING | D1–D5 fechadas pelo dono em 2026-11-03. Falta: aprovação final para Ready e a passada do Wren na forma do painel (Regra 11). |
 | SIGNAL-T01 | Migração `signals`, `protocols`, `protocol_items`; origem `PROTOCOL` | BLOCKED | Depende de SIGNAL-T00. Docs 06 e 37 §18 no mesmo PR. |
 | SIGNAL-T02 | Funções puras + teste de verdade única | BLOCKED | Dias e cobertura iguais ao painel e ao Pilot. |
 | SIGNAL-T03 | Autoria e publicação no admin | BLOCKED | `ADMIN_EMAILS`. "O que não é" e fonte obrigatórios. |
