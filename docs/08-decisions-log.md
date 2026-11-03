@@ -4,6 +4,37 @@
 
 ---
 
+## D-232 — Sinais e Protocolos: notícia vira preparo que se acumula (SIGNAL-001)
+
+**Data**: 2026-11-03. **Status**: PROPOSTO — aguarda aprovação do dono no PR.
+**Spec**: `specs/SIGNAL-001-sinais-e-protocolos.md` (Draft).
+**Protótipo**: `docs/prototypes/base-da-familia-v1.html` (referência de experiência).
+
+**Contexto**: a cobertura do FORTRESS (Pentágono exigindo 90 dias de
+autossuficiência das bases) gerou pânico na comunidade do dono, e amigos
+perguntaram o que fazer. O EOS não tinha resposta: nada transformava uma
+notícia em ação familiar, e o Pilot não sabia orientar.
+
+**Decisão proposta**:
+
+1. Criar **Sinais** (o acontecimento, com "o que é" e "o que não é"
+   obrigatórios) e **Protocolos** (a resposta em degraus D3, D14, D30, D90),
+   escritos pela curadoria EOS.
+2. O protocolo **propõe**; a família adota. Adoção cria `requirements` com a
+   nova origem `PROTOCOL`, dentro do motor que já existe. Nenhuma segunda conta
+   de prontidão.
+3. **O protótipo cede ao motor** em quatro pontos: autonomia segue
+   mín(água, comida) (D-129); água usa `WATER_LITERS_PER_PERSON_DAY`, sem pet;
+   comida grava em dia-pessoa (D-158); a barra global de 5 destinos (docs/35)
+   não ganha abas novas.
+4. Trajetória da autonomia, "porquê" por aquisição, carrossel e painel de
+   sistemas ficam fora e viram HOLDING-HISTORY-001, BASE-001 e SYSTEMS-001.
+
+**Pendente antes de Ready**: D1 a D5 da §9 do spec, com D1 (navegação) e D2
+(visual) passando pelo Wren (Regra 11).
+
+---
+
 ## D-231 — Casa à prova de erro: duplicatas e convites (HOUSEHOLD-FIX-001)
 
 **Data**: 2026-11-03. **Spec**: `specs/HOUSEHOLD-FIX-001-casa-a-prova-de-erro.md` (Ready, aprovado pelo dono).
