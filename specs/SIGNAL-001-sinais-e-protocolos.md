@@ -1,5 +1,5 @@
 # SPEC — SIGNAL-001: Sinais e Protocolos curados
-Version: 0.1 | Status: **Draft** (aguarda revisão do dono) | Author: Paulo Neto
+Version: 0.2 | Status: **Draft** (aguarda revisão do dono) | Author: Paulo Neto
 
 > Regra 1: nenhum código antes de Ready. Este spec está **Draft**.
 > Regra 3: os edge cases ficam escritos aqui (§7) e não são descobertos no código.
@@ -118,36 +118,56 @@ A página do protocolo mostra, nesta ordem:
 
 1. nível, código e data do Sinal; título;
 2. percentual pronto no degrau selecionado e a seleção de degrau;
-3. barra "de onde veio o progresso": a parte coberta por holdings que já existiam
-   antes do Sinal ser publicado ("herdado") e a parte coberta depois;
-4. o que é, o que não é, a orientação da curadoria com as quantidades da
+3. o que é, o que não é, a orientação da curadoria com as quantidades da
    família, e as fontes;
-5. o checklist do degrau, agrupado por módulo, com o status de cobertura de
-   cada item (`covered`, `partial`, `missing`, `unknown`, `not_applicable`), os
-   holdings que cobrem cada um e o selo "herdado de …" quando o holding nasceu
-   para outro protocolo ou fora de qualquer protocolo.
+4. o checklist do degrau, agrupado por módulo, com o status de cobertura de
+   cada item (`covered`, `partial`, `missing`, `unknown`, `not_applicable`) e os
+   holdings que cobrem cada um.
+
+A barra "de onde veio o progresso" e o selo "herdado de …" do protótipo **não**
+entram aqui: `holdings` guarda uma linha agregada por recurso e local, sem
+histórico, e não permite separar o estoque anterior ao Sinal do que veio
+depois. Isso fica para o HOLDING-HISTORY-001 (§10).
 
 ### 3.5 A família adota o Protocolo
 
-"Adotar este protocolo" mostra a lista de requisitos que serão **propostos**
-para o degrau escolhido, com a quantidade calculada para a casa. A família
-confirma tudo de uma vez ou desmarca itens antes. Ao confirmar:
+"Adotar este protocolo" mostra a lista de requisitos para o degrau escolhido,
+com a quantidade calculada para a casa. A família confirma tudo de uma vez ou
+desmarca itens antes.
 
-- é criado (ou reaproveitado) um `kit` com `slug = 'protocolo-<signal_slug>'`;
-- para cada item, um `requirement` com `status = 'needed'`, `provenance =
-  'PROTOCOL'` e `provenance_ref = <protocol_id>`. O usuário fez a confirmação,
-  então `needed` é legítimo pela tabela de transições do `acquisition.ts`;
-- os itens desmarcados viram `not_applicable`, para não voltarem na próxima
-  visita.
+**Identidade.** Os requisitos de protocolo são de **linha de base da casa**:
+`kit_id = NULL` e `scenario_id = NULL`. Assim a chave natural
+(`requirementNaturalKey()` em `lib/requirements.ts`, docs/37 §26.2) é a mesma
+para a água do Pilot, a água do FORTRESS e a água do protocolo de furacão. Um
+recurso, um requisito, qualquer que seja a origem. Não existe kit por protocolo.
 
-Os requisitos adotados aparecem em `/preparedness/o-que-falta` com o selo de
-origem "via Protocolo FORTRESS".
+Ao confirmar, para cada item:
+
+- **sem requisito de linha de base para o `resource_key`**: cria um com
+  `status = 'needed'`, `provenance = 'PROTOCOL'` e `provenance_ref =
+  <protocol_id>`. A confirmação é do usuário, então `needed` é legítimo pela
+  tabela de transições do `acquisition.ts`;
+- **com requisito existente em `needed` ou `met`**: reaproveita a linha e
+  preserva `provenance` e `provenance_ref` originais (D-161). Se a quantidade
+  existente for menor que a do degrau, a tela mostra "hoje: X · este degrau:
+  Y" e só grava Y se a família marcar a atualização;
+- **com requisito existente em `not_applicable`**: não mexe. O item aparece
+  como "você marcou que não se aplica" e pode ser reativado ali mesmo, por
+  toque explícito;
+- **item desmarcado sem requisito existente**: cria a linha em
+  `not_applicable`, para não voltar na próxima visita.
+
+O vínculo "este requisito faz parte do protocolo X" é **calculado na leitura**
+(itens do protocolo × requisitos de linha de base por `resource_key`), não
+gravado. Requisitos criados pela adoção aparecem em `/preparedness/o-que-falta`
+com o selo de origem "via Protocolo".
 
 ### 3.6 Mudança de degrau depois da adoção
 
-Subir de D14 para D30 **propõe** os itens novos (status `proposed`) e
-**propõe** o aumento de quantidade dos itens `PER_DAY`. Nada muda sem
-confirmação. Descer de degrau não apaga nada: o requisito mantém a quantidade
+Subir de D14 para D30 cria os itens novos como `proposed` (sem requisito de
+linha de base existente) e mostra o aumento de quantidade dos itens `PER_DAY`
+como "hoje: X · este degrau: Y", gravado só com o toque da família. Nada muda
+sem confirmação. Descer de degrau não apaga nada: o requisito mantém a quantidade
 maior, porque descer é uma escolha de visualização, não uma decisão sobre a
 casa.
 
@@ -238,8 +258,10 @@ fixo) é decidido na §9 (D4).
   requisitos com quantidade, usando `WATER_LITERS_PER_PERSON_DAY` e dia-pessoa.
 - `protocolCoverage(requirements, holdings, locations, homeId)` → reaproveita
   `lib/coverage.ts`; não reimplementa regra.
-- `inheritedShare(coverage, holdings, signal.published_at)` → fração coberta por
-  holdings anteriores à publicação.
+- `adoptionPlan(protocolRequirements, existingBaseline)` → para cada item, uma
+  das ações da §3.5 (`create_needed`, `reuse`, `offer_quantity_update`,
+  `keep_not_applicable`, `create_not_applicable`). Pura e testável; a rota só
+  executa o plano.
 
 ---
 
@@ -292,12 +314,13 @@ O gráfico de trajetória da autonomia e o painel de sistemas do protótipo
 | E3 | Holding com unidade não conversível | O item fica `unknown`, nunca `covered` e nunca zero (PREP-T06, critério 6). |
 | E4 | Família já adotou e o curador edita o protocolo | Itens novos aparecem como `proposed` na próxima visita. Itens removidos pelo curador **não** apagam requisitos já adotados. |
 | E5 | Adotar duas vezes (toque duplo, rede lenta) | Idempotente pela chave natural de `requirements`; nenhuma linha duplicada. |
-| E6 | Requisito igual já existe com outra origem (ex.: água via Pilot) | Não duplica. O requisito existente é reaproveitado e a origem original é preservada (`provenance` fora da chave, D-161). |
-| E7 | Família descartou um item como `not_applicable` em outro protocolo | Continua descartado. O protocolo mostra o item como "você marcou que não se aplica". |
+| E6 | Requisito de linha de base igual já existe com outra origem (ex.: água via Pilot) | Não duplica: mesma chave natural, porque o protocolo não usa kit (§3.5). A linha é reaproveitada e a origem original é preservada (`provenance` fora da chave, D-161). |
+| E7 | Família descartou o item como `not_applicable` em outro protocolo ou pelo Pilot | É a mesma linha de base, então continua descartado. O protocolo mostra "você marcou que não se aplica" com a opção de reativar por toque explícito. |
+| E7b | Requisito existente vive num kit (ex.: água no `BUG_OUT`) | Não é a mesma chave e **não é tocado**. O kit continua com o seu requisito; o protocolo trabalha só sobre a linha de base. A cobertura conta o mesmo holding uma vez para cada requisito, sem somar estoque (docs/37 §15.1). |
 | E8 | Sinal arquivado com link compartilhado | Abre em modo leitura com o aviso "Sinal arquivado em <data>", e a adoção fica desabilitada com o motivo visível. |
 | E9 | Perfil fora da região do Sinal | Não recebe push e não vê o cartão na lista; o link direto abre normalmente com a região visível. |
 | E10 | Offline | Sinais e protocolos já vistos abrem do cache (`lib/offline-storage.ts`). Adotar offline fica desabilitado com o motivo; nada é enfileirado em silêncio. |
-| E11 | Holding criado depois da publicação para o mesmo protocolo | Conta na parte "feito por este protocolo" da barra de origem. |
+| E11 | Protocolo pede quantidade maior que a do requisito existente | A tela mostra "hoje: X · este degrau: Y". Sem o toque da família, a quantidade não muda e o item mostra a cobertura contra X. |
 | E12 | Protocolo sem item `PER_DAY` | O percentual usa só presença; a tela não mostra régua de dias. |
 | E13 | Curador publica com erro | Despublicar volta a `draft`; o push já enviado não é reenviado na republicação (dedup por `source_key`). |
 
@@ -314,7 +337,7 @@ O gráfico de trajetória da autonomia e o painel de sistemas do protótipo
 7. Adotar cria requisitos `needed` com `provenance = 'PROTOCOL'` só para os itens confirmados, e `not_applicable` para os desmarcados.
 8. Adotar duas vezes seguidas não cria linha duplicada.
 9. Um holding durável cobre o item correspondente em dois protocolos ao mesmo tempo, e a autonomia da casa não muda por isso.
-10. O selo "herdado de …" aparece para holdings anteriores à publicação do Sinal.
+10. Com um requisito de linha de base de água já existente via Pilot, adotar o protocolo não cria segunda linha de água, preserva a origem `PILOT` e só altera a quantidade se a família marcar a atualização.
 11. Subir de degrau após adotar cria apenas `proposed`; nada vira `needed` sem toque do usuário.
 12. Push sai para `PREPARAR` e `AGIR` na região, uma única vez por Sinal; `MONITORAR` e `CONTEXTO` não notificam.
 13. Toda informação numérica e todo controle da página do protocolo têm dica explicativa acessível por hover, foco e toque longo.
@@ -344,15 +367,18 @@ O gráfico de trajetória da autonomia e o painel de sistemas do protótipo
   ou (b) como fato fixo em `usePilotFacts`, limitado aos Sinais ativos da região.
   Recomendação: **(b)** para os ativos, que são poucos e precisam de precisão, e
   (a) para os arquivados.
-- **D5 — Kit por protocolo ou linha de base.** Recomendação: kit por protocolo
-  (§3.5), para o filtro "kit" de `/preparedness/o-que-falta` funcionar sem
-  mudança. Confirmar.
+- ~~D5 — Kit por protocolo ou linha de base.~~ **Resolvido na revisão de
+  2026-11-03: linha de base.** Kit por protocolo poria o kit na chave natural e
+  duplicaria requisitos entre origens, contradizendo E6 e E7. Consequência: o
+  filtro por protocolo em "O que falta" lê o vínculo calculado (§3.5), não o
+  filtro de kit.
 
 ---
 
 ## 10. Fora do Escopo
 
 - Gráfico de trajetória da autonomia: depende de histórico de holdings → **HOLDING-HISTORY-001**.
+- Barra "de onde veio o progresso" e selo "herdado de …": `holdings` é agregado por recurso e local, sem histórico; reabastecer mantém o `created_at` e muda a quantidade, então nem `created_at` nem `updated_at` separam o estoque anterior do novo → **HOLDING-HISTORY-001**.
 - "Por que comprei", evento e degrau por aquisição: mesmo motivo → **HOLDING-HISTORY-001**.
 - Carrossel e redesenho de `/preparedness`: → **BASE-001**.
 - Painel de sistemas da casa (energia, internet, água, celular, LoRa, satélite): → **SYSTEMS-001**. LoRa continua bloqueado por G-05.
