@@ -25,7 +25,7 @@
  * caminho de volta está sempre visível.
  */
 
-import { useCallback, useEffect, useMemo, useState, useTransition } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import NumericStepper from '@/components/NumericStepper'
@@ -36,6 +36,12 @@ import { Card, Pill, SectionLabel } from './primitives'
 import { haptic } from './motion'
 import './world-v2.css'
 import FamilyNav from './FamilyNav'
+import HouseholdInvites, { type Invite, type CircleInfo } from './HouseholdInvites'
+import { canAccess, type Plan } from '@/lib/feature-gates'
+import type { NamedPerson } from '@/lib/household-names'
+
+/** Quanto tempo o "Desfazer" fica na tela (HOUSEHOLD-FIX-001, D2). */
+const DESFAZER_MS = 8000
 
 type Member = {
   id: string
@@ -98,9 +104,6 @@ const COPY = {
     emptyWhy: 'Enquanto o EOS não souber quem mora aqui, todo cálculo de autonomia está errado — para mais ou para menos.',
     listLabel: 'Pessoas da casa',
     circleLabel: 'Contas no seu círculo',
-    invitedLabel: 'Convidadas, ainda não entraram',
-    invitedWhy: 'Você digitou estes nomes ao preencher o endereço. Enquanto não entrarem, elas contam na casa mas não recebem alerta nem aparecem no mapa.',
-    invitedJoined: 'Já entrou? Junte na lista de cima.',
     circleWhy: 'Estas pessoas têm conta no EOS. Vincular une o cadastro à conta: a pessoa passa a aparecer no mapa como a mesma pessoa, não como duas.',
     link: 'Vincular',
     linked: 'Vinculado à conta',
@@ -163,6 +166,12 @@ const COPY = {
     scanNotFound: 'Ficha não encontrada.',
     bloodType: 'Tipo sanguíneo',
     allergies: 'Alergias',
+    removeShort: 'Remover',
+    removed: (n: string) => `${n} saiu do cadastro`,
+    inviteRemoved: (n: string) => `Convite de ${n} removido`,
+    removedLinked: (n: string) => `${n} saiu do cadastro · a conta continua no círculo`,
+    undo: 'Desfazer',
+    undoFailed: 'Não deu para desfazer.',
   },
   en: {
     back: 'Family',
@@ -179,9 +188,6 @@ const COPY = {
     emptyWhy: 'Until EOS knows who lives here, every autonomy figure is wrong — too high or too low.',
     listLabel: 'People in the household',
     circleLabel: 'Accounts in your circle',
-    invitedLabel: 'Invited, not in yet',
-    invitedWhy: 'You typed these names when filling in your address. Until they join, they count in the household but receive no alerts and do not appear on the map.',
-    invitedJoined: 'Already joined? Merge them in the list above.',
     circleWhy: 'These people have an EOS account. Linking joins the record to the account, so they appear on the map as one person instead of two.',
     link: 'Link',
     linked: 'Linked to account',
@@ -243,6 +249,12 @@ const COPY = {
     scanNotFound: 'Card not found.',
     bloodType: 'Blood type',
     allergies: 'Allergies',
+    removeShort: 'Remove',
+    removed: (n: string) => `${n} removed from the records`,
+    inviteRemoved: (n: string) => `Invite for ${n} removed`,
+    removedLinked: (n: string) => `${n} left the records · their account stays in the circle`,
+    undo: 'Undo',
+    undoFailed: 'Could not undo.',
   },
 } as const
 
@@ -294,7 +306,23 @@ export default function RosterPage() {
   const [scanOpen, setScanOpen] = useState(false)
   const [scanError, setScanError] = useState<string | null>(null)
   /** Quem foi digitada no endereço e ainda não entrou (D-135 fase 2). */
-  const [invites, setInvites] = useState<Array<{ id: string; name: string }>>([])
+  const [invites, setInvites] = useState<Invite[]>([])
+  /** O círculo da casa — é dele que sai o link de convite. */
+  const [circleInfo, setCircleInfo] = useState<CircleInfo | null>(null)
+  const [plan, setPlan] = useState<Plan>('free')
+  /**
+   * A barra "Removida · Desfazer" (HOUSEHOLD-FIX-001 §3.4, §3.5).
+   * Uma de cada vez: a mais nova substitui a anterior.
+   */
+  const [barra, setBarra] = useState<{ n: number; label: string; restore: () => Promise<void> } | null>(null)
+  const barraTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  /**
+   * Dependentes saindo, à espera dos 8 s (§3.5).
+   *
+   * O DELETE só vai ao servidor quando o tempo acaba. Se o app fechar antes,
+   * a pessoa continua cadastrada — na dúvida, nunca apagar (regra 3, E7).
+   */
+  const saindo = useRef(new Map<string, { timer: ReturnType<typeof setTimeout>; member: Member }>())
   const [isPending, startTransition] = useTransition()
 
   const load = useCallback(async () => {
@@ -320,9 +348,18 @@ export default function RosterPage() {
         // coisa aqui recriaria a divergência que esta correção veio fechar.
         fetch('/api/household').then(r => (r.ok ? r.json() : null)).catch(() => null),
       ])
-      setInvites(Array.isArray(convites?.pending) ? convites.pending : [])
+      setInvites(
+        Array.isArray(convites?.invites)
+          ? convites.invites
+          : Array.isArray(convites?.pending)
+            ? convites.pending.map((p: { id: string; name: string }) => ({ ...p, status: 'pending', sent_at: null }))
+            : [],
+      )
+      const primeiro = circles?.circles?.[0]
+      setCircleInfo(primeiro?.invite_code ? { id: primeiro.id, name: primeiro.name, inviteCode: primeiro.invite_code } : null)
       if (!fam) throw new Error('family-members indisponível')
-      setMembers(Array.isArray(fam.members) ? fam.members : [])
+      // Quem está saindo (aguardando os 8 s) não volta a aparecer numa recarga.
+      setMembers(Array.isArray(fam.members) ? fam.members.filter((m: Member) => !saindo.current.has(m.id)) : [])
       setContas(
         casa?.known && Array.isArray(casa.people)
           ? casa.people
@@ -350,6 +387,75 @@ export default function RosterPage() {
   }, [])
 
   useEffect(() => { void load() }, [load])
+
+  useEffect(() => {
+    fetch('/api/profile/plan')
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => { if (d?.plan) setPlan(d.plan as Plan) })
+      .catch(() => {})
+  }, [])
+
+  /*
+   * Sair da tela pelo próprio app NÃO é fechar o app: quem tocou em Remover e
+   * foi para Família espera não ver a pessoa lá. Os DELETEs pendentes saem na
+   * hora (keepalive). Fechar o app de verdade não passa por aqui — e aí a
+   * pessoa fica, que é o lado seguro (E7).
+   */
+  useEffect(() => {
+    const pendentes = saindo.current
+    return () => {
+      pendentes.forEach(({ timer }, id) => {
+        clearTimeout(timer)
+        void fetch(`/api/family-members/${id}`, { method: 'DELETE', keepalive: true }).catch(() => {})
+      })
+      pendentes.clear()
+      if (barraTimer.current) clearTimeout(barraTimer.current)
+    }
+  }, [])
+
+  const mostrarBarra = useCallback((label: string, restore: () => Promise<void>) => {
+    if (barraTimer.current) clearTimeout(barraTimer.current)
+    const n = Date.now()
+    setBarra({ n, label, restore })
+    barraTimer.current = setTimeout(() => setBarra(atual => (atual?.n === n ? null : atual)), DESFAZER_MS)
+  }, [])
+
+  const desfazer = async () => {
+    if (!barra) return
+    const { restore, n } = barra
+    if (barraTimer.current) clearTimeout(barraTimer.current)
+    setBarra(null)
+    try {
+      await restore()
+    } catch (e) {
+      // E6: o convite não volta se o nome já foi recriado — dito, não escondido.
+      setBarra({ n, label: e instanceof Error ? e.message : c.undoFailed, restore: async () => {} })
+      barraTimer.current = setTimeout(() => setBarra(atual => (atual?.n === n ? null : atual)), 4000)
+    }
+  }
+
+  /** Remover dependente direto do cartão, com "Desfazer" (§3.5). */
+  const removerDependente = (m: Member) => {
+    haptic.impact()
+    setMembers(cur => cur.filter(x => x.id !== m.id))
+    const timer = setTimeout(() => {
+      saindo.current.delete(m.id)
+      void fetch(`/api/family-members/${m.id}`, { method: 'DELETE' })
+        .then(r => {
+          // E13: outra aba já apagou — nada a fazer além de recarregar.
+          if (!r.ok && r.status !== 404 && r.status !== 204) void load()
+        })
+        .catch(() => { void load() })
+    }, DESFAZER_MS)
+    saindo.current.set(m.id, { timer, member: m })
+    mostrarBarra(m.linked_user_id ? c.removedLinked(m.name) : c.removed(m.name), async () => {
+      const item = saindo.current.get(m.id)
+      if (!item) throw new Error(c.undoFailed)
+      clearTimeout(item.timer)
+      saindo.current.delete(m.id)
+      setMembers(cur => (cur.some(x => x.id === m.id) ? cur : [...cur, item.member]))
+    })
+  }
 
   /*
    * `?editar=<id>` abre direto a pessoa.
@@ -565,6 +671,12 @@ export default function RosterPage() {
     }
   }
 
+  /** O resto da casa, para o aviso de nome parecido ao corrigir um convite. */
+  const outrosDaCasa: NamedPerson[] = [
+    ...contas.filter(a => !a.isMe).map(a => ({ kind: 'account' as const, id: a.userId, name: a.name })),
+    ...members.filter(m => !m.linked_user_id).map(m => ({ kind: 'dependent' as const, id: m.id, name: m.name })),
+  ]
+
   const naoVinculados = Object.values(candidates).filter(
     cand => !members.some(m => m.linked_user_id === cand.user_id),
   )
@@ -675,7 +787,12 @@ export default function RosterPage() {
                           ` · ${m.medical_conditions.length} ${m.medical_conditions.length === 1 ? c.conditions : c.conditionsPlural}`}
                       </em>
                     </div>
-                    <Pill onClick={() => openEdit(m)} disabled={isPending}>{c.edit}</Pill>
+                    <div className="roster-card-acts">
+                      <Pill onClick={() => openEdit(m)} disabled={isPending}>{c.edit}</Pill>
+                      <button type="button" className="roster-danger-soft" onClick={() => removerDependente(m)} disabled={isPending}>
+                        {c.removeShort}
+                      </button>
+                    </div>
                   </div>
 
                   {(m.mobility_impaired || m.is_infant || m.medical_conditions.length > 0) && (
@@ -711,20 +828,16 @@ export default function RosterPage() {
               )
             })}
 
-            {invites.length > 0 && (
-              <>
-                <SectionLabel>{c.invitedLabel}</SectionLabel>
-                <Card>
-                  <p className="t-foot ink-2">{c.invitedWhy}</p>
-                  <ul className="roster-candidates">
-                    {invites.map(i => (
-                      <li key={i.id} className="t-body"><b>{i.name}</b></li>
-                    ))}
-                  </ul>
-                  <p className="t-foot ink-3">{c.invitedJoined}</p>
-                </Card>
-              </>
-            )}
+            <HouseholdInvites
+              invites={invites}
+              others={outrosDaCasa}
+              circle={circleInfo}
+              canCreateCircle={canAccess('circulos', plan)}
+              pt={language === 'pt'}
+              onCircleCreated={setCircleInfo}
+              onChanged={() => { void load() }}
+              onRemoved={(nome, restore) => mostrarBarra(c.inviteRemoved(nome), restore)}
+            />
 
             {naoVinculados.length > 0 && (
               <>
@@ -744,6 +857,13 @@ export default function RosterPage() {
           </>
         )}
       </div>
+
+      {barra && (
+        <div className="wv2-undo" role="status" aria-live="polite">
+          <span className="t-foot">{barra.label}</span>
+          <button type="button" className="wv2-undo-btn" onClick={() => void desfazer()}>{c.undo}</button>
+        </div>
+      )}
 
       {sheetOpen && (
         <div

@@ -281,9 +281,20 @@ export async function POST(req: NextRequest) {
   }
   if (!circle) return NextResponse.json({ error: lastErr ?? 'Could not create circle' }, { status: 500 })
 
-  await supabase.from('circle_members').insert({
+  const { error: erroMembro } = await supabase.from('circle_members').insert({
     circle_id: circle.id, user_id: user.id, role: 'Admin', share_inventory: true,
   })
+
+  /*
+   * Círculo sem o próprio criador dentro é um círculo pela metade
+   * (HOUSEHOLD-FIX-001 E17). Ninguém o veria, e o próximo toque em "Enviar
+   * convite" criaria outro. Desfaz e devolve erro, em vez de deixar o lixo.
+   */
+  if (erroMembro) {
+    const admin = createAdminClient()
+    await (admin ?? supabase).from('circles').delete().eq('id', circle.id).eq('leader_id', user.id)
+    return NextResponse.json({ error: 'Could not create circle' }, { status: 500 })
+  }
 
   /*
    * Quem criou o círculo mora nele (D-130).

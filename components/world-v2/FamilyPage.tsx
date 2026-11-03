@@ -24,7 +24,7 @@
  * em `/family-legacy` e era uma tela de outro app; agora é a mesma linguagem.)
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useLanguage } from '@/lib/i18n'
 import { distanceKm } from '@/lib/world/shelters'
@@ -36,6 +36,7 @@ import { haptic } from './motion'
 import { formatGallons, GALLON_SHORT } from '@/lib/units'
 import './world-v2.css'
 import FamilyNav from './FamilyNav'
+import type { HouseholdDuplicate } from '@/lib/household'
 
 type RosterMember = {
   id: string
@@ -135,10 +136,14 @@ const COPY = {
     add: 'Cadastrar a família',
     inviteCircle: 'Convidar para o círculo',
     sameTwice: 'Esta pessoa aparece duas vezes',
-    sameTwiceWhy: 'Ela foi cadastrada como dependente e também tem conta própria. Enquanto forem duas linhas, a casa conta uma pessoa a mais — e a autonomia sai menor do que é.',
+    sameTwiceWhy: 'O mesmo nome está em dois registros da casa. Enquanto forem dois, a casa conta uma pessoa a mais — e a autonomia sai menor do que é.',
+    sameTwiceKeep: (n: string) => `Se for a mesma, fica "${n}".`,
+    undo: 'Desfazer',
+    undoFailed: 'Não deu para desfazer.',
+    mergedBar: (n: string) => `Juntadas em ${n}`,
+    resolveFailed: 'Não deu certo. Tente de novo.',
     sameTwiceYes: 'É a mesma pessoa',
     sameTwiceNo: 'São duas pessoas',
-    sameTwiceDone: 'Juntadas',
     someoneMissing: 'Alguém da sua casa está fora do EOS',
     someoneMissingWhy: 'Quem não tem conta não aparece no mapa e não recebe mensagem. Mande o link — a pessoa entra sem digitar código nenhum.',
     loadError: 'Não foi possível carregar.',
@@ -186,10 +191,14 @@ const COPY = {
     add: 'Record the family',
     inviteCircle: 'Invite to the circle',
     sameTwice: 'This person appears twice',
-    sameTwiceWhy: 'They were added as a dependant and also have their own account. While there are two rows, the household counts one person too many — and autonomy reads lower than it is.',
+    sameTwiceWhy: 'The same name is on two household records. While there are two, the household counts one person too many — and autonomy reads lower than it is.',
+    sameTwiceKeep: (n: string) => `If it is the same person, "${n}" stays.`,
+    undo: 'Undo',
+    undoFailed: 'Could not undo.',
+    mergedBar: (n: string) => `Merged into ${n}`,
+    resolveFailed: 'That did not work. Try again.',
     sameTwiceYes: 'Same person',
     sameTwiceNo: 'Two different people',
-    sameTwiceDone: 'Merged',
     someoneMissing: 'Someone in your household is outside EOS',
     someoneMissingWhy: 'Without an account they do not appear on the map and cannot receive a message. Send the link — no code to type.',
     loadError: 'Could not load.',
@@ -249,10 +258,13 @@ export default function FamilyPage() {
    * por engano tira uma boca da conta e faz a autonomia SUBIR — a família leria
    * que aguenta mais do que aguenta. É o único erro dos dois que machuca.
    */
-  const [duplicates, setDuplicates] = useState<Array<{
-    memberId: string; name: string; sameAs: string; sameAsName: string
-  }>>([])
-  const [resolvidos, setResolvidos] = useState<Record<string, 'juntada' | 'separada'>>({})
+  const [duplicates, setDuplicates] = useState<HouseholdDuplicate[]>([])
+  /** Pares em resolução — o cartão some na hora e volta se o servidor falhar. */
+  const [resolvendo, setResolvendo] = useState<Record<string, true>>({})
+  const [erroDuplicata, setErroDuplicata] = useState<string | null>(null)
+  /** "Juntadas · Desfazer" por 8 s (HOUSEHOLD-FIX-001 D2). */
+  const [barra, setBarra] = useState<{ n: number; label: string; restore: () => Promise<void> } | null>(null)
+  const barraTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -301,33 +313,84 @@ export default function FamilyPage() {
     }
   }, [])
 
+  const mostrarBarra = (label: string, restore: () => Promise<void>) => {
+    if (barraTimer.current) clearTimeout(barraTimer.current)
+    const n = Date.now()
+    setBarra({ n, label, restore })
+    barraTimer.current = setTimeout(() => setBarra(atual => (atual?.n === n ? null : atual)), 8000)
+  }
+
+  useEffect(() => () => { if (barraTimer.current) clearTimeout(barraTimer.current) }, [])
+
+  const desfazer = async () => {
+    if (!barra) return
+    const { restore } = barra
+    if (barraTimer.current) clearTimeout(barraTimer.current)
+    setBarra(null)
+    try {
+      await restore()
+    } catch {
+      setErroDuplicata(c.undoFailed)
+    }
+    await load()
+  }
+
   /**
-   * Junta as duas linhas, ou marca que são duas pessoas mesmo.
+   * "É a mesma pessoa" / "São duas pessoas" (D-135, HOUSEHOLD-FIX-001 §3.6).
    *
-   * Juntar usa a rota de vínculo que já existia e ninguém achava: gravar
-   * `linked_user_id` faz `getHousehold` parar de contar a linha duplicada,
-   * porque a conta já está lá.
+   * Quem fica foi decidido no servidor (`keep`): conta > dependente > convite
+   * enviado > convite pendente. O que SAI depende do tipo:
    *
-   * "São duas pessoas" não escreve nada no banco de propósito. Um dependente
-   * "Isadora" ao lado de uma conta "Isadora" pode ser mãe e filha, e o certo é
-   * deixar as duas linhas de pé — o app só não pergunta de novo nesta sessão.
-   * Marcar isso para sempre pediria uma coluna nova para um caso raro.
+   *   convite     → `dismissed`. Reversível no banco.
+   *   dependente, ficando uma conta → VINCULA à conta (rota `/link`). Não
+   *               apaga nada: a ficha do dependente fica, e `getHousehold`
+   *               para de contá-lo duas vezes. Desfazer = desvincular.
+   *   dependente, ficando outro dependente → DELETE, mas só depois dos 8 s.
+   *
+   * "São duas pessoas" grava o par em `household_distinct_pairs` — o alerta
+   * não volta a perguntar, nem em outra sessão.
    */
-  const resolverDuplicata = async (memberId: string, sameAs: string, mesma: boolean) => {
-    setResolvidos(atual => ({ ...atual, [memberId]: mesma ? 'juntada' : 'separada' }))
-    if (!mesma) return
-    const r = await fetch(`/api/family-members/${memberId}/link`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ linked_user_id: sameAs }),
-    }).catch(() => null)
-    // Falhou: desfaz o otimismo em vez de mentir que juntou.
-    if (!r?.ok) {
-      setResolvidos(atual => {
-        const proximo = { ...atual }
-        delete proximo[memberId]
-        return proximo
+  const resolverDuplicata = async (d: HouseholdDuplicate, mesma: boolean) => {
+    setErroDuplicata(null)
+    setResolvendo(atual => ({ ...atual, [d.key]: true }))
+    const voltar = () => setResolvendo(atual => {
+      const proximo = { ...atual }
+      delete proximo[d.key]
+      return proximo
+    })
+    const json = (body: unknown) => ({ headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+
+    if (!mesma) {
+      const r = await fetch('/api/household/distinct', { method: 'POST', ...json({ a: d.keep, b: d.drop }) }).catch(() => null)
+      if (!r?.ok) { voltar(); setErroDuplicata(c.resolveFailed); return }
+      return
+    }
+
+    const { keep, drop } = d
+    if (drop.kind === 'invite') {
+      const r = await fetch('/api/household/address', { method: 'PATCH', ...json({ id: drop.id, status: 'dismissed' }) }).catch(() => null)
+      if (!r?.ok) { voltar(); setErroDuplicata(c.resolveFailed); return }
+      mostrarBarra(c.mergedBar(keep.name), async () => {
+        const v = await fetch('/api/household/address', { method: 'PATCH', ...json({ id: drop.id, status: drop.status ?? 'pending', restore: true }) })
+        if (!v.ok) throw new Error('undo')
       })
+    } else if (drop.kind === 'dependent' && keep.kind === 'account') {
+      const r = await fetch(`/api/family-members/${drop.id}/link`, { method: 'PATCH', ...json({ linked_user_id: keep.id }) }).catch(() => null)
+      if (!r?.ok) { voltar(); setErroDuplicata(c.resolveFailed); return }
+      mostrarBarra(c.mergedBar(keep.name), async () => {
+        const v = await fetch(`/api/family-members/${drop.id}/link`, { method: 'PATCH', ...json({ linked_user_id: null }) })
+        if (!v.ok) throw new Error('undo')
+      })
+    } else if (drop.kind === 'dependent') {
+      // O DELETE espera os 8 s; "Desfazer" cancela antes de ele sair (regra 3).
+      let cancelado = false
+      const timer = setTimeout(() => {
+        if (!cancelado) void fetch(`/api/family-members/${drop.id}`, { method: 'DELETE' }).then(() => load())
+      }, 8000)
+      mostrarBarra(c.mergedBar(keep.name), async () => { cancelado = true; clearTimeout(timer); voltar() })
+      return
+    } else {
+      voltar()
       return
     }
     await load()
@@ -631,33 +694,31 @@ export default function FamilyPage() {
               autonomia sai menor do que é. Não é um aviso de arrumação — é a
               explicação de por que o número não bate.
             */}
-            {duplicates.filter(d => resolvidos[d.memberId] !== 'separada').map(d => (
-              <Card key={d.memberId} className="wv2-plan-note gaps">
+            {erroDuplicata && <p className="t-foot warn" role="alert">{erroDuplicata}</p>}
+            {duplicates.filter(d => !resolvendo[d.key]).map(d => (
+              <Card key={d.key} className="wv2-plan-note gaps">
                 <strong className="t-sub">{c.sameTwice}</strong>
                 <p className="t-foot ink-2">
-                  <b>{d.name}</b> · <b>{d.sameAsName}</b>
+                  <b>{d.drop.name}</b> · <b>{d.keep.name}</b>
                 </p>
                 <p className="t-foot ink-2">{c.sameTwiceWhy}</p>
-                {resolvidos[d.memberId] === 'juntada' ? (
-                  <span className="t-caps ink-3">{c.sameTwiceDone}</span>
-                ) : (
-                  <div className="family-dupe-actions">
-                    <button
-                      type="button"
-                      className="wv2-pill primary"
-                      onClick={() => void resolverDuplicata(d.memberId, d.sameAs, true)}
-                    >
-                      {c.sameTwiceYes}
-                    </button>
-                    <button
-                      type="button"
-                      className="wv2-pill"
-                      onClick={() => void resolverDuplicata(d.memberId, d.sameAs, false)}
-                    >
-                      {c.sameTwiceNo}
-                    </button>
-                  </div>
-                )}
+                <p className="t-foot ink-3">{c.sameTwiceKeep(d.keep.name)}</p>
+                <div className="family-dupe-actions">
+                  <button
+                    type="button"
+                    className="wv2-pill primary"
+                    onClick={() => void resolverDuplicata(d, true)}
+                  >
+                    {c.sameTwiceYes}
+                  </button>
+                  <button
+                    type="button"
+                    className="wv2-pill"
+                    onClick={() => void resolverDuplicata(d, false)}
+                  >
+                    {c.sameTwiceNo}
+                  </button>
+                </div>
               </Card>
             ))}
 
@@ -745,6 +806,13 @@ export default function FamilyPage() {
           </>
         )}
       </div>
+
+      {barra && (
+        <div className="wv2-undo" role="status" aria-live="polite">
+          <span className="t-foot">{barra.label}</span>
+          <button type="button" className="wv2-undo-btn" onClick={() => void desfazer()}>{c.undo}</button>
+        </div>
+      )}
     </main>
   )
 }

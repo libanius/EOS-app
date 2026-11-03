@@ -3887,6 +3887,86 @@
 }
 .wv2-roster-page .roster-danger:active { transform: scale(0.97); }
 
+/* ── HOUSEHOLD-FIX-001: desfazer em vez de procurar onde apagar ───────────── */
+.wv2-roster-page .roster-card-acts { display: flex; gap: var(--s2); flex-wrap: wrap; justify-content: flex-end; }
+/* Remover fica perto, mas não grita: o destrutivo forte continua na folha.
+   Aqui ele é reversível por 8 s, então é um botão de texto vermelho. */
+.wv2-roster-page .roster-danger-soft {
+  min-height: 44px;
+  padding: 0 var(--s3);
+  border: 0;
+  border-radius: var(--r-pill);
+  background: none;
+  color: #ff6961;
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.wv2-roster-page .roster-danger-soft:active { opacity: 0.5; }
+.wv2-roster-page .roster-danger-soft:disabled { opacity: 0.4; cursor: default; }
+
+.wv2-roster-page .roster-invites { display: grid; gap: var(--s3); margin-top: var(--s4); }
+.wv2-roster-page .roster-invites-label { margin: 0; }
+.wv2-roster-page .roster-invite .field { display: grid; gap: var(--s3); }
+.wv2-roster-page .roster-invite-note {
+  display: grid; gap: var(--s2); justify-items: start;
+  padding-top: var(--s2);
+  border-top: 1px solid var(--sep);
+}
+.wv2-roster-page .roster-invite-note p { margin: 0; }
+.wv2-roster-page .roster-link {
+  display: block; max-width: 100%;
+  padding: var(--s2) var(--s3);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+.wv2-roster-page .roster-ask {
+  display: grid; gap: var(--s3);
+  padding: var(--s3);
+  border-radius: 14px;
+  border: 1px solid var(--accent);
+  background: rgba(48, 209, 88, 0.08);
+}
+
+/* A barra fica ACIMA da navegação inferior (z 100) e abaixo da folha (900). */
+.wv2-undo {
+  position: fixed;
+  left: 50%;
+  bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 300;
+  width: min(calc(100% - 32px), 560px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding: var(--s2) var(--s2) var(--s2) var(--s4);
+  border-radius: 16px;
+  border: 1px solid var(--sep-strong);
+  background: rgba(28, 28, 32, 0.97);
+  box-shadow: 0 16px 40px -16px rgba(0, 0, 0, 0.9);
+  animation: wv2UndoIn 220ms ease-out both;
+}
+.wv2-undo-btn {
+  flex: none;
+  min-height: 44px;
+  padding: 0 var(--s4);
+  border: 0;
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--accent);
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+@keyframes wv2UndoIn { from { opacity: 0; transform: translate(-50%, 12px) } to { opacity: 1; transform: translate(-50%, 0) } }
+
+
 /* ── A folha do formulário ────────────────────────────────────────────────── */
 .wv2-roster-page .roster-scrim {
   position: fixed;

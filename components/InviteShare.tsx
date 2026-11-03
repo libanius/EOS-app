@@ -19,6 +19,7 @@
  */
 
 import { useMemo, useState } from 'react'
+import { inviteMessage, inviteUrl } from '@/lib/invite-link'
 
 export default function InviteShare({
   circleId,
@@ -48,12 +49,10 @@ export default function InviteShare({
     // `window.location.origin` e não uma env: o link precisa apontar para o
     // mesmo domínio em que a pessoa está, inclusive em preview.
     const origin = typeof window !== 'undefined' ? window.location.origin : ''
-    return `${origin}/convite/${inviteCode}${withFamily ? '?intima=1' : ''}`
+    return inviteUrl(origin, inviteCode, withFamily)
   }, [inviteCode, withFamily])
 
-  const message = pt
-    ? `Entre no meu círculo "${circleName}" no EOS — é onde a gente se encontra se algo acontecer.\n\n${url}`
-    : `Join my circle "${circleName}" on EOS — it is where we find each other if something happens.\n\n${url}`
+  const message = inviteMessage(circleName, url, pt)
 
   const share = async () => {
     setNote(null)

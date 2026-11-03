@@ -4,6 +4,35 @@
 
 ---
 
+## D-231 — Casa à prova de erro: duplicatas e convites (HOUSEHOLD-FIX-001)
+
+**Data**: 2026-11-03. **Spec**: `specs/HOUSEHOLD-FIX-001-casa-a-prova-de-erro.md` (Ready, aprovado pelo dono).
+
+**O que aconteceu**: uma beta tester cadastrou duas pessoas (Alexia e Grazi) e
+em 16 minutos tinha **quatro** convites pendentes. Relatou: "não acho onde
+apagar" e "pergunta se elas têm telefone, mas onde eu cadastro o telefone?".
+A limpeza foi feita à mão no banco (`dismissed`, não apagado).
+
+**Causas**: o formulário de endereço esvaziava a lista depois de salvar e não
+mostrava quem já morava na casa; a trava do banco só barrava nome idêntico; a
+lista de convidadas não tinha nenhum botão; excluir dependente ficava no fim da
+folha; "Tem celular" sugeria um campo de número que não existe.
+
+**Decisão**: errar tem que ser difícil, desfazer tem que ser fácil.
+- Regra de nome parecido única e determinística (`lib/household-names.ts`),
+  usada no formulário, na rota do endereço e no alerta de duplicata. Pergunta,
+  nunca junta nem bloqueia.
+- Toda remoção fora da folha de edição tem "Desfazer" por 8 s (D2). Dependente
+  só é apagado no servidor quando os 8 s acabam.
+- "Enviar convite" sem círculo cria o círculo no mesmo toque quando há plano
+  Família; sem o plano, mostra a oferta (D1 = a).
+- Sem campo de telefone de terceiros: o convite continua sendo um link.
+- "São duas pessoas" passa a ser lembrado (`household_distinct_pairs`).
+
+**Achados da implementação**: ver §10 do spec (A1–A6).
+
+---
+
 ## D-230 — O motor de alerta só avisava quem estava com o app aberto
 
 **Date**: 2026-09-03

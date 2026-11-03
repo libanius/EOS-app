@@ -1539,15 +1539,16 @@ body.plan-execution-readable .val {
 .home-address .ha-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 .home-address .ha-list li {
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: 1fr auto;
   gap: 8px;
   align-items: center;
   padding: 10px 12px;
   border-radius: 12px;
   background: rgba(255,255,255,0.04);
 }
-.home-address .ha-name { font-size: 14px; }
-.home-address .ha-choice { display: flex; gap: 6px; }
+.home-address .ha-name { font-size: 15px; }
+/* HOUSEHOLD-FIX-001: os rótulos novos são frases — ganham linha própria. */
+.home-address .ha-choice { grid-column: 1 / -1; display: flex; gap: 6px; flex-wrap: wrap; }
 .home-address .ha-what {
   grid-column: 1 / -1;
   font-size: 12px;
@@ -1584,3 +1585,28 @@ body.plan-execution-readable .val {
 .home-address .ha-btn:disabled { opacity: 0.45; cursor: default; }
 .home-address .ha-error { margin: 0; font-size: 13px; color: #fca5a5; }
 .home-address .ha-ok { margin: 0; font-size: 13px; color: var(--ac); }
+
+/* HOUSEHOLD-FIX-001 §3.1 — quem já mora aqui, antes do campo de nome. */
+.home-address .ha-house { display: grid; gap: 8px; }
+.home-address .ha-house-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.home-address .ha-house-list li {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  background: rgba(255,255,255,0.04);
+  transition: border-color .2s, background .2s;
+}
+.home-address .ha-house-list li.on { border-color: var(--ac); background: rgba(34,197,94,0.1); }
+.home-address .ha-state { font-size: 13px; color: var(--mu); }
+.home-address .ha-manage { font-size: 14px; color: var(--ac); min-height: 44px; display: inline-flex; align-items: center; }
+
+/* HOUSEHOLD-FIX-001 §3.2 — "é a mesma pessoa?" */
+.home-address .ha-ask {
+  display: grid; gap: 10px;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid var(--ac);
+  background: rgba(34,197,94,0.06);
+}
+.home-address .ha-ask-acts { display: flex; gap: 8px; flex-wrap: wrap; }

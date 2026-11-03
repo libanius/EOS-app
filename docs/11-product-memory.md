@@ -1721,3 +1721,11 @@ Verificado por existência de tabela/coluna via service-role REST (`scripts/` ad
 - ✅ `20260705000000_auto_create_profile.sql` — trigger `handle_new_user` **APLICADO** (2026-07-17; 0 usuários sem perfil)
 
 Verificar via Supabase Dashboard → SQL Editor: `SELECT name FROM supabase_migrations.schema_migrations ORDER BY name DESC LIMIT 5;`
+
+
+## Casa: nomes parecidos e convites (D-231, 2026-11-03)
+
+- **Duas regras de nome convivem, de propósito.** `lib/household-names.ts` (regra 5 do HOUSEHOLD-FIX-001) decide quando PERGUNTAR "é a mesma pessoa?". `lib/same-person.ts` `podeFecharConvite` (nível `forte`) continua decidindo quando um convite de quem já entrou fecha sozinho. Não trocar uma pela outra.
+- **O índice `household_invites_owner_name_idx` é a trava do "Desfazer"**: restaurar um convite cujo nome já foi recriado devolve 409 `name_taken`. Não remover o índice sem rever E6/E19.
+- **`POST /api/household/address` nunca cria morador parecido sem `confirmDistinct`**: devolve em `skipped`. Cliente antigo que manda `hasPhone` continua funcionando (o servidor aceita `hasPhone` e `usesApp`).
+- **O DELETE de dependente pelo cartão espera 8 s no cliente.** Sair da tela Cadastro pelo app dispara os pendentes na hora (keepalive); fechar o app não apaga ninguém.

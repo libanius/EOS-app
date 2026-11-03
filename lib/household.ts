@@ -28,7 +28,8 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { podePerguntar, podeFecharConvite } from '@/lib/same-person'
+import { podeFecharConvite } from '@/lib/same-person'
+import { similarNames, keeperOf, pairKeys, type NamedPerson } from '@/lib/household-names'
 import { logError } from '@/lib/error-log'
 import { WATER_LITERS_PER_PERSON_DAY } from '@/lib/units'
 
@@ -128,14 +129,7 @@ export type Household = {
    * autonomia subir — a família leria que aguenta mais do que aguenta. Aqui só
    * se aponta; fundir é um toque do usuário, na tela, olhando os dois nomes.
    */
-  duplicates: Array<{
-    /** A linha de `family_members` que talvez seja a mesma pessoa. */
-    memberId: string
-    name: string
-    /** A conta com que ela se parece. */
-    sameAs: string
-    sameAsName: string
-  }>
+  duplicates: HouseholdDuplicate[]
   /**
    * Falso quando a leitura falhou.
    *
@@ -144,6 +138,26 @@ export type Household = {
    * quem lê não tem como saber que aquilo é um erro e não um fato.
    */
   known: boolean
+}
+
+/**
+ * Um registro da casa, no formato que o alerta de duplicata entende
+ * (HOUSEHOLD-FIX-001 §3.6). `status` só existe para convite.
+ */
+export type HouseholdRecord = NamedPerson & { status?: 'pending' | 'sent' }
+
+/**
+ * Dois registros que talvez sejam a mesma pessoa.
+ *
+ * `keep` diz qual fica se o usuário responder "é a mesma" — conta >
+ * dependente > convite enviado > convite pendente; no empate, o nome mais
+ * completo. O servidor decide para que todas as telas decidam igual.
+ */
+export type HouseholdDuplicate = {
+  /** Chave estável do par, a mesma de `household_distinct_pairs`. */
+  key: string
+  keep: HouseholdRecord
+  drop: HouseholdRecord
 }
 
 const VAZIO: HouseholdInventory = {
@@ -523,31 +537,69 @@ export async function getHousehold(userId: string): Promise<Household> {
     }
 
     /*
-     * A mesma pessoa em duas linhas (D-135).
+     * A mesma pessoa em duas linhas (D-135, ampliado no HOUSEHOLD-FIX-001).
      *
-     * Um dependente cujo nome se parece com o de uma conta da casa é, quase
-     * sempre, a mesma pessoa cadastrada duas vezes — pelo endereço e pelo
-     * cadastro. Acontece agora em produção: a conta "Isadora da Rosa Libanio"
-     * tem um dependente "Isadora", e a autonomia dela é dividida por três onde
-     * deviam ser duas.
+     * O D-135 só comparava dependente com conta. O incidente de 2026-11-03
+     * mostrou os outros dois casos: quatro CONVITES para duas pessoas
+     * ("Graziela" e "Graziela Letteriello", "Alexia" e "Alexa"), que nenhum
+     * alerta apontava. Agora os três tipos se comparam entre si, com a regra 5
+     * de `lib/household-names.ts` — a mesma do formulário de endereço.
      *
-     * Só aponta. Fundir é um toque do usuário — ver a justificativa no tipo.
+     * Só aponta. Fundir é um toque do usuário. E um par que ele já disse serem
+     * duas pessoas (`household_distinct_pairs`) não volta a ser perguntado.
      */
-    const duplicates: Household['duplicates'] = []
+    const registros: HouseholdRecord[] = []
+    for (const id of idsCasa) {
+      if (id === userId) continue
+      const nome = perfis.get(id)
+      if (nome) registros.push({ kind: 'account', id, name: nome })
+    }
     for (const d of (depsRes.data ?? []) as Array<Record<string, unknown>>) {
+      // Dependente já vinculado a uma conta é a mesma pessoa resolvida.
       if (d.linked_user_id) continue
-      const nomeDep = String(d.name ?? '')
-      for (const id of idsCasa) {
-        const nomeConta = perfis.get(id) ?? ''
-        if (nomeConta && podePerguntar(nomeDep, nomeConta)) {
-          duplicates.push({
-            memberId: String(d.id),
-            name: nomeDep,
-            sameAs: id,
-            sameAsName: id === userId ? nomeConta : nomeConta,
-          })
-          break
-        }
+      // Só os MEUS dependentes: o de outra conta da casa não é meu para juntar.
+      if (d.profile_id !== userId) continue
+      registros.push({ kind: 'dependent', id: String(d.id), name: String(d.name ?? '') })
+    }
+    try {
+      const { data: abertos } = await admin
+        .from('household_invites')
+        .select('id, name, status')
+        .eq('owner_id', userId)
+        .in('status', ['pending', 'sent'])
+        .limit(40)
+      for (const c of (abertos ?? []) as Array<{ id: string; name: string; status: 'pending' | 'sent' }>) {
+        registros.push({ kind: 'invite', id: c.id, name: c.name, status: c.status })
+      }
+    } catch { /* sem a migration, compara só contas e dependentes */ }
+
+    let separados = new Set<string>()
+    try {
+      const { data: pares } = await admin
+        .from('household_distinct_pairs')
+        .select('a_key, b_key')
+        .eq('owner_id', userId)
+      separados = new Set(((pares ?? []) as Array<{ a_key: string; b_key: string }>).map(p => `${p.a_key}|${p.b_key}`))
+    } catch { /* sem a tabela, pergunta de novo — o lado seguro */ }
+
+    const duplicates: HouseholdDuplicate[] = []
+    const jaApontados = new Set<string>()
+    for (let i = 0; i < registros.length; i++) {
+      for (let j = i + 1; j < registros.length; j++) {
+        const a = registros[i]
+        const b = registros[j]
+        // Duas contas são duas pessoas com login próprio: não há o que juntar.
+        if (a.kind === 'account' && b.kind === 'account') continue
+        if (!similarNames(a.name, b.name)) continue
+        const key = pairKeys(a, b).join('|')
+        if (separados.has(key)) continue
+        const keep = keeperOf(a, b)
+        const drop = keep === a ? b : a
+        // Um registro some só uma vez por leitura: com três grafias da mesma
+        // pessoa, a tela resolve um par de cada vez em vez de mostrar três avisos.
+        if (jaApontados.has(`${drop.kind}:${drop.id}`)) continue
+        jaApontados.add(`${drop.kind}:${drop.id}`)
+        duplicates.push({ key, keep, drop })
       }
     }
 
