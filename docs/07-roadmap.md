@@ -437,7 +437,7 @@ segunda conta de prontidão.*
 
 | Task ID | Task | Status | Notes |
 |---|---|---|---|
-| SIGNAL-T00 | Aprovação do spec + Wren valida o painel lateral do MUNDO | PENDING | D1–D5 fechadas pelo dono em 2026-11-03. Falta: aprovação final para Ready e a passada do Wren na forma do painel (Regra 11). |
+| SIGNAL-T00 | Aprovação do spec para Ready | PENDING | D1–D5 fechadas pelo dono (D1 revisado em 2026-11-04: Sinais é o 6º destino da barra global). Passada do Wren feita em 2026-11-03. Falta só a aprovação final. |
 | SIGNAL-T01 | Migração `signals`, `protocols`, `protocol_items`; origem `PROTOCOL` | BLOCKED | Depende de SIGNAL-T00. Docs 06 e 37 §18 no mesmo PR. |
 | SIGNAL-T02 | Funções puras + teste de verdade única | BLOCKED | Dias e cobertura iguais ao painel e ao Pilot. |
 | SIGNAL-T03 | Autoria e publicação no admin | BLOCKED | `ADMIN_EMAILS`. "O que não é" e fonte obrigatórios. |

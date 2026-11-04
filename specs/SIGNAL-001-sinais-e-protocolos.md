@@ -1,5 +1,5 @@
 # SPEC — SIGNAL-001: Sinais e Protocolos curados
-Version: 0.3 | Status: **Draft** (decisões D1–D5 fechadas pelo dono em 2026-11-03; aguarda aprovação para Ready) | Author: Paulo Neto
+Version: 0.4 | Status: **Draft** (decisões D1–D5 fechadas pelo dono em 2026-11-03; aguarda aprovação para Ready) | Author: Paulo Neto
 
 > Regra 1: nenhum código antes de Ready. Este spec está **Draft**.
 > Regra 3: os edge cases ficam escritos aqui (§7) e não são descobertos no código.
@@ -107,11 +107,21 @@ quatro) e qual é o **degrau recomendado**.
 
 ### 3.3 A família vê o Sinal
 
-O Sinal aparece numa **aba nova na borda esquerda do MUNDO** (D1). A aba fica
-visível sobre o mapa, com a contagem de Sinais ativos da região; tocá-la abre um
-painel lateral com os cartões. A barra global de 5 destinos não muda (docs/35 §5).
-Cada cartão mostra nível, data, título, resumo e "% pronto no degrau
-recomendado", e abre a página do protocolo. O "% pronto"
+Sinais é um **destino da barra global**, logo à esquerda do MUNDO (D1):
+
+```text
+[ FAMÍLIA ] [ PREPARAÇÃO ] [ SINAIS ] (( MUNDO )) [ COMMS ] [ MAIS ]
+```
+
+A barra passa de cinco para seis destinos e mantém o comportamento atual de
+`components/BottomNav.tsx`: o item ativo cresce (`flex-grow: 2.35`) e mostra o
+rótulo; os demais se deslocam para os lados e ficam só com o ícone. As
+proporções não mudam, só a distribuição. O MUNDO mantém o orbe verde.
+
+Tocar em Sinais abre `/sinais`: a lista dos Sinais publicados da região, por
+nível e depois data. Cada cartão mostra nível, data, título, resumo e "% pronto
+no degrau recomendado", e abre `/sinais/<slug>`, a página do protocolo. O selo
+do ícone conta só Sinais **ainda não vistos** pelo perfil e some depois de vistos. O "% pronto"
 é calculado **sem** que a família tenha adotado nada: o motor de cobertura roda
 sobre os itens-modelo × os holdings atuais, em memória, sem gravar.
 
@@ -332,6 +342,8 @@ O gráfico de trajetória da autonomia e o painel de sistemas do protótipo
 | E10 | Offline | Sinais e protocolos já vistos abrem do cache (`lib/offline-storage.ts`). Adotar offline fica desabilitado com o motivo; nada é enfileirado em silêncio. |
 | E11 | Protocolo pede quantidade maior que a do requisito existente | A tela mostra "hoje: X · este degrau: Y". Sem o toque da família, a quantidade não muda e o item mostra a cobertura contra X. |
 | E12 | Protocolo sem item `PER_DAY` | O percentual usa só presença; a tela não mostra régua de dias. |
+| E14 | Tela com menos de 360 px de largura | Seis destinos com alvo de 44 px só cabem a partir de 358 px. Abaixo disso o rótulo do item ativo some e o ativo se marca só por fundo e peso (D-194); nenhum alvo fica abaixo de 44 × 44 px e a barra não rola para o lado. |
+| E15 | Nenhum Sinal publicado na região | `/sinais` mostra um estado vazio que explica o que aparece ali e mostra os Sinais arquivados; o ícone segue na barra, sem selo. |
 | E13 | Curador publica com erro | Despublicar volta a `draft`; o push já enviado não é reenviado na republicação (dedup por `source_key`). |
 
 ---
@@ -352,7 +364,8 @@ O gráfico de trajetória da autonomia e o painel de sistemas do protótipo
 12. Push sai para `PREPARAR` e `AGIR` na região, uma única vez por Sinal; `MONITORAR` e `CONTEXTO` não notificam.
 13. Toda informação numérica e todo controle da página do protocolo têm dica explicativa acessível por hover, foco e toque longo.
 14. Todos os controles têm alvo ≥ 44 × 44 px e texto pequeno tem contraste ≥ 4,5:1 sobre as superfícies do tema escuro (D2).
-17. No MUNDO, a aba de Sinais fica na borda esquerda, mostra a contagem de Sinais ativos da região, abre o painel por toque e por teclado, e não cobre os controles existentes do mapa.
+17. A barra global tem seis destinos na ordem Família, Preparação, Sinais, MUNDO, Comms, Mais. Com Sinais ativo, o item cresce e mostra o rótulo; os demais ficam só com ícone. Em 360, 375, 390 e 430 px nenhum alvo fica abaixo de 44 × 44 px e a página não rola para o lado; abaixo de 360 px vale o E14.
+19. O selo de Sinais conta só Sinais publicados ainda não vistos pelo perfil e zera ao abrir cada um.
 18. O Pilot recebe os Sinais ativos da região como fato fixo (D4); Sinais arquivados não entram nesse fato.
 15. O Pilot, perguntado sobre um Sinal publicado, responde com o texto da curadoria e oferece abrir o protocolo.
 16. Lint, type-check, testes e `next build` limpos; docs 06, 07, 09, 11 e 37 atualizados no mesmo PR (Regra 8).
@@ -361,11 +374,13 @@ O gráfico de trajetória da autonomia e o painel de sistemas do protótipo
 
 ## 9. Decisões (fechadas pelo dono em 2026-11-03)
 
-- **D1 = aba no MUNDO.** Os Sinais aparecem numa aba nova na **borda esquerda
-  do MUNDO**, que abre um painel lateral (§3.3). A barra global não muda. O
-  formato exato do painel (largura, comportamento sobre o mapa, convivência com
-  as camadas) passa pelo Wren na SIGNAL-T00 (Regra 11): o lugar está decidido,
-  a forma é validada.
+- **D1 = destino na barra global, à esquerda do MUNDO** (revisado pelo dono em
+  2026-11-04). A primeira leitura, "aba na borda esquerda do MUNDO", foi
+  corrigida pelo dono: o lugar é a barra global. A passada do Wren de
+  2026-11-03 (quadro "Sinais no MUNDO", cinco mecanismos) mostrou que a aba
+  dentro do MUNDO colidia com o painel esquerdo que já existe no computador; o
+  destino na barra elimina a colisão. **Isto revoga a regra "cinco slots, a
+  barra nunca muda" do D-180 / docs/35 §5**, atualizada no mesmo PR.
 - **D2 = visual do protótipo.** Aba, painel e página do protocolo usam a
   linguagem do protótipo validado (§6), tema escuro único.
 - **D3 = fora.** Remédios e pets não entram na autonomia. A autonomia segue
@@ -385,6 +400,7 @@ O gráfico de trajetória da autonomia e o painel de sistemas do protótipo
 - Barra "de onde veio o progresso" e selo "herdado de …": `holdings` é agregado por recurso e local, sem histórico; reabastecer mantém o `created_at` e muda a quantidade, então nem `created_at` nem `updated_at` separam o estoque anterior do novo → **HOLDING-HISTORY-001**.
 - "Por que comprei", evento e degrau por aquisição: mesmo motivo → **HOLDING-HISTORY-001**.
 - Carrossel e redesenho de `/preparedness`: → **BASE-001**.
+- Sexto destino em automotivo (CarPlay/Android Auto): fica fora; o companion segue com os destinos atuais.
 - Painel de sistemas da casa (energia, internet, água, celular, LoRa, satélite): → **SYSTEMS-001**. LoRa continua bloqueado por G-05.
 - Sinal gerado automaticamente a partir de alerta oficial (NHC, NWS). O alerta pode **sugerir** um rascunho ao curador numa versão futura; nunca publica sozinho.
 - Comentários, reações e compartilhamento social dentro do app.

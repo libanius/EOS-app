@@ -31,8 +31,12 @@ notícia em ação familiar, e o Pilot não sabia orientar.
    sistemas ficam fora e viram HOLDING-HISTORY-001, BASE-001 e SYSTEMS-001.
 
 **Decisões do dono (§9 do spec)**:
-- D1: Sinais numa **aba nova na borda esquerda do MUNDO**, com painel lateral.
-  A barra global não muda. O Wren valida a forma do painel, não o lugar.
+- D1 (revisado em 2026-11-04): Sinais é o **sexto destino da barra global**,
+  à esquerda do MUNDO. O item ativo cresce e os demais se deslocam, como a
+  barra já faz. **Revoga a regra de cinco slots do D-180** (docs/35 §5). Funciona
+  com alvos de 44 px a partir de 360 px de largura; abaixo, o rótulo do ativo
+  some. A passada do Wren de 2026-11-03 encontrou a colisão da ideia anterior
+  (aba dentro do MUNDO) com o painel esquerdo do computador.
 - D2: aba, painel e protocolo usam o **visual do protótipo** (tema escuro,
   linguagem dos conceitos de execução).
 - D3: remédios e pets **fora** da autonomia.
