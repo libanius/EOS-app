@@ -1,5 +1,5 @@
 # SPEC — CONTENT-001: Pipeline de conteúdo (uma pauta, três saídas)
-Version: 0.1 | Status: **Draft** | Author: Paulo Neto | Depende de: SIGNAL-001 (Ready), docs/22 (EDU), docs/32 (Knowledge)
+Version: 0.2 | Status: **Draft** (D-P1…D-P5 fechadas pelo dono em 2026-11-05) | Author: Paulo Neto | Depende de: SIGNAL-001 (Ready), docs/22 (EDU), docs/32 (Knowledge)
 
 > Regra 1: nenhum código antes de Ready. Este spec está **Draft**.
 > Regra 3: os edge cases ficam escritos aqui (§7) e não são descobertos no código.
@@ -80,17 +80,29 @@ A mesma chamada com o mesmo conteúdo não muda nada (idempotente pelo `hash`).
 |---|---|
 | `draft` | Grava. Não aparece para ninguém além do dono. |
 | `review` | Grava e mostra ao dono, em `/admin/content`, uma prévia exatamente como a família verá. |
-| `published` | Só é aceito se a pauta trouxer a aprovação do dono (D-P2). O Sinal aparece em `/sinais`; a lição fica `approved` no EDU. |
-| `archived` | O cartão sai de `/sinais`; o link direto abre em modo leitura com "Sinal arquivado em <data>" (SIGNAL-001 E8). |
+| `archived` | O cartão sai de `/sinais`; o link direto abre em modo leitura com "Sinal arquivado em <data>" (SIGNAL-001 E8). Arquivar só tira do ar, por isso o pipeline pode pedir. |
+
+**O pipeline nunca publica (D-P2 = b).** Publicar é um toque do dono em
+`/admin/content`, sobre uma versão específica que ele viu na prévia. O status
+`published` enviado pelo pipeline é rejeitado (422).
+
+**Versão no ar e versão recebida são coisas diferentes.** Quando um Sinal já
+está publicado e chega uma versão nova, a família continua vendo a versão
+aprovada até o dono aprovar a nova. Nada que o pipeline mande muda o que está
+no ar sem esse toque, exceto arquivar.
 
 ### 3.3 Vídeo do YouTube
 
-O vídeo é postado **pelo pipeline**, não pelo EOS. Depois de postado, o pipeline
-manda a mesma pauta com `video.youtubeId` preenchido (nova versão, §3.5). Com o
-vídeo presente:
+O vídeo é postado **pelo pipeline**, não pelo EOS. **Um vídeo por idioma**
+(D-P5 = b): `video.pt` e `video.en`, cada um opcional. Depois de postado, o
+pipeline manda a pauta com o ID preenchido (nova versão, §3.5, que passa pela
+aprovação como qualquer outra).
 
-- `/sinais/<slug>` mostra o vídeo embutido acima de "O que é";
-- `edu_content.source_type` vira `youtube` e `source_url` aponta para o vídeo.
+- A família com o app em português vê o vídeo `pt`; em inglês, o vídeo `en`.
+- Se o vídeo do idioma da pessoa ainda não existe, a página **não mostra
+  vídeo** (não mostra o do outro idioma): uma tela, um idioma (D-225).
+- `edu_content.source_type` vira `youtube` e `source_url` aponta para o vídeo
+  `pt` (ou `en`, se só houver esse).
 
 O vídeo é **apresentação**. Ele não substitui o texto: a página continua
 inteira sem o vídeo (rede fraca, vídeo removido).
@@ -103,7 +115,8 @@ vira uma linha de `edu_content`, ligada ao Sinal por `signals.edu_content_id`
 `body.en`, separados por título de idioma.
 
 - Ao publicar, a linha fica `approved` com `rag_enabled=true`, e a ingestão no
-  `knowledge_base` roda **na mesma operação de publicação** (D-P4), pela função
+  `knowledge_base` roda **automaticamente, logo após o toque de publicar**
+  (D-P4 = a), pela função
   que já existe, com `source='edu:<id>'` e `source_version='v<versão>'`.
 - O texto do Sinal (a notícia, com data) **não** vai para o RAG enquanto o
   Sinal estiver ativo: o Pilot o recebe como fato fixo (SIGNAL-001 D4).
@@ -125,9 +138,14 @@ todas as versões recebidas (`content_packages`) e aplica a última.
 ### 3.6 Revisão do dono no app
 
 `/admin/content` (só `ADMIN_EMAILS`) lista as pautas por status, mostra a
-prévia de cada uma em PT e EN, e o resultado da validação. É **leitura**: o dono
-escreve no pipeline, não no app (SIGNAL-001 §12.2). O único botão é o de
-aprovação, se D-P2 = (b).
+prévia de cada uma em PT e EN (com o vídeo de cada idioma), o resultado da
+validação e, quando houver, a diferença entre a versão no ar e a recebida.
+O dono não escreve no app (SIGNAL-001 §12.2). Os botões são:
+
+- **Publicar versão N**: publica exatamente a versão mostrada. Se chegar uma
+  versão mais nova enquanto a tela está aberta, o botão recusa com "chegou a
+  versão N+1, revise de novo".
+- **Arquivar**: tira do ar.
 
 ---
 
@@ -140,11 +158,7 @@ aprovação, se D-P2 = (b).
   "schema": "eos.content/1",
   "slug": "fortress-90-dias",          // único, minúsculas e hífen, igual à rota
   "version": 2,                         // inteiro, cresce a cada envio
-  "status": "review",                   // draft | review | published | archived
-  "approval": {                         // obrigatório só para published (D-P2)
-    "by": "contact@brightscalegroup.com",
-    "at": "2026-11-06T14:00:00Z"
-  },
+  "status": "review",                   // draft | review | archived (publicar é no EOS)
   "signal": { /* exatamente o tipo Signal de lib/signals.ts, sem slug e status */ },
   "lesson": {
     "title":   { "pt": "...", "en": "..." },
@@ -152,10 +166,9 @@ aprovação, se D-P2 = (b).
     "body":    { "pt": "...", "en": "..." },   // a lição permanente; vai para o RAG
     "scenarioTags": ["blackout", "general"]
   },
-  "video": {                            // opcional; ausente até o vídeo existir
-    "youtubeId": "dQw4w9WgXcQ",
-    "language": "pt",
-    "durationSec": 540
+  "video": {                            // opcional; cada idioma só depois de postado
+    "pt": { "youtubeId": "dQw4w9WgXcQ", "durationSec": 540 },
+    "en": { "youtubeId": "a1B2c3D4e5F", "durationSec": 510 }
   }
 }
 ```
@@ -181,16 +194,17 @@ O `hash` é calculado pelo EOS sobre o corpo normalizado, não enviado.
 | id | uuid | PK |
 | slug | text | único |
 | status | text | `draft`, `review`, `published`, `archived` |
-| version | integer | versão aplicada |
+| version | integer | versão **no ar** (a aprovada); a última recebida está em `content_packages` |
+| approved_by | uuid | FK → profiles.id, quem tocou em Publicar |
 | level | text | `MONITORAR`, `PREPARAR`, `AGIR`, `CONTEXTO` |
 | occurred_on, published_on | date | |
 | region | jsonb | `{scope:'national'}` no início |
 | official_alert | boolean | |
-| reviewed_by_curator | boolean | `true` só com `approval` |
+| reviewed_by_curator | boolean | `true` quando publicado pelo botão |
 | content | jsonb | os textos bilíngues (title, summary, whatItIs, whatItIsNot, curatorNote, sourceLine) |
 | sources | jsonb | `[{title,url}]`, mínimo 1 |
 | protocol | jsonb | `Protocol` inteiro (degraus, recomendado, itens) |
-| youtube_id | text | nulo até o vídeo existir |
+| video | jsonb | `{pt?:{youtubeId,durationSec}, en?:{…}}` |
 | edu_content_id | uuid | FK → `edu_content.id` |
 | published_at, archived_at | timestamptz | |
 | updated_at | timestamptz | |
@@ -220,6 +234,8 @@ tentativa no próximo envio ou por `POST /api/admin/edu/ingest` (§7 E6).
 |---|---|---|
 | `PUT /api/content/packages/[slug]` | `CONTENT_PIPELINE_SECRET` | Recebe a pauta. 200 com o estado, 401 sem segredo, 409 versão velha, 422 com problemas. |
 | `GET /api/content/packages/[slug]` | `CONTENT_PIPELINE_SECRET` | Versão aplicada, status e estado de cada saída (sinal, edu, rag, vídeo). Para o pipeline saber onde parou. |
+| `POST /api/admin/content/[slug]/publish` | `ADMIN_EMAILS` | Body `{version}`. Publica essa versão; 409 se não for a última recebida. Dispara a ingestão no RAG. |
+| `POST /api/admin/content/[slug]/archive` | `ADMIN_EMAILS` | Arquiva. |
 | `GET /api/signals` | autenticado | Sinais `published`, por nível e data (SIGNAL-001 §4.4). |
 | `GET /api/signals/[slug]` | autenticado | O Sinal publicado ou arquivado. `draft`/`review` só para `ADMIN_EMAILS`. |
 | `GET /admin/content` | `ADMIN_EMAILS` | Tela de revisão (§3.6). |
@@ -250,14 +266,15 @@ Resposta 200:
 2. **Tudo ou nada.** Pauta com qualquer problema não grava nada (422).
 3. **Os dois idiomas são obrigatórios** em todos os textos (`pt` e `en` não
    vazios). Tradução automática segue fora (SIGNAL-001 §10).
-4. **Publicar exige aprovação do dono** (D-P2). Sem ela, `published` vira 422.
+4. **Só o dono publica** (D-P2 = b), pelo botão, numa versão que ele viu.
+   `published` vindo do pipeline vira 422.
 5. **A lição precisa ensinar.** `lesson.body` com menos de 160 caracteres
    instrucionais em cada idioma é rejeitado (mesma régua de
    `MIN_EDU_RAG_INSTRUCTION_CHARS`).
 6. **A lição não carrega notícia.** A regra é editorial e fica na revisão do
    dono; o EOS só confere o tamanho. (Datas de notícia no RAG envelhecem e o
    Pilot as repetiria como atuais.)
-7. **Vídeo só com ID válido** do YouTube (11 caracteres `[A-Za-z0-9_-]`). URL
+7. **Vídeo por idioma, só com ID válido** do YouTube (11 caracteres `[A-Za-z0-9_-]`). URL
    inteira é rejeitada, para não aceitar outro domínio.
 8. **Versão só sobe.** Igual ou menor: 409.
 9. **Slug é permanente.** Uma vez publicado, o slug não muda (links
@@ -275,8 +292,8 @@ Resposta 200:
 1. A migração cria as tabelas e a função, sem dados.
 2. O pipeline (ou um script único do repo) envia o FORTRESS como pauta
    `version: 1`, `status: review`, com o texto atual de `lib/signals-content.ts`.
-3. O dono revisa em `/admin/content`, ajusta no pipeline e envia `version: 2`,
-   `published`, com aprovação. `reviewed_by_curator` vira `true`.
+3. O dono revisa em `/admin/content`, ajusta no pipeline, que envia `version: 2`
+   em `review`, e toca "Publicar versão 2". `reviewed_by_curator` vira `true`.
 4. Só então as telas passam a ler do banco e `lib/signals-content.ts` é
    removido, no mesmo PR.
 
@@ -293,12 +310,14 @@ família.
 | E2 | Mesma versão, conteúdo diferente | 409 "versão já aplicada com outro conteúdo". |
 | E3 | Falta `whatItIsNot` ou fonte em um idioma | 422; nada gravado. |
 | E4 | `AGIR` sem `officialAlert` | 422 (SIGNAL-001 §5.5). |
-| E5 | `published` sem `approval` | 422. |
+| E5 | Pipeline envia `published` | 422 "publicar é no EOS". |
 | E6 | OpenAI fora no momento da publicação | Sinal publicado, EDU `approved`, `rag: "pending"`. O próximo `GET` mostra pendente; reenviar a mesma pauta tenta de novo. |
 | E7 | Vídeo removido ou privado no YouTube | O embutido falha sozinho; a página mostra o texto inteiro. O pipeline manda nova versão sem `video`. |
-| E8 | Vídeo em PT e família com app em EN | Mostra o vídeo com o rótulo "Vídeo em português". Não esconde. |
+| E8 | Só existe o vídeo `pt` e a família usa o app em EN | Sem vídeo; o texto em EN aparece inteiro. Quando o `en` chegar e for aprovado, aparece. |
 | E9 | Item removido do protocolo numa nova versão | Some da página; requisitos já adotados ficam (§3.5). |
-| E10 | Pauta arquivada recebe nova versão `published` | Aceita: o Sinal volta à lista com `published_on` novo. |
+| E10 | Pauta arquivada recebe nova versão | Fica em revisão; se o dono publicar, o Sinal volta à lista com `published_on` novo. |
+| E10b | Sinal publicado recebe nova versão | A família continua vendo a versão aprovada; a nova fica em revisão até o toque. |
+| E10c | Dono toca "Publicar v3" e a v4 chegou nesse meio-tempo | 409; a tela recarrega mostrando a v4. |
 | E11 | Slug de pauta nova colide com um existente | É a mesma pauta: aplica as regras de versão (E1/E2/§5.8). |
 | E12 | Segredo ausente no servidor | Rota responde 503 "pipeline desligado" (mesmo padrão do cron). |
 | E13 | Pauta muito grande | Limite de 256 KB no corpo; acima disso, 413. |
@@ -313,16 +332,19 @@ família.
 1. `PUT /api/content/packages/<slug>` sem o segredo responde 401; com o segredo ausente no servidor, 503.
 2. Uma pauta com um problema qualquer responde 422 com a lista, e nenhuma tabela muda (verificado por contagem antes e depois).
 3. Uma pauta válida em `review` aparece em `/admin/content` e não aparece em `/sinais` nem em `GET /api/signals`.
-4. Uma pauta `published` com aprovação aparece em `/sinais` com o mesmo texto da prévia, nos dois idiomas.
-5. `published` sem `approval` responde 422.
+4. Depois do toque em "Publicar versão N", o Sinal aparece em `/sinais` com o mesmo texto da prévia, nos dois idiomas.
+5. Uma pauta enviada pelo pipeline com `status: published` responde 422.
+5b. Com um Sinal publicado na v2, enviar a v3 não muda o que `/sinais/<slug>` mostra até o dono publicar a v3.
+5c. Publicar uma versão que não é a última recebida responde 409.
+5d. `POST /api/admin/content/*` sem e-mail em `ADMIN_EMAILS` responde 403.
 6. Reenviar a mesma pauta (mesma versão, mesmo conteúdo) responde 200 e não altera `updated_at`.
 7. Mesma versão com conteúdo diferente responde 409.
 8. A publicação cria ou atualiza uma linha em `edu_content` com `source_type` e `source_url` corretos e `status='approved'`.
-9. Depois da publicação, o `knowledge_base` tem pedaços com `source='edu:<id>'` e `source_version` igual à versão do EDU.
+9. Logo após o toque de publicar, sem outra ação, o `knowledge_base` tem pedaços com `source='edu:<id>'` e `source_version` igual à versão do EDU.
 10. Uma nova versão da lição substitui os pedaços anteriores (nenhum pedaço da versão anterior fica).
 11. Com OpenAI indisponível, o Sinal publica e o `GET` da pauta mostra `rag: "pending"`.
-12. Com `video.youtubeId`, a página mostra o vídeo embutido; sem ele, a página é idêntica à do Marco 1.
-13. `video.youtubeId` com URL inteira ou caracteres fora do padrão responde 422.
+12. Com o app em PT, a página mostra o vídeo `pt`; em EN, o vídeo `en`. Sem vídeo no idioma da pessoa, a página não mostra vídeo e é idêntica à do Marco 1.
+13. Um `youtubeId` com URL inteira ou caracteres fora do padrão responde 422.
 14. Arquivar tira o cartão de `/sinais`, o link direto mostra o aviso de arquivado, e o resumo do Sinal entra no RAG.
 15. O teste de verdade única do SIGNAL-001 continua passando com o Sinal lido do banco.
 16. Depois da migração do FORTRESS, `lib/signals-content.ts` não existe e `reviewedByCurator` do FORTRESS é `true`.
@@ -330,15 +352,15 @@ família.
 
 ---
 
-## 9. Decisões para o dono
+## 9. Decisões (fechadas pelo dono em 2026-11-05)
 
-| # | Pergunta | Opções | Recomendação |
-|---|---|---|---|
-| D-P1 | Como o pipeline se autentica | (a) segredo `CONTENT_PIPELINE_SECRET` no header; (b) login de admin | **(a)**: o pipeline é máquina, igual ao cron. |
-| D-P2 | Onde fica a aprovação para publicar | (a) no pipeline, como campo `approval` da pauta; (b) um botão "Publicar" em `/admin/content` | **(a)** mantém "o dono escreve no pipeline". (b) é mais seguro se o pipeline tiver etapas automáticas que podem errar. |
-| D-P3 | Forma no banco | (a) uma linha bilíngue com `jsonb` (§4.2); (b) uma linha por idioma + `protocols`/`protocol_items` (SIGNAL-001 §4.1) | **(a)**: é a forma que a pauta e as telas já usam. |
-| D-P4 | Quando a lição entra no RAG | (a) automática ao publicar; (b) botão de ingestão separado, como hoje no EDU | **(a)**: publicar já é a aprovação explícita; (b) cria um passo que se esquece. |
-| D-P5 | Vídeo por idioma | (a) um vídeo por pauta, com idioma marcado; (b) um vídeo por idioma | **(a)** agora; (b) quando houver canal em EN. |
+| # | Pergunta | Decisão |
+|---|---|---|
+| D-P1 | Como o pipeline se autentica | **Segredo** `CONTENT_PIPELINE_SECRET` no header, como o cron. |
+| D-P2 | Onde fica a aprovação para publicar | **Botão no EOS** (`/admin/content`). O pipeline entrega para revisão e nunca publica sozinho; uma versão nova de um Sinal no ar também espera o toque. |
+| D-P3 | Forma no banco | **Uma linha bilíngue** com `jsonb` (§4.2). SIGNAL-001 §4.1–§4.2 passa a apontar para cá. |
+| D-P4 | Quando a lição entra no RAG | **Automática** logo após o toque de publicar. |
+| D-P5 | Vídeo por idioma | **Um vídeo por idioma.** App em EN abre o vídeo em inglês; em PT, o vídeo em português. Sem vídeo no idioma da pessoa, não mostra vídeo. |
 
 ---
 

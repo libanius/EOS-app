@@ -456,11 +456,11 @@ segunda conta de prontidão.*
 
 | Task | Entrega | Status | Notas |
 |---|---|---|---|
-| CONTENT-T00 | Decisões D-P1…D-P5 e spec Ready | NEXT | Dono. |
+| CONTENT-T00 | Decisões D-P1…D-P5 e spec Ready | IN PROGRESS | Decisões fechadas em 2026-11-05 (aprovação por botão no EOS, RAG automático, vídeo por idioma). Falta a revisão final do spec. |
 | CONTENT-T01 | Migração `content_packages`, `signals`, `apply_content_package()` | BLOCKED | Docs 06 e 37 §18 no mesmo PR. |
 | CONTENT-T02 | Funções puras + testes com pautas de exemplo | BLOCKED | |
 | CONTENT-T03 | `PUT`/`GET /api/content/packages/[slug]` + RAG | BLOCKED | `CONTENT_PIPELINE_SECRET`. |
-| CONTENT-T04 | `/admin/content` (prévia e validação) | BLOCKED | Leitura. |
+| CONTENT-T04 | `/admin/content`: prévia, validação, Publicar e Arquivar | BLOCKED | Só o dono publica (D-P2). |
 | CONTENT-T05 | Vídeo embutido no Sinal | BLOCKED | |
 | CONTENT-T06 | FORTRESS migrado e curado; `lib/signals-content.ts` removido | BLOCKED | Aprovação do dono. |
 
