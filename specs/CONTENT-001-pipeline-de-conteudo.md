@@ -1,5 +1,5 @@
 # SPEC — CONTENT-001: Pipeline de conteúdo (uma pauta, três saídas)
-Version: 1.0 | Status: **Ready** (aprovado pelo dono em 2026-11-05; D-P1…D-P5 fechadas) | Author: Paulo Neto | Depende de: SIGNAL-001 (Ready), docs/22 (EDU), docs/32 (Knowledge)
+Version: 1.1 | Status: **Ready** (aprovado pelo dono em 2026-11-05; D-P1…D-P5 fechadas) | Author: Paulo Neto | Depende de: SIGNAL-001 (Ready), docs/22 (EDU), docs/32 (Knowledge)
 
 > Regra 1: nenhum código antes de Ready. Este spec está **Ready**.
 > Regra 3: os edge cases ficam escritos aqui (§7) e não são descobertos no código.
@@ -161,7 +161,7 @@ O dono não escreve no app (SIGNAL-001 §12.2). Os botões são:
   "slug": "fortress-90-dias",          // único, minúsculas e hífen, igual à rota
   "version": 2,                         // inteiro, cresce a cada envio
   "status": "review",                   // draft | review | archived (publicar é no EOS)
-  "signal": { /* exatamente o tipo Signal de lib/signals.ts, sem slug e status */ },
+  "signal": { /* o tipo Signal de lib/signals.ts sem slug, status, publishedOn e reviewedByCurator: esses quatro o EOS preenche */ },
   "lesson": {
     "title":   { "pt": "...", "en": "..." },
     "summary": { "pt": "...", "en": "..." },
@@ -187,8 +187,8 @@ O `hash` é calculado pelo EOS sobre o corpo normalizado, não enviado.
 | status | text | o status enviado |
 | payload | jsonb | a pauta como chegou |
 | hash | text | sha256 do corpo normalizado |
-| problems | jsonb | lista de problemas; vazia quando aceita |
-| applied_at | timestamptz | nulo se rejeitada |
+| applied_at | timestamptz | quando esta versão foi publicada; nulo enquanto não for |
+| applied_by | uuid | FK → profiles.id |
 | received_at | timestamptz | |
 
 | `signals` | Tipo | Notas |
@@ -216,7 +216,14 @@ O `hash` é calculado pelo EOS sobre o corpo normalizado, não enviado.
 | Coluna nova | Tipo | Notas |
 |---|---|---|
 | video | jsonb | `{pt?:{youtubeId}, en?:{youtubeId}}`, nulo para itens antigos |
+| lesson | jsonb | `{title, summary, body}` bilíngue, nulo para itens antigos (v1.1: as colunas `title` e `summary` são de um idioma só) |
 | content_slug | text | slug da pauta de origem, nulo para itens antigos; único quando presente |
+
+As colunas antigas continuam preenchidas, para nada que já lê o EDU quebrar:
+`title` e `summary` recebem o texto em PT; `transcript` recebe `body.pt` e
+`body.en`, cada um sob um título de idioma (o RAG é consultado em inglês, docs/32
+§2.2, e precisa dos dois). A tela do EDU, quando `lesson` existe, mostra título,
+resumo e texto no idioma da pessoa (D-225).
 
 Leitura em `/preparedness/aprender`: com `video` preenchido, embute o vídeo do
 idioma da pessoa e, sem ele, não mostra vídeo; com `video` nulo (itens antigos),
@@ -238,18 +245,24 @@ pela rota da pauta, com service role.
 
 Receber e publicar são duas escritas separadas:
 
-- **Receber** (`PUT` do pipeline) grava **só** em `content_packages`: a versão
-  candidata, com `hash` e `problems`. Nenhuma linha de `signals` ou
+- **Receber** (`PUT` do pipeline) grava **só** em `content_packages`, e só a
+  pauta válida (pauta com problema não deixa rastro no banco: critério 2), pela
+  função `receive_content_package(slug, version, status, payload, hash)`, que
+  decide numa transação entre gravar, "sem mudança" (E1), conflito (E2) e versão
+  velha (§5.8). Nenhuma linha de `signals` ou
   `edu_content` é tocada; `/api/signals` e `/api/edu` continuam servindo a
   versão aprovada.
 - **Publicar** (toque do dono) chama a função SQL
   `publish_content_package(slug, version, approver)`, que, numa transação,
-  confere que `version` é a última recebida e sem problemas, faz upsert em
+  confere que `version` é a última recebida, faz upsert em
   `signals` e em `edu_content` a partir dela e marca `applied_at`. Quem lê vê a
   versão antiga ou a nova inteira, nunca metade.
 - **Arquivar** é a exceção, porque só tira do ar: `archive_content_package(slug)`
-  muda `signals.status` e `edu_content.status` para `archived`, numa transação,
-  e pode vir do pipeline ou do botão.
+  muda `signals.status` para `archived`, e pode vir do pipeline (pauta com
+  `status: archived`) ou do botão. A lição continua no EDU e no RAG: ela é
+  permanente (§5.6, E16).
+- **Publicar de novo a mesma versão** não sobe a versão do EDU; só refaz a
+  ingestão se ela estiver pendente (E6).
 
 A ingestão no RAG (rede, OpenAI) roda **depois** do commit da publicação; se
 falhar, o Sinal fica publicado e o estado diz `rag: "pending"`, com nova
@@ -271,9 +284,14 @@ tentativa por um novo toque em Publicar da mesma versão ou por
 Resposta 200:
 
 ```json
-{ "slug": "fortress-90-dias", "version": 2, "status": "published",
-  "signal": "published", "edu": "approved", "rag": "ingested", "video": "embedded" }
+{ "outcome": "created", "slug": "fortress", "latestVersion": 3, "latestStatus": "review",
+  "liveVersion": 2, "signal": "published", "edu": "approved", "eduVersion": 2,
+  "rag": "ingested", "video": { "pt": true, "en": false }, "awaitingApproval": true }
 ```
+
+`outcome` é `created` ou `unchanged` no `PUT`; `published` ou `unchanged` no
+publicar. `awaitingApproval` diz ao pipeline que há versão em `review` esperando
+o toque do dono.
 
 ### 4.5 Funções puras (testáveis sem banco)
 
@@ -281,7 +299,7 @@ Resposta 200:
   regras da §5. Vazia = válida.
 - `packageHash(pkg)` → sha256 estável (chaves ordenadas, espaços normalizados).
 - `lessonToEdu(pkg)` → a linha de `edu_content` (título, resumo, transcript,
-  tags, source_type, source_url, video, content_slug).
+  tags, source_type, source_url, video, lesson, content_slug).
 - `eduVideoFor(item, lang)` → o `youtubeId` do idioma, o `source_url` legado
   para itens sem `video`, ou nulo. Usada pela tela do EDU.
 - `rowToSignal(row)` → o tipo `Signal` que as telas já usam. As telas não
@@ -345,7 +363,7 @@ família.
 | E7 | Vídeo removido ou privado no YouTube | O embutido falha sozinho; a página mostra o texto inteiro. O pipeline manda nova versão sem `video`. |
 | E8 | Só existe o vídeo `pt` e a família usa o app em EN | Sem vídeo; o texto em EN aparece inteiro. Quando o `en` chegar e for aprovado, aparece. |
 | E9 | Item removido do protocolo numa nova versão | Some da página; requisitos já adotados ficam (§3.5). |
-| E10 | Pauta arquivada recebe nova versão | Fica em revisão; se o dono publicar, o Sinal volta à lista com `published_on` novo. |
+| E10 | Pauta arquivada recebe nova versão | Fica em revisão; se o dono publicar, o Sinal volta à lista com `published_on` novo, e o resumo de arquivado sai do RAG (deixou de ser histórico). |
 | E10b | Sinal publicado recebe nova versão | A família continua vendo a versão aprovada; a nova fica em revisão até o toque. |
 | E10c | Dono toca "Publicar v3" e a v4 chegou nesse meio-tempo | 409; a tela recarrega mostrando a v4. |
 | E11 | Slug de pauta nova colide com um existente | É a mesma pauta: aplica as regras de versão (E1/E2/§5.8). |
