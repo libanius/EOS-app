@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useLanguage } from '@/lib/i18n'
 import type { EduContent } from '@/lib/edu'
-import { youtubeEmbedUrl, youtubeThumbnailUrl } from '@/lib/edu'
+import { youtubeEmbedFromId, youtubeEmbedUrl, youtubeThumbFromId, youtubeThumbnailUrl, type EduContent as EduItem } from '@/lib/edu'
+import { eduVideoFor } from '@/lib/content-package'
 import { buildEduPreparednessProposals } from '@/lib/edu-actions'
 import { Card, PillLink, SectionLabel } from '@/components/world-v2/primitives'
 import PreparednessNav from '@/components/world-v2/PreparednessNav'
@@ -69,9 +70,9 @@ export default function EduPage() {
 
   const tags = useMemo(() => Array.from(new Set(content.flatMap(item => item.scenario_tags))).sort(), [content])
   const featured = useMemo(() => {
-    const videos = content.filter(item => item.source_type === 'youtube' && youtubeEmbedUrl(item.source_url))
+    const videos = content.filter(item => eduMedia(item, language).embed)
     return [...videos].sort((a, b) => Number(b.view_count ?? 0) - Number(a.view_count ?? 0))[0] ?? videos[0] ?? null
-  }, [content])
+  }, [content, language])
   const rest = useMemo(() => content.filter(item => item.id !== featured?.id), [content, featured])
 
   const load = useCallback(async (nextTag = '') => {
@@ -206,8 +207,8 @@ function EduCard({
   onExpand: (id: string) => void
   onToggleDetails: (id: string) => void
 }) {
-  const embedUrl = item.source_type === 'youtube' ? youtubeEmbedUrl(item.source_url) : null
-  const thumbUrl = item.source_type === 'youtube' ? youtubeThumbnailUrl(item.source_url) : null
+  const { embed: embedUrl, thumb: thumbUrl } = eduMedia(item, language)
+  const text = eduText(item, language)
   const fallbackProposals = useMemo(() => buildEduPreparednessProposals(item), [item])
   const [curatedProposals, setCuratedProposals] = useState(fallbackProposals)
   const [curating, setCurating] = useState(false)
@@ -272,12 +273,12 @@ function EduCard({
         className="t-title2"
         style={{ width: '100%', margin: '0.6rem 0 0.4rem', padding: 0, border: 0, background: 'transparent', color: 'var(--ink)', textAlign: 'left', cursor: 'pointer' }}
       >
-        {item.title}
+        {text.title}
       </button>
       {expanded && embedUrl && featured ? (
         <div style={{ margin: '0.85rem 0', aspectRatio: '16 / 9', width: '100%', overflow: 'hidden', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.12)', background: '#050507' }}>
           <iframe
-            title={item.title}
+            title={text.title}
             src={embedUrl}
             style={{ width: '100%', height: '100%', border: 0, display: 'block' }}
             loading="lazy"
@@ -308,7 +309,7 @@ function EduCard({
       ) : null}
       {expanded && detailsOpen ? (
         <div style={{ marginTop: '0.9rem' }}>
-          <p className="t-body ink-2" style={{ margin: 0 }}>{item.summary}</p>
+          <p className="t-body ink-2" style={{ margin: 0 }}>{text.summary}</p>
           <div style={{ marginTop: '0.9rem', display: 'flex', gap: '0.55rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <button
               type="button"
@@ -326,9 +327,15 @@ function EduCard({
             ))}
           </div>
           {item.source_url ? (
-            <a className="t-foot" href={item.source_url} target="_blank" rel="noreferrer" style={{ display: 'inline-block', marginTop: '0.75rem', color: 'var(--accent)' }}>
-              {copy.source}
-            </a>
+            item.source_url.startsWith('/') ? (
+              <a className="t-foot" href={item.source_url} style={{ display: 'inline-block', marginTop: '0.75rem', color: 'var(--accent)' }}>
+                {language === 'en' ? 'Open the Signal' : 'Abrir o Sinal'}
+              </a>
+            ) : (
+              <a className="t-foot" href={item.source_url} target="_blank" rel="noreferrer" style={{ display: 'inline-block', marginTop: '0.75rem', color: 'var(--accent)' }}>
+                {copy.source}
+              </a>
+            )
           ) : null}
           <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.75rem' }}>
             <span className="t-foot ink-3">{copy.version} {item.version}</span>
@@ -337,13 +344,33 @@ function EduCard({
             ))}
             {item.rag_enabled ? <span className="t-foot ink-3">{copy.rag}</span> : null}
           </div>
-          {item.transcript ? (
+          {text.body ? (
             <pre className="t-foot ink-2" style={{ whiteSpace: 'pre-wrap', margin: '0.9rem 0 0', fontFamily: 'inherit', lineHeight: 1.55 }}>
-              {item.transcript}
+              {text.body}
             </pre>
           ) : null}
         </div>
       ) : null}
     </Card>
   )
+}
+
+
+/**
+ * Vídeo do item no idioma da pessoa (CONTENT-001 §4.2b, D-P5): item da pauta usa
+ * `video[lang]` e não cai para o outro idioma; item antigo segue com `source_url`.
+ */
+function eduMedia(item: EduItem, lang: 'pt' | 'en'): { embed: string | null; thumb: string | null } {
+  const v = eduVideoFor(item, lang)
+  if (!v) return { embed: null, thumb: null }
+  if (v.kind === 'id') return { embed: youtubeEmbedFromId(v.youtubeId), thumb: youtubeThumbFromId(v.youtubeId) }
+  return { embed: youtubeEmbedUrl(v.url), thumb: youtubeThumbnailUrl(v.url) }
+}
+
+/** Título, resumo e texto no idioma da pessoa quando o item traz a lição bilíngue. */
+function eduText(item: EduItem, lang: 'pt' | 'en') {
+  const l = item.lesson
+  return l
+    ? { title: l.title[lang] || item.title, summary: l.summary[lang] || item.summary, body: l.body[lang] || item.transcript }
+    : { title: item.title, summary: item.summary, body: item.transcript }
 }

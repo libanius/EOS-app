@@ -169,3 +169,11 @@ describe('changedBlocks (§3.6)', () => {
     expect(changedBlocks(fortressPackage(), fortressPackage({ version: 2 }))).toEqual([])
   })
 })
+
+describe('vídeo chega até a tela (CONTENT-T05)', () => {
+  it('a prévia e a linha do banco levam o vídeo para o Sinal', () => {
+    const video = { pt: { youtubeId: 'dQw4w9WgXcQ', durationSec: 540 } }
+    expect(previewSignal(fortressPackage({ video }), '2026-11-06').video).toEqual(video)
+    expect(previewSignal(fortressPackage(), '2026-11-06').video).toBeUndefined()
+  })
+})

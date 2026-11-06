@@ -150,6 +150,10 @@
 .sg-btn.block { width: 100%; }
 .sg-back { display: inline-flex; gap: 6px; align-items: center; min-height: 44px; font-weight: 600; text-decoration: none; }
 
+/* vídeo do Sinal (CONTENT-001 T05) */
+.sg-video { aspect-ratio: 16 / 9; width: 100%; overflow: hidden; border-radius: 12px; border: 1px solid var(--sg-line); background: #050507; }
+.sg-video iframe { width: 100%; height: 100%; border: 0; display: block; }
+
 /* quote + official */
 .sg-quote { position: relative; background: var(--sg-surface); border: 1px solid var(--sg-line); border-radius: 14px; padding: 20px 20px 20px 22px; }
 .sg-quote::before { content: ''; position: absolute; left: 12px; top: 20px; bottom: 20px; width: 3px; border-radius: 2px; background: var(--sg-amber); }
