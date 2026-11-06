@@ -275,6 +275,7 @@ tentativa por um novo toque em Publicar da mesma versão ou por
 |---|---|---|
 | `PUT /api/content/packages/[slug]` | `CONTENT_PIPELINE_SECRET` | Recebe a pauta. 200 com o estado, 401 sem segredo, 409 versão velha, 422 com problemas. |
 | `GET /api/content/packages/[slug]` | `CONTENT_PIPELINE_SECRET` | Última versão recebida, versão no ar, status e estado de cada saída (sinal, edu, rag, vídeo). Para o pipeline saber onde parou. |
+| `GET /api/admin/content` | `ADMIN_EMAILS` | Lista para `/admin/content`: por slug, a última versão recebida (pauta inteira, para a prévia), o estado das saídas, a validação de hoje, os blocos que mudaram desde a versão no ar e o histórico de versões. Migração ausente responde `migrationPending`. |
 | `POST /api/admin/content/[slug]/publish` | `ADMIN_EMAILS` | Body `{version}`. Publica essa versão; 409 se não for a última recebida. Dispara a ingestão no RAG. |
 | `POST /api/admin/content/[slug]/archive` | `ADMIN_EMAILS` | Arquiva. |
 | `GET /api/signals` | autenticado | Sinais `published`, por nível e data (SIGNAL-001 §4.4). |

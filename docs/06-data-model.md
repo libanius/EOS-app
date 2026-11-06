@@ -401,11 +401,13 @@ provenance.
 
 ---
 
-## Content pipeline (CONTENT-001) — migration written, NOT yet applied
+## Content pipeline (CONTENT-001) — applied
 
-> Migração `supabase/migrations/20261106000000_content_pipeline.sql`. Aditiva e
-> idempotente. Testada contra Postgres 16 por `scripts/content-pipeline-sql-test.sh`.
-> **Pendência do dono: aplicar no SQL Editor.**
+> ✅ Migração `supabase/migrations/20261106000000_content_pipeline.sql` **aplicada
+> em produção em 2026-11-06** (pelo agente, com autorização do dono), conferida
+> por SQL: tabelas, 3 colunas novas em `edu_content`, RLS ligado, funções
+> executáveis só pelo `service_role`. Testada antes contra Postgres 16 por
+> `scripts/content-pipeline-sql-test.sh`.
 
 | Table | Shape | Purpose |
 |---|---|---|

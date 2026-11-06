@@ -1,4 +1,5 @@
 import {
+  changedBlocks,
   eduVideoFor,
   isYoutubeId,
   lessonToEdu,
@@ -156,3 +157,15 @@ describe('vídeo por idioma (D-P5)', () => {
 // O tipo da fixture tem que continuar compatível com o contrato.
 const _typecheck: ContentPackage = fortressPackage()
 void _typecheck
+
+describe('changedBlocks (§3.6)', () => {
+  it('sem versão no ar, tudo é novo', () => {
+    expect(changedBlocks(null, fortressPackage())).toEqual(['signal', 'lesson'])
+  })
+  it('acusa só o bloco que mudou', () => {
+    const b = clone(fortressPackage({ version: 2 }))
+    b.lesson.summary.en += ' More.'
+    expect(changedBlocks(fortressPackage(), b)).toEqual(['lesson'])
+    expect(changedBlocks(fortressPackage(), fortressPackage({ version: 2 }))).toEqual([])
+  })
+})

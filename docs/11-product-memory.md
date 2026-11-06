@@ -12,6 +12,15 @@ RAG mudam apenas em `publish_content_package()`, chamada pelo toque do dono em
 e a família continua vendo a aprovada. Não "simplifique" fazendo o `PUT`
 escrever em `signals`: foi exatamente o defeito que o Codex achou no spec.
 
+**A prévia do admin é a própria página do Sinal.** `/admin/content` monta o
+`Signal` com `previewSignal()` e passa para `SignalPage` no modo `preview`. Não
+existe uma segunda tela "parecida": se a página do Sinal mudar, a prévia muda
+junto. No modo prévia, a página não marca o Sinal como visto.
+
+**A pauta de exemplo dos testes é uma cópia.** `fortressPackage()` clona o
+FORTRESS de `lib/signals-content.ts`; sem isso, um teste que esvazia um campo
+alterava o conteúdo publicado em memória e quebrava outro teste.
+
 **Itens do EDU vindos da pauta têm dono (`content_slug`).** Só a publicação da
 pauta escreve neles. O `title`/`summary` antigos guardam o PT; o bilíngue está em
 `lesson`, e o vídeo, por idioma, em `video`. Sem vídeo no idioma da pessoa, não

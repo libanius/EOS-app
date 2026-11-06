@@ -23,6 +23,7 @@ import {
   protocolView,
   type Degree,
   type ItemView,
+  type Signal,
   type SignalModule,
 } from '@/lib/signals'
 import { useSignalHouse } from './useSignalHouse'
@@ -127,18 +128,33 @@ function StatusMark({ v, label }: { v: ItemView; label: string }) {
   )
 }
 
-export default function SignalPage({ slug }: { slug: string }) {
+type SignalPageProps = {
+  slug: string
+  /**
+   * Prévia do admin (CONTENT-001 §3.6): o Sinal vem da pauta, não do conteúdo
+   * publicado. Não marca como visto e o "voltar" leva para `/admin/content`.
+   */
+  preview?: { signal: Signal; lang: 'pt' | 'en' }
+}
+
+export default function SignalPage({ slug, preview }: SignalPageProps) {
   const { language } = useLanguage()
-  const lang = language === 'en' ? 'en' : 'pt'
+  const lang = preview?.lang ?? (language === 'en' ? 'en' : 'pt')
   const t = T[lang]
-  const signal = signalBySlug(slug)
+  const signal = preview?.signal ?? signalBySlug(slug)
   const { loading, house, metKeys, notApplicableKeys } = useSignalHouse()
   const [degree, setDegree] = useState<Degree>(signal?.protocol.recommendedDegree ?? 'D14')
   const [toast, setToast] = useState<string | null>(null)
 
   useEffect(() => {
-    if (signal) markSeen(signal.slug)
-  }, [signal])
+    if (signal && !preview) markSeen(signal.slug)
+  }, [signal, preview])
+
+  // A prévia troca de versão sem desmontar: o degrau volta ao recomendado da nova.
+  const recommended = signal?.protocol.recommendedDegree
+  useEffect(() => {
+    if (preview && recommended) setDegree(recommended)
+  }, [preview, recommended])
 
   const view = useMemo(
     () => (signal && house ? protocolView(signal.protocol, degree, house, metKeys, notApplicableKeys) : null),
@@ -149,7 +165,7 @@ export default function SignalPage({ slug }: { slug: string }) {
     return (
       <main className="sg">
         <div className="sg-wrap">
-          <Link className="sg-back" href="/sinais">← {t.back}</Link>
+          <Link className="sg-back" href={preview ? '/admin/content' : '/sinais'}>← {t.back}</Link>
           <div className="sg-empty">{t.notFound}</div>
         </div>
       </main>
@@ -208,7 +224,7 @@ export default function SignalPage({ slug }: { slug: string }) {
   return (
     <main className="sg">
       <div className="sg-wrap">
-        <Link className="sg-back" href="/sinais">
+        <Link className="sg-back" href={preview ? '/admin/content' : '/sinais'}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
           {t.back}
         </Link>
