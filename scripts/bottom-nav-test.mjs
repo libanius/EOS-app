@@ -104,12 +104,13 @@ try {
     : no('dashboard entrou em loop de renderização', `${loopErrors.length} warnings`)
 
   /*
-   * Os cinco destinos de NAV-T06 (D-180). Eram seis abas mais o orbe; Clima,
-   * Círculos e Cenário perderam o slot e MAIS ganhou o dele.
+   * Os destinos da barra: os cinco de NAV-T06 (D-180) mais SINAIS, à esquerda
+   * do MUNDO (D-232 / SIGNAL-001).
    */
   const cases = [
     ['Família', /\/family/],
     ['Preparação', /\/preparedness/],
+    ['Sinais', /\/sinais/],
     ['Mundo', /\/dashboard/],
     ['Comms', /\/comms/],
     ['Mais', /\/mais/],
@@ -130,12 +131,12 @@ try {
       : no(`BottomNav não navegou para ${label}`, page.url())
   }
 
-  // A barra tem CINCO destinos, e nem um a mais (NAV-T06 / D-180).
+  // A barra tem SEIS destinos, e nem um a mais (D-232, revisando D-180).
   await page.goto(`${B}/dashboard`, { waitUntil: 'networkidle' })
   await page.waitForSelector('nav.nav a', { timeout: 10000 })
   const destinos = await page.locator('nav.nav a').count()
-  destinos === 5
-    ? ok('BottomNav tem 5 destinos')
+  destinos === 6
+    ? ok('BottomNav tem 6 destinos')
     : no('BottomNav com contagem errada', String(destinos))
 
   // O ☰ não existe mais: era a segunda navegação, e invisível.

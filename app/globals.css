@@ -281,6 +281,19 @@ textarea.input { resize: vertical; min-height: 100px; line-height: 1.6; }
   flex-grow: 2.35;
 }
 
+/*
+ * E14 (SIGNAL-001): seis destinos com alvo de 44 px só cabem a partir de
+ * ~358 px. Abaixo disso o ativo deixa de crescer e perde o rótulo — ele se
+ * marca por fundo e peso (D-194), e nenhum alvo fica menor que 44 × 44.
+ */
+@media (max-width: 359px) {
+  .nav { padding-left: 6px; padding-right: 6px; }
+  .nav-tabs { gap: 2px; }
+  .nb-shell:has(.nb.on) { flex-grow: 1; }
+  .nb { padding-left: 6px; padding-right: 6px; }
+  .nb .nb-label { display: none !important; }
+}
+
 @supports not selector(:has(*)) {
   .nb-shell {
     flex: 1 1 0;
