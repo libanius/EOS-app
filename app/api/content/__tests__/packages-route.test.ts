@@ -102,6 +102,12 @@ describe('PUT /api/content/packages/[slug]', () => {
     expect((await PUT(req(fortressPackage()), ctx)).status).toBe(409)
   })
 
+  it('reenvio de pauta de arquivo tenta de novo o resumo histórico', async () => {
+    rpc.mockResolvedValueOnce({ data: { outcome: 'unchanged', version: 2 }, error: null })
+    const res = await PUT(req(fortressPackage({ version: 2, status: 'archived' })), ctx)
+    expect((await res.json()).archiveRag).toBe('ingested')
+  })
+
   it('pauta de arquivo dispara o resumo histórico no RAG', async () => {
     rpc.mockResolvedValueOnce({ data: { outcome: 'created', version: 2 }, error: null })
     const res = await PUT(req(fortressPackage({ version: 2, status: 'archived' })), ctx)

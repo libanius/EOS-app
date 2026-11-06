@@ -372,6 +372,8 @@ família.
 | E14 | `lesson.body` com markdown, timestamps ou citações | Aceito no EDU; os nomes de item do checklist continuam vindo de `protocol.items[].label` (docs/22 §5.14). |
 | E15b | Lição publicada recebe nova versão em `review` | `/preparedness/aprender` e o RAG continuam com a lição aprovada até a publicação da nova. |
 | E15 | Lição alterada depois de ingerida | Reingestão substitui os pedaços da mesma fonte; o RAG nunca tem duas versões da mesma lição. |
+| E17 | Dono edita em `/admin/edu` um item que veio da pauta | `POST /api/edu` responde 409 "altere no pipeline"; nada muda. Itens antigos seguem editáveis. |
+| E18 | Falha da OpenAI ao arquivar | O Sinal fica arquivado; repetir o arquivo (pauta ou botão) tenta de novo o resumo histórico, sem duplicar se já estiver no RAG. |
 | E16 | Arquivar | Resumo do Sinal vai para o RAG com "arquivado em <data>"; a lição continua lá. |
 
 ---

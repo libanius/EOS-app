@@ -56,7 +56,8 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
   if (outcome === 'conflict') return json({ error: `versão ${pkg.version} já recebida com outro conteúdo; envie uma versão maior`, outcome }, 409)
   if (outcome === 'stale') return json({ error: `versão ${pkg.version} menor que a última recebida (${(data as { latest: number }).latest})`, outcome }, 409)
 
-  const archiveRag = outcome === 'created' && pkg.status === 'archived' ? await afterArchive(admin, pkg.slug) : undefined
+  // Reenviar uma pauta de arquivo tenta de novo o resumo histórico, se ele ficou pendente.
+  const archiveRag = pkg.status === 'archived' ? await afterArchive(admin, pkg.slug) : undefined
   const state = await packageState(admin, pkg.slug)
   return json({ outcome, ...state, ...(archiveRag ? { archiveRag } : {}) })
 }

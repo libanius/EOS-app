@@ -19,6 +19,7 @@ export async function POST(_req: NextRequest, { params }: { params: { slug: stri
   const outcome = (data as { outcome: string }).outcome
   if (outcome === 'not_found') return NextResponse.json({ error: 'Sinal não encontrado.' }, { status: 404 })
 
-  const archiveRag = outcome === 'archived' ? await afterArchive(admin, params.slug) : 'none'
+  // `already_archived` também tenta de novo o resumo histórico que ficou pendente.
+  const archiveRag = await afterArchive(admin, params.slug)
   return NextResponse.json({ outcome, archiveRag, ...(await packageState(admin, params.slug)) })
 }

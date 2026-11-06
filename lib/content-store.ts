@@ -6,7 +6,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { PackageVideo } from './content-package'
-import { ingestArchivedSignal } from './edu-rag-ingest'
+import { archivedSignalSource, ingestArchivedSignal } from './edu-rag-ingest'
 
 export type PackageState = {
   slug: string
@@ -55,6 +55,13 @@ export async function afterArchive(admin: SupabaseClient, slug: string): Promise
     .eq('slug', slug)
     .maybeSingle()
   if (!sig || sig.status !== 'archived') return 'none'
+  // Repetir o arquivo é o jeito de tentar de novo depois de uma falha da OpenAI;
+  // se o resumo já está no RAG, não gera embeddings outra vez.
+  const { count } = await admin
+    .from('knowledge_base')
+    .select('id', { count: 'exact', head: true })
+    .eq('source', archivedSignalSource(slug))
+  if ((count ?? 0) > 0) return 'ingested'
   const c = sig.content as Record<string, { pt: string; en: string }>
   return ingestArchivedSignal(admin, {
     slug,

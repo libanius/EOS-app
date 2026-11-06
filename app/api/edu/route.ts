@@ -114,12 +114,20 @@ export async function POST(req: NextRequest) {
   if (body.id) {
     const { data: existing, error: readError } = await admin
       .from('edu_content')
-      .select('id, version')
+      .select('*')
       .eq('id', body.id)
       .maybeSingle()
     if (readError && tableMissing(readError)) return NextResponse.json({ error: 'migration_pending' }, { status: 200 })
     if (readError) return NextResponse.json({ error: readError.message }, { status: 500 })
     if (!existing) return NextResponse.json({ error: 'not found' }, { status: 404 })
+    // CONTENT-001: item vindo de uma pauta tem dono. Só a publicação da pauta o
+    // altera; editar aqui deixaria o EDU diferente do Sinal e da lição bilíngue.
+    if ((existing as { content_slug?: string | null }).content_slug) {
+      return NextResponse.json({
+        error: 'Este item vem do pipeline de conteúdo. Altere no pipeline e publique a nova versão em /admin/content.',
+        contentSlug: (existing as { content_slug: string }).content_slug,
+      }, { status: 409 })
+    }
 
     const { data, error } = await admin
       .from('edu_content')
