@@ -1,7 +1,22 @@
 # 11 — Product Memory
 
 > Non-obvious facts that don't belong in code comments but must survive across sessions.
-> Last updated: 2026-09-03
+> Last updated: 2026-11-05
+
+---
+
+**Sinais não têm conta própria de dias (SIGNAL-001 / D-233).**
+O protocolo lê a casa por `/api/household` e passa os números por
+`householdDays()` — a mesma função do painel e do Pilot. Há um teste que falha
+se os dias divergirem. Antes de criar qualquer régua nova num Sinal (água por
+pet, remédio na autonomia), lembre que o dono decidiu deixar isso de fora (D3)
+e que uma segunda conta foi exatamente o defeito do D-174.
+
+**No Marco 1, o conteúdo dos Sinais mora no código, não no banco.**
+`lib/signals-content.ts` é a fonte até o pipeline do dono (YouTube + RAG do EDU
++ Sinais) existir. `signalProblems()` roda no teste sobre todo Sinal: sem "o que
+não é" ou sem fonte, o build quebra. O selo "não visto" da barra é por
+aparelho (`localStorage`), não por perfil.
 
 ---
 

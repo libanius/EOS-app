@@ -7,16 +7,23 @@ import { motion, useReducedMotion } from 'framer-motion'
 import { useLanguage, type MessageKey } from '@/lib/i18n'
 import { emptySurfaceCounts, type NotificationSurface } from '@/lib/notification-surface'
 import { createClient } from '@/lib/supabase/client'
+import { publishedSignals } from '@/lib/signals-content'
+import { SIGNALS_SEEN_EVENT, unseenCount } from '@/lib/signals-seen'
 
-type NavItem = { href: string; labelKey: MessageKey; surface?: NotificationSurface; icon: React.ReactNode }
+type NavItem = { href: string; labelKey: MessageKey; surface?: NotificationSurface; localBadge?: 'signals'; icon: React.ReactNode }
 const ACTIVE_LABEL_WIDTH = 50
 
 /**
- * A barra global, em cinco destinos (NAV-T06 / D-180).
+ * A barra global, em seis destinos (D-232, revisando NAV-T06 / D-180).
  *
  * ```
- * [ FAMÍLIA ] [ PREPARAÇÃO ] (( MUNDO )) [ COMMS ] [ MAIS ]
+ * [ FAMÍLIA ] [ PREPARAÇÃO ] [ SINAIS ] (( MUNDO )) [ COMMS ] [ MAIS ]
  * ```
+ *
+ * SINAIS entrou à esquerda do MUNDO por decisão do dono (SIGNAL-001 §3.3). O
+ * comportamento não mudou: o ativo cresce e mostra o rótulo, os demais se
+ * deslocam e ficam só com o ícone. Seis alvos de 44 px cabem a partir de 360 px;
+ * abaixo disso o rótulo do ativo some (E14, ver `globals.css`).
  *
  * Eram sete. Sete competiam pelo mesmo pedaço de tela, e três deles não eram
  * domínios: Círculos é assunto de Família (D-178), Clima é detalhe do MUNDO
@@ -82,6 +89,21 @@ const NAV_LEFT: NavItem[] = [
       </svg>
     ),
   },
+  {
+    // SIGNAL-001: Sinais da curadoria. O selo é local no Marco 1 (§12.1) —
+    // conta só Sinais publicados ainda não abertos neste aparelho.
+    href: '/sinais',
+    labelKey: 'nav.signals',
+    localBadge: 'signals',
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="9" />
+        <circle cx="12" cy="12" r="4.5" />
+        <path d="M12 12l6-6" />
+        <circle cx="12" cy="12" r="1" fill="currentColor" />
+      </svg>
+    ),
+  },
 ]
 
 const NAV_RIGHT: NavItem[] = [
@@ -126,6 +148,19 @@ export default function BottomNav() {
   const { t } = useLanguage()
   const reduceMotion = useReducedMotion()
   const [unreadBySurface, setUnreadBySurface] = useState<Record<NotificationSurface, number>>(() => emptySurfaceCounts())
+  const [unseenSignals, setUnseenSignals] = useState(0)
+
+  useEffect(() => {
+    const slugs = publishedSignals().map(s => s.slug)
+    const sync = () => setUnseenSignals(unseenCount(slugs))
+    sync()
+    window.addEventListener(SIGNALS_SEEN_EVENT, sync)
+    window.addEventListener('storage', sync)
+    return () => {
+      window.removeEventListener(SIGNALS_SEEN_EVENT, sync)
+      window.removeEventListener('storage', sync)
+    }
+  }, [])
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/')
   const hrefPath = (href: string) => href.split('?')[0] || href
@@ -221,7 +256,16 @@ export default function BottomNav() {
     )
   }
 
-  const tab = ({ href, labelKey, surface, icon }: NavItem) => {
+  const seloLocal = (localBadge: NavItem['localBadge'], label: string) => {
+    if (localBadge !== 'signals' || unseenSignals <= 0) return null
+    return (
+      <span className="nb-badge" aria-label={`${unseenSignals} ${label} não vistos`}>
+        {unseenSignals > 99 ? '99+' : unseenSignals}
+      </span>
+    )
+  }
+
+  const tab = ({ href, labelKey, surface, localBadge, icon }: NavItem) => {
     const active = isActive(hrefPath(href))
     const label = t(labelKey)
 
@@ -240,6 +284,7 @@ export default function BottomNav() {
           <span className="nb-icon">
             {icon}
             {selo(surface, label)}
+            {seloLocal(localBadge, label)}
           </span>
           <motion.span
             className="nb-label"

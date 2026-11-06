@@ -427,6 +427,31 @@ precisa funcionar exatamente quando o EOS não funciona.*
 
 ---
 
+## Sinais e Protocolos (SIGNAL)
+
+*Goal: transformar notícia em preparo proporcional que se acumula na casa, sem
+segunda conta de prontidão.*
+
+> Decisão: **D-232** (decidida pelo dono em 2026-11-03). Spec **Draft**: `specs/SIGNAL-001-sinais-e-protocolos.md`.
+> Nenhuma task começa antes do spec em Ready. D1 e D2 da §9 passam pelo Wren.
+
+| Task ID | Task | Status | Notes |
+|---|---|---|---|
+| SIGNAL-T00 | Aprovação do spec para Ready | ✅ COMPLETE | D1–D5 fechadas pelo dono (D1 revisado em 2026-11-04: Sinais é o 6º destino da barra global). Passada do Wren feita em 2026-11-03. Falta só a aprovação final. |
+| SIGNAL-M1 | **Marco 1 — FORTRESS no ar (leitura)**: 6º destino, `/sinais`, `/sinais/<slug>`, conteúdo versionado e validado por teste | IN PROGRESS | Spec §12. Sem migração. Aprovado pelo dono em 2026-11-05. |
+| SIGNAL-T01 | Migração `signals`, `protocols`, `protocol_items`; origem `PROTOCOL` | BLOCKED | Vai para o spec do pipeline (§12.2). Docs 06 e 37 §18 no mesmo PR. |
+| SIGNAL-T02 | Funções puras + teste de verdade única | BLOCKED | Dias e cobertura iguais ao painel e ao Pilot. |
+| SIGNAL-T03 | Autoria e publicação no admin | BLOCKED | `ADMIN_EMAILS`. "O que não é" e fonte obrigatórios. |
+| SIGNAL-T04 | Página do protocolo + adoção | BLOCKED | Idempotente; só confirmados viram `needed`. |
+| SIGNAL-T05 | Push por região | BLOCKED | Só `PREPARAR`/`AGIR`; dedup `signal:<id>`. |
+| SIGNAL-T06 | Pilot lê Sinais ativos | BLOCKED | Formato decidido em D4. |
+| SIGNAL-T07 | Conteúdo: FORTRESS e Furacões 2026 (PT/EN) | BLOCKED | Primeiro caso real. |
+| HOLDING-HISTORY-001 | Histórico de aquisições com porquê, evento e degrau | DRAFT | Base da trajetória da autonomia e da linha do tempo do inventário. Mexe no modelo de dados (Regra 7). |
+| BASE-001 | Redesenho de `/preparedness` com o padrão do protótipo | DRAFT | Depende de HOLDING-HISTORY-001. |
+| SYSTEMS-001 | Sistemas da casa: internet real; energia, água e celular relatados pelo círculo | DRAFT | LoRa segue bloqueado por G-05; satélite é status manual. |
+
+---
+
 ## Casca Nativa — iOS e Android (MOB)
 
 *Objetivo: publicar o EOS nas duas lojas adaptando a borda, sem duplicar o núcleo.*

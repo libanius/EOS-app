@@ -156,8 +156,8 @@ try {
   // propriedade que `docs/35` pediu para preservar: sub-rota de domínio não
   // custa nada à navegação global.
   const itensGlobais = await page.locator('nav.nav a').count()
-  itensGlobais === 5
-    ? ok('BottomNav continua com 5 destinos na sub-rota')
+  itensGlobais === 6
+    ? ok('BottomNav continua com 6 destinos na sub-rota')
     : no('BottomNav mudou de tamanho na sub-rota', String(itensGlobais))
 
   const prepAceso = await page.locator('nav.nav a[aria-current="page"]').innerText().catch(() => '')

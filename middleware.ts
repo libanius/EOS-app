@@ -37,6 +37,8 @@ const PROTECTED_ROUTES = [
    * pessoa deslogada cair numa tela de configurações em vez do login.
    */
   '/mais',
+  // SIGNAL-001 Marco 1: o protocolo lê a casa da pessoa.
+  '/sinais',
 ]
 
 // Protected only as an EXACT path. `/ficha` is the private Master Card editor,
