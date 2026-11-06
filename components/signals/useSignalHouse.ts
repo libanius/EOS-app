@@ -30,7 +30,18 @@ type HouseholdApi = {
   }
 }
 
-type ChecklistApi = { items?: Array<{ canonical_key?: string; status?: string }> }
+type ChecklistApiRow = {
+  canonical_key?: string
+  status?: string
+  kit_slug?: string | null
+  scenario_id?: string | null
+}
+type ChecklistApi = { items?: ChecklistApiRow[] }
+
+/** Linha de base = sem kit e sem cenário. Campo ausente conta como escopo desconhecido, não como base. */
+export function isBaseline(row: ChecklistApiRow): boolean {
+  return row.kit_slug === null && row.scenario_id === null
+}
 
 export function useSignalHouse(): SignalHouse {
   const [state, setState] = useState<SignalHouse>({
@@ -67,6 +78,9 @@ export function useSignalHouse(): SignalHouse {
       const notApplicableKeys = new Set<string>()
       for (const item of c?.items ?? []) {
         if (!item.canonical_key) continue
+        // E7/E7b: o protocolo só herda a linha de base. Um requisito de kit ou
+        // de cenário é outra identidade (docs/37 §26) e não é tocado.
+        if (!isBaseline(item)) continue
         if (item.status === 'met') metKeys.add(item.canonical_key)
         if (item.status === 'not_applicable') notApplicableKeys.add(item.canonical_key)
       }

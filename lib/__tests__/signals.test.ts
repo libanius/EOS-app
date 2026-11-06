@@ -1,3 +1,4 @@
+import { isBaseline } from '@/components/signals/useSignalHouse'
 /**
  * SIGNAL-001 Marco 1 — contas do protocolo e validação do conteúdo.
  *
@@ -139,5 +140,14 @@ describe('cobertura sem gravar nada', () => {
     const v = protocolView(fortress.protocol, 'D90', house({ waterLiters: 99999, foodPersonDays: 9999 }), keys)
     expect(v.ready).toBe(1)
     expect(v.limiting).not.toBeNull()
+  })
+})
+
+describe('escopo dos requisitos herdados (E7/E7b)', () => {
+  it('só a linha de base (sem kit e sem cenário) entra', () => {
+    expect(isBaseline({ canonical_key: 'water', kit_slug: null, scenario_id: null })).toBe(true)
+    expect(isBaseline({ canonical_key: 'water', kit_slug: 'fishing', scenario_id: null })).toBe(false)
+    expect(isBaseline({ canonical_key: 'water', kit_slug: null, scenario_id: 's1' })).toBe(false)
+    expect(isBaseline({ canonical_key: 'water' })).toBe(false)
   })
 })
