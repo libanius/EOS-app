@@ -437,8 +437,9 @@ segunda conta de prontidão.*
 
 | Task ID | Task | Status | Notes |
 |---|---|---|---|
-| SIGNAL-T00 | Aprovação do spec para Ready | PENDING | D1–D5 fechadas pelo dono (D1 revisado em 2026-11-04: Sinais é o 6º destino da barra global). Passada do Wren feita em 2026-11-03. Falta só a aprovação final. |
-| SIGNAL-T01 | Migração `signals`, `protocols`, `protocol_items`; origem `PROTOCOL` | BLOCKED | Depende de SIGNAL-T00. Docs 06 e 37 §18 no mesmo PR. |
+| SIGNAL-T00 | Aprovação do spec para Ready | ✅ COMPLETE | D1–D5 fechadas pelo dono (D1 revisado em 2026-11-04: Sinais é o 6º destino da barra global). Passada do Wren feita em 2026-11-03. Falta só a aprovação final. |
+| SIGNAL-M1 | **Marco 1 — FORTRESS no ar (leitura)**: 6º destino, `/sinais`, `/sinais/<slug>`, conteúdo versionado e validado por teste | IN PROGRESS | Spec §12. Sem migração. Aprovado pelo dono em 2026-11-05. |
+| SIGNAL-T01 | Migração `signals`, `protocols`, `protocol_items`; origem `PROTOCOL` | BLOCKED | Vai para o spec do pipeline (§12.2). Docs 06 e 37 §18 no mesmo PR. |
 | SIGNAL-T02 | Funções puras + teste de verdade única | BLOCKED | Dias e cobertura iguais ao painel e ao Pilot. |
 | SIGNAL-T03 | Autoria e publicação no admin | BLOCKED | `ADMIN_EMAILS`. "O que não é" e fonte obrigatórios. |
 | SIGNAL-T04 | Página do protocolo + adoção | BLOCKED | Idempotente; só confirmados viram `needed`. |

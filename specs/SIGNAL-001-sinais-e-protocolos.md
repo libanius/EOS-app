@@ -1,5 +1,5 @@
 # SPEC — SIGNAL-001: Sinais e Protocolos curados
-Version: 0.4 | Status: **Draft** (decisões D1–D5 fechadas pelo dono em 2026-11-03; aguarda aprovação para Ready) | Author: Paulo Neto
+Version: 0.5 | Status: **Ready** (aprovado pelo dono em 2026-11-05) | Marco 1 em implementação | Author: Paulo Neto
 
 > Regra 1: nenhum código antes de Ready. Este spec está **Draft**.
 > Regra 3: os edge cases ficam escritos aqui (§7) e não são descobertos no código.
@@ -420,3 +420,38 @@ O gráfico de trajetória da autonomia e o painel de sistemas do protótipo
 | SIGNAL-T05 | Push por região | T03 |
 | SIGNAL-T06 | Pilot lê Sinais ativos | T03, D4 |
 | SIGNAL-T07 | Conteúdo: FORTRESS e Temporada de Furacões publicados em PT e EN | T03 |
+
+---
+
+## 12. Marco 1 — "FORTRESS no ar" (decisão do dono, 2026-11-05)
+
+O dono aprovou o spec e pediu o FORTRESS publicado **agora**, sem passar pela
+revisão da curadoria, e anunciou que o conteúdo passará a vir de um **pipeline
+próprio** (o mesmo conteúdo vai para o YouTube, vira RAG no EDU e alimenta os
+Sinais). Isso muda a ordem, não as regras.
+
+### 12.1 O que entra
+
+| Peça | Como entra no Marco 1 |
+|---|---|
+| Conteúdo | **Versionado no código** (`lib/signals-content.ts`), PT e EN, validado por teste: sem "o que não é" ou sem fonte, o teste falha e o deploy não sai (regras 3 e 4 da §5 viram teste). |
+| Barra | Sexto destino, Sinais à esquerda do MUNDO (D1, §3.3). |
+| `/sinais` e `/sinais/<slug>` | Leitura: o que é, o que não é, orientação, fontes, degraus, checklist com cobertura calculada em memória. Visual do protótipo (D2). |
+| Cobertura | Água e comida pela mesma conta do painel e do Pilot (`householdDays()` sobre `/api/household`); duráveis pela presença no inventário legado (kit médico, rádio) ou por requisito `met` com a mesma `resource_key` em `/api/checklist`. Nada é gravado. |
+| Selo "não visto" | Por aparelho (`localStorage`). O selo por perfil, no servidor, entra com as tabelas. |
+
+### 12.2 O que fica para depois, e por quê
+
+| Peça | Para onde vai | Motivo |
+|---|---|---|
+| Tabelas `signals`, `protocols`, `protocol_items` (T01) | Spec do pipeline | O formato de ingestão do pipeline decide o contrato; criar tabelas antes dele é chutar o contrato. |
+| Autoria no admin (T03) | Substituída pelo pipeline | O dono escreve no pipeline, não numa tela do app. |
+| Adotar protocolo (§3.5) | Marco 2 | Escreve em `requirements`; exige `PROTOCOL` em `provenance` (migração). |
+| Push (T05) e Pilot (T06) | Marco 2 | Dependem das tabelas e do selo por perfil. |
+
+### 12.3 Conteúdo sem revisão da curadoria
+
+O texto do FORTRESS foi escrito a partir das fontes listadas no próprio Sinal e
+publicado por decisão explícita do dono, sem a revisão dele. Fica marcado no
+dado (`reviewedByCurator: false`) para o pipeline substituí-lo pela versão
+curada.

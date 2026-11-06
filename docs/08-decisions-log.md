@@ -4,6 +4,24 @@
 
 ---
 
+## D-233 — Marco 1 dos Sinais: FORTRESS no ar sem migração e sem revisão da curadoria
+
+**Data**: 2026-11-05. **Status**: DECIDED (dono).
+**Spec**: `specs/SIGNAL-001-sinais-e-protocolos.md` §12.
+
+**Decisão**: o dono aprovou o SIGNAL-001 como Ready e pediu o FORTRESS publicado
+imediatamente, sem a revisão dele. O conteúdo passará a vir de um pipeline do
+dono (YouTube + RAG do EDU + Sinais).
+
+**Consequências**:
+1. Marco 1 é só leitura e não cria tabela: conteúdo versionado no código e
+   validado por teste ("o que não é" e fonte obrigatórios).
+2. T01 (tabelas) espera o spec do pipeline; T03 (autoria no admin) é substituída
+   pelo pipeline; adoção, push e Pilot vão para o Marco 2.
+3. O conteúdo publicado carrega `reviewedByCurator: false`.
+
+---
+
 ## D-232 — Sinais e Protocolos: notícia vira preparo que se acumula (SIGNAL-001)
 
 **Data**: 2026-11-03. **Status**: DECIDED (dono, 2026-11-03). Spec aguarda aprovação para Ready.
