@@ -1,5 +1,5 @@
 # SPEC — CONTENT-001: Pipeline de conteúdo (uma pauta, três saídas)
-Version: 0.2 | Status: **Draft** (D-P1…D-P5 fechadas pelo dono em 2026-11-05) | Author: Paulo Neto | Depende de: SIGNAL-001 (Ready), docs/22 (EDU), docs/32 (Knowledge)
+Version: 0.3 | Status: **Draft** (D-P1…D-P5 fechadas pelo dono em 2026-11-05) | Author: Paulo Neto | Depende de: SIGNAL-001 (Ready), docs/22 (EDU), docs/32 (Knowledge)
 
 > Regra 1: nenhum código antes de Ready. Este spec está **Draft**.
 > Regra 3: os edge cases ficam escritos aqui (§7) e não são descobertos no código.
@@ -78,8 +78,8 @@ A mesma chamada com o mesmo conteúdo não muda nada (idempotente pelo `hash`).
 
 | Status enviado | O que acontece no EOS |
 |---|---|
-| `draft` | Grava. Não aparece para ninguém além do dono. |
-| `review` | Grava e mostra ao dono, em `/admin/content`, uma prévia exatamente como a família verá. |
+| `draft` | Guarda a versão em `content_packages`. Não aparece para ninguém além do dono. |
+| `review` | Guarda a versão em `content_packages` e mostra ao dono, em `/admin/content`, uma prévia montada a partir dela, exatamente como a família verá. `signals` e `edu_content` **não mudam**. |
 | `archived` | O cartão sai de `/sinais`; o link direto abre em modo leitura com "Sinal arquivado em <data>" (SIGNAL-001 E8). Arquivar só tira do ar, por isso o pipeline pode pedir. |
 
 **O pipeline nunca publica (D-P2 = b).** Publicar é um toque do dono em
@@ -101,8 +101,9 @@ aprovação como qualquer outra).
 - A família com o app em português vê o vídeo `pt`; em inglês, o vídeo `en`.
 - Se o vídeo do idioma da pessoa ainda não existe, a página **não mostra
   vídeo** (não mostra o do outro idioma): uma tela, um idioma (D-225).
-- `edu_content.source_type` vira `youtube` e `source_url` aponta para o vídeo
-  `pt` (ou `en`, se só houver esse).
+- A mesma regra vale no EDU (`/preparedness/aprender`), a segunda saída
+  pública: `edu_content` guarda os dois vídeos (§4.2b) e a tela escolhe pelo
+  idioma da pessoa, sem cair para o outro idioma.
 
 O vídeo é **apresentação**. Ele não substitui o texto: a página continua
 inteira sem o vídeo (rede fraca, vídeo removido).
@@ -111,7 +112,7 @@ inteira sem o vídeo (rede fraca, vídeo removido).
 
 O bloco `lesson` (texto permanente: o que fazer e por quê, sem datas de notícia)
 vira uma linha de `edu_content`, ligada ao Sinal por `signals.edu_content_id`
-(o `edu_content` não ganha coluna nova). O `transcript` recebe `body.pt`, depois
+(colunas novas em `edu_content`: §4.2b). O `transcript` recebe `body.pt`, depois
 `body.en`, separados por título de idioma.
 
 - Ao publicar, a linha fica `approved` com `rag_enabled=true`, e a ingestão no
@@ -126,11 +127,12 @@ vira uma linha de `edu_content`, ligada ao Sinal por `signals.edu_content_id`
 ### 3.5 Atualização
 
 Toda mudança é uma nova versão da mesma pauta (`version` maior). O EOS guarda
-todas as versões recebidas (`content_packages`) e aplica a última.
+todas as versões recebidas (`content_packages`); **receber não é publicar**.
+`signals`, `edu_content` e o RAG só mudam quando o dono publica uma versão.
 
-- Versão menor ou igual à aplicada: **409**, nada muda.
-- Lição alterada: o EDU sobe de versão e o RAG é reingerido (substitui os
-  pedaços da mesma fonte, docs/22 §5.10).
+- Versão menor ou igual à última recebida: **409**, nada muda.
+- Lição alterada: ao publicar, o EDU sobe de versão e o RAG é reingerido
+  (substitui os pedaços da mesma fonte, docs/22 §5.10).
 - Item removido do protocolo: some do checklist da página. Requisitos que a
   família já adotou **continuam** (§5.7 do SIGNAL-001); a adoção chega no
   Marco 2, mas a regra vale desde já.
@@ -193,7 +195,7 @@ O `hash` é calculado pelo EOS sobre o corpo normalizado, não enviado.
 |---|---|---|
 | id | uuid | PK |
 | slug | text | único |
-| status | text | `draft`, `review`, `published`, `archived` |
+| status | text | `published`, `archived` (rascunho e revisão vivem só em `content_packages`) |
 | version | integer | versão **no ar** (a aprovada); a última recebida está em `content_packages` |
 | approved_by | uuid | FK → profiles.id, quem tocou em Publicar |
 | level | text | `MONITORAR`, `PREPARAR`, `AGIR`, `CONTEXTO` |
@@ -209,6 +211,18 @@ O `hash` é calculado pelo EOS sobre o corpo normalizado, não enviado.
 | published_at, archived_at | timestamptz | |
 | updated_at | timestamptz | |
 
+**§4.2b — Mudança em `edu_content`** (tabela existente; docs/22 §3 muda no mesmo PR):
+
+| Coluna nova | Tipo | Notas |
+|---|---|---|
+| video | jsonb | `{pt?:{youtubeId}, en?:{youtubeId}}`, nulo para itens antigos |
+| content_slug | text | slug da pauta de origem, nulo para itens antigos; único quando presente |
+
+Leitura em `/preparedness/aprender`: com `video` preenchido, embute o vídeo do
+idioma da pessoa e, sem ele, não mostra vídeo; com `video` nulo (itens antigos),
+segue usando `source_url` como hoje. `source_url` de itens vindos da pauta
+aponta para o próprio Sinal (`/sinais/<slug>`), não para um vídeo.
+
 **Decisão de forma (D-P3):** `content` e `protocol` ficam em `jsonb` bilíngue
 numa linha só, em vez de uma linha por idioma e das tabelas `protocols` /
 `protocol_items` do SIGNAL-001 §4.1–§4.2. Motivo: a pauta já chega bilíngue, o
@@ -222,18 +236,32 @@ pela rota da pauta, com service role.
 
 ### 4.3 Escrita atômica
 
-Uma função SQL (`apply_content_package(payload jsonb)`) faz, numa transação:
-grava `content_packages`, faz upsert em `signals` e em `edu_content`, e marca
-`applied_at`. A ingestão no RAG (rede, OpenAI) roda **depois** do commit; se
-falhar, a pauta fica publicada e a resposta diz `rag: "pending"`, com nova
-tentativa no próximo envio ou por `POST /api/admin/edu/ingest` (§7 E6).
+Receber e publicar são duas escritas separadas:
+
+- **Receber** (`PUT` do pipeline) grava **só** em `content_packages`: a versão
+  candidata, com `hash` e `problems`. Nenhuma linha de `signals` ou
+  `edu_content` é tocada; `/api/signals` e `/api/edu` continuam servindo a
+  versão aprovada.
+- **Publicar** (toque do dono) chama a função SQL
+  `publish_content_package(slug, version, approver)`, que, numa transação,
+  confere que `version` é a última recebida e sem problemas, faz upsert em
+  `signals` e em `edu_content` a partir dela e marca `applied_at`. Quem lê vê a
+  versão antiga ou a nova inteira, nunca metade.
+- **Arquivar** é a exceção, porque só tira do ar: `archive_content_package(slug)`
+  muda `signals.status` e `edu_content.status` para `archived`, numa transação,
+  e pode vir do pipeline ou do botão.
+
+A ingestão no RAG (rede, OpenAI) roda **depois** do commit da publicação; se
+falhar, o Sinal fica publicado e o estado diz `rag: "pending"`, com nova
+tentativa por um novo toque em Publicar da mesma versão ou por
+`POST /api/admin/edu/ingest` (§7 E6).
 
 ### 4.4 Rotas
 
 | Rota | Quem | O quê |
 |---|---|---|
 | `PUT /api/content/packages/[slug]` | `CONTENT_PIPELINE_SECRET` | Recebe a pauta. 200 com o estado, 401 sem segredo, 409 versão velha, 422 com problemas. |
-| `GET /api/content/packages/[slug]` | `CONTENT_PIPELINE_SECRET` | Versão aplicada, status e estado de cada saída (sinal, edu, rag, vídeo). Para o pipeline saber onde parou. |
+| `GET /api/content/packages/[slug]` | `CONTENT_PIPELINE_SECRET` | Última versão recebida, versão no ar, status e estado de cada saída (sinal, edu, rag, vídeo). Para o pipeline saber onde parou. |
 | `POST /api/admin/content/[slug]/publish` | `ADMIN_EMAILS` | Body `{version}`. Publica essa versão; 409 se não for a última recebida. Dispara a ingestão no RAG. |
 | `POST /api/admin/content/[slug]/archive` | `ADMIN_EMAILS` | Arquiva. |
 | `GET /api/signals` | autenticado | Sinais `published`, por nível e data (SIGNAL-001 §4.4). |
@@ -253,7 +281,9 @@ Resposta 200:
   regras da §5. Vazia = válida.
 - `packageHash(pkg)` → sha256 estável (chaves ordenadas, espaços normalizados).
 - `lessonToEdu(pkg)` → a linha de `edu_content` (título, resumo, transcript,
-  tags, source_type, source_url).
+  tags, source_type, source_url, video, content_slug).
+- `eduVideoFor(item, lang)` → o `youtubeId` do idioma, o `source_url` legado
+  para itens sem `video`, ou nulo. Usada pela tela do EDU.
 - `rowToSignal(row)` → o tipo `Signal` que as telas já usam. As telas não
   mudam.
 
@@ -262,7 +292,7 @@ Resposta 200:
 ## 5. Regras de Negócio
 
 1. **Uma pauta, uma verdade.** O que aparece em `/sinais`, no EDU e no RAG vem
-   da mesma versão aplicada. Não existe edição de Sinal fora da pauta.
+   da mesma versão publicada pelo dono. Não existe edição de Sinal fora da pauta.
 2. **Tudo ou nada.** Pauta com qualquer problema não grava nada (422).
 3. **Os dois idiomas são obrigatórios** em todos os textos (`pt` e `en` não
    vazios). Tradução automática segue fora (SIGNAL-001 §10).
@@ -307,11 +337,11 @@ família.
 | # | Situação | Comportamento |
 |---|---|---|
 | E1 | Pipeline envia a mesma pauta duas vezes (retry) | Mesmo `hash` e mesma versão: 200 com o estado atual, nada é regravado. |
-| E2 | Mesma versão, conteúdo diferente | 409 "versão já aplicada com outro conteúdo". |
+| E2 | Mesma versão, conteúdo diferente | 409 "versão já recebida com outro conteúdo". |
 | E3 | Falta `whatItIsNot` ou fonte em um idioma | 422; nada gravado. |
 | E4 | `AGIR` sem `officialAlert` | 422 (SIGNAL-001 §5.5). |
 | E5 | Pipeline envia `published` | 422 "publicar é no EOS". |
-| E6 | OpenAI fora no momento da publicação | Sinal publicado, EDU `approved`, `rag: "pending"`. O próximo `GET` mostra pendente; reenviar a mesma pauta tenta de novo. |
+| E6 | OpenAI fora no momento da publicação | Sinal publicado, EDU `approved`, `rag: "pending"`. O próximo `GET` mostra pendente; tocar em Publicar na mesma versão tenta de novo. |
 | E7 | Vídeo removido ou privado no YouTube | O embutido falha sozinho; a página mostra o texto inteiro. O pipeline manda nova versão sem `video`. |
 | E8 | Só existe o vídeo `pt` e a família usa o app em EN | Sem vídeo; o texto em EN aparece inteiro. Quando o `en` chegar e for aprovado, aparece. |
 | E9 | Item removido do protocolo numa nova versão | Some da página; requisitos já adotados ficam (§3.5). |
@@ -322,6 +352,7 @@ família.
 | E12 | Segredo ausente no servidor | Rota responde 503 "pipeline desligado" (mesmo padrão do cron). |
 | E13 | Pauta muito grande | Limite de 256 KB no corpo; acima disso, 413. |
 | E14 | `lesson.body` com markdown, timestamps ou citações | Aceito no EDU; os nomes de item do checklist continuam vindo de `protocol.items[].label` (docs/22 §5.14). |
+| E15b | Lição publicada recebe nova versão em `review` | `/preparedness/aprender` e o RAG continuam com a lição aprovada até a publicação da nova. |
 | E15 | Lição alterada depois de ingerida | Reingestão substitui os pedaços da mesma fonte; o RAG nunca tem duas versões da mesma lição. |
 | E16 | Arquivar | Resumo do Sinal vai para o RAG com "arquivado em <data>"; a lição continua lá. |
 
@@ -339,7 +370,9 @@ família.
 5d. `POST /api/admin/content/*` sem e-mail em `ADMIN_EMAILS` responde 403.
 6. Reenviar a mesma pauta (mesma versão, mesmo conteúdo) responde 200 e não altera `updated_at`.
 7. Mesma versão com conteúdo diferente responde 409.
-8. A publicação cria ou atualiza uma linha em `edu_content` com `source_type` e `source_url` corretos e `status='approved'`.
+8. A publicação cria ou atualiza uma linha em `edu_content` com `content_slug`, `video` e `status='approved'`.
+8b. Com uma lição publicada na v2, receber a v3 em `review` não altera nenhuma coluna de `signals` nem de `edu_content` (comparação antes e depois), e `/api/edu` devolve o texto da v2.
+8c. Em `/preparedness/aprender`, um item com os dois vídeos mostra o `en` com o app em inglês e o `pt` em português; com só o `pt`, em inglês não mostra vídeo; um item antigo sem `video` continua mostrando o vídeo de `source_url`.
 9. Logo após o toque de publicar, sem outra ação, o `knowledge_base` tem pedaços com `source='edu:<id>'` e `source_version` igual à versão do EDU.
 10. Uma nova versão da lição substitui os pedaços anteriores (nenhum pedaço da versão anterior fica).
 11. Com OpenAI indisponível, o Sinal publica e o `GET` da pauta mostra `rag: "pending"`.
@@ -382,9 +415,9 @@ família.
 | Task | Entrega | Depende de |
 |---|---|---|
 | CONTENT-T00 | Decisões D-P1…D-P5 e spec Ready | Dono |
-| CONTENT-T01 | Migração: `content_packages`, `signals`, `apply_content_package()`; docs 06 e 37 §18 | T00 |
+| CONTENT-T01 | Migração: `content_packages`, `signals`, colunas novas em `edu_content`, `publish_content_package()`, `archive_content_package()`; docs 06, 22 §3 e 37 §18 | T00 |
 | CONTENT-T02 | Funções puras da §4.5 + testes com pautas de exemplo | T00 |
 | CONTENT-T03 | `PUT`/`GET /api/content/packages/[slug]` + ingestão no RAG | T01, T02 |
 | CONTENT-T04 | `/admin/content` (prévia e validação) | T03 |
-| CONTENT-T05 | Vídeo embutido em `/sinais/<slug>` | T03 |
+| CONTENT-T05 | Vídeo por idioma em `/sinais/<slug>` e em `/preparedness/aprender` | T03 |
 | CONTENT-T06 | Migração do FORTRESS (§6) e remoção de `lib/signals-content.ts` | T03, T04, aprovação do dono |
