@@ -457,9 +457,9 @@ segunda conta de prontidão.*
 | Task | Entrega | Status | Notas |
 |---|---|---|---|
 | CONTENT-T00 | Decisões D-P1…D-P5 e spec Ready | ✅ COMPLETE | 2026-11-05 — aprovado pelo dono. Aprovação por botão no EOS, RAG automático, vídeo por idioma (sem vídeo no idioma da pessoa, não mostra). |
-| CONTENT-T01 | Migração `content_packages`, `signals`, colunas de vídeo em `edu_content`, `publish_`/`archive_content_package()` | BLOCKED | Docs 06, 22 §3 e 37 §18 no mesmo PR. |
-| CONTENT-T02 | Funções puras + testes com pautas de exemplo | BLOCKED | |
-| CONTENT-T03 | `PUT`/`GET /api/content/packages/[slug]` + RAG | BLOCKED | `CONTENT_PIPELINE_SECRET`. |
+| CONTENT-T01 | Migração `content_packages`, `signals`, colunas em `edu_content`, `receive_`/`publish_`/`archive_content_package()` | ✅ CODE COMPLETE | 2026-11-06 — `20261106000000_content_pipeline.sql`, testada em Postgres 16 (`scripts/content-pipeline-sql-test.sh`, 19/19). Docs 06, 22 §3 e 37 §18 atualizados. **Pendência: aplicar no SQL Editor.** |
+| CONTENT-T02 | Funções puras + testes com pautas de exemplo | ✅ COMPLETE | 2026-11-06 — `lib/content-package.ts`; pauta do FORTRESS como fixture; 19 testes. |
+| CONTENT-T03 | `PUT`/`GET /api/content/packages/[slug]`, publicar/arquivar no admin, RAG | ✅ CODE COMPLETE | 2026-11-06 — 14 testes de rota. Ingestão do EDU extraída para `lib/edu-rag-ingest.ts` (mesma regra). **Pendência: `CONTENT_PIPELINE_SECRET` na Vercel.** |
 | CONTENT-T04 | `/admin/content`: prévia, validação, Publicar e Arquivar | BLOCKED | Só o dono publica (D-P2). |
 | CONTENT-T05 | Vídeo embutido no Sinal | BLOCKED | |
 | CONTENT-T06 | FORTRESS migrado e curado; `lib/signals-content.ts` removido | BLOCKED | Aprovação do dono. |
