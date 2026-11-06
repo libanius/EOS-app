@@ -4,6 +4,66 @@
 
 ---
 
+## D-233 — Marco 1 dos Sinais: FORTRESS no ar sem migração e sem revisão da curadoria
+
+**Data**: 2026-11-05. **Status**: DECIDED (dono).
+**Spec**: `specs/SIGNAL-001-sinais-e-protocolos.md` §12.
+
+**Decisão**: o dono aprovou o SIGNAL-001 como Ready e pediu o FORTRESS publicado
+imediatamente, sem a revisão dele. O conteúdo passará a vir de um pipeline do
+dono (YouTube + RAG do EDU + Sinais).
+
+**Consequências**:
+1. Marco 1 é só leitura e não cria tabela: conteúdo versionado no código e
+   validado por teste ("o que não é" e fonte obrigatórios).
+2. T01 (tabelas) espera o spec do pipeline; T03 (autoria no admin) é substituída
+   pelo pipeline; adoção, push e Pilot vão para o Marco 2.
+3. O conteúdo publicado carrega `reviewedByCurator: false`.
+
+---
+
+## D-232 — Sinais e Protocolos: notícia vira preparo que se acumula (SIGNAL-001)
+
+**Data**: 2026-11-03. **Status**: DECIDED (dono, 2026-11-03). Spec aguarda aprovação para Ready.
+**Spec**: `specs/SIGNAL-001-sinais-e-protocolos.md` (Draft).
+**Protótipo**: `docs/prototypes/base-da-familia-v1.html` (referência de experiência).
+
+**Contexto**: a cobertura do FORTRESS (Pentágono exigindo 90 dias de
+autossuficiência das bases) gerou pânico na comunidade do dono, e amigos
+perguntaram o que fazer. O EOS não tinha resposta: nada transformava uma
+notícia em ação familiar, e o Pilot não sabia orientar.
+
+**Decisão proposta**:
+
+1. Criar **Sinais** (o acontecimento, com "o que é" e "o que não é"
+   obrigatórios) e **Protocolos** (a resposta em degraus D3, D14, D30, D90),
+   escritos pela curadoria EOS.
+2. O protocolo **propõe**; a família adota. Adoção cria `requirements` com a
+   nova origem `PROTOCOL`, dentro do motor que já existe. Nenhuma segunda conta
+   de prontidão.
+3. **O protótipo cede ao motor** em quatro pontos: autonomia segue
+   mín(água, comida) (D-129); água usa `WATER_LITERS_PER_PERSON_DAY`, sem pet;
+   comida grava em dia-pessoa (D-158); a barra global de 5 destinos (docs/35)
+   não ganha abas novas.
+4. Trajetória da autonomia, "porquê" por aquisição, carrossel e painel de
+   sistemas ficam fora e viram HOLDING-HISTORY-001, BASE-001 e SYSTEMS-001.
+
+**Decisões do dono (§9 do spec)**:
+- D1 (revisado em 2026-11-04): Sinais é o **sexto destino da barra global**,
+  à esquerda do MUNDO. O item ativo cresce e os demais se deslocam, como a
+  barra já faz. **Revoga a regra de cinco slots do D-180** (docs/35 §5). Funciona
+  com alvos de 44 px a partir de 360 px de largura; abaixo, o rótulo do ativo
+  some. A passada do Wren de 2026-11-03 encontrou a colisão da ideia anterior
+  (aba dentro do MUNDO) com o painel esquerdo do computador.
+- D2: aba, painel e protocolo usam o **visual do protótipo** (tema escuro,
+  linguagem dos conceitos de execução).
+- D3: remédios e pets **fora** da autonomia.
+- D4: Sinais ativos como fato fixo do Pilot; arquivados no RAG do EDU.
+- D5: requisitos de protocolo são de **linha de base** (sem kit), apontado na
+  revisão do PR #8.
+
+---
+
 ## D-231 — Casa à prova de erro: duplicatas e convites (HOUSEHOLD-FIX-001)
 
 **Data**: 2026-11-03. **Spec**: `specs/HOUSEHOLD-FIX-001-casa-a-prova-de-erro.md` (Ready, aprovado pelo dono).

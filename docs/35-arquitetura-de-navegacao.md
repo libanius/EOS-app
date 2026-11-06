@@ -281,6 +281,12 @@ Sua regra de `WORLD = HOME` **é aceita e promovida a regra permanente** — ver
 ```
 
 Cinco slots. **Nunca mudam. Em nenhuma tela. Em nenhum modo.**
+
+> **Revisado pelo D-232 (2026-11-04):** a barra passa a ter **seis** destinos,
+> com SINAIS à esquerda do MUNDO:
+> `[ FAMÍLIA ] [ PREPARAÇÃO ] [ SINAIS ] (( MUNDO )) [ COMMS ] [ MAIS ]`.
+> A regra que continua valendo é a de fundo: os destinos são os mesmos em toda
+> tela e em todo modo. Spec: `specs/SIGNAL-001-sinais-e-protocolos.md`.
 MUNDO permanece no centro, elevado, maior alvo — como já é hoje.
 
 ### DOMAIN NAV
