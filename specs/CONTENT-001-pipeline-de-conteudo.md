@@ -1,7 +1,7 @@
 # SPEC — CONTENT-001: Pipeline de conteúdo (uma pauta, três saídas)
-Version: 0.3 | Status: **Draft** (D-P1…D-P5 fechadas pelo dono em 2026-11-05) | Author: Paulo Neto | Depende de: SIGNAL-001 (Ready), docs/22 (EDU), docs/32 (Knowledge)
+Version: 1.0 | Status: **Ready** (aprovado pelo dono em 2026-11-05; D-P1…D-P5 fechadas) | Author: Paulo Neto | Depende de: SIGNAL-001 (Ready), docs/22 (EDU), docs/32 (Knowledge)
 
-> Regra 1: nenhum código antes de Ready. Este spec está **Draft**.
+> Regra 1: nenhum código antes de Ready. Este spec está **Ready**.
 > Regra 3: os edge cases ficam escritos aqui (§7) e não são descobertos no código.
 > Regra 4: se a implementação revelar algo que este spec não cobre, **pare** e atualize o spec antes de continuar.
 > Regra 5: critérios binários.

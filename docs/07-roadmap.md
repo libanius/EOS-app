@@ -452,11 +452,11 @@ segunda conta de prontidão.*
 
 ## Pipeline de conteúdo (CONTENT)
 
-> Spec **Draft**: `specs/CONTENT-001-pipeline-de-conteudo.md`. Uma pauta do dono → YouTube, EDU/RAG e Sinais.
+> Spec **Ready**: `specs/CONTENT-001-pipeline-de-conteudo.md`. Uma pauta do dono → YouTube, EDU/RAG e Sinais.
 
 | Task | Entrega | Status | Notas |
 |---|---|---|---|
-| CONTENT-T00 | Decisões D-P1…D-P5 e spec Ready | IN PROGRESS | Decisões fechadas em 2026-11-05 (aprovação por botão no EOS, RAG automático, vídeo por idioma). Falta a revisão final do spec. |
+| CONTENT-T00 | Decisões D-P1…D-P5 e spec Ready | ✅ COMPLETE | 2026-11-05 — aprovado pelo dono. Aprovação por botão no EOS, RAG automático, vídeo por idioma (sem vídeo no idioma da pessoa, não mostra). |
 | CONTENT-T01 | Migração `content_packages`, `signals`, colunas de vídeo em `edu_content`, `publish_`/`archive_content_package()` | BLOCKED | Docs 06, 22 §3 e 37 §18 no mesmo PR. |
 | CONTENT-T02 | Funções puras + testes com pautas de exemplo | BLOCKED | |
 | CONTENT-T03 | `PUT`/`GET /api/content/packages/[slug]` + RAG | BLOCKED | `CONTENT_PIPELINE_SECRET`. |
