@@ -59,7 +59,7 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
   // Reenviar uma pauta de arquivo tenta de novo o resumo histórico, se ele ficou pendente.
   const archiveRag = pkg.status === 'archived' ? await afterArchive(admin, pkg.slug) : undefined
   const state = await packageState(admin, pkg.slug)
-  return json({ outcome, ...state, ...(archiveRag ? { archiveRag } : {}) })
+  return json({ outcome, ...state, ...(archiveRag && archiveRag !== 'none' ? { archiveRag } : {}) })
 }
 
 export async function GET(req: NextRequest, { params }: Ctx) {

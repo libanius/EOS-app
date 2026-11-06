@@ -309,3 +309,18 @@ export function eduVideoFor(
   if (item.source_type === 'youtube' && item.source_url) return { kind: 'legacy', url: item.source_url }
   return null
 }
+
+/* ── O que mudou entre a versão no ar e a recebida (§3.6) ──────────────── */
+
+export type PackageBlock = 'signal' | 'lesson' | 'video' | 'status'
+
+/** Blocos diferentes entre duas pautas; vazio = iguais. Sem `live`, tudo é novo. */
+export function changedBlocks(live: ContentPackage | null, next: ContentPackage): PackageBlock[] {
+  if (!live) return ['signal', 'lesson', ...(next.video ? (['video'] as const) : [])]
+  const out: PackageBlock[] = []
+  if (packageHash(live.signal) !== packageHash(next.signal)) out.push('signal')
+  if (packageHash(live.lesson) !== packageHash(next.lesson)) out.push('lesson')
+  if (packageHash(live.video ?? null) !== packageHash(next.video ?? null)) out.push('video')
+  if (live.status !== next.status) out.push('status')
+  return out
+}

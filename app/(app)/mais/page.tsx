@@ -61,6 +61,7 @@ const ADMIN_LINKS = [
   { href: '/admin/affiliates', pt: 'Afiliados', en: 'Affiliates', notePt: 'Criar links, sincronizar Stripe e ver comissão owed', noteEn: 'Create links, sync Stripe and view owed commission' },
   { href: '/admin/gift-codes', pt: 'Códigos presente', en: 'Gift codes', notePt: 'Criar acessos temporários sem Stripe', noteEn: 'Create temporary non-Stripe access codes' },
   { href: '/admin/edu', pt: 'EDU', en: 'EDU', notePt: 'Criar e editar conteúdo educativo', noteEn: 'Create and edit educational content' },
+  { href: '/admin/content', pt: 'Pautas', en: 'Content packages', notePt: 'Revisar e publicar o que o pipeline enviou', noteEn: 'Review and publish what the pipeline sent' },
 ] as const
 
 const PLAN_NAME_KEY: Record<Plan, MessageKey> = {

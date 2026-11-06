@@ -13,8 +13,9 @@ import type { ContentPackage } from '@/lib/content-package'
 export function fortressPackage(overrides: Partial<ContentPackage> = {}): ContentPackage {
   const fortress = SIGNALS.find(s => s.slug === 'fortress')
   if (!fortress) throw new Error('FORTRESS ausente de lib/signals-content.ts')
+  // Cópia profunda: um teste que mexe na pauta não pode alterar o conteúdo publicado.
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { slug, status, publishedOn, reviewedByCurator, ...signal } = fortress
+  const { slug, status, publishedOn, reviewedByCurator, ...signal } = structuredClone(fortress)
   return {
     schema: 'eos.content/1',
     slug,

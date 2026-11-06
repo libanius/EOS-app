@@ -20,6 +20,7 @@ export async function POST(_req: NextRequest, { params }: { params: { slug: stri
   if (outcome === 'not_found') return NextResponse.json({ error: 'Sinal não encontrado.' }, { status: 404 })
 
   // `already_archived` também tenta de novo o resumo histórico que ficou pendente.
-  const archiveRag = await afterArchive(admin, params.slug)
-  return NextResponse.json({ outcome, archiveRag, ...(await packageState(admin, params.slug)) })
+  await afterArchive(admin, params.slug)
+  // `archiveRag` vem do estado, lido depois da tentativa.
+  return NextResponse.json({ outcome, ...(await packageState(admin, params.slug)) })
 }

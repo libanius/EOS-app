@@ -1,0 +1,42 @@
+/* `/admin/content` — sobre a linguagem dos Sinais (.sg), sem vazar para o app. */
+
+.ca .ca-wrap { padding-bottom: 32px; }
+.ca .ca-title { font-family: var(--sg-cond); font-weight: 600; font-size: 34px; line-height: 1.1; }
+.ca .ca-h2 { font-size: 20px; font-weight: 600; line-height: 1.3; }
+
+.ca .ca-list { display: flex; gap: 10px; flex-wrap: wrap; }
+.ca .ca-chip {
+  display: inline-flex; align-items: center; gap: 10px;
+  min-height: 48px; padding: 8px 16px; border-radius: 999px;
+  border: 1px solid var(--sg-line2); background: var(--sg-surface); color: var(--sg-ink);
+  font: inherit; font-size: 16px; cursor: pointer; touch-action: manipulation;
+}
+.ca .ca-chip[aria-pressed='true'] { border-color: var(--sg-mint); box-shadow: 0 0 14px rgba(63, 224, 176, 0.25); }
+.ca .ca-chip-slug { font-weight: 600; }
+.ca .ca-chip-meta { display: inline-flex; align-items: center; gap: 6px; color: var(--sg-muted); font-family: var(--sg-cond); font-weight: 600; }
+.ca .ca-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--sg-amber); display: inline-block; }
+.ca .ca-dot.bad { background: var(--sg-red); }
+
+.ca .ca-lang { display: flex; gap: 8px; }
+.ca .ca-lang .sg-pill { min-width: 64px; }
+
+.ca .ca-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin: 0; }
+.ca .ca-facts div { background: var(--sg-surface); border: 1px solid var(--sg-line); border-radius: 12px; padding: 12px 14px; }
+.ca .ca-facts dt { font-family: var(--sg-cond); font-weight: 600; font-size: 14px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--sg-dim); }
+.ca .ca-facts dd { margin: 4px 0 0; font-weight: 600; }
+.ca .ca-facts dd.warn { color: var(--sg-amber); }
+
+.ca .ca-changed { color: var(--sg-amber); font-size: 16px; }
+.ca .ca-alert { border: 1px solid rgba(240, 107, 96, 0.55); background: rgba(240, 107, 96, 0.08); border-radius: 12px; padding: 14px 16px; color: var(--sg-ink); }
+.ca .ca-alert ul { margin: 8px 0 0; padding-left: 20px; }
+.ca .ca-alert code { font-size: 14px; }
+.ca .ca-actions { gap: 12px; }
+.ca .ca-actions .sg-btn:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
+.ca .ca-ok { color: var(--sg-mint); }
+.ca .ca-err { color: var(--sg-red); }
+.ca .ca-body { white-space: pre-wrap; background: var(--sg-surface); border: 1px solid var(--sg-line); border-radius: 12px; padding: 16px; font-size: 16px; }
+
+.ca .ca-preview { border-top: 2px dashed var(--sg-line2); margin-top: 8px; }
+.ca .ca-preview-head { padding-bottom: 0; }
+/* A prévia é uma página inteira dentro desta: não repete o fundo nem a altura mínima. */
+.ca .ca-preview .sg { min-height: 0; background: transparent; }
