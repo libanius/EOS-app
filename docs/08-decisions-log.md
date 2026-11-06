@@ -4,6 +4,43 @@
 
 ---
 
+## D-234 — Funções SECURITY DEFINER fechadas para quem não deve chamá-las
+
+**Data**: 2026-11-06. **Status**: DECIDED (dono: "pode corrigir essas funções").
+**Origem**: checagem de segurança do Supabase depois da migração do CONTENT-001.
+
+**Problema**: nove funções `SECURITY DEFINER` em `public` estavam executáveis por
+`anon` e `authenticated` via `/rest/v1/rpc/*`, porque o Postgres dá `EXECUTE` a
+`PUBLIC` por padrão. Três delas eram brechas reais:
+
+- `consume_rate_limit(p_key, …)`: qualquer pessoa, sem login, podia gastar o
+  limite de uso de outra pessoa (negar o Pilot a ela) ou zerar o próprio.
+- `prune_rate_limit_buckets()`: qualquer pessoa podia apagar os contadores e
+  furar o limite.
+- `match_documents(…)`: qualquer pessoa podia ler o corpus do RAG, que é
+  conhecimento proprietário do EOS (docs/32 §2.2).
+
+As três só são chamadas pelo servidor com a service role.
+
+**Decisão** (migração `20261106010000_sec_definer_grants.sql`):
+
+| Função | Quem chama de verdade | Fica com |
+|---|---|---|
+| `consume_rate_limit`, `prune_rate_limit_buckets`, `match_documents` | servidor (service role) | só `service_role` |
+| `handle_new_user`, `sync_checklist_acquired` | gatilhos (não precisam de `EXECUTE`) | só `service_role` |
+| `confirm_pilot_memory` | usuário logado; já confere `auth.uid() = p_profile_id` | `authenticated` (sai `anon`) |
+| `is_conversation_member` | política de RLS só para `authenticated` | `authenticated` (sai `anon`) |
+| `is_circle_member`, `is_circle_leader` | políticas de RLS de `circles` e `circle_members` para `public` | **sem mudança** |
+
+**Por que as duas de círculo ficam**: as políticas que as usam valem para
+`public` (inclui `anon`). Tirar o `EXECUTE` de `anon` faria uma leitura anônima
+dessas tabelas dar erro em vez de voltar vazia. Elas só devolvem verdadeiro ou
+falso para dois UUIDs. Fechar exige mudar as políticas para `authenticated`
+primeiro, numa tarefa própria. O linter continua avisando sobre elas, e isso é
+esperado.
+
+---
+
 ## D-233 — Marco 1 dos Sinais: FORTRESS no ar sem migração e sem revisão da curadoria
 
 **Data**: 2026-11-05. **Status**: DECIDED (dono).

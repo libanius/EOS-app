@@ -5,6 +5,13 @@
 
 ---
 
+**Toda função nova `SECURITY DEFINER` precisa de `REVOKE ... FROM PUBLIC, anon, authenticated`.**
+O Postgres dá `EXECUTE` a `PUBLIC` por padrão e o Supabase expõe tudo em
+`/rest/v1/rpc`. Foi assim que `consume_rate_limit` e `match_documents` ficaram
+abertas a qualquer pessoa sem login até o D-234. Função de gatilho não precisa de
+`EXECUTE` de ninguém para disparar (testado). Depois de cada migração, rode o
+linter de segurança do Supabase.
+
 **Receber não é publicar (CONTENT-001 / D-P2).**
 O `PUT` do pipeline grava só em `content_packages`. `signals`, `edu_content` e o
 RAG mudam apenas em `publish_content_package()`, chamada pelo toque do dono em
