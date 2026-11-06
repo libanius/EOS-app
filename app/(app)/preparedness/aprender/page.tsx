@@ -275,7 +275,8 @@ function EduCard({
       >
         {text.title}
       </button>
-      {expanded && embedUrl && featured ? (
+      {/* Item da pauta toca aberto em qualquer cartão: o link dele leva ao Sinal, não ao YouTube. */}
+      {expanded && embedUrl && (featured || item.content_slug) ? (
         <div style={{ margin: '0.85rem 0', aspectRatio: '16 / 9', width: '100%', overflow: 'hidden', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.12)', background: '#050507' }}>
           <iframe
             title={text.title}
