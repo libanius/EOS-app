@@ -14,6 +14,7 @@ import '@fontsource/barlow-condensed/500.css'
 import '@fontsource/barlow-condensed/600.css'
 import './signals.css'
 import { useLanguage } from '@/lib/i18n'
+import { youtubeEmbedFromId } from '@/lib/edu'
 import { signalBySlug } from '@/lib/signals-content'
 import { markSeen } from '@/lib/signals-seen'
 import {
@@ -46,6 +47,7 @@ const T = {
       D90: 'O padrão das bases militares no FORTRESS. É o teto, não o ponto de partida.',
     } as Record<Degree, string>,
     whatItIs: 'O que é',
+    video: 'Vídeo',
     whatItIsNot: 'O que não é',
     curator: 'A curadoria EOS orienta',
     unreviewed: 'Publicado antes da revisão final da curadoria.',
@@ -87,6 +89,7 @@ const T = {
       D90: 'The standard for military bases under FORTRESS. A ceiling, not a starting point.',
     } as Record<Degree, string>,
     whatItIs: 'What it is',
+    video: 'Video',
     whatItIsNot: 'What it is not',
     curator: 'EOS curators advise',
     unreviewed: 'Published before final curator review.',
@@ -142,6 +145,10 @@ export default function SignalPage({ slug, preview }: SignalPageProps) {
   const lang = preview?.lang ?? (language === 'en' ? 'en' : 'pt')
   const t = T[lang]
   const signal = preview?.signal ?? signalBySlug(slug)
+  // Um vídeo por idioma; sem vídeo no idioma da pessoa, nenhum (CONTENT-001 D-P5, E8).
+  const videoRef = signal?.video?.[lang]
+  const videoEmbed = youtubeEmbedFromId(videoRef?.youtubeId)
+  const videoMinutes = videoRef?.durationSec ? Math.max(1, Math.round(videoRef.durationSec / 60)) : null
   const { loading, house, metKeys, notApplicableKeys } = useSignalHouse()
   const [degree, setDegree] = useState<Degree>(signal?.protocol.recommendedDegree ?? 'D14')
   const [toast, setToast] = useState<string | null>(null)
@@ -285,6 +292,24 @@ export default function SignalPage({ slug, preview }: SignalPageProps) {
               </div>
             </div>
             <Link className="sg-btn primary block" href="/preparedness/o-que-tenho" data-tip={t.registerTip}>{t.register}</Link>
+          </section>
+        )}
+
+        {videoEmbed && (
+          <section className="sg-panel sg-stack" style={{ gap: 12 }} aria-labelledby="sg-video">
+            <span id="sg-video" className="sg-label mint">
+              {t.video}{videoMinutes ? ` · ${videoMinutes} min` : ''}
+            </span>
+            <div className="sg-video">
+              <iframe
+                title={`${t.video}: ${signal.title[lang]}`}
+                src={videoEmbed}
+                loading="lazy"
+                allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                referrerPolicy="strict-origin-when-cross-origin"
+                allowFullScreen
+              />
+            </div>
           </section>
         )}
 

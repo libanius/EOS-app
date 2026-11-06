@@ -462,7 +462,7 @@ segunda conta de prontidão.*
 | CONTENT-T02 | Funções puras + testes com pautas de exemplo | ✅ COMPLETE | 2026-11-06 — `lib/content-package.ts`; pauta do FORTRESS como fixture; 19 testes. |
 | CONTENT-T03 | `PUT`/`GET /api/content/packages/[slug]`, publicar/arquivar no admin, RAG | ✅ CODE COMPLETE | 2026-11-06 — 14 testes de rota. Ingestão do EDU extraída para `lib/edu-rag-ingest.ts` (mesma regra). **Pendência: `CONTENT_PIPELINE_SECRET` na Vercel.** |
 | CONTENT-T04 | `/admin/content`: prévia, validação, Publicar e Arquivar | ✅ COMPLETE | 2026-11-06 — prévia é a própria `SignalPage` (modo prévia: não marca visto, volta para o admin), PT/EN, o que mudou desde a versão no ar, problemas bloqueiam Publicar, "tentar o RAG de novo" quando pendente. Link em Mais. Conferida em 390 px com dados simulados. |
-| CONTENT-T05 | Vídeo embutido no Sinal | BLOCKED | |
+| CONTENT-T05 | Vídeo por idioma em `/sinais/<slug>` e em `/preparedness/aprender` | ✅ COMPLETE | 2026-11-06 — `Signal.video` (um por idioma) da pauta à tela; embed sem cookies acima de "O que é"; EDU escolhe o vídeo e o texto da lição pelo idioma, sem cair para o outro; itens antigos seguem com `source_url`. Conferido em 390 px: PT mostra, EN sem vídeo `en` não mostra. 733 testes. |
 | CONTENT-T06 | FORTRESS migrado e curado; `lib/signals-content.ts` removido | BLOCKED | Aprovação do dono. |
 
 ---

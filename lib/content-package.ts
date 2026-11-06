@@ -19,6 +19,8 @@ import {
   type Signal,
   type SignalLevel,
   type SignalSource,
+  type SignalVideo,
+  type SignalVideoRef,
 } from './signals'
 
 export const CONTENT_SCHEMA = 'eos.content/1'
@@ -39,8 +41,8 @@ export type PackageLesson = {
   scenarioTags: string[]
 }
 
-export type VideoRef = { youtubeId: string; durationSec?: number }
-export type PackageVideo = { pt?: VideoRef; en?: VideoRef }
+export type VideoRef = SignalVideoRef
+export type PackageVideo = SignalVideo
 
 export type ContentPackage = {
   schema: typeof CONTENT_SCHEMA
@@ -210,6 +212,7 @@ function toSignal(pkg: ContentPackage, meta: SignalMeta): Signal {
     sourceLine: s.sourceLine,
     sources: s.sources,
     protocol: s.protocol,
+    ...(pkg.video ? { video: pkg.video } : {}),
   }
 }
 
@@ -249,6 +252,7 @@ export function rowToSignal(row: SignalRow): Signal {
     ...row.content,
     sources: row.sources,
     protocol: row.protocol,
+    ...(row.video ? { video: row.video } : {}),
   }
 }
 

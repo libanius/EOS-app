@@ -16,6 +16,10 @@ export type EduContent = {
   rag_ingested_at: string | null
   updated_at: string | null
   approved_at: string | null
+  /** CONTENT-001 §4.2b: só em itens vindos de uma pauta. */
+  video?: { pt?: { youtubeId: string; durationSec?: number }; en?: { youtubeId: string; durationSec?: number } } | null
+  lesson?: { title: { pt: string; en: string }; summary: { pt: string; en: string }; body: { pt: string; en: string } } | null
+  content_slug?: string | null
 }
 
 export const DEFAULT_EDU_CONTENT: EduContent[] = [
@@ -87,6 +91,17 @@ export function normalizeEduInput(input: unknown) {
   }
 }
 
+const YOUTUBE_ID = /^[A-Za-z0-9_-]{11}$/
+
+/** Embed sem cookies a partir do ID de 11 caracteres (CONTENT-001 §5.7). */
+export function youtubeEmbedFromId(id: string | null | undefined): string | null {
+  return id && YOUTUBE_ID.test(id) ? `https://www.youtube-nocookie.com/embed/${id}` : null
+}
+
+export function youtubeThumbFromId(id: string | null | undefined): string | null {
+  return id && YOUTUBE_ID.test(id) ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : null
+}
+
 export function youtubeEmbedUrl(sourceUrl: string | null | undefined): string | null {
   if (!sourceUrl) return null
   let url: URL
@@ -109,8 +124,7 @@ export function youtubeEmbedUrl(sourceUrl: string | null | undefined): string | 
     }
   }
 
-  if (!videoId || !/^[A-Za-z0-9_-]{11}$/.test(videoId)) return null
-  return `https://www.youtube-nocookie.com/embed/${videoId}`
+  return youtubeEmbedFromId(videoId)
 }
 
 export function youtubeThumbnailUrl(sourceUrl: string | null | undefined): string | null {

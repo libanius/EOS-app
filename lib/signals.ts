@@ -58,6 +58,9 @@ export type Protocol = {
 
 export type SignalSource = { title: string; url: string }
 
+export type SignalVideoRef = { youtubeId: string; durationSec?: number }
+export type SignalVideo = { pt?: SignalVideoRef; en?: SignalVideoRef }
+
 export type Signal = {
   slug: string
   status: 'published' | 'archived'
@@ -79,6 +82,8 @@ export type Signal = {
   sourceLine: Bilingual
   sources: SignalSource[]
   protocol: Protocol
+  /** Um vídeo por idioma (CONTENT-001 D-P5). Ausente no conteúdo do Marco 1. */
+  video?: SignalVideo
 }
 
 /* ── Validação: as regras 3, 4 e 5 da §5 viram teste ───────────────────── */
