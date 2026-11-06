@@ -388,6 +388,9 @@ This preserves provenance without a new table or schema change.
 | created_by / updated_by | uuid | FK → profiles.id |
 | approved_at | timestamptz | Set when status becomes approved |
 | created_at / updated_at | timestamptz | |
+| video | jsonb | CONTENT-001 §4.2b: `{pt?:{youtubeId}, en?:{youtubeId}}`. Null for legacy rows, which keep using `source_url` |
+| lesson | jsonb | CONTENT-001 §4.2b: bilingual `{title, summary, body}`. `title`/`summary` columns keep the PT text |
+| content_slug | text | Slug of the originating content package; unique when present |
 
 `edu_content` is the official EDU catalog (D-090 / EDU-T01). RLS is enabled
 with no direct policies. `/api/edu` returns approved content to authenticated
@@ -397,6 +400,23 @@ future explicit tasks that must preserve `edu_content.id` and `version` as
 provenance.
 
 ---
+
+## Content pipeline (CONTENT-001) — migration written, NOT yet applied
+
+> Migração `supabase/migrations/20261106000000_content_pipeline.sql`. Aditiva e
+> idempotente. Testada contra Postgres 16 por `scripts/content-pipeline-sql-test.sh`.
+> **Pendência do dono: aplicar no SQL Editor.**
+
+| Table | Shape | Purpose |
+|---|---|---|
+| `content_packages` | `id · slug · version · status · payload · hash · applied_at · applied_by · received_at` | Toda versão **válida** recebida do pipeline. Único por `(slug, version)`. Status `draft`/`review`/`archived`. Receber não é publicar |
+| `signals` | `id · slug · status · version · level · occurred_on · published_on · region · official_alert · reviewed_by_curator · content · sources · protocol · video · edu_content_id · approved_by · published_at · archived_at · updated_at` | Sinais no ar (`published`) ou arquivados. `content` e `protocol` são `jsonb` bilíngue (D-P3). `CHECK`: `AGIR` exige `official_alert` |
+
+Escrita **só** por três funções `SECURITY DEFINER`, executáveis apenas pelo
+service role: `receive_content_package` (grava a candidata; decide entre
+criado, sem mudança, conflito e versão velha), `publish_content_package`
+(promove a versão aprovada para `signals` e `edu_content` numa transação) e
+`archive_content_package`. RLS ligado sem política: leitura por rota.
 
 ## Preparedness requirements & kits (PREP-T05 / D-161) — applied
 

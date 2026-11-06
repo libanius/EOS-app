@@ -602,6 +602,12 @@ provenance_ref:   fk/id of the originating artifact (edu_content.id, simulation 
 **Provenance is an attribute of Requirement. It is never a Kit and never part of
 a unique key.** This is the direct repair of S3.
 
+**CONTENT-001 (2026-11-06):** the content pipeline adds `content_packages` and
+`signals` but **no provenance value**. Signals do not write requirements yet; the
+`PROTOCOL` value arrives with protocol adoption (SIGNAL-001 Marco 2), in its own
+migration. A requirement that comes from an approved EDU lesson keeps `EDU`
+with `provenance_ref = edu_content.id`.
+
 Today's `EDU_CONTENT`, `PILOT_RECOMMENDATION` and `SIMULATION_DEBRIEF` values of
 `kit_type` map to `provenance` with `kit_id = NULL` (§27). No data is lost and
 none is migrated in PREP-T03.

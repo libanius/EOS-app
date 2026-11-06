@@ -438,10 +438,10 @@ segunda conta de prontidão.*
 | Task ID | Task | Status | Notes |
 |---|---|---|---|
 | SIGNAL-T00 | Aprovação do spec para Ready | ✅ COMPLETE | D1–D5 fechadas pelo dono (D1 revisado em 2026-11-04: Sinais é o 6º destino da barra global). Passada do Wren feita em 2026-11-03. Falta só a aprovação final. |
-| SIGNAL-M1 | **Marco 1 — FORTRESS no ar (leitura)**: 6º destino, `/sinais`, `/sinais/<slug>`, conteúdo versionado e validado por teste | IN PROGRESS | Spec §12. Sem migração. Aprovado pelo dono em 2026-11-05. |
-| SIGNAL-T01 | Migração `signals`, `protocols`, `protocol_items`; origem `PROTOCOL` | BLOCKED | Vai para o spec do pipeline (§12.2). Docs 06 e 37 §18 no mesmo PR. |
+| SIGNAL-M1 | **Marco 1 — FORTRESS no ar (leitura)**: 6º destino, `/sinais`, `/sinais/<slug>`, conteúdo versionado e validado por teste | ✅ COMPLETE | Spec §12. Sem migração. Aprovado pelo dono em 2026-11-05. |
+| SIGNAL-T01 | Migração `signals`, `protocols`, `protocol_items`; origem `PROTOCOL` | BLOCKED | Substituída por CONTENT-T01 (`specs/CONTENT-001-pipeline-de-conteudo.md`). A origem `PROTOCOL` fica para a adoção (Marco 2). |
 | SIGNAL-T02 | Funções puras + teste de verdade única | BLOCKED | Dias e cobertura iguais ao painel e ao Pilot. |
-| SIGNAL-T03 | Autoria e publicação no admin | BLOCKED | `ADMIN_EMAILS`. "O que não é" e fonte obrigatórios. |
+| SIGNAL-T03 | Autoria e publicação no admin | BLOCKED | Substituída pelo pipeline: CONTENT-T03/T04. |
 | SIGNAL-T04 | Página do protocolo + adoção | BLOCKED | Idempotente; só confirmados viram `needed`. |
 | SIGNAL-T05 | Push por região | BLOCKED | Só `PREPARAR`/`AGIR`; dedup `signal:<id>`. |
 | SIGNAL-T06 | Pilot lê Sinais ativos | BLOCKED | Formato decidido em D4. |
@@ -449,6 +449,20 @@ segunda conta de prontidão.*
 | HOLDING-HISTORY-001 | Histórico de aquisições com porquê, evento e degrau | DRAFT | Base da trajetória da autonomia e da linha do tempo do inventário. Mexe no modelo de dados (Regra 7). |
 | BASE-001 | Redesenho de `/preparedness` com o padrão do protótipo | DRAFT | Depende de HOLDING-HISTORY-001. |
 | SYSTEMS-001 | Sistemas da casa: internet real; energia, água e celular relatados pelo círculo | DRAFT | LoRa segue bloqueado por G-05; satélite é status manual. |
+
+## Pipeline de conteúdo (CONTENT)
+
+> Spec **Ready**: `specs/CONTENT-001-pipeline-de-conteudo.md`. Uma pauta do dono → YouTube, EDU/RAG e Sinais.
+
+| Task | Entrega | Status | Notas |
+|---|---|---|---|
+| CONTENT-T00 | Decisões D-P1…D-P5 e spec Ready | ✅ COMPLETE | 2026-11-05 — aprovado pelo dono. Aprovação por botão no EOS, RAG automático, vídeo por idioma (sem vídeo no idioma da pessoa, não mostra). |
+| CONTENT-T01 | Migração `content_packages`, `signals`, colunas em `edu_content`, `receive_`/`publish_`/`archive_content_package()` | ✅ CODE COMPLETE | 2026-11-06 — `20261106000000_content_pipeline.sql`, testada em Postgres 16 (`scripts/content-pipeline-sql-test.sh`, 19/19). Docs 06, 22 §3 e 37 §18 atualizados. **Pendência: aplicar no SQL Editor.** |
+| CONTENT-T02 | Funções puras + testes com pautas de exemplo | ✅ COMPLETE | 2026-11-06 — `lib/content-package.ts`; pauta do FORTRESS como fixture; 19 testes. |
+| CONTENT-T03 | `PUT`/`GET /api/content/packages/[slug]`, publicar/arquivar no admin, RAG | ✅ CODE COMPLETE | 2026-11-06 — 14 testes de rota. Ingestão do EDU extraída para `lib/edu-rag-ingest.ts` (mesma regra). **Pendência: `CONTENT_PIPELINE_SECRET` na Vercel.** |
+| CONTENT-T04 | `/admin/content`: prévia, validação, Publicar e Arquivar | BLOCKED | Só o dono publica (D-P2). |
+| CONTENT-T05 | Vídeo embutido no Sinal | BLOCKED | |
+| CONTENT-T06 | FORTRESS migrado e curado; `lib/signals-content.ts` removido | BLOCKED | Aprovação do dono. |
 
 ---
 

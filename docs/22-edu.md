@@ -94,6 +94,14 @@ EDU-T07 adds one notification behavior:
 | `approved_at` | timestamptz | timestamp when status becomes approved |
 | `created_at` | timestamptz | server timestamp |
 | `updated_at` | timestamptz | server timestamp |
+| `video` | jsonb | CONTENT-001: `{pt?:{youtubeId}, en?:{youtubeId}}`; null for legacy items |
+| `lesson` | jsonb | CONTENT-001: bilingual `{title, summary, body}`; null for legacy items |
+| `content_slug` | text | CONTENT-001: originating content package; unique when present |
+
+Items with `content_slug` are written **only** by `publish_content_package()`
+(CONTENT-001 §4.3), never by `POST /api/edu`. Their video is chosen by the
+viewer's language with no cross-language fallback (D-P5); legacy items keep
+using `source_url`.
 
 RLS is enabled with no direct policies. Reads/writes go through `/api/edu`.
 

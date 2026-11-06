@@ -1,9 +1,21 @@
 # 11 — Product Memory
 
 > Non-obvious facts that don't belong in code comments but must survive across sessions.
-> Last updated: 2026-11-05
+> Last updated: 2026-11-06
 
 ---
+
+**Receber não é publicar (CONTENT-001 / D-P2).**
+O `PUT` do pipeline grava só em `content_packages`. `signals`, `edu_content` e o
+RAG mudam apenas em `publish_content_package()`, chamada pelo toque do dono em
+`/admin/content`. Uma versão nova de um Sinal que já está no ar fica esperando,
+e a família continua vendo a aprovada. Não "simplifique" fazendo o `PUT`
+escrever em `signals`: foi exatamente o defeito que o Codex achou no spec.
+
+**Itens do EDU vindos da pauta têm dono (`content_slug`).** Só a publicação da
+pauta escreve neles. O `title`/`summary` antigos guardam o PT; o bilíngue está em
+`lesson`, e o vídeo, por idioma, em `video`. Sem vídeo no idioma da pessoa, não
+mostra vídeo (D-P5).
 
 **Sinais não têm conta própria de dias (SIGNAL-001 / D-233).**
 O protocolo lê a casa por `/api/household` e passa os números por
