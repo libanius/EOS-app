@@ -5,9 +5,20 @@ let rows: unknown[] | null = []
 let dbError: { code?: string; message: string } | null = null
 
 jest.mock('@/lib/admin-route', () => ({ requireAdminUser: async () => user }))
+type R = { slug: string; version: number; payload: unknown }
+let pageCalls = 0
 jest.mock('@/lib/supabase/admin', () => ({
   createAdminClient: () => ({
-    from: () => ({ select: () => ({ order: () => ({ limit: async () => ({ data: rows, error: dbError }) }) }) }),
+    from: () => ({
+      select: (cols: string) => cols === 'payload'
+        ? { eq: (_k: string, slug: string) => ({ eq: (_k2: string, version: number) => ({
+            maybeSingle: async () => ({ data: (rows as R[]).find(r => r.slug === slug && r.version === version) ?? null, error: null }),
+          }) }) }
+        : { order: () => ({ order: () => ({ range: async (from: number, to: number) => {
+            pageCalls++
+            return { data: dbError ? null : (rows ?? []).slice(from, to + 1), error: dbError }
+          } }) }) },
+    }),
   }),
 }))
 jest.mock('@/lib/content-store', () => ({
@@ -17,7 +28,7 @@ jest.mock('@/lib/content-store', () => ({
 import { GET } from '../route'
 import { fortressPackage } from '@/lib/__tests__/fixtures/content-fortress'
 
-beforeEach(() => { user = { id: 'u1' }; rows = []; dbError = null })
+beforeEach(() => { user = { id: 'u1' }; rows = []; dbError = null; pageCalls = 0 })
 
 it('sem ADMIN_EMAILS responde 403 (critério 5d)', async () => {
   user = null
@@ -51,4 +62,15 @@ it('agrupa por slug, mostra a última versão, a validação e o que mudou desde
   const h = packages.find((p: { slug: string }) => p.slug === 'furacoes')
   expect(h.problems).toContain('signal.whatItIsNot vazio em um idioma')
   expect(h.changed).toEqual(['signal', 'lesson'])
+})
+
+it('pagina até o fim: nenhuma pauta some depois de 1000 versões', async () => {
+  const many: unknown[] = []
+  for (let v = 1; v <= 1200; v++) many.push({ slug: 'velha', version: v, status: 'review', payload: fortressPackage({ slug: 'velha', version: v }), received_at: '2026-01-01T00:00:00Z', applied_at: null })
+  many.push({ slug: 'nova', version: 1, status: 'review', payload: fortressPackage({ slug: 'nova' }), received_at: '2026-11-06T00:00:00Z', applied_at: null })
+  rows = many
+  const { packages } = await (await GET()).json()
+  expect(pageCalls).toBe(2)
+  expect(packages.map((p: { slug: string }) => p.slug).sort()).toEqual(['nova', 'velha'])
+  expect(packages.find((p: { slug: string }) => p.slug === 'velha').latest.version).toBe(1200)
 })

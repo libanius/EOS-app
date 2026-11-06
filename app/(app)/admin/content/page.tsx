@@ -92,7 +92,7 @@ export default function AdminContentPage() {
           const rag = d.rag === 'ingested' ? 'lição no RAG' : `RAG pendente${d.ragError ? `: ${d.ragError}` : ''} — toque de novo em Publicar para tentar outra vez`
           setMsg({ ok: d.rag === 'ingested', text: `Versão ${item.latest.version} no ar. ${rag}.` })
         } else {
-          setMsg({ ok: true, text: `Arquivado. Resumo histórico: ${d.archiveRag === 'ingested' ? 'no RAG' : 'pendente — arquive de novo para tentar outra vez'}.` })
+          setMsg({ ok: true, text: `Arquivado. Resumo histórico: ${d.archiveRag === 'ingested' ? 'no RAG' : 'pendente — toque em "Tentar o resumo histórico de novo"'}.` })
         }
       } else {
         setMsg({ ok: false, text: String(d.error ?? 'Erro') + (d.problems ? ` — ${d.problems.join('; ')}` : '') })
@@ -166,6 +166,9 @@ export default function AdminContentPage() {
               <div><dt>No ar</dt><dd>{item.state.liveVersion ? `v${item.state.liveVersion}` : item.state.signal === 'archived' ? 'arquivado' : '—'}</dd></div>
               <div><dt>Recebida</dt><dd>v{item.latest.version} · {STATUS_LABEL[item.latest.status]} · {when(item.latest.receivedAt)}</dd></div>
               <div><dt>EDU</dt><dd>{item.state.edu === 'none' ? '—' : `${EDU_LABEL[item.state.edu] ?? item.state.edu} v${item.state.eduVersion}`}</dd></div>
+              {item.state.signal === 'archived' && (
+                <div><dt>Histórico no RAG</dt><dd className={item.state.archiveRag === 'pending' ? 'warn' : undefined}>{item.state.archiveRag === 'ingested' ? 'ingerido' : 'pendente'}</dd></div>
+              )}
               <div><dt>RAG</dt><dd className={item.state.rag === 'pending' ? 'warn' : undefined}>{item.state.rag === 'none' ? '—' : item.state.rag === 'ingested' ? 'ingerido' : 'pendente'}</dd></div>
             </dl>
 
@@ -187,8 +190,13 @@ export default function AdminContentPage() {
               <button type="button" className="sg-btn primary" disabled={busy || !canPublish} onClick={() => void act('publish')}>
                 {republishRag ? `Tentar o RAG de novo (v${item.latest.version})` : `Publicar versão ${item.latest.version}`}
               </button>
-              <button type="button" className="sg-btn" disabled={busy || item.state.signal !== 'published'} onClick={() => void act('archive')}>
-                Arquivar
+              <button
+                type="button"
+                className="sg-btn"
+                disabled={busy || !(item.state.signal === 'published' || (item.state.signal === 'archived' && item.state.archiveRag === 'pending'))}
+                onClick={() => void act('archive')}
+              >
+                {item.state.signal === 'archived' && item.state.archiveRag === 'pending' ? 'Tentar o resumo histórico de novo' : 'Arquivar'}
               </button>
             </div>
             {!canPublish && !item.problems.length && item.latest.status !== 'archived' && item.state.liveVersion === item.latest.version && (

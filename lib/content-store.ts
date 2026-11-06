@@ -19,6 +19,8 @@ export type PackageState = {
   edu: 'none' | 'approved' | 'draft' | 'archived'
   eduVersion: number | null
   rag: 'none' | 'pending' | 'ingested'
+  /** Resumo histórico do Sinal arquivado no RAG (E16/E18); `none` se não está arquivado. */
+  archiveRag: 'none' | 'pending' | 'ingested'
   video: { pt: boolean; en: boolean }
   /** Há versão nova esperando o toque do dono. */
   awaitingApproval: boolean
@@ -30,6 +32,14 @@ export async function packageState(admin: SupabaseClient, slug: string): Promise
     admin.from('signals').select('status, version, video').eq('slug', slug).maybeSingle(),
     admin.from('edu_content').select('status, version, rag_ingested_at').eq('content_slug', slug).maybeSingle(),
   ])
+  let archiveRag: PackageState['archiveRag'] = 'none'
+  if (sig?.status === 'archived') {
+    const { count } = await admin
+      .from('knowledge_base')
+      .select('id', { count: 'exact', head: true })
+      .eq('source', archivedSignalSource(slug))
+    archiveRag = (count ?? 0) > 0 ? 'ingested' : 'pending'
+  }
   const video = (sig?.video ?? null) as PackageVideo | null
   const latestVersion = (pkg?.version as number | undefined) ?? null
   const liveVersion = sig?.status === 'published' ? (sig.version as number) : null
@@ -43,6 +53,7 @@ export async function packageState(admin: SupabaseClient, slug: string): Promise
     eduVersion: (edu?.version as number | undefined) ?? null,
     rag: !edu || edu.status !== 'approved' ? 'none' : edu.rag_ingested_at ? 'ingested' : 'pending',
     video: { pt: Boolean(video?.pt), en: Boolean(video?.en) },
+    archiveRag,
     awaitingApproval: latestVersion !== null && pkg?.status === 'review' && latestVersion !== (sig?.version ?? null),
   }
 }
