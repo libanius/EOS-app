@@ -58,8 +58,12 @@ const T = {
     module: { agua: 'Água', comida: 'Comida', saude: 'Saúde', energia: 'Energia', comunicacao: 'Comunicação', documentos: 'Documentos e dinheiro', casa: 'Casa' } as Record<SignalModule, string>,
     status: { covered: 'Completo', partial: 'Parcial', missing: 'Falta', unknown: 'Sem dado', not_applicable: 'Não se aplica' },
     statusTip: 'Verde: cumprido. Âmbar: em parte. Tracejado: falta dado da casa. Vazio: ainda não registrado.',
-    water: (h: number, n: number) => `${Math.round(h)} de ${Math.round(n)} L`,
-    food: (h: number, n: number) => `${Math.round(h * MEALS_PER_PERSON_DAY)} de ${Math.round(n * MEALS_PER_PERSON_DAY)} refeições`,
+    // Acima da meta não vira fração impossível ("36 de 27"): mostra o que tem e a meta.
+    water: (h: number, n: number) => (h >= n ? `${Math.round(h)} L · meta ${Math.round(n)} L` : `${Math.round(h)} de ${Math.round(n)} L`),
+    food: (h: number, n: number) => {
+      const have = Math.round(h * MEALS_PER_PERSON_DAY), need = Math.round(n * MEALS_PER_PERSON_DAY)
+      return have >= need ? `${have} refeições · meta ${need}` : `${have} de ${need} refeições`
+    },
     viaInventory: 'Registrado no inventário',
     viaRequirement: 'Marcado como adquirido',
     nextAction: 'Próxima ação',
@@ -100,8 +104,11 @@ const T = {
     module: { agua: 'Water', comida: 'Food', saude: 'Health', energia: 'Power', comunicacao: 'Communication', documentos: 'Documents and cash', casa: 'Home' } as Record<SignalModule, string>,
     status: { covered: 'Done', partial: 'Partial', missing: 'Missing', unknown: 'No data', not_applicable: 'Not needed' },
     statusTip: 'Green: done. Amber: partly. Dashed: home data missing. Empty: not recorded yet.',
-    water: (h: number, n: number) => `${Math.round(h)} of ${Math.round(n)} L`,
-    food: (h: number, n: number) => `${Math.round(h * MEALS_PER_PERSON_DAY)} of ${Math.round(n * MEALS_PER_PERSON_DAY)} meals`,
+    water: (h: number, n: number) => (h >= n ? `${Math.round(h)} L · goal ${Math.round(n)} L` : `${Math.round(h)} of ${Math.round(n)} L`),
+    food: (h: number, n: number) => {
+      const have = Math.round(h * MEALS_PER_PERSON_DAY), need = Math.round(n * MEALS_PER_PERSON_DAY)
+      return have >= need ? `${have} meals · goal ${need}` : `${have} of ${need} meals`
+    },
     viaInventory: 'Recorded in your inventory',
     viaRequirement: 'Marked as acquired',
     nextAction: 'Next action',
@@ -356,7 +363,7 @@ export default function SignalPage({ slug, preview }: SignalPageProps) {
               <div className="sg-mod"><span className="sg-label">{t.module[m]}</span></div>
               {(byModule.get(m) ?? []).map(v => (
                 <div key={v.item.resourceKey} className="sg-req">
-                  <span tabIndex={0} data-tip={t.statusTip} style={{ display: 'inline-flex', borderRadius: '50%' }}>
+                  <span className="tip-start" tabIndex={0} data-tip={t.statusTip} style={{ display: 'inline-flex', borderRadius: '50%' }}>
                     <StatusMark v={v} label={t.status[v.status]} />
                   </span>
                   <div style={{ minWidth: 0 }}>

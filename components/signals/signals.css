@@ -191,7 +191,7 @@
   bottom: calc(100% + 10px);
   transform: translateX(-50%);
   width: max-content;
-  max-width: min(280px, 80vw);
+  max-width: min(280px, calc(100vw - 40px));
   background: #1c2740;
   border: 1px solid rgba(63, 224, 176, 0.55);
   color: var(--sg-ink);
@@ -208,6 +208,11 @@
   pointer-events: none;
   white-space: normal;
 }
+
+/* Elemento colado na borda esquerda (o círculo de status): a explicação abre
+   para a direita, em vez de centralizada, para não sair da tela. */
+.sg [data-tip].tip-start:hover::after,
+.sg [data-tip].tip-start:focus-visible::after { left: 0; transform: none; }
 
 .sg-empty { padding: 32px 16px; text-align: center; color: var(--sg-muted); border: 1px dashed var(--sg-line2); border-radius: 14px; }
 .sg-skel { height: 120px; border-radius: 14px; background: var(--sg-surface); opacity: 0.6; }
