@@ -1,17 +1,24 @@
 'use client'
 
 /**
- * A folha do item do Sinal (SIGNAL-002 §3.1–§3.3, §6).
+ * A folha do item do Sinal (SIGNAL-002 §3.1, INVENTORY-001 §3.3–§3.4, INV-T04).
  *
- * Ter ou não ter: três respostas, gravadas na linha de base da minha conta.
- * Água e comida: "quanto tem agora", gravado no meu inventário (substitui).
+ * Ter ou não ter: três respostas. "Tenho" cria o item no estoque da casa quando
+ * ela ainda não tem (D-I1); com item na casa, a folha mostra quem cobre e cada
+ * item abre a ficha do estoque (marca, modelo, lugar). "Ainda não tenho" com
+ * item na casa pergunta quais remover — nada sai sem confirmação (E5).
+ *
+ * Água e comida: a lista do estoque da casa e "+ Adicionar". A quantidade se
+ * muda no item, não aqui (§3.3; substitui o "quanto tem agora" do SIGNAL-002).
+ *
  * Prévia do admin e Sinal arquivado: só leitura.
  */
 
 import { useEffect, useRef, useState } from 'react'
 import { MEALS_PER_PERSON_DAY, type ItemView } from '@/lib/signals'
 import type { HouseAnswer, HouseItemState } from '@/lib/signal-house'
-import { gallonsToLiters, litersToGallons } from '@/lib/units'
+import { litersToGallons } from '@/lib/units'
+import { mealsText, quantityText, type ApiItem } from '@/lib/stock-view'
 
 type Lang = 'pt' | 'en'
 
@@ -22,22 +29,22 @@ const T = {
     need: 'Ainda não tenho',
     na: 'Não se aplica à minha casa',
     house: { met: 'A casa tem', needed: 'A casa ainda não tem', not_applicable: 'Não se aplica à casa', none: 'Ainda sem resposta' },
-    by: (name: string, when: string) => `Marcado por ${name}, ${when}`,
-    byMe: (when: string) => `Marcado por você, ${when}`,
-    viaInventory: 'Registrado no inventário da casa',
+    by: (name: string, when: string) => `Respondido por ${name}, ${when}`,
+    byMe: (when: string) => `Respondido por você, ${when}`,
     preview: 'Prévia: respostas não são gravadas.',
     archived: 'Sinal arquivado: respostas não são gravadas.',
-    houseWater: 'Casa hoje',
-    yourWater: 'O seu registro: quanta água você tem guardada agora',
-    yourWaterOne: 'Quanta água a casa tem guardada agora',
-    houseFood: 'Casa hoje',
-    yourFood: 'Para quantos dias a comida que você guarda alimenta quem você cobre?',
-    yourFoodOne: 'Para quantos dias a comida guardada alimenta a casa?',
-    days: 'dias',
-    meals: (m: number) => `= ${m} refeições`,
-    save: 'Salvar',
-    saving: 'Salvando…',
-    replaces: 'Substitui o valor anterior. Não soma.',
+    inStock: 'Na casa',
+    tapToDetail: 'Toque num item para adicionar marca, modelo ou validade.',
+    of: (n: string) => `de ${n}`,
+    removeAsk: 'A casa tem este item no estoque. Quais saem?',
+    removeYes: 'Remover selecionados',
+    removeNo: 'Manter',
+    removeNote: 'Nada sai sem você escolher. Sem remover, o Sinal continua mostrando que a casa tem.',
+    houseToday: 'Casa hoje',
+    meals: (m: number) => `${m} refeições`,
+    add: '+ Adicionar ao estoque',
+    changeQty: 'Para mudar a quantidade, toque no item.',
+    noneYet: 'Nada no estoque ainda.',
     unknownHouse: 'Conte quem mora na casa primeiro.',
     family: 'Ir para Família',
     error: 'Não foi possível gravar. Tente de novo.',
@@ -48,22 +55,22 @@ const T = {
     need: 'Not yet',
     na: "Doesn't apply to my home",
     house: { met: 'Your home has it', needed: "Your home doesn't have it yet", not_applicable: "Doesn't apply to your home", none: 'No answer yet' },
-    by: (name: string, when: string) => `Marked by ${name}, ${when}`,
-    byMe: (when: string) => `Marked by you, ${when}`,
-    viaInventory: 'Recorded in your home inventory',
+    by: (name: string, when: string) => `Answered by ${name}, ${when}`,
+    byMe: (when: string) => `Answered by you, ${when}`,
     preview: 'Preview: answers are not saved.',
     archived: 'Archived Signal: answers are not saved.',
-    houseWater: 'Home today',
-    yourWater: 'Your record: how much water you have stored now',
-    yourWaterOne: 'How much water your home has stored now',
-    houseFood: 'Home today',
-    yourFood: 'How many days does the food you keep feed the people you cover?',
-    yourFoodOne: 'How many days does the stored food feed your home?',
-    days: 'days',
-    meals: (m: number) => `= ${m} meals`,
-    save: 'Save',
-    saving: 'Saving…',
-    replaces: 'Replaces the previous value. Does not add.',
+    inStock: 'At home',
+    tapToDetail: 'Tap an item to add brand, model or expiration.',
+    of: (n: string) => `${n}'s`,
+    removeAsk: 'Your home has this in stock. Which ones go?',
+    removeYes: 'Remove selected',
+    removeNo: 'Keep',
+    removeNote: 'Nothing goes unless you choose. Without removing, the Signal keeps showing your home has it.',
+    houseToday: 'Home today',
+    meals: (m: number) => `${m} meals`,
+    add: '+ Add to stock',
+    changeQty: 'To change the quantity, tap the item.',
+    noneYet: 'Nothing in stock yet.',
     unknownHouse: 'Count who lives in your home first.',
     family: 'Go to Family',
     error: 'Could not save. Try again.',
@@ -80,36 +87,39 @@ function ago(iso: string, lang: Lang): string {
   return rtf.format(-Math.round(h / 24), 'day')
 }
 
+/** O que a resposta devolveu: quando a casa tem o item, a folha pergunta o que remover. */
+export type AnswerResult = { confirmRemoval: ApiItem[] } | null
+
 export type ItemSheetProps = {
   view: ItemView
   lang: Lang
   state: HouseItemState | null
   accounts: number
-  houseSize: number
+  me: string | null
   houseKnown: boolean
   /** Água (L) e comida (dia-pessoa) da casa inteira. */
   houseWaterLiters: number
   houseFoodPersonDays: number
+  /** Itens da casa que cobrem este item do Sinal. */
+  covering: ApiItem[]
   readOnly: 'preview' | 'archived' | null
   onClose: () => void
-  /** Resposta de ter ou não ter. Rejeita em caso de falha. */
-  onAnswer: (answer: HouseAnswer) => Promise<void>
-  /** Água ou comida. Rejeita em caso de falha. */
-  onSaveAmount: (field: 'water_liters' | 'food_days', value: number) => Promise<void>
+  /** Rejeita em caso de falha. */
+  onAnswer: (answer: HouseAnswer) => Promise<AnswerResult>
+  /** Remove os itens escolhidos e responde "Ainda não tenho". Rejeita em caso de falha. */
+  onRemoveItems: (ids: string[]) => Promise<void>
+  onOpenItem: (item: ApiItem) => void
+  onAddItem: () => void
 }
 
 export default function ItemSheet(p: ItemSheetProps) {
   const t = T[p.lang]
   const titleRef = useRef<HTMLHeadingElement>(null)
-  const [busy, setBusy] = useState<HouseAnswer | 'amount' | null>(null)
+  const [busy, setBusy] = useState<HouseAnswer | 'remove' | null>(null)
   const [error, setError] = useState(false)
+  const [removal, setRemoval] = useState<ApiItem[] | null>(null)
+  const [chosen, setChosen] = useState<Set<string>>(new Set())
   const kind = p.view.item.kind
-  const single = p.accounts <= 1
-
-  // O valor da MINHA conta, para preencher o campo (§3.3).
-  const [mine, setMine] = useState<{ water_liters: number; food_days: number } | null>(null)
-  const [unit, setUnit] = useState<'gal' | 'L'>('gal')
-  const [amount, setAmount] = useState('')
 
   useEffect(() => {
     titleRef.current?.focus()
@@ -119,25 +129,14 @@ export default function ItemSheet(p: ItemSheetProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  useEffect(() => {
-    if (kind === 'PRESENCE' || p.readOnly) return
-    let alive = true
-    void fetch('/api/inventory', { cache: 'no-store' })
-      .then(r => (r.ok ? r.json() : null))
-      .then((d: { inventory?: { water_liters?: number; food_days?: number } | null } | null) => {
-        if (!alive) return
-        const inv = { water_liters: Number(d?.inventory?.water_liters) || 0, food_days: Number(d?.inventory?.food_days) || 0 }
-        setMine(inv)
-        setAmount(kind === 'ENGINE_WATER' ? String(Math.round(litersToGallons(inv.water_liters) * 10) / 10) : String(inv.food_days))
-      })
-      .catch(() => {})
-    return () => { alive = false }
-  }, [kind, p.readOnly])
-
   const answer = async (a: HouseAnswer) => {
     setBusy(a); setError(false)
     try {
-      await p.onAnswer(a)
+      const r = await p.onAnswer(a)
+      if (r?.confirmRemoval?.length) {
+        setRemoval(r.confirmRemoval)
+        setChosen(new Set(r.confirmRemoval.map(i => i.id)))
+      }
     } catch {
       setError(true)
     } finally {
@@ -145,47 +144,48 @@ export default function ItemSheet(p: ItemSheetProps) {
     }
   }
 
-  const parsed = Number(amount.replace(',', '.'))
-  const validAmount = amount.trim() !== '' && Number.isFinite(parsed) && parsed >= 0
-
-  const saveAmount = async () => {
-    if (!validAmount) return
-    setBusy('amount'); setError(false)
+  const remove = async () => {
+    if (!chosen.size) return
+    setBusy('remove'); setError(false)
     try {
-      if (kind === 'ENGINE_WATER') await p.onSaveAmount('water_liters', unit === 'gal' ? gallonsToLiters(parsed) : parsed)
-      else await p.onSaveAmount('food_days', parsed)
+      await p.onRemoveItems(Array.from(chosen))
+      setRemoval(null)
     } catch {
       setError(true)
     } finally {
       setBusy(null)
     }
-  }
-
-  const switchUnit = (u: 'gal' | 'L') => {
-    if (u === unit) return
-    if (validAmount) {
-      const v = u === 'L' ? gallonsToLiters(parsed) : litersToGallons(parsed)
-      setAmount(String(Math.round(v * 10) / 10))
-    }
-    setUnit(u)
   }
 
   const s = p.state
-  const houseLine =
-    p.view.coveredBy === 'inventory' ? t.viaInventory : s ? t.house[s.status === 'proposed' ? 'needed' : s.status] : t.house.none
-  const whoLine = s && !single ? (s.by.isMe ? t.byMe(ago(s.updatedAt, p.lang)) : t.by(s.by.name || '—', ago(s.updatedAt, p.lang))) : s ? t.byMe(ago(s.updatedAt, p.lang)) : null
-  const current = s?.status === 'met' ? 'have' : s?.status === 'needed' ? 'need' : s?.status === 'not_applicable' ? 'not_applicable' : null
+  const has = p.covering.length > 0
+  const houseLine = has ? t.house.met : s ? t.house[s.status === 'proposed' || s.status === 'met' ? 'needed' : s.status] : t.house.none
+  const whoLine = !has && s && s.status !== 'met' && s.status !== 'proposed'
+    ? s.by.isMe ? t.byMe(ago(s.updatedAt, p.lang)) : t.by(s.by.name || '—', ago(s.updatedAt, p.lang))
+    : null
+  const current: HouseAnswer | null = has ? 'have' : s?.status === 'needed' ? 'need' : s?.status === 'not_applicable' ? 'not_applicable' : null
   const disabled = Boolean(p.readOnly) || busy !== null
+
+  const itemButton = (i: ApiItem) => {
+    const sub = [
+      [i.brand, i.model].filter(Boolean).join(' '),
+      i.resourceKey === 'comida' ? mealsText(i.meals, p.lang) : null,
+      p.accounts > 1 && p.me && i.profileId !== p.me ? t.of(i.ownerName || '—') : null,
+    ].filter(Boolean).join(' · ')
+    return (
+      <button key={i.id} type="button" className="sg-stock-item" disabled={Boolean(p.readOnly)} onClick={() => p.onOpenItem(i)}>
+        <span className="sg-stock-main">
+          <strong>{i.label}</strong>
+          {sub && <span className="sg-note">{sub}</span>}
+        </span>
+        <span className="sg-stock-qty">{quantityText(i, p.lang)}</span>
+      </button>
+    )
+  }
 
   return (
     <div className="sg-sheet-wrap" onClick={p.onClose}>
-      <div
-        className="sg-sheet"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="sg-sheet-title"
-        onClick={e => e.stopPropagation()}
-      >
+      <div className="sg-sheet" role="dialog" aria-modal="true" aria-labelledby="sg-sheet-title" onClick={e => e.stopPropagation()}>
         <div className="sg-sheet-grip" aria-hidden="true" />
         <h2 id="sg-sheet-title" ref={titleRef} tabIndex={-1}>{p.view.item.label[p.lang]}</h2>
         {p.view.item.hint && <p className="sg-muted">{p.view.item.hint[p.lang]}</p>}
@@ -196,22 +196,52 @@ export default function ItemSheet(p: ItemSheetProps) {
           <>
             <div className="sg-sheet-state">
               <strong>{houseLine}</strong>
-              {whoLine && p.view.coveredBy !== 'inventory' && <span className="sg-note">{whoLine}</span>}
+              {whoLine && <span className="sg-note">{whoLine}</span>}
             </div>
-            <div className="sg-stack" style={{ gap: 10 }}>
-              {([['have', t.have], ['need', t.need], ['not_applicable', t.na]] as Array<[HouseAnswer, string]>).map(([a, label]) => (
-                <button
-                  key={a}
-                  type="button"
-                  className={`sg-btn block sg-answer ${a === 'have' ? 'primary' : ''}`}
-                  aria-pressed={current === a}
-                  disabled={disabled}
-                  onClick={() => void answer(a)}
-                >
-                  {busy === a ? '…' : label}
+            {has && (
+              <div className="sg-stack" style={{ gap: 8 }}>
+                <span className="sg-label">{t.inStock}</span>
+                {p.covering.map(itemButton)}
+                {!p.readOnly && <span className="sg-note">{t.tapToDetail}</span>}
+              </div>
+            )}
+            {removal ? (
+              <div className="sg-remove" role="group" aria-label={t.removeAsk}>
+                <strong>{t.removeAsk}</strong>
+                {removal.map(i => (
+                  <label key={i.id} className="sg-check">
+                    <input type="checkbox" checked={chosen.has(i.id)} disabled={busy !== null}
+                      onChange={e => setChosen(prev => {
+                        const next = new Set(prev)
+                        if (e.target.checked) next.add(i.id)
+                        else next.delete(i.id)
+                        return next
+                      })} />
+                    <span>{i.label}{i.brand || i.model ? ` · ${[i.brand, i.model].filter(Boolean).join(' ')}` : ''}</span>
+                  </label>
+                ))}
+                <span className="sg-note">{t.removeNote}</span>
+                <button type="button" className="sg-btn block" disabled={busy !== null || !chosen.size} onClick={() => void remove()}>
+                  {busy === 'remove' ? '…' : t.removeYes}
                 </button>
-              ))}
-            </div>
+                <button type="button" className="sg-btn block" disabled={busy !== null} onClick={() => setRemoval(null)}>{t.removeNo}</button>
+              </div>
+            ) : (
+              <div className="sg-stack" style={{ gap: 10 }}>
+                {([['have', t.have], ['need', t.need], ['not_applicable', t.na]] as Array<[HouseAnswer, string]>).map(([a, label]) => (
+                  <button
+                    key={a}
+                    type="button"
+                    className={`sg-btn block sg-answer ${a === 'have' ? 'primary' : ''}`}
+                    aria-pressed={current === a}
+                    disabled={disabled}
+                    onClick={() => void answer(a)}
+                  >
+                    {busy === a ? '…' : label}
+                  </button>
+                ))}
+              </div>
+            )}
           </>
         ) : !p.houseKnown ? (
           <div className="sg-stack" style={{ gap: 10 }}>
@@ -219,46 +249,18 @@ export default function ItemSheet(p: ItemSheetProps) {
             <a className="sg-btn block" href="/family">{t.family}</a>
           </div>
         ) : (
-          <div className="sg-stack" style={{ gap: 12 }}>
-            {!single && (
-              <div className="sg-sheet-state">
-                <span className="sg-label">{kind === 'ENGINE_WATER' ? t.houseWater : t.houseFood}</span>
-                <strong>
-                  {kind === 'ENGINE_WATER'
-                    ? `${Math.round(p.houseWaterLiters)} L (${Math.round(litersToGallons(p.houseWaterLiters) * 10) / 10} gal)`
-                    : `${Math.round(p.houseFoodPersonDays * MEALS_PER_PERSON_DAY)} ${p.lang === 'pt' ? 'refeições' : 'meals'}`}
-                </strong>
-              </div>
-            )}
-            <label className="sg-field">
-              <span>{kind === 'ENGINE_WATER' ? (single ? t.yourWaterOne : t.yourWater) : single ? t.yourFoodOne : t.yourFood}</span>
-              <div className="sg-row" style={{ gap: 8, flexWrap: 'nowrap' }}>
-                <input
-                  inputMode="decimal"
-                  value={amount}
-                  disabled={disabled || mine === null}
-                  onChange={e => setAmount(e.target.value)}
-                  aria-describedby="sg-sheet-help"
-                />
-                {kind === 'ENGINE_WATER' ? (
-                  <div className="sg-unit" role="group" aria-label={p.lang === 'pt' ? 'Unidade' : 'Unit'}>
-                    {(['gal', 'L'] as const).map(u => (
-                      <button key={u} type="button" className="sg-pill" aria-pressed={unit === u} disabled={disabled} onClick={() => switchUnit(u)}>{u}</button>
-                    ))}
-                  </div>
-                ) : (
-                  <span className="sg-label">{t.days}</span>
-                )}
-              </div>
-            </label>
-            <p id="sg-sheet-help" className="sg-note">
-              {kind === 'ENGINE_WATER' && validAmount && unit === 'gal' && `= ${Math.round(gallonsToLiters(parsed) * 10) / 10} L · `}
-              {kind === 'ENGINE_FOOD' && validAmount && single && `${t.meals(Math.round(parsed * p.houseSize * MEALS_PER_PERSON_DAY))} · `}
-              {t.replaces}
-            </p>
-            <button type="button" className="sg-btn primary block" disabled={disabled || !validAmount || mine === null} onClick={() => void saveAmount()}>
-              {busy === 'amount' ? t.saving : t.save}
-            </button>
+          <div className="sg-stack" style={{ gap: 10 }}>
+            <div className="sg-sheet-state">
+              <span className="sg-label">{t.houseToday}</span>
+              <strong>
+                {kind === 'ENGINE_WATER'
+                  ? `${Math.round(p.houseWaterLiters)} L (${Math.round(litersToGallons(p.houseWaterLiters) * 10) / 10} gal)`
+                  : t.meals(Math.round(p.houseFoodPersonDays * MEALS_PER_PERSON_DAY))}
+              </strong>
+            </div>
+            {has ? p.covering.map(itemButton) : <p className="sg-muted">{t.noneYet}</p>}
+            {has && !p.readOnly && <span className="sg-note">{t.changeQty}</span>}
+            {!p.readOnly && <button type="button" className="sg-btn primary block" onClick={p.onAddItem}>{t.add}</button>}
           </div>
         )}
 

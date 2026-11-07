@@ -28,8 +28,10 @@ import {
   type SignalModule,
 } from '@/lib/signals'
 import { useSignalHouse } from './useSignalHouse'
-import ItemSheet from './ItemSheet'
-import { LEGACY_INVENTORY_FLAG, type HouseAnswer, type HouseItemState } from '@/lib/signal-house'
+import ItemSheet, { type AnswerResult } from './ItemSheet'
+import type { HouseAnswer, HouseItemState } from '@/lib/signal-house'
+import StockItemSheet, { type ItemPayload } from '@/components/stock/StockItemSheet'
+import { myHomeId, type ApiHouse, type ApiItem } from '@/lib/stock-view'
 import { formatDate } from './SignalsHome'
 
 const T = {
@@ -71,6 +73,7 @@ const T = {
     answerHint: 'Toque num item para dizer se a casa tem.',
     markedBy: (n: string) => `Marcado por ${n || 'outra conta da casa'}`,
     saved: 'Registrado para a casa',
+    saveError: 'Não foi possível gravar. Tente de novo.',
     nextAction: 'Próxima ação',
     nextWater: (l: number) => `Garantir mais ${l} L de água`,
     nextFood: (m: number) => `Garantir mais ${m} refeições`,
@@ -119,6 +122,7 @@ const T = {
     answerHint: 'Tap an item to tell us if your home has it.',
     markedBy: (n: string) => `Marked by ${n || 'someone in your home'}`,
     saved: 'Recorded for your home',
+    saveError: 'Could not save. Try again.',
     nextAction: 'Next action',
     nextWater: (l: number) => `Add ${l} more L of water`,
     nextFood: (m: number) => `Add ${m} more meals`,
@@ -164,8 +168,10 @@ export default function SignalPage({ slug, preview }: SignalPageProps) {
   const videoRef = signal?.video?.[lang]
   const videoEmbed = youtubeEmbedFromId(videoRef?.youtubeId)
   const videoMinutes = videoRef?.durationSec ? Math.max(1, Math.round(videoRef.durationSec / 60)) : null
-  const { loading, house, metKeys, notApplicableKeys, states, accounts, reload, applyState } = useSignalHouse()
+  const { loading, house, metKeys, notApplicableKeys, states, accounts, reload, applyState, stock, covering, applyStock } = useSignalHouse()
   const [openKey, setOpenKey] = useState<string | null>(null)
+  // A ficha do estoque aberta por cima da folha do Sinal (INV-T04).
+  const [stockSheet, setStockSheet] = useState<{ item: ApiItem | null; resourceKey: string; label: string } | null>(null)
   const [degree, setDegree] = useState<Degree>(signal?.protocol.recommendedDegree ?? 'D14')
   const [toast, setToast] = useState<string | null>(null)
 
@@ -218,41 +224,74 @@ export default function SignalPage({ slug, preview }: SignalPageProps) {
 
   const openView = openKey ? view?.items.find(i => i.item.resourceKey === openKey) ?? null : null
 
+  /** "Rádio · Midland ER310" ou "Lanterna (+1)": o que a casa tem, em uma linha. */
+  const coverLine = (items: ApiItem[]) => {
+    const first = items[0]
+    const detail = [first.brand, first.model].filter(Boolean).join(' ')
+    return `${first.label}${detail ? ` · ${detail}` : ''}${items.length > 1 ? ` (+${items.length - 1})` : ''}`
+  }
+
   const flash = (msg: string) => {
     setToast(msg)
     window.setTimeout(() => setToast(null), 2600)
   }
 
-  // SIGNAL-002 §3.2: grava na minha linha de base; a casa lê a resposta mais recente.
-  const answerItem = async (answer: HouseAnswer) => {
-    if (!openKey || preview) return
+  /*
+   * SIGNAL-002 §3.2 + INVENTORY-001 §3.4 (INV-T04): "Tenho" cria o item no
+   * estoque quando a casa não tem; "Ainda não tenho" com item na casa volta com
+   * os itens para a folha perguntar quais remover.
+   */
+  const answerItem = async (answer: HouseAnswer): Promise<AnswerResult> => {
+    if (!openKey || preview) return null
     const res = await fetch('/api/signals/items', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ slug: signal.slug, resourceKey: openKey, answer, lang }),
     })
     if (!res.ok) throw new Error(String(res.status))
-    const d = (await res.json()) as { state: HouseItemState | null }
-    applyState(openKey, d.state)
-    // E16: kit médico e rádio também mudam a marca antiga do inventário da casa.
-    if (openKey in LEGACY_INVENTORY_FLAG) await reload()
-    setOpenKey(null)
+    const d = (await res.json()) as { state?: HouseItemState | null; house?: ApiHouse; confirmRemoval?: boolean; covering?: ApiItem[] }
+    if (d.house) applyStock(d.house)
+    if (d.confirmRemoval) return { confirmRemoval: d.covering ?? [] }
+    applyState(openKey, d.state ?? null)
+    // Os totais da casa (kit médico, rádio, água) vêm da projeção do estoque.
+    await reload()
+    // "Tenho" deixa a folha aberta: ela mostra o item criado e oferece detalhar (D-I1).
+    if (answer !== 'have') setOpenKey(null)
     flash(t.saved)
+    return null
   }
 
-  // SIGNAL-002 §3.3: "quanto tem agora" — substitui, nunca soma (D-M3).
-  const saveAmount = async (field: 'water_liters' | 'food_days', value: number) => {
-    if (preview) return
-    const res = await fetch('/api/inventory', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ [field]: value }),
-    })
-    if (!res.ok) throw new Error(String(res.status))
-    await reload()
-    setOpenKey(null)
-    flash(t.saved)
+  /** E5: remove só os itens escolhidos e então responde "Ainda não tenho". */
+  const removeItems = async (ids: string[]) => {
+    for (const id of ids) {
+      const r = await fetch(`/api/holdings/${id}`, { method: 'DELETE' })
+      if (!r.ok) throw new Error(String(r.status))
+    }
+    await answerItem('need')
   }
+
+  /** A ficha do estoque (a mesma de "O que eu tenho"), aberta daqui. */
+  const stockCall = async (url: string, method: string, body?: unknown): Promise<string | null> => {
+    try {
+      const r = await fetch(url, {
+        method,
+        headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
+        body: body === undefined ? undefined : JSON.stringify(body),
+      })
+      const d = (await r.json().catch(() => ({}))) as { house?: ApiHouse; error?: string }
+      if (!r.ok) return d.error || t.saveError
+      if (d.house) applyStock(d.house)
+      await reload()
+      setStockSheet(null)
+      flash(t.saved)
+      return null
+    } catch {
+      return t.saveError
+    }
+  }
+  const saveStockItem = (payload: ItemPayload, id: string | null) =>
+    stockCall(id ? `/api/holdings/${id}` : '/api/holdings', id ? 'PATCH' : 'POST', { ...payload, ...(id ? {} : { provenance: 'PROTOCOL', provenanceRef: signal.slug }) })
+  const removeStockItem = (id: string) => stockCall(`/api/holdings/${id}`, 'DELETE')
 
   const copySummary = async () => {
     const lines = [
@@ -436,7 +475,9 @@ export default function SignalPage({ slug, preview }: SignalPageProps) {
                       </>
                     ) : (
                       <div className="sg-h">
-                        {v.coveredBy === 'inventory'
+                        {covering(v.item.resourceKey).length
+                          ? coverLine(covering(v.item.resourceKey))
+                          : v.coveredBy === 'inventory'
                           ? t.viaInventory
                           : v.coveredBy === 'requirement'
                             ? accounts > 1 && states[v.item.resourceKey] && !states[v.item.resourceKey].by.isMe
@@ -461,14 +502,30 @@ export default function SignalPage({ slug, preview }: SignalPageProps) {
           lang={lang}
           state={states[openView.item.resourceKey] ?? null}
           accounts={accounts}
-          houseSize={house?.size ?? 0}
+          me={stock?.me ?? null}
           houseKnown={sizeKnown}
           houseWaterLiters={house?.waterLiters ?? 0}
           houseFoodPersonDays={house?.foodPersonDays ?? 0}
+          covering={covering(openView.item.resourceKey)}
           readOnly={preview ? 'preview' : signal.status === 'archived' ? 'archived' : null}
           onClose={() => setOpenKey(null)}
           onAnswer={answerItem}
-          onSaveAmount={saveAmount}
+          onRemoveItems={removeItems}
+          onOpenItem={item => setStockSheet({ item, resourceKey: item.resourceKey, label: item.label })}
+          onAddItem={() => setStockSheet({ item: null, resourceKey: openView.item.resourceKey, label: openView.item.label[lang] })}
+        />
+      )}
+      {stockSheet && stock && (
+        <StockItemSheet
+          lang={lang}
+          house={stock}
+          item={stockSheet.item}
+          defaultLocationId={myHomeId(stock)}
+          initialResourceKey={stockSheet.resourceKey}
+          initialLabel={stockSheet.label}
+          onClose={() => setStockSheet(null)}
+          onSave={saveStockItem}
+          onRemove={removeStockItem}
         />
       )}
     </main>

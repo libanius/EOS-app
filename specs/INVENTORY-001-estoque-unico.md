@@ -1,5 +1,5 @@
 # SPEC — INVENTORY-001: Estoque único da casa
-Version: 1.5 | Status: **Ready** (revisado pelo dono em 2026-11-07, §2) | Author: Paulo Neto
+Version: 1.6 | Status: **Ready** (revisado pelo dono em 2026-11-07, §2) | Author: Paulo Neto
 Depende de: docs/37 §13–§19 (Holding × Requirement), PREP-T04 (tabelas `holdings` e `locations`, aplicadas), SIGNAL-002 (Done)
 
 > Regra 3: os edge cases estão aqui (§7) e não devem ser descobertos no código.
@@ -151,6 +151,20 @@ Para itens de ter ou não ter (`PRESENCE`):
 | **Ainda não tenho**, a casa tem itens | Lista os itens e pergunta: "Remover do estoque?" Só remove com confirmação. Sem remoção, o Sinal continua "tem". |
 | **Ainda não tenho**, a casa não tem | Grava `needed` (SIGNAL-002, como hoje). |
 | **Não se aplica** | Grava `not_applicable` (SIGNAL-002, como hoje). Não mexe no estoque. |
+
+**Achados da INV-T04 (Regra 4):**
+- A resposta "Tenho" continua gravada em `requirements` (histórico de quem
+  respondeu e quando), mas **quem decide o "tem" é o estoque**: remover o último
+  item faz o Sinal voltar a "falta" mesmo com a linha em `met`.
+- Depois de "Tenho", a folha **fica aberta** mostrando o item em "Na casa";
+  tocar nele abre a ficha do estoque (a mesma de "O que eu tenho") para marca,
+  modelo e validade (D-I1). Os outros botões fecham a folha.
+- Na pergunta de remoção, os itens vêm **marcados**; tocar em "Remover
+  selecionados" é a confirmação. "Manter" não muda nada.
+- A linha do checklist mostra o item que cobre ("Rádio · Midland ER310",
+  "(+1)" quando há mais).
+- Item criado pela folha (estoque ou "+ Adicionar" em água/comida) leva origem
+  `PROTOCOL` e o slug do Sinal.
 
 **"Tem" passa a ser derivado do estoque** (docs/37 §19: `met` derivado). Um
 item do Sinal está coberto quando a casa tem ao menos um item com o mesmo

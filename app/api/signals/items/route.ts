@@ -3,8 +3,10 @@
  *
  * Body `{ slug, resourceKey, answer: 'have' | 'need' | 'not_applicable', lang? }`.
  * Grava na linha de base da MINHA conta: cria com origem PROTOCOL, ou atualiza
- * só o estado preservando a origem (D-161). Kit médico e rádio também gravam a
- * marca antiga do inventário, para o Painel e o Pilot enxergarem igual.
+ * só o estado preservando a origem (D-161). Desde a INV-T04 (INVENTORY-001
+ * §3.4), "Tenho" cria o item no estoque e "Ainda não tenho" com item na casa
+ * devolve os itens para a folha perguntar o que remover. A resposta traz o
+ * estoque da casa (`house`).
  */
 
 import { NextResponse, type NextRequest } from 'next/server'
@@ -13,7 +15,6 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { findSignal, readHouseState } from '@/lib/signal-house-server'
 import {
   HOUSE_ANSWERS,
-  LEGACY_INVENTORY_FLAG,
   answerToStatus,
   checkAnswerable,
   needsWrite,
@@ -22,8 +23,9 @@ import {
 } from '@/lib/signal-house'
 import type { AcquisitionStatus } from '@/lib/acquisition'
 import { logError } from '@/lib/error-log'
-import { legacyWritePlan } from '@/lib/inventory'
-import { accountHomeItems, applyStockOps, defaultHomeOf, ensureDefaultHome, StockError, withStockWrite } from '@/lib/inventory-server'
+import { coveringItems } from '@/lib/inventory'
+import { catalogEntry, categoryOf, unitsFor } from '@/lib/resource-catalog'
+import { defaultHomeOf, ensureDefaultHome, loadHouse, serializeHouse, StockError, withStockWrite } from '@/lib/inventory-server'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -52,6 +54,52 @@ export async function POST(req: NextRequest) {
   const target = answerToStatus(answer)
 
   try {
+    /*
+     * INVENTORY-001 §3.4 (INV-T04): o estoque é a verdade do "tem".
+     * - "Tenho" sem item na casa cria 1 unidade (origem PROTOCOL + slug).
+     *   Com item na casa, não cria nada (E4).
+     * - "Ainda não tenho" com item na casa não grava nada: devolve os itens
+     *   para a folha perguntar quais remover (E5). Remover é sempre explícito.
+     */
+    if (answer === 'need') {
+      const stock = await loadHouse(admin, userId)
+      const covering = coveringItems(stock.items, stock.locations, stock.homeRootIds, resourceKey)
+      if (covering.length) {
+        const view = serializeHouse(stock)
+        return NextResponse.json({
+          resourceKey,
+          confirmRemoval: true,
+          covering: view.items.filter(i => covering.some(c => c.id === i.id)),
+          house: view,
+        })
+      }
+    }
+    if (answer === 'have') {
+      // A checagem "a casa já tem?" vale para a casa toda: trava todas as contas,
+      // senão duas pessoas tocando "Tenho" juntas criavam dois itens (PR #20).
+      await withStockWrite(admin, userId, h => h.accountIds, async stock => {
+        if (coveringItems(stock.items, stock.locations, stock.homeRootIds, resourceKey).length) return
+        const home = defaultHomeOf(stock, userId) ?? (await ensureDefaultHome(admin, userId))
+        const entry = catalogEntry(resourceKey)
+        const { error } = await admin.from('holdings').insert({
+          profile_id: userId,
+          location_id: home,
+          resource_key: resourceKey,
+          label: check.item.label[lang],
+          kind: entry?.kind ?? 'DURABLE',
+          quantity: 1,
+          // A unidade do recurso (dinheiro em moeda, não em "un") — PR #20.
+          unit: unitsFor(resourceKey)[0],
+          category: categoryOf(resourceKey),
+          provenance: 'PROTOCOL',
+          provenance_ref: slug,
+          created_by: userId,
+          updated_by: userId,
+        })
+        if (error) throw new Error(`holdings insert: ${error.message}`)
+      })
+    }
+
     const { data: existing, error: readError } = await supabase
       .from('requirements')
       .select('id, status')
@@ -89,26 +137,11 @@ export async function POST(req: NextRequest) {
       if (error) throw new Error(error.message)
     }
 
-    // Kit médico e rádio: a resposta passa pelo estoque (INVENTORY-001 E9),
-    // nunca direto em `resource_inventory`. "Ainda não tenho" com item
-    // detalhado no estoque não apaga nada: remover é escolha na folha (INV-T04).
-    const flag = LEGACY_INVENTORY_FLAG[resourceKey]
-    if (flag) {
-      try {
-        await withStockWrite(admin, userId, () => [userId], async house => {
-          const plan = legacyWritePlan(accountHomeItems(house, userId), { [flag]: answer === 'have' }, house.coverage.get(userId) ?? 1)
-          if (!plan.ok) return
-          const home = defaultHomeOf(house, userId) ?? (await ensureDefaultHome(admin, userId))
-          await applyStockOps(admin, userId, home, plan.ops, userId)
-        })
-      } catch (e) {
-        if (!(e instanceof StockError)) throw e
-      }
-    }
-
     const house = await readHouseState(admin, userId)
-    return NextResponse.json({ resourceKey, state: house.items[resourceKey] ?? null, accounts: house.accounts })
+    const stock = serializeHouse(await loadHouse(admin, userId))
+    return NextResponse.json({ resourceKey, state: house.items[resourceKey] ?? null, accounts: house.accounts, house: stock })
   } catch (e) {
+    if (e instanceof StockError) return NextResponse.json({ error: e.message }, { status: e.status })
     await logError('api/signals/items', e, { userId, context: { slug, resourceKey } })
     return NextResponse.json({ error: 'Não foi possível gravar.' }, { status: 500 })
   }
