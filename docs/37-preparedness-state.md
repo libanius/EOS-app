@@ -434,6 +434,16 @@ Holding
 reused deliberately: it is the existing join key, and reusing it is what makes
 the migration additive.
 
+**INVENTORY-001 (2026-11-07, D-236):** `holdings` becomes the household's
+**single stock**, item by item (brand, model, notes, optional `expires_on`,
+`food_type`, `meals_override`, `provenance`, `created_by`/`updated_by`). The
+`(profile_id, location_id, resource_key)` uniqueness is dropped: one row is one
+item, and quantities are summed on read. `resource_inventory` becomes the
+projection of the stock (`lib/inventory.ts` → `projectInventory`), so every
+screen that reads the seven scalars sees the stock without changing. Food is
+entered by weight and type; meals are estimated by calories, rounded down
+(D-I6). Spec: `specs/INVENTORY-001-estoque-unico.md`.
+
 ### 15.1 CONSUMABLE vs DURABLE — how double-counting is prevented
 
 This single attribute replaces a warehouse reservation system.
@@ -534,6 +544,12 @@ Location
 ```
 
 Arbitrary nesting: `Home → Garage → Cabinet 1`.
+
+**INVENTORY-001:** a backpack is an item **and** a Location
+(`locations.holding_id`). Moving the backpack's Location moves everything in it;
+a backpack moved under a `VEHICLE` leaves household autonomy automatically.
+With several confirmed accounts, "under HOME" means under **any** of their
+default HOME roots — the screen shows one Casa.
 
 Three rules:
 

@@ -458,8 +458,8 @@ segunda conta de prontidão.*
 | Task | Entrega | Status | Notas |
 |---|---|---|---|
 | INV-T00 | Revisão do spec pelo dono → Ready | ✅ COMPLETE | 2026-11-07 — D-I5 (casa toda edita), D-I6 (comida estimada pelo peso), validade opcional. |
-| INV-T01 | Migração + catálogo + projeção pura | IN PROGRESS | |
-| INV-T02 | API do estoque e dos lugares | BLOCKED | |
+| INV-T01 | Migração + catálogo + projeção pura | ✅ CODE COMPLETE | 2026-11-07 — `20261108000000_inventory_stock.sql` testada duas vezes em Postgres 16 (`scripts/inventory-sql-test.sh`, 9/9); `lib/resource-catalog.ts`, `lib/inventory.ts`, 26 testes. Achados (spec v1.1): o índice "um recurso por lugar" do PREP-T04 impedia duas mochilas — a migração o remove; casa com várias contas tem várias Casas padrão (E20); a conta do arroz no spec estava errada (27, não 26). **Aplicar em produção antes do merge** (pedir autorização ao dono). |
+| INV-T02 | API do estoque e dos lugares | PENDING | |
 | INV-T03 | Tela do estoque (lugares, mochilas) | BLOCKED | |
 | INV-T04 | Sinais lendo o estoque | BLOCKED | |
 | INV-T05 | Validade e Pilot | BLOCKED | |

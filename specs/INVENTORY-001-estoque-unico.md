@@ -1,5 +1,5 @@
 # SPEC — INVENTORY-001: Estoque único da casa
-Version: 1.0 | Status: **Ready** (revisado pelo dono em 2026-11-07, §2) | Author: Paulo Neto
+Version: 1.1 | Status: **Ready** (revisado pelo dono em 2026-11-07, §2) | Author: Paulo Neto
 Depende de: docs/37 §13–§19 (Holding × Requirement), PREP-T04 (tabelas `holdings` e `locations`, aplicadas), SIGNAL-002 (Done)
 
 > Regra 3: os edge cases estão aqui (§7) e não devem ser descobertos no código.
@@ -80,8 +80,12 @@ lista do estoque da casa.
 
 ### 3.2 Lugares e mochilas
 
-- Toda casa tem o lugar padrão **Casa** (já existe, PREP-T04). Uma família
-  comum nunca precisa criar lugar.
+- Toda conta tem o lugar padrão **Casa** (já existe, PREP-T04: um por conta).
+  Uma família comum nunca precisa criar lugar.
+- **Casa com várias contas:** as "Casa" padrão das contas confirmadas são a
+  mesma casa. A tela mostra **uma** Casa, com os sublugares e itens de todas
+  as contas dentro dela. Sublugar novo vai para a Casa da conta que o criou.
+  "Sob a Casa" = sob qualquer uma das Casas padrão da casa.
 - **Criar sublugar** dentro da Casa: Garagem, Despensa, Quarto etc.
 - **Criar mochila:** cria um item `mochila` (DURABLE, 1 unidade) **e** um
   lugar ligado a ele (`locations.holding_id`). O nome é o mesmo ("Mochila
@@ -103,9 +107,9 @@ lista do estoque da casa.
   "≈ 27 refeições (estimativa)". Ex.: "Arroz, 5 kg" ≈ 27 refeições.
   - Peso guardado em gramas (`unit = 'g'`); kg, lb e oz são convertidos na entrada.
     A tela mostra em gramas/quilos (PT) e em lb/oz junto (EN).
-  - Uma refeição = 2.000 kcal ÷ 3 ≈ 667 kcal (`KCAL_PER_PERSON_DAY = 2000`,
+  - Uma refeição = 2.000 kcal ÷ 3 (≈ 666,7 kcal) (`KCAL_PER_PERSON_DAY = 2000`,
     `MEALS_PER_PERSON_DAY = 3`).
-  - Refeições = peso (kg) × kcal/kg do tipo ÷ 667, arredondado para baixo.
+  - Refeições = peso (kg) × kcal/kg do tipo ÷ (2.000 ÷ 3), arredondado para baixo.
   - A pessoa pode **corrigir as refeições à mão** (`meals_override`): o número
     dela vale, e a etiqueta "estimativa" some.
   - Dias-pessoa = refeições ÷ 3.
@@ -127,7 +131,11 @@ lista do estoque da casa.
   Os valores são médias de referência (USDA FoodData Central) arredondadas
   para baixo. Estimar para menos é a escolha segura: autonomia superestimada
   num app de emergência é pior que subestimada.
-- **Combustível:** `gal` ou `L`. **Dinheiro:** `USD`.
+- **A quantidade gravada é o total** (20 gal, não "4 galões"). A tela aceita
+  "embalagens × tamanho" (4 × 5 gal) e grava a multiplicação; o rótulo pode
+  dizer "Galão 5 gal".
+- **Combustível:** `gal` ou `L`. **Dinheiro:** `USD` (o backfill de agosto
+  gravou `BRL`; a soma de `cash_amount` não converte moeda, como hoje).
 - Na folha do Sinal, água e comida mostram a lista dos itens da casa e
   "+ Adicionar", no lugar de "quanto tem agora" (que substitui o SIGNAL-002
   §3.3 para estes dois itens).
@@ -200,12 +208,21 @@ ALTER TABLE public.holdings ADD CONSTRAINT holdings_provenance_check
 ALTER TABLE public.locations
   ADD COLUMN IF NOT EXISTS holding_id uuid UNIQUE REFERENCES public.holdings(id) ON DELETE SET NULL;
 
-CREATE INDEX IF NOT EXISTS holdings_profile_key_idx ON public.holdings (profile_id, resource_key);
+-- Achado na implementação (Regra 4): PREP-T04 criou "um recurso por lugar".
+-- Isso impede duas mochilas na mesma garagem e dois rádios em casa (E1, E4).
+-- No estoque, cada linha é um item; a soma é feita na leitura.
+DROP INDEX IF EXISTS public.holdings_uniq_resource_per_location;
 CREATE INDEX IF NOT EXISTS holdings_expires_idx ON public.holdings (expires_on) WHERE expires_on IS NOT NULL;
 ```
 
 (As `ADD CONSTRAINT` usam `DROP CONSTRAINT IF EXISTS` antes, como no
-SIGNAL-002, para rodar duas vezes.) RLS segue `profile_id = auth.uid()`. A
+SIGNAL-002, para rodar duas vezes. `holdings_resource_idx (profile_id,
+resource_key)` já existe desde PREP-T04 e serve à busca por chave.)
+
+**Apagar em cascata continua no banco** (`holdings.location_id` e
+`locations.parent_id` são `ON DELETE CASCADE` desde PREP-T04). A regra
+"nunca apaga item junto com o lugar" (E14, E21) é da API: ela move os itens
+antes de apagar o lugar, ou recusa. RLS segue `profile_id = auth.uid()`. A
 escrita da casa passa pelo servidor (§4.3), que confere se as duas contas são
 da mesma casa.
 
@@ -235,6 +252,7 @@ conta dona do item, na mesma requisição.
 | `POST /api/holdings` | Cria item `{ label, resourceKey, quantity, unit, locationId?, brand?, model?, notes?, expiresOn?, foodType?, mealsOverride?, provenance?, provenanceRef? }`. Sem `locationId` = Casa. Comida exige `foodType` (padrão `outro`). |
 | `PATCH /api/holdings/[id]` | Edita, muda quantidade ou move de lugar. |
 | `DELETE /api/holdings/[id]` | Remove. Se o item é uma mochila com itens, exige `{ moveTo }`. |
+| `DELETE /api/locations/[id]` | Remove sublugar. Com itens ou sublugares dentro, exige `{ moveTo }`. Casa padrão: 422. |
 | `POST /api/locations` | Cria sublugar `{ name, parentId, kind }` ou mochila `{ name, bag: true, parentId }` (cria item + lugar). |
 | `PATCH /api/locations/[id]` | Renomeia ou move (muda `parent_id`). Recusa ciclo. |
 | `POST /api/signals/items` | Passa a criar item no "Tenho" (§3.4). Mesmo contrato do SIGNAL-002, mais `holdings` na resposta. |
@@ -294,8 +312,8 @@ cobre nenhum Sinal.
 | E5 | "Ainda não tenho" no rádio, com 2 rádios no estoque | Folha lista os 2 e pergunta quais remover. Sem escolha, nada muda. |
 | E6 | Galão de 5 gal × 4 + 10 L soltos | Água da casa = 75,7 + 10 = 85,7 L (22,6 gal). |
 | E7 | Comida de uma conta que cobre 3 pessoas: 90 refeições | `food_days` da conta = 90 ÷ 3 ÷ 3 = 10. A casa lê 30 pessoa-dias. Igual a hoje. |
-| E7a | "Arroz, 5 kg" | 5 × 3.600 ÷ 667 = 26,98 → **26 refeições** (arredonda para baixo), com "estimativa". |
-| E7b | "Feijão em lata, 12 × 425 g" (5,1 kg, tipo enlatado) | 5,1 × 900 ÷ 667 = 6,88 → **6 refeições**. |
+| E7a | "Arroz, 5 kg" | 5 × 3.600 ÷ (2.000 ÷ 3) = **27 refeições** (arredonda para baixo), com "estimativa". |
+| E7b | "Feijão em lata, 12 × 425 g" (5,1 kg, tipo enlatado) | 5,1 × 900 ÷ (2.000 ÷ 3) = 6,88 → **6 refeições**. |
 | E7c | A pessoa corrige o arroz para 30 refeições | `meals_override = 30`; a conta usa 30 e a etiqueta "estimativa" some. |
 | E7d | Peso digitado em lb (EN) | 11 lb → 4.989,5 g gravados; a tela mostra 5,0 kg (11 lb). |
 | E7e | Comida sem tipo (pelo Pilot ou pela tela legacy) | Tipo `outro` (1.500 kcal/kg): estima para menos. |
@@ -312,6 +330,9 @@ cobre nenhum Sinal.
 | E17 | Quantidade chega a 0 pelo −1 | O item fica com 0 e "acabou"; não cobre o Sinal. Remover é outra ação. |
 | E18 | Casa com uma conta só | Sem "de Fulano"; nada muda no resto. |
 | E19 | Sem rede ao salvar | Nada muda na tela; "Não foi possível gravar. Tente de novo." |
+| E20 | Paulo e Daniela, cada um com a sua Casa padrão; ela põe a lanterna na Garagem que ele criou | Uma Casa só na tela. A lanterna é dela (`profile_id`), no lugar dele; conta para a casa e para o `resource_inventory` dela. |
+| E21 | Apagar sublugar com itens ou sublugares dentro | Mesma regra da mochila (E14): pede destino, padrão o lugar pai. Apagar a Casa padrão: 422. |
+| E22 | Dois rádios no mesmo lugar | Duas linhas. Possível porque a migração remove o índice "um recurso por lugar". |
 
 ---
 
@@ -330,7 +351,7 @@ cobre nenhum Sinal.
 
 ## 9. Critérios de Aceitação
 
-1. A migração roda duas vezes sem erro e não altera nenhuma linha existente.
+1. A migração roda duas vezes sem erro. Na primeira, a única mudança em linhas existentes é marcar as linhas do backfill de agosto com origem `BACKFILL` (E10); na segunda, nenhuma linha muda.
 2. Criar "Galão 5 gal × 4" na Garagem grava 4 × 5 gal e `water_liters` da conta passa a ser a soma de água sob a Casa (± 0,01 L).
 3. Duas mochilas criadas aparecem como dois itens e dois lugares; um item movido para a vermelha aparece dentro dela.
 4. Mover a mochila com 10 L de água para um lugar `VEHICLE` fora da Casa reduz a água da casa em 10 L na mesma resposta.
@@ -346,7 +367,7 @@ cobre nenhum Sinal.
 14. Remover mochila com itens sem `moveTo` responde 422; com `moveTo`, os itens mudam de lugar e nenhum é apagado.
 15. Depois da virada, nenhuma conta tem `resource_inventory` diferente da projeção do seu estoque.
 16. A tela do estoque cabe em 320 px sem corte.
-17. "Arroz, 5 kg" grava 5.000 g e é contado como 26 refeições; com `meals_override = 30`, como 30.
+17. "Arroz, 5 kg" grava 5.000 g e é contado como 27 refeições; com `meals_override = 30`, como 30.
 18. Criar e editar item sem validade funciona e não gera aviso.
 
 ---
