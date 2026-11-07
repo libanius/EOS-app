@@ -17,11 +17,12 @@ jest.mock('@/lib/supabase/server', () => ({
 }))
 jest.mock('@/lib/supabase/admin', () => ({ createAdminClient: () => ({}) }))
 jest.mock('@/lib/error-log', () => ({ logError: jest.fn() }))
+let houseNow: Record<string, unknown> = { lanterna: { status: 'met', by: { name: '', isMe: true } } }
 jest.mock('@/lib/signal-house-server', () => {
   const { signalBySlug } = jest.requireActual('@/lib/signals-content')
   return {
     findSignal: async (_a: unknown, slug: string) => (slug === 'arquivado' ? { ...signalBySlug('fortress'), status: 'archived' } : signalBySlug(slug) ?? null),
-    readHouseState: async () => ({ accounts: 1, items: { lanterna: { status: 'met' } } }),
+    readHouseState: async () => ({ accounts: 2, items: houseNow }),
   }
 })
 
@@ -32,7 +33,7 @@ const req = (body: unknown) => new NextRequest('http://localhost/api/signals/ite
   method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
 })
 
-beforeEach(() => { existing = null; writes.length = 0 })
+beforeEach(() => { existing = null; writes.length = 0; houseNow = { lanterna: { status: 'met', by: { name: '', isMe: true } } } })
 
 it('critério 4: sem linha anterior, cria met com origem PROTOCOL e slug', async () => {
   const res = await POST(req({ slug: 'fortress', resourceKey: 'lanterna', answer: 'have', lang: 'en' }))
@@ -43,13 +44,21 @@ it('critério 4: sem linha anterior, cria met com origem PROTOCOL e slug', async
 it('critério 5: com linha anterior, só o status muda (origem preservada)', async () => {
   existing = { id: 'r1', status: 'proposed' }
   await POST(req({ slug: 'fortress', resourceKey: 'lanterna', answer: 'have' }))
-  expect(writes).toEqual([{ table: 'requirements', op: 'update', payload: { status: 'met' } }])
+  expect(writes).toEqual([{ table: 'requirements', op: 'update', payload: expect.objectContaining({ status: 'met' }) }])
+  expect(Object.keys(writes[0].payload as object).sort()).toEqual(['status', 'updated_at'])
 })
 
-it('E4: mesma resposta não regrava', async () => {
+it('E4: mesma resposta, e a casa já lê a minha, não regrava', async () => {
   existing = { id: 'r1', status: 'met' }
   await POST(req({ slug: 'fortress', resourceKey: 'lanterna', answer: 'have' }))
   expect(writes).toEqual([])
+})
+
+it('E15: minha linha já é met, mas a Daniela respondeu needed depois — regrava e renova a data', async () => {
+  existing = { id: 'r1', status: 'met' }
+  houseNow = { lanterna: { status: 'needed', by: { name: 'Daniela', isMe: false } } }
+  await POST(req({ slug: 'fortress', resourceKey: 'lanterna', answer: 'have' }))
+  expect(writes).toEqual([{ table: 'requirements', op: 'update', payload: { status: 'met', updated_at: expect.any(String) } }])
 })
 
 it('critério 8: kit médico também grava a marca antiga do inventário', async () => {

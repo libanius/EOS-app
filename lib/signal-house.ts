@@ -100,6 +100,21 @@ export function userCanReach(from: AcquisitionStatus | null, to: AcquisitionStat
   return canTransition(from, 'needed', 'user') && canTransition('needed', to, 'user')
 }
 
+/**
+ * A gravação é necessária? Só não é quando a minha linha já tem a resposta
+ * E a casa também lê essa resposta (toque duplo, E4). Se outra conta respondeu
+ * diferente depois de mim, gravar de novo renova o meu `updated_at` e a minha
+ * resposta volta a valer (E15).
+ */
+export function needsWrite(
+  from: AcquisitionStatus | null,
+  target: AcquisitionStatus,
+  houseNow: HouseItemState | undefined,
+): boolean {
+  if (from !== target) return true
+  return !houseNow || houseNow.status !== target || !houseNow.by.isMe
+}
+
 /* ── 3. Que item aceita resposta ───────────────────────────────────────── */
 
 export type ItemCheck =

@@ -1789,3 +1789,5 @@ Verificar via Supabase Dashboard → SQL Editor: `SELECT name FROM supabase_migr
 - **O índice `household_invites_owner_name_idx` é a trava do "Desfazer"**: restaurar um convite cujo nome já foi recriado devolve 409 `name_taken`. Não remover o índice sem rever E6/E19.
 - **`POST /api/household/address` nunca cria morador parecido sem `confirmDistinct`**: devolve em `skipped`. Cliente antigo que manda `hasPhone` continua funcionando (o servidor aceita `hasPhone` e `usesApp`).
 - **O DELETE de dependente pelo cartão espera 8 s no cliente.** Sair da tela Cadastro pelo app dispara os pendentes na hora (keepalive); fechar o app não apaga ninguém.
+
+- SIGNAL-002 (E15/E16, achados do Codex no PR #16): repetir a mesma resposta só é no-op quando a casa já lê essa resposta como minha; se outra conta respondeu depois, a gravação renova o `updated_at` da minha linha (`needsWrite`). Kit médico e rádio relêem o inventário da casa depois da resposta, porque a marca antiga também cobre o item em `protocolView()`.

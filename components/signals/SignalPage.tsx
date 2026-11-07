@@ -29,7 +29,7 @@ import {
 } from '@/lib/signals'
 import { useSignalHouse } from './useSignalHouse'
 import ItemSheet from './ItemSheet'
-import type { HouseAnswer, HouseItemState } from '@/lib/signal-house'
+import { LEGACY_INVENTORY_FLAG, type HouseAnswer, type HouseItemState } from '@/lib/signal-house'
 import { formatDate } from './SignalsHome'
 
 const T = {
@@ -234,6 +234,8 @@ export default function SignalPage({ slug, preview }: SignalPageProps) {
     if (!res.ok) throw new Error(String(res.status))
     const d = (await res.json()) as { state: HouseItemState | null }
     applyState(openKey, d.state)
+    // E16: kit médico e rádio também mudam a marca antiga do inventário da casa.
+    if (openKey in LEGACY_INVENTORY_FLAG) await reload()
     setOpenKey(null)
     flash(t.saved)
   }

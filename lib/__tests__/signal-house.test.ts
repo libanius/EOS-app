@@ -5,6 +5,7 @@ import {
   houseKeys,
   statusToAnswer,
   userCanReach,
+  needsWrite,
   type BaselineRow,
 } from '@/lib/signal-house'
 import { signalBySlug } from '@/lib/signals-content'
@@ -60,6 +61,21 @@ describe('respostas e transições (§5.4)', () => {
     expect(userCanReach('proposed', 'met')).toBe(true) // E12: via needed
     expect(userCanReach('not_applicable', 'met')).toBe(true) // via needed
     expect(userCanReach('met', 'met')).toBe(true) // E4
+  })
+})
+
+describe('precisa gravar? (E4, E15)', () => {
+  const st = (status: 'met' | 'needed', isMe: boolean) => ({ status, updatedAt: '2026-11-07T00:00:00Z', by: { name: isMe ? 'Eu' : 'Daniela', isMe }, provenance: 'PROTOCOL' as const })
+  it('resposta diferente da minha linha: grava', () => {
+    expect(needsWrite('needed', 'met', st('needed', true))).toBe(true)
+    expect(needsWrite(null, 'met', undefined)).toBe(true)
+  })
+  it('E4: mesma resposta e a casa já lê a minha: não grava', () => {
+    expect(needsWrite('met', 'met', st('met', true))).toBe(false)
+  })
+  it('E15: mesma resposta na minha linha, mas outra conta respondeu depois: grava', () => {
+    expect(needsWrite('met', 'met', st('needed', false))).toBe(true)
+    expect(needsWrite('met', 'met', st('met', false))).toBe(true)
   })
 })
 

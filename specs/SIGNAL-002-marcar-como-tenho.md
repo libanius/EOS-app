@@ -263,7 +263,7 @@ como a tela O que tenho já faz.
 | E1 | Eu marco "Tenho" e a Daniela, depois, "Ainda não tenho" | A casa lê "ainda não tem", "marcado por Daniela". A última palavra vale. |
 | E2 | Marco "Tenho" e já existe a linha da lanterna vinda do Pilot | Atualiza o status; a origem continua `PILOT`. |
 | E3 | Item com marca antiga (kit médico) registrado em O que tenho por outra conta, e eu marco "Ainda não tenho" | Minha marca vira `false`, a dela continua `true`, e o Sinal mostra **tenho**, com a dica "registrado no inventário da casa". Quem tem a coisa física decide. |
-| E4 | Toque duplo rápido | A segunda gravação com a mesma resposta não muda nada (idempotente). |
+| E4 | Toque duplo rápido | Se a resposta atual da casa já é a mesma, a segunda gravação não muda nada (idempotente). |
 | E5 | Sem rede ao gravar | O círculo volta ao estado anterior e aparece "Não foi possível gravar. Tente de novo." |
 | E6 | Sinal arquivado | Folha só leitura (§3.7). |
 | E7 | Chave que não está no protocolo (requisição forjada) | 404, nada gravado. |
@@ -274,6 +274,8 @@ como a tela O que tenho já faz.
 | E12 | Linha em `proposed` (sugestão do Pilot) e eu respondo "Tenho" | `proposed` → `needed` → `met`, uma gravação; a origem continua a do Pilot. |
 | E13 | Prévia do admin | Folha abre; botões desabilitados com o aviso. |
 | E14 | Tela de 320 px | A folha cabe; os botões quebram linha sem cortar texto. |
+| E15 | Eu marquei "Tenho", a Daniela depois "Ainda não tenho", e eu marco "Tenho" de novo | Minha linha já está em `met`, mas a casa lê `needed`: a gravação acontece e renova o `updated_at` da minha linha, e a casa volta a ler "tem", marcado por mim. |
+| E16 | Kit médico ou rádio: a resposta muda a marca antiga do inventário | A página relê o inventário da casa logo depois; o círculo e o "% pronto" refletem a marca nova sem recarregar. |
 
 ---
 
@@ -285,8 +287,8 @@ como a tela O que tenho já faz.
 4. Sem linha anterior, a linha criada tem `provenance = 'PROTOCOL'` e `provenance_ref` = slug do Sinal.
 5. Com linha anterior de outra origem, a origem e o `provenance_ref` continuam iguais depois da resposta.
 6. Com duas contas confirmadas na casa, a resposta de uma aparece na página do Sinal da outra, com o nome de quem respondeu.
-7. Entre duas respostas diferentes da casa para a mesma chave, vale a mais recente.
-8. "Tenho" no kit médico liga `has_medical_kit` da minha conta; "Ainda não tenho" desliga.
+7. Entre duas respostas diferentes da casa para a mesma chave, vale a mais recente — inclusive quando quem responde por último já tinha essa mesma resposta na própria linha (E15).
+8. "Tenho" no kit médico liga `has_medical_kit` da minha conta; "Ainda não tenho" desliga; a página mostra o novo estado da casa sem recarregar (E16).
 9. Água: salvar 10 galões grava 37,85 L em `water_liters` da minha conta (±0,01) e a autonomia da página muda na hora.
 10. Comida: salvar N dias grava `food_days = N` da minha conta, e a casa passa a ler o novo total.
 11. A mesma chave respondida no FORTRESS aparece igual em outro Sinal que tenha o mesmo `resource_key`.

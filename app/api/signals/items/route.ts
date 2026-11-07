@@ -16,6 +16,7 @@ import {
   LEGACY_INVENTORY_FLAG,
   answerToStatus,
   checkAnswerable,
+  needsWrite,
   userCanReach,
   type HouseAnswer,
 } from '@/lib/signal-house'
@@ -65,8 +66,13 @@ export async function POST(req: NextRequest) {
     }
 
     if (existing) {
-      if (from !== target) {
-        const { error } = await supabase.from('requirements').update({ status: target }).eq('id', existing.id)
+      // E4/E15: só pula quando a casa já lê esta resposta como minha.
+      const before = from === target ? (await readHouseState(admin, userId)).items[resourceKey] : undefined
+      if (needsWrite(from, target, before)) {
+        const { error } = await supabase
+          .from('requirements')
+          .update({ status: target, updated_at: new Date().toISOString() })
+          .eq('id', existing.id)
         if (error) throw new Error(error.message)
       }
     } else {
