@@ -34,6 +34,7 @@ const T = {
   pt: {
     newTitle: 'Novo item', name: 'Nome', namePh: 'Ex.: Galão de água, Rádio Midland',
     custom: 'Item livre: entra no estoque e no Pilot, mas não cobre Sinal.',
+    kindIs: 'Conta como:', change: 'Trocar',
     packs: 'Embalagens', size: 'Tamanho de cada', total: 'Total', qty: 'Quantidade', unit: 'Unidade',
     weight: 'Peso de cada', foodType: 'Tipo de comida', override: 'Refeições (corrigir à mão, opcional)',
     place: 'Onde está', brand: 'Marca', model: 'Modelo', notes: 'Observação', expires: 'Validade (opcional)',
@@ -48,6 +49,7 @@ const T = {
   en: {
     newTitle: 'New item', name: 'Name', namePh: 'E.g.: Water jug, Midland radio',
     custom: 'Free-form item: it goes into stock and the Pilot sees it, but it does not cover a Signal.',
+    kindIs: 'Counts as:', change: 'Change',
     packs: 'Packages', size: 'Size of each', total: 'Total', qty: 'Quantity', unit: 'Unit',
     weight: 'Weight of each', foodType: 'Food type', override: 'Meals (manual correction, optional)',
     place: 'Where it is', brand: 'Brand', model: 'Model', notes: 'Note', expires: 'Expiration (optional)',
@@ -163,14 +165,11 @@ export default function StockItemSheet({ lang, house, item, defaultLocationId, o
     if (err) setError(err)
   }
 
-  const step = async (delta: number) => {
+  // +1/−1 só muda o número na ficha; grava junto com o resto no Salvar
+  // (achado do Codex no PR #19: gravar na hora fechava a ficha e perdia as outras edições).
+  const step = (delta: number) => {
     if (!item) return
-    const next = Math.max(0, (isNum(size) ? num(size) : item.quantity) + delta)
-    setSize(String(next))
-    setBusy(true); setError(null)
-    const err = await onSave({ quantity: next }, item.id)
-    setBusy(false)
-    if (err) setError(err)
+    setSize(String(Math.max(0, (isNum(size) ? num(size) : item.quantity) + delta)))
   }
 
   const remove = async () => {
@@ -196,8 +195,17 @@ export default function StockItemSheet({ lang, house, item, defaultLocationId, o
         <label className="st-field">
           <span>{t.name}</span>
           <input value={label} placeholder={t.namePh} maxLength={120} disabled={busy || Boolean(bagLocation)}
-            onChange={e => { setLabel(e.target.value); if (!editing) setResourceKey(null) }} />
+            onChange={e => setLabel(e.target.value)} />
         </label>
+        {!editing && resourceKey && entry && (
+          // O recurso escolhido não muda quando o nome muda ("Comida" → "Arroz"):
+          // trocar é explícito, por aqui (achado do Codex no PR #19).
+          <div className="st-suggest">
+            <span className="st-note">{t.kindIs}</span>
+            <button type="button" className="st-chip" aria-pressed="true" aria-label={`${t.change}: ${entry.label[lang]}`}
+              onClick={() => setResourceKey(null)}>{entry.label[lang]} ✕</button>
+          </div>
+        )}
         {suggestions.length > 0 && (
           <div className="st-suggest">
             {suggestions.map(c => (
@@ -210,9 +218,9 @@ export default function StockItemSheet({ lang, house, item, defaultLocationId, o
 
         {editing && measure === 'count' && (
           <div className="st-stepper">
-            <button type="button" className="st-btn" aria-label="−1" disabled={busy || total <= 0} onClick={() => void step(-1)}>−</button>
+            <button type="button" className="st-btn" aria-label="−1" disabled={busy || total <= 0} onClick={() => step(-1)}>−</button>
             <b>{Number.isFinite(total) ? total : item.quantity}</b>
-            <button type="button" className="st-btn" aria-label="+1" disabled={busy} onClick={() => void step(1)}>+</button>
+            <button type="button" className="st-btn" aria-label="+1" disabled={busy} onClick={() => step(1)}>+</button>
           </div>
         )}
 

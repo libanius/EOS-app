@@ -150,6 +150,11 @@ export default function StockPage() {
 
   const tree = useMemo(() => (house ? placeTree(house, t.home) : []), [house, t.home])
   const filtering = query.trim() !== '' || category !== 'all'
+  // Categoria escolhida que deixou de existir (apagou o último item dela) volta
+  // para "Tudo"; sem isso a lista ficava vazia e sem filtro à vista (PR #19).
+  useEffect(() => {
+    if (house && category !== 'all' && !presentCategories(house).includes(category)) setCategory('all')
+  }, [house, category])
   const visible = useCallback(
     (i: ApiItem) => matchesQuery(i, query) && (category === 'all' || categoryOf(i.resourceKey) === category),
     [query, category],
@@ -198,9 +203,10 @@ export default function StockPage() {
   const renderPlace = (node: PlaceNode): JSX.Element | null => {
     const items = node.items.filter(visible)
     const children = node.children.map(renderPlace).filter((c): c is JSX.Element => c !== null)
-    if (filtering && !items.length && !children.length) return null
     const loc = house.locations.find(l => l.id === node.key)
     const bagItem = node.bagItemId ? house.items.find(i => i.id === node.bagItemId) : undefined
+    // A mochila conta na busca e no filtro pelo próprio item (nome, marca, Equipamento).
+    if (filtering && !items.length && !children.length && !(bagItem && visible(bagItem))) return null
     const header = (
       <div className="st-place-head">
         {node.isBag && bagItem ? (
@@ -246,7 +252,7 @@ export default function StockPage() {
         <div className="st-tools">
           <input className="st-search" type="search" value={query} placeholder={t.search} aria-label={t.search}
             onChange={e => setQuery(e.target.value)} />
-          {cats.length > 1 && (
+          {(cats.length > 1 || category !== 'all') && (
             <div className="st-chips" role="group" aria-label={lang === 'pt' ? 'Categorias' : 'Categories'}>
               <button type="button" className="st-chip" aria-pressed={category === 'all'} onClick={() => setCategory('all')}>{t.all}</button>
               {cats.map(c => (
