@@ -61,6 +61,7 @@ const PROVENANCE_LABEL: Record<Provenance, { pt: string; en: string }> = {
   SIMULATION: { pt: 'Treino', en: 'Drill' },
   OFFICIAL_ALERT: { pt: 'Alerta', en: 'Alert' },
   PLAN_GAP: { pt: 'Plano', en: 'Plan' },
+  PROTOCOL: { pt: 'Sinal', en: 'Signal' },
 }
 
 /** Chave do filtro: `null` = todos; `'BASE'` = casa; senão o slug do kit. */

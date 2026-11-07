@@ -595,12 +595,18 @@ attribute, decided by product rather than cut by engineering.
 ## 18. Provenance model
 
 ```text
-provenance enum:  MANUAL | PILOT | EDU | SIMULATION | OFFICIAL_ALERT | PLAN_GAP
+provenance enum:  MANUAL | PILOT | EDU | SIMULATION | OFFICIAL_ALERT | PLAN_GAP | PROTOCOL
 provenance_ref:   fk/id of the originating artifact (edu_content.id, simulation id, alert trigger_key)
 ```
 
 **Provenance is an attribute of Requirement. It is never a Kit and never part of
 a unique key.** This is the direct repair of S3.
+
+**SIGNAL-002 (2026-11-07, D-235):** `PROTOCOL` entra no enum. É a origem de
+uma linha de base criada quando a família responde um item na folha de um Sinal
+(Tenho / Ainda não tenho / Não se aplica); `provenance_ref` = slug do Sinal. Se a
+linha já existia, a origem dela é preservada (D-161). Migração
+`20261107000000_requirements_protocol_provenance.sql`.
 
 **CONTENT-001 (2026-11-06):** the content pipeline adds `content_packages` and
 `signals` but **no provenance value**. Signals do not write requirements yet; the

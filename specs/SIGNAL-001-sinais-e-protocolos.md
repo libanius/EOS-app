@@ -144,6 +144,8 @@ depois. Isso fica para o HOLDING-HISTORY-001 (§10).
 
 ### 3.5 A família adota o Protocolo
 
+> **Substituído em 2026-11-07 pelo SIGNAL-002 (D-235):** a adoção passa a ser item a item, pela folha "Tenho / Ainda não tenho / Não se aplica". O texto abaixo fica como histórico.
+
 "Adotar este protocolo" mostra a lista de requisitos para o degrau escolhido,
 com a quantidade calculada para a casa. A família confirma tudo de uma vez ou
 desmarca itens antes.

@@ -443,13 +443,25 @@ segunda conta de prontidão.*
 | SIGNAL-T01 | Migração `signals`, `protocols`, `protocol_items`; origem `PROTOCOL` | BLOCKED | Substituída por CONTENT-T01 (`specs/CONTENT-001-pipeline-de-conteudo.md`). A origem `PROTOCOL` fica para a adoção (Marco 2). |
 | SIGNAL-T02 | Funções puras + teste de verdade única | BLOCKED | Dias e cobertura iguais ao painel e ao Pilot. |
 | SIGNAL-T03 | Autoria e publicação no admin | BLOCKED | Substituída pelo pipeline: CONTENT-T03/T04. |
-| SIGNAL-T04 | Página do protocolo + adoção | BLOCKED | Idempotente; só confirmados viram `needed`. |
+| SIGNAL-T04 | Página do protocolo + adoção | ↪ SUBSTITUÍDA | Pela adoção item a item do SIGNAL-002 (D-235). |
 | SIGNAL-T05 | Push por região | BLOCKED | Só `PREPARAR`/`AGIR`; dedup `signal:<id>`. |
 | SIGNAL-T06 | Pilot lê Sinais ativos | BLOCKED | Formato decidido em D4. |
 | SIGNAL-T07 | Conteúdo: FORTRESS e Furacões 2026 (PT/EN) | BLOCKED | Primeiro caso real. |
 | HOLDING-HISTORY-001 | Histórico de aquisições com porquê, evento e degrau | DRAFT | Base da trajetória da autonomia e da linha do tempo do inventário. Mexe no modelo de dados (Regra 7). |
 | BASE-001 | Redesenho de `/preparedness` com o padrão do protótipo | DRAFT | Depende de HOLDING-HISTORY-001. |
 | SYSTEMS-001 | Sistemas da casa: internet real; energia, água e celular relatados pelo círculo | DRAFT | LoRa segue bloqueado por G-05; satélite é status manual. |
+
+## Marcar como tenho (SIGNAL-002)
+
+> Spec **Ready**: `specs/SIGNAL-002-marcar-como-tenho.md` (D-235, decisões do dono em 2026-11-07).
+
+| Task | Entrega | Status | Notas |
+|---|---|---|---|
+| SIGNAL-002-T01 | Migração `PROTOCOL` em `requirements.provenance`; docs 06 e 37 §18 | ✅ CODE COMPLETE | `20261107000000_requirements_protocol_provenance.sql`, testada duas vezes em Postgres 16. **Aplicar em produção ANTES do merge** (sem ela, "Tenho" num item novo é recusado pelo banco). |
+| SIGNAL-002-T02 | Funções puras (estado da casa, respostas) | ✅ COMPLETE | `lib/signal-house.ts`, 9 testes. |
+| SIGNAL-002-T03 | `GET /api/signals/house-state`, `POST /api/signals/items` | ✅ COMPLETE | `lib/signal-house-server.ts`; 5 testes de rota (origem, preservação, idempotência, marca antiga, 404/409/422). |
+| SIGNAL-002-T04 | Folha do item e leitura pela casa | ✅ COMPLETE | `ItemSheet`; Sinais leem `house-state` em vez de `/api/checklist`; legenda das cores no título; "Marcado por <nome>" na linha. |
+| SIGNAL-002-T05 | Conferência 390/320 px, critérios 1–16 | ✅ COMPLETE | 390 e 320 px com dados simulados: "Tenho" grava e marca verde, quem marcou aparece, 10 gal → 37,85 L, sem rolagem lateral. Critério 15 em Postgres local; 6 e 7 em produção depois do merge. |
 
 ## Pipeline de conteúdo (CONTENT)
 

@@ -1,15 +1,17 @@
 'use client'
 
 /**
- * A casa e os requisitos, como os Sinais os leem (SIGNAL-001 §12.1).
+ * A casa e as respostas dela, como os Sinais os leem.
  *
- * Duas portas que já existem, nenhuma nova: `/api/household` dá a casa e a
- * conta de dias (D-123/D-174) e `/api/checklist` dá os requisitos com status.
- * Nada é gravado.
+ * `/api/household` dá a casa e a conta de dias (D-123/D-174). Desde o
+ * SIGNAL-002, as respostas vêm de `/api/signals/house-state`: as linhas de base
+ * de TODAS as contas confirmadas da casa, valendo a mais recente (D-M1). Antes
+ * vinham de `/api/checklist`, que só enxerga a minha conta.
  */
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { HouseInput } from '@/lib/signals'
+import { houseKeys, type HouseItemState } from '@/lib/signal-house'
 
 export type SignalHouse = {
   loading: boolean
@@ -17,6 +19,14 @@ export type SignalHouse = {
   house: HouseInput | null
   metKeys: Set<string>
   notApplicableKeys: Set<string>
+  /** Resposta da casa por `resource_key`. */
+  states: Record<string, HouseItemState>
+  /** Quantas contas respondem pela casa. 1 = só eu. */
+  accounts: number
+  /** Relê tudo depois de gravar água ou comida. */
+  reload: () => Promise<void>
+  /** Aplica na hora a resposta que o servidor devolveu (§3.2). */
+  applyState: (resourceKey: string, state: HouseItemState | null) => void
 }
 
 type HouseholdApi = {
@@ -30,67 +40,64 @@ type HouseholdApi = {
   }
 }
 
+type HouseStateApi = { accounts?: number; items?: Record<string, HouseItemState> }
+
 type ChecklistApiRow = {
   canonical_key?: string
   status?: string
   kit_slug?: string | null
   scenario_id?: string | null
 }
-type ChecklistApi = { items?: ChecklistApiRow[] }
 
 /** Linha de base = sem kit e sem cenário. Campo ausente conta como escopo desconhecido, não como base. */
 export function isBaseline(row: ChecklistApiRow): boolean {
   return row.kit_slug === null && row.scenario_id === null
 }
 
+type Data = { loading: boolean; house: HouseInput | null; states: Record<string, HouseItemState>; accounts: number }
+
 export function useSignalHouse(): SignalHouse {
-  const [state, setState] = useState<SignalHouse>({
-    loading: true,
-    house: null,
-    metKeys: new Set(),
-    notApplicableKeys: new Set(),
-  })
+  const [data, setData] = useState<Data>({ loading: true, house: null, states: {}, accounts: 1 })
+
+  const load = useCallback(async () => {
+    const [hRes, sRes] = await Promise.allSettled([
+      fetch('/api/household', { cache: 'no-store' }).then(r => (r.ok ? (r.json() as Promise<HouseholdApi>) : null)),
+      fetch('/api/signals/house-state', { cache: 'no-store' }).then(r => (r.ok ? (r.json() as Promise<HouseStateApi>) : null)),
+    ])
+    const h = hRes.status === 'fulfilled' ? hRes.value : null
+    const s = sRes.status === 'fulfilled' ? sRes.value : null
+    const house: HouseInput | null = h
+      ? {
+          size: Number(h.size) || 0,
+          known: Boolean(h.known),
+          waterLiters: Number(h.inventory?.waterLiters) || 0,
+          foodPersonDays: Number(h.inventory?.foodPersonDays) || 0,
+          hasMedicalKit: Boolean(h.inventory?.hasMedicalKit),
+          hasCommunicationDevice: Boolean(h.inventory?.hasCommunicationDevice),
+        }
+      : null
+    setData({ loading: false, house, states: s?.items ?? {}, accounts: Number(s?.accounts) || 1 })
+  }, [])
 
   useEffect(() => {
     let alive = true
     void (async () => {
-      const [hRes, cRes] = await Promise.allSettled([
-        fetch('/api/household', { cache: 'no-store' }).then(r => (r.ok ? (r.json() as Promise<HouseholdApi>) : null)),
-        fetch('/api/checklist', { cache: 'no-store' }).then(r => (r.ok ? (r.json() as Promise<ChecklistApi>) : null)),
-      ])
-      if (!alive) return
-
-      const h = hRes.status === 'fulfilled' ? hRes.value : null
-      const c = cRes.status === 'fulfilled' ? cRes.value : null
-
-      const house: HouseInput | null = h
-        ? {
-            size: Number(h.size) || 0,
-            known: Boolean(h.known),
-            waterLiters: Number(h.inventory?.waterLiters) || 0,
-            foodPersonDays: Number(h.inventory?.foodPersonDays) || 0,
-            hasMedicalKit: Boolean(h.inventory?.hasMedicalKit),
-            hasCommunicationDevice: Boolean(h.inventory?.hasCommunicationDevice),
-          }
-        : null
-
-      const metKeys = new Set<string>()
-      const notApplicableKeys = new Set<string>()
-      for (const item of c?.items ?? []) {
-        if (!item.canonical_key) continue
-        // E7/E7b: o protocolo só herda a linha de base. Um requisito de kit ou
-        // de cenário é outra identidade (docs/37 §26) e não é tocado.
-        if (!isBaseline(item)) continue
-        if (item.status === 'met') metKeys.add(item.canonical_key)
-        if (item.status === 'not_applicable') notApplicableKeys.add(item.canonical_key)
-      }
-
-      setState({ loading: false, house, metKeys, notApplicableKeys })
+      if (alive) await load()
     })()
     return () => {
       alive = false
     }
+  }, [load])
+
+  const applyState = useCallback((resourceKey: string, state: HouseItemState | null) => {
+    setData(d => {
+      const states = { ...d.states }
+      if (state) states[resourceKey] = state
+      else delete states[resourceKey]
+      return { ...d, states }
+    })
   }, [])
 
-  return state
+  const { metKeys, notApplicableKeys } = houseKeys(data.states)
+  return { ...data, metKeys, notApplicableKeys, reload: load, applyState }
 }

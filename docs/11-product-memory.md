@@ -5,6 +5,23 @@
 
 ---
 
+**Nos Sinais, a casa responde junto, mas cada conta grava só na própria linha.**
+`/api/signals/house-state` lê as linhas de base de todas as contas confirmadas
+(service role, mesma regra de `lib/household.ts`) e vale a mais recente. A escrita
+vai sempre para a linha de quem respondeu (RLS). Fora dos Sinais (O que falta,
+Pilot), cada conta ainda vê só as próprias linhas: juntar no app inteiro é outro
+spec. Água e comida já eram da casa.
+
+**Quantidade acima da meta não vira fração.** Na lista do Sinal, água e comida
+acima do degrau mostram "o que tem · meta" ("36 refeições · meta 27"). "36 de 27"
+lia como erro. Tooltip de elemento colado na borda esquerda usa `.tip-start` (abre
+para a direita).
+
+**A resposta "Tenho" não é derivada.** docs/37 §19 diz que `met` é derivado de
+holdings, mas desde o D-176 o usuário marca à mão, e o SIGNAL-002 segue isso.
+Quando o PREP-T10c tornar `met` derivado, a folha do Sinal passa a criar o
+holding em vez de mudar o status.
+
 **Toda função nova `SECURITY DEFINER` precisa de `REVOKE ... FROM PUBLIC, anon, authenticated`.**
 O Postgres dá `EXECUTE` a `PUBLIC` por padrão e o Supabase expõe tudo em
 `/rest/v1/rpc`. Foi assim que `consume_rate_limit` e `match_documents` ficaram
@@ -1772,3 +1789,5 @@ Verificar via Supabase Dashboard → SQL Editor: `SELECT name FROM supabase_migr
 - **O índice `household_invites_owner_name_idx` é a trava do "Desfazer"**: restaurar um convite cujo nome já foi recriado devolve 409 `name_taken`. Não remover o índice sem rever E6/E19.
 - **`POST /api/household/address` nunca cria morador parecido sem `confirmDistinct`**: devolve em `skipped`. Cliente antigo que manda `hasPhone` continua funcionando (o servidor aceita `hasPhone` e `usesApp`).
 - **O DELETE de dependente pelo cartão espera 8 s no cliente.** Sair da tela Cadastro pelo app dispara os pendentes na hora (keepalive); fechar o app não apaga ninguém.
+
+- SIGNAL-002 (E15/E16, achados do Codex no PR #16): repetir a mesma resposta só é no-op quando a casa já lê essa resposta como minha; se outra conta respondeu depois, a gravação renova o `updated_at` da minha linha (`needsWrite`). Kit médico e rádio relêem o inventário da casa depois da resposta, porque a marca antiga também cobre o item em `protocolView()`.

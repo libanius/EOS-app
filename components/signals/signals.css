@@ -191,7 +191,7 @@
   bottom: calc(100% + 10px);
   transform: translateX(-50%);
   width: max-content;
-  max-width: min(280px, 80vw);
+  max-width: min(280px, calc(100vw - 40px));
   background: #1c2740;
   border: 1px solid rgba(63, 224, 176, 0.55);
   color: var(--sg-ink);
@@ -209,10 +209,57 @@
   white-space: normal;
 }
 
+/* Item do protocolo é botão: abre a folha (SIGNAL-002 §3.1). */
+.sg-req-btn {
+  width: 100%; text-align: left; background: transparent; border: 0; border-top: 1px solid var(--sg-line);
+  color: inherit; font: inherit; cursor: pointer; border-radius: 10px; touch-action: manipulation;
+}
+.sg-req-btn:first-of-type { border-top: 0; }
+.sg-req-btn:hover { background: rgba(255, 255, 255, 0.03); }
+.sg-req-btn:active { background: rgba(63, 224, 176, 0.06); }
+.sg-legend {
+  flex: none; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center;
+  border: 1px solid var(--sg-line2); color: var(--sg-muted); font-weight: 700; cursor: help;
+}
+.sg .sg-legend[data-tip]:hover::after,
+.sg .sg-legend[data-tip]:focus-visible::after { left: auto; right: 0; transform: none; }
+
+/* Folha do item (SIGNAL-002 §6) */
+.sg-sheet-wrap { position: fixed; inset: 0; z-index: 80; background: rgba(4, 7, 12, 0.66); display: flex; align-items: flex-end; justify-content: center; }
+.sg-sheet {
+  width: 100%; max-width: 560px; max-height: 88vh; overflow-y: auto;
+  background: var(--sg-surface2); border: 1px solid var(--sg-line2); border-bottom: 0;
+  border-radius: 20px 20px 0 0; padding: 12px 20px calc(20px + env(safe-area-inset-bottom, 0px));
+  display: flex; flex-direction: column; gap: 14px; animation: sg-up 0.18s ease-out;
+}
+.sg-sheet h2 { font-size: 22px; font-weight: 600; line-height: 1.25; outline: none; }
+.sg-sheet-grip { width: 44px; height: 5px; border-radius: 3px; background: var(--sg-line2); margin: 0 auto 4px; }
+.sg-sheet-state { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-radius: 12px; background: var(--sg-surface); border: 1px solid var(--sg-line); }
+.sg-sheet-note { color: var(--sg-amber); font-size: 15px; }
+.sg-sheet-error { color: var(--sg-red); font-size: 15px; }
+.sg-answer { min-height: 56px; }
+.sg-answer[aria-pressed='true']:not(.primary) { border-color: var(--sg-mint); color: var(--sg-mint); }
+.sg-answer[aria-pressed='true'].primary::after { content: ' ✓'; }
+.sg-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.sg-field { display: flex; flex-direction: column; gap: 8px; font-size: 16px; }
+.sg-field input {
+  flex: 1; min-width: 0; min-height: 54px; padding: 0 14px; border-radius: 12px;
+  border: 1px solid var(--sg-line2); background: #0c111c; color: var(--sg-ink); font: inherit; font-size: 22px;
+}
+.sg-unit { display: flex; gap: 6px; }
+.sg-unit .sg-pill { min-width: 56px; }
+@keyframes sg-up { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* Elemento colado na borda esquerda (o círculo de status): a explicação abre
+   para a direita, em vez de centralizada, para não sair da tela. */
+.sg [data-tip].tip-start:hover::after,
+.sg [data-tip].tip-start:focus-visible::after { left: 0; transform: none; }
+
 .sg-empty { padding: 32px 16px; text-align: center; color: var(--sg-muted); border: 1px dashed var(--sg-line2); border-radius: 14px; }
 .sg-skel { height: 120px; border-radius: 14px; background: var(--sg-surface); opacity: 0.6; }
 
 @media (prefers-reduced-motion: reduce) {
   .sg-card, .sg-btn, .sg-pill { transition: none; }
+  .sg-sheet { animation: none; }
   .sg-card:active, .sg-btn:active, .sg-pill:active { transform: none; }
 }
