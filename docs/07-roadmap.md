@@ -451,13 +451,27 @@ segunda conta de prontidão.*
 | BASE-001 | Redesenho de `/preparedness` com o padrão do protótipo | DRAFT | Depende de HOLDING-HISTORY-001. |
 | SYSTEMS-001 | Sistemas da casa: internet real; energia, água e celular relatados pelo círculo | DRAFT | LoRa segue bloqueado por G-05; satélite é status manual. |
 
+## Estoque único da casa (INVENTORY-001)
+
+> Spec **Draft**: `specs/INVENTORY-001-estoque-unico.md` (D-236). Nenhum código antes de Ready.
+
+| Task | Entrega | Status | Notas |
+|---|---|---|---|
+| INV-T00 | Revisão do spec pelo dono → Ready | PENDING | Três perguntas abertas no §11. |
+| INV-T01 | Migração + catálogo + projeção pura | BLOCKED | Espera INV-T00. |
+| INV-T02 | API do estoque e dos lugares | BLOCKED | |
+| INV-T03 | Tela do estoque (lugares, mochilas) | BLOCKED | |
+| INV-T04 | Sinais lendo o estoque | BLOCKED | |
+| INV-T05 | Validade e Pilot | BLOCKED | |
+| INV-T06 | Virada (reconciliar backfill, `/api/inventory` escreve itens) | BLOCKED | |
+
 ## Marcar como tenho (SIGNAL-002)
 
 > Spec **Ready**: `specs/SIGNAL-002-marcar-como-tenho.md` (D-235, decisões do dono em 2026-11-07).
 
 | Task | Entrega | Status | Notas |
 |---|---|---|---|
-| SIGNAL-002-T01 | Migração `PROTOCOL` em `requirements.provenance`; docs 06 e 37 §18 | ✅ CODE COMPLETE | `20261107000000_requirements_protocol_provenance.sql`, testada duas vezes em Postgres 16. **Aplicar em produção ANTES do merge** (sem ela, "Tenho" num item novo é recusado pelo banco). |
+| SIGNAL-002-T01 | Migração `PROTOCOL` em `requirements.provenance`; docs 06 e 37 §18 | ✅ COMPLETE | `20261107000000_requirements_protocol_provenance.sql`. Aplicada em produção em 2026-11-07 e conferida por SQL; PR #16 juntado depois. |
 | SIGNAL-002-T02 | Funções puras (estado da casa, respostas) | ✅ COMPLETE | `lib/signal-house.ts`, 9 testes. |
 | SIGNAL-002-T03 | `GET /api/signals/house-state`, `POST /api/signals/items` | ✅ COMPLETE | `lib/signal-house-server.ts`; 5 testes de rota (origem, preservação, idempotência, marca antiga, 404/409/422). |
 | SIGNAL-002-T04 | Folha do item e leitura pela casa | ✅ COMPLETE | `ItemSheet`; Sinais leem `house-state` em vez de `/api/checklist`; legenda das cores no título; "Marcado por <nome>" na linha. |

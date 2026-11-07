@@ -4,6 +4,29 @@
 
 ---
 
+## D-236 — Estoque único da casa: `holdings` vira a verdade
+
+**Data**: 2026-11-07. **Status**: PROPOSED (spec em Draft). **Spec**: `specs/INVENTORY-001-estoque-unico.md`.
+
+O dono: "a essência do app é o Pilot opinar e sugerir, e para isso os itens
+precisam estar alinhados em todas as telas. São muitas telas, mas não muitos
+produtos." Ele quer gerir o que a casa tem como o estoque de uma loja: marca,
+modelo, duas mochilas diferentes, o que está dentro de cada uma.
+
+Decisões do dono (2026-11-07):
+
+- **D-I1** — "Tenho" no Sinal grava já (1 unidade) e se detalha depois.
+- **D-I2** — Água e comida viram itens; os totais da casa são a soma.
+- **D-I3** — Mochila é item e lugar (`locations.holding_id`).
+- **D-I4** — Validade opcional, com aviso em ≤ 30 dias.
+- **D-I5** — (a confirmar) a casa toda edita qualquer item.
+
+Consequência: `resource_inventory` passa a ser projeção do estoque, recalculada
+a cada escrita; as telas que o leem não mudam. `met` passa a ser derivado do
+estoque, como docs/37 §19 sempre previu.
+
+---
+
 ## D-235 — Marcar como tenho: o item do Sinal grava na casa
 
 **Data**: 2026-11-07. **Status**: DECIDED. **Spec**: `specs/SIGNAL-002-marcar-como-tenho.md`.
