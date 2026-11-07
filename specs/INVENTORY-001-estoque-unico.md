@@ -1,8 +1,7 @@
 # SPEC — INVENTORY-001: Estoque único da casa
-Version: 0.1 | Status: **Draft** (aguarda revisão do dono) | Author: Paulo Neto
+Version: 1.0 | Status: **Ready** (revisado pelo dono em 2026-11-07, §2) | Author: Paulo Neto
 Depende de: docs/37 §13–§19 (Holding × Requirement), PREP-T04 (tabelas `holdings` e `locations`, aplicadas), SIGNAL-002 (Done)
 
-> Regra 1: nenhum código antes deste spec estar **Ready**.
 > Regra 3: os edge cases estão aqui (§7) e não devem ser descobertos no código.
 > Regra 4: se a implementação revelar algo que este spec não cobre, **pare** e atualize o spec antes de continuar.
 > Rule 7 (spine-first): a migração da §4.1 atualiza `docs/06` e `docs/37` §15–§16 no mesmo PR, antes do código.
@@ -50,8 +49,9 @@ Este spec vira a chave:
 | D-I1 | O que "Tenho" no Sinal faz | **Grava já, detalha depois.** Um toque cria 1 unidade com o nome do item do Sinal; a folha oferece "Adicionar marca e modelo". |
 | D-I2 | Água e comida | **Viram itens.** "Galão 5 gal × 4, na garagem"; "Arroz, 40 refeições". Os litros e os dias da casa são **calculados** do estoque. |
 | D-I3 | Mochilas | **Mochila é um lugar.** Cada mochila é um item **e** um lugar; itens entram nela. |
-| D-I4 | Validade | **Campo opcional + aviso.** Vence em ≤ 30 dias → "precisa de atenção" e fato do Pilot. |
-| D-I5 | A casa edita junto | **Proposta (confirmar na revisão):** qualquer conta confirmada da casa cria, edita, move e remove qualquer item da casa. Cada item guarda quem criou e quem mexeu por último. Mesma regra de "a casa responde junto" do SIGNAL-002 (D-M1). |
+| D-I4 | Validade | **Campo opcional + aviso.** Ninguém é obrigado a preencher. Quando preenchida e vence em ≤ 30 dias → "precisa de atenção" e fato do Pilot. |
+| D-I5 | A casa edita junto | **A casa toda edita, guardando quem mexeu.** Qualquer conta confirmada da casa cria, edita, move e remove qualquer item. Cada item guarda quem criou e quem mexeu por último. |
+| D-I6 | Comida | **O app estima.** A pessoa digita o peso (g ou kg; lb e oz também aceitos) e escolhe o tipo; o EOS estima as refeições pelas calorias do tipo (§3.3). A estimativa aparece como tal e pode ser corrigida à mão. |
 
 ---
 
@@ -98,9 +98,35 @@ lista do estoque da casa.
 
 - **Água:** unidade `gal` ou `L`. Ex.: "Galão 5 gal" × 4 = 20 gal. Total da
   casa = soma em litros (`gallonsToLiters`), exibido em gal e L.
-- **Comida:** unidade **`refeições`**. Ex.: "Arroz 5 kg — 40 refeições". O
-  nome pode trazer o peso; a conta usa refeições.
-  Dias-pessoa = refeições ÷ 3 (`MEALS_PER_PERSON_DAY`).
+- **Comida:** a pessoa digita o **peso** e escolhe o **tipo**. O EOS estima
+  as refeições pelas calorias do tipo (tabela abaixo) e mostra
+  "≈ 27 refeições (estimativa)". Ex.: "Arroz, 5 kg" ≈ 27 refeições.
+  - Peso guardado em gramas (`unit = 'g'`); kg, lb e oz são convertidos na entrada.
+    A tela mostra em gramas/quilos (PT) e em lb/oz junto (EN).
+  - Uma refeição = 2.000 kcal ÷ 3 ≈ 667 kcal (`KCAL_PER_PERSON_DAY = 2000`,
+    `MEALS_PER_PERSON_DAY = 3`).
+  - Refeições = peso (kg) × kcal/kg do tipo ÷ 667, arredondado para baixo.
+  - A pessoa pode **corrigir as refeições à mão** (`meals_override`): o número
+    dela vale, e a etiqueta "estimativa" some.
+  - Dias-pessoa = refeições ÷ 3.
+
+  | Tipo (`food_type`) | kcal por kg | Observação |
+  |---|---|---|
+  | arroz | 3.600 | seco |
+  | feijao | 3.400 | seco |
+  | macarrao | 3.700 | seco |
+  | aveia | 3.900 | |
+  | farinha | 3.600 | trigo, milho, mandioca |
+  | acucar | 3.900 | açúcar, mel |
+  | leite-po | 4.900 | |
+  | castanhas | 5.800 | castanhas, amendoim, pasta de amendoim |
+  | enlatado | 900 | peso **com** o líquido: feijão, carne, legumes, sopa |
+  | pronta | 4.000 | refeição liofilizada, ração de emergência, barra |
+  | outro | 1.500 | conservador de propósito: na dúvida, o EOS estima para menos |
+
+  Os valores são médias de referência (USDA FoodData Central) arredondadas
+  para baixo. Estimar para menos é a escolha segura: autonomia superestimada
+  num app de emergência é pior que subestimada.
 - **Combustível:** `gal` ou `L`. **Dinheiro:** `USD`.
 - Na folha do Sinal, água e comida mostram a lista dos itens da casa e
   "+ Adicionar", no lugar de "quanto tem agora" (que substitui o SIGNAL-002
@@ -159,6 +185,8 @@ ALTER TABLE public.holdings
   ADD COLUMN IF NOT EXISTS notes      text,
   ADD COLUMN IF NOT EXISTS expires_on date,
   ADD COLUMN IF NOT EXISTS category   text,     -- §4.4
+  ADD COLUMN IF NOT EXISTS food_type  text,     -- §3.3, só comida
+  ADD COLUMN IF NOT EXISTS meals_override numeric CHECK (meals_override IS NULL OR meals_override >= 0),
   ADD COLUMN IF NOT EXISTS provenance text NOT NULL DEFAULT 'MANUAL',
   ADD COLUMN IF NOT EXISTS provenance_ref text,
   ADD COLUMN IF NOT EXISTS created_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
@@ -189,7 +217,7 @@ os escalares de **uma conta**:
 | Campo | Regra |
 |---|---|
 | `water_liters` | soma de `agua` sob a Casa, convertida para L |
-| `food_days` | (soma de `comida` sob a Casa, em refeições ÷ 3) ÷ cobertura da conta (ela + dependentes, a mesma de `lib/household.ts`) |
+| `food_days` | (soma das refeições de `comida` sob a Casa — `meals_override` quando houver, senão a estimativa — ÷ 3) ÷ cobertura da conta (ela + dependentes, a mesma de `lib/household.ts`) |
 | `fuel_liters` | soma de `combustivel` sob a Casa, em L |
 | `cash_amount` | soma de `dinheiro` sob a Casa |
 | `has_medical_kit` | existe `kit-medico` com quantidade > 0 sob a Casa |
@@ -204,7 +232,7 @@ conta dona do item, na mesma requisição.
 | Rota | O que faz |
 |---|---|
 | `GET /api/holdings` | Itens e lugares de todas as contas confirmadas da casa, com nome de quem criou; totais da casa. |
-| `POST /api/holdings` | Cria item `{ label, resourceKey, quantity, unit, locationId?, brand?, model?, notes?, expiresOn?, provenance?, provenanceRef? }`. Sem `locationId` = Casa. |
+| `POST /api/holdings` | Cria item `{ label, resourceKey, quantity, unit, locationId?, brand?, model?, notes?, expiresOn?, foodType?, mealsOverride?, provenance?, provenanceRef? }`. Sem `locationId` = Casa. Comida exige `foodType` (padrão `outro`). |
 | `PATCH /api/holdings/[id]` | Edita, muda quantidade ou move de lugar. |
 | `DELETE /api/holdings/[id]` | Remove. Se o item é uma mochila com itens, exige `{ moveTo }`. |
 | `POST /api/locations` | Cria sublugar `{ name, parentId, kind }` ou mochila `{ name, bag: true, parentId }` (cria item + lugar). |
@@ -266,12 +294,18 @@ cobre nenhum Sinal.
 | E5 | "Ainda não tenho" no rádio, com 2 rádios no estoque | Folha lista os 2 e pergunta quais remover. Sem escolha, nada muda. |
 | E6 | Galão de 5 gal × 4 + 10 L soltos | Água da casa = 75,7 + 10 = 85,7 L (22,6 gal). |
 | E7 | Comida de uma conta que cobre 3 pessoas: 90 refeições | `food_days` da conta = 90 ÷ 3 ÷ 3 = 10. A casa lê 30 pessoa-dias. Igual a hoje. |
+| E7a | "Arroz, 5 kg" | 5 × 3.600 ÷ 667 = 26,98 → **26 refeições** (arredonda para baixo), com "estimativa". |
+| E7b | "Feijão em lata, 12 × 425 g" (5,1 kg, tipo enlatado) | 5,1 × 900 ÷ 667 = 6,88 → **6 refeições**. |
+| E7c | A pessoa corrige o arroz para 30 refeições | `meals_override = 30`; a conta usa 30 e a etiqueta "estimativa" some. |
+| E7d | Peso digitado em lb (EN) | 11 lb → 4.989,5 g gravados; a tela mostra 5,0 kg (11 lb). |
+| E7e | Comida sem tipo (pelo Pilot ou pela tela legacy) | Tipo `outro` (1.500 kcal/kg): estima para menos. |
 | E8 | Item sem chave do catálogo ("Faca Leatherman") | `custom:faca-leatherman`; aparece no estoque e no Pilot; não cobre Sinal. |
 | E9 | Tela legacy grava `water_liters = 40` pelo `/api/inventory` | Ajusta o item "Água (estoque informado)" para que a soma dê 40 L. Se os itens detalhados já somam mais que 40, recusa com 409 e diz por quê. |
 | E10 | Linhas do backfill de agosto (17) | Viram itens com origem `BACKFILL` e nome "Água (estoque informado)" etc. Ninguém perde número. |
 | E11 | `resource_inventory` mudou depois do backfill (ex.: água salva hoje no Sinal) | Reconciliação na virada (§8, T06): o item `BACKFILL` é ajustado para bater com o número atual antes de a projeção assumir. |
 | E12 | Item vencido | Conta, aparece com "vencido", vira atenção crítica e fato do Pilot. |
 | E13 | Validade no passado ao criar | Aceita (a pessoa está registrando o que tem), com aviso. |
+| E13a | Item sem validade | Normal. Nenhum aviso, nenhum lembrete para preencher. O campo é opcional de verdade. |
 | E14 | Remover mochila com itens | Pede destino; padrão: lugar onde a mochila estava. Nunca cascata. |
 | E15 | Mover lugar para dentro dele mesmo ou de um filho | 422, nada muda. |
 | E16 | Conta sai da casa | Os itens dela saem da soma da casa (são dela). Ninguém perde dado. |
@@ -303,7 +337,7 @@ cobre nenhum Sinal.
 5. "Tenho" num item do Sinal sem item na casa cria 1 unidade com origem `PROTOCOL` e `provenance_ref` = slug; o círculo fica verde sem recarregar.
 6. "Tenho" com item já existente na casa não cria item.
 7. "Ainda não tenho" com itens na casa não remove nada sem confirmação; com confirmação, remove só os escolhidos.
-8. Um item criado por uma conta aparece, editável, para outra conta confirmada da mesma casa, com o nome de quem criou.
+8. Um item criado por uma conta aparece, editável, para outra conta confirmada da mesma casa, com o nome de quem criou; depois que a outra conta edita, `updated_by` é ela.
 9. `GET /api/household` devolve os mesmos totais que a soma do estoque (água, comida em pessoa-dia, kit médico, rádio).
 10. Remover o único rádio da casa faz `has_communication_device` = false e o Sinal mostrar o item como faltando.
 11. Item que vence em ≤ 30 dias aparece em "precisa de atenção"; vencido aparece como crítico.
@@ -312,6 +346,8 @@ cobre nenhum Sinal.
 14. Remover mochila com itens sem `moveTo` responde 422; com `moveTo`, os itens mudam de lugar e nenhum é apagado.
 15. Depois da virada, nenhuma conta tem `resource_inventory` diferente da projeção do seu estoque.
 16. A tela do estoque cabe em 320 px sem corte.
+17. "Arroz, 5 kg" grava 5.000 g e é contado como 26 refeições; com `meals_override = 30`, como 30.
+18. Criar e editar item sem validade funciona e não gera aviso.
 
 ---
 
@@ -327,8 +363,8 @@ cobre nenhum Sinal.
 
 ---
 
-## 11. Perguntas abertas para a revisão
+## 11. Revisão do dono (2026-11-07)
 
-1. **D-I5:** a casa toda edita qualquer item, ou cada conta só edita os seus?
-2. **Comida em refeições:** está bom digitar refeições (com o peso no nome), ou prefere digitar kg e o EOS estimar?
-3. **30 dias** para "a vencer": serve, ou prefere outro prazo?
+1. A casa toda edita, guardando quem mexeu → D-I5.
+2. Comida: o app estima a partir do peso → D-I6, §3.3.
+3. Aviso de validade em 30 dias, com a data sempre opcional → D-I4, E13a.

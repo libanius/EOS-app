@@ -453,12 +453,12 @@ segunda conta de prontidão.*
 
 ## Estoque único da casa (INVENTORY-001)
 
-> Spec **Draft**: `specs/INVENTORY-001-estoque-unico.md` (D-236). Nenhum código antes de Ready.
+> Spec **Ready**: `specs/INVENTORY-001-estoque-unico.md` (D-236, revisado pelo dono em 2026-11-07).
 
 | Task | Entrega | Status | Notas |
 |---|---|---|---|
-| INV-T00 | Revisão do spec pelo dono → Ready | PENDING | Três perguntas abertas no §11. |
-| INV-T01 | Migração + catálogo + projeção pura | BLOCKED | Espera INV-T00. |
+| INV-T00 | Revisão do spec pelo dono → Ready | ✅ COMPLETE | 2026-11-07 — D-I5 (casa toda edita), D-I6 (comida estimada pelo peso), validade opcional. |
+| INV-T01 | Migração + catálogo + projeção pura | IN PROGRESS | |
 | INV-T02 | API do estoque e dos lugares | BLOCKED | |
 | INV-T03 | Tela do estoque (lugares, mochilas) | BLOCKED | |
 | INV-T04 | Sinais lendo o estoque | BLOCKED | |

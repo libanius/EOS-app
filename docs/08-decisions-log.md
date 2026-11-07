@@ -6,7 +6,7 @@
 
 ## D-236 — Estoque único da casa: `holdings` vira a verdade
 
-**Data**: 2026-11-07. **Status**: PROPOSED (spec em Draft). **Spec**: `specs/INVENTORY-001-estoque-unico.md`.
+**Data**: 2026-11-07. **Status**: DECIDED. **Spec**: `specs/INVENTORY-001-estoque-unico.md` (Ready).
 
 O dono: "a essência do app é o Pilot opinar e sugerir, e para isso os itens
 precisam estar alinhados em todas as telas. São muitas telas, mas não muitos
@@ -18,8 +18,9 @@ Decisões do dono (2026-11-07):
 - **D-I1** — "Tenho" no Sinal grava já (1 unidade) e se detalha depois.
 - **D-I2** — Água e comida viram itens; os totais da casa são a soma.
 - **D-I3** — Mochila é item e lugar (`locations.holding_id`).
-- **D-I4** — Validade opcional, com aviso em ≤ 30 dias.
-- **D-I5** — (a confirmar) a casa toda edita qualquer item.
+- **D-I4** — Validade opcional de verdade, com aviso em ≤ 30 dias quando preenchida.
+- **D-I5** — A casa toda edita qualquer item, guardando quem criou e quem mexeu.
+- **D-I6** — Comida: a pessoa digita o peso e o tipo; o EOS estima as refeições pelas calorias, para menos na dúvida, e aceita correção à mão.
 
 Consequência: `resource_inventory` passa a ser projeção do estoque, recalculada
 a cada escrita; as telas que o leem não mudam. `met` passa a ser derivado do
