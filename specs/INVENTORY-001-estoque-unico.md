@@ -1,5 +1,5 @@
 # SPEC — INVENTORY-001: Estoque único da casa
-Version: 1.6 | Status: **Ready** (revisado pelo dono em 2026-11-07, §2) | Author: Paulo Neto
+Version: 1.7 | Status: **Ready** (revisado pelo dono em 2026-11-07, §2) | Author: Paulo Neto
 Depende de: docs/37 §13–§19 (Holding × Requirement), PREP-T04 (tabelas `holdings` e `locations`, aplicadas), SIGNAL-002 (Done)
 
 > Regra 3: os edge cases estão aqui (§7) e não devem ser descobertos no código.
@@ -192,6 +192,26 @@ item do Sinal está coberto quando a casa tem ao menos um item com o mesmo
 - **Pilot** recebe, além dos totais: até 40 itens da casa (nome, marca/modelo,
   quantidade, lugar) e a lista de vencidos e a vencer. Assim ele responde
   "onde está o rádio?" e "o que vence este mês?" (docs/37 stress test C).
+
+**Achados da INV-T05 (Regra 4):**
+
+- "Precisa de atenção" usa **dois** tipos, não um: `expired` (crítico) e
+  `expiring` (baixo). Um tipo só obrigaria a frase a misturar "venceu" e
+  "vence em breve"; com dois, cada aviso diz uma coisa e mostra até 3 nomes.
+- Os 40 itens do Pilot vão em ordem: **vencidos, depois a vencer, depois o
+  resto** (por nome). Assim um item vencido nunca fica fora do corte. O bloco
+  diz quantos itens a casa tem quando passa de 40.
+- "Hoje" do Pilot é a data **UTC** do servidor (o servidor não sabe o fuso da
+  pessoa). Pode adiantar ou atrasar um dia o "vence em até 30 dias" perto da
+  meia-noite — aceito. As telas usam a data local do aparelho.
+- Estoque vazio vira uma linha explícita no prompt ("nenhum item registrado
+  ainda; não presuma"). Falha ao ler o estoque não derruba o Pilot: o bloco
+  some e o erro vai para o log.
+- Item fora de casa aparece para o Pilot com "(fora de casa)": ele sabe onde
+  está, mas não o conta como da casa (mesma regra do Sinal, E20).
+- "O que falta": a linha `met` mostra "Coberto por: …" (até 3 nomes, "+N" para
+  o resto) com a mesma regra do Sinal (`coveringItems`). A tela relê quando
+  `resource_inventory` muda (todo toque no estoque o recalcula).
 
 ---
 

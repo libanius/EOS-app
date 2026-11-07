@@ -5,6 +5,8 @@ import { useRealtimeSync } from '@/hooks/useRealtimeSync'
 import { saveSnapshot, loadSnapshot } from '@/lib/sync'
 import PreparednessNav from './PreparednessNav'
 import { attentionItems, type AttentionItem } from '@/lib/attention'
+import { expiryState } from '@/lib/inventory'
+import { localToday } from '@/lib/stock-view'
 import { BRIEFING_KIT_TYPE, buildBriefingProposals, type BriefingProposal } from '@/lib/briefing-actions'
 import { ALERT_KIT_TYPE, alertProposals, reassess } from '@/lib/alert-reassessment'
 import { alreadyOnList, dismissalKey, shouldShowReassessment } from '@/lib/proposal-dedup'
@@ -257,6 +259,8 @@ export default function PreparednessPage() {
   const { snapshot } = useRisk()
   const [inv, setInv] = useState<Inventory>(DEFAULT_INVENTORY)
   const [memberCount, setMemberCount] = useState(0)
+  // Nomes dos itens vencidos e a vencer em 30 dias (INVENTORY-001 §3.6).
+  const [validade, setValidade] = useState<{ vencidos: string[]; aVencer: string[] }>({ vencidos: [], aVencer: [] })
   /**
    * A casa, vinda do servidor (D-123).
    *
@@ -325,12 +329,27 @@ export default function PreparednessPage() {
       if (snap.memberCount != null) setMemberCount(snap.memberCount)
     }
     try {
-      const [invRes, famRes, clRes, hhRes] = await Promise.all([
+      const [invRes, famRes, clRes, hhRes, stockRes] = await Promise.all([
         fetch('/api/inventory'),
         fetch('/api/family-members'),
         fetch('/api/checklist', { cache: 'no-store' }),
         fetch('/api/household'),
+        // INVENTORY-001 §3.6: a validade dos itens entra em "precisa de atenção".
+        fetch('/api/holdings', { cache: 'no-store' }).catch(() => null),
       ])
+      if (stockRes?.ok) {
+        const st = (await stockRes.json()) as { items?: Array<{ label: string; quantity: number; expiresOn: string | null }> }
+        const hoje = localToday()
+        const vencidos: string[] = []
+        const aVencer: string[] = []
+        for (const i of st.items ?? []) {
+          if (!(i.quantity > 0)) continue
+          const e = expiryState(i.expiresOn, hoje)
+          if (e === 'expired') vencidos.push(i.label)
+          else if (e === 'soon') aVencer.push(i.label)
+        }
+        setValidade({ vencidos, aVencer })
+      }
       let parsedInv: Record<string, unknown> | null = null
       if (invRes.ok) {
         const { inventory } = await invRes.json()
@@ -474,6 +493,8 @@ export default function PreparednessPage() {
     householdSize: house?.size ?? 0,
     essentialDone: essenciais.filter(i => i.acquired).length,
     essentialTotal: essenciais.length,
+    expiredNames: validade.vencidos,
+    expiringNames: validade.aVencer,
   })
 
   /*
@@ -918,6 +939,20 @@ function fraseAtencao(item: AttentionItem, pt: boolean): string {
       return pt
         ? `Checklist essencial: ${item.detail.done} de ${item.detail.total}`
         : `Essential checklist: ${item.detail.done} of ${item.detail.total}`
+    case 'expired': {
+      const n = item.detail.count ?? 0
+      const nomes = (item.detail.names ?? []).join(', ')
+      return pt
+        ? `${n === 1 ? 'Item vencido' : `${n} itens vencidos`} no estoque: ${nomes}${n > 3 ? '…' : ''}`
+        : `${n === 1 ? 'Expired item' : `${n} expired items`} in stock: ${nomes}${n > 3 ? '…' : ''}`
+    }
+    case 'expiring': {
+      const n = item.detail.count ?? 0
+      const nomes = (item.detail.names ?? []).join(', ')
+      return pt
+        ? `Vence em até 30 dias: ${nomes}${n > 3 ? ` e mais ${n - 3}` : ''}`
+        : `Expires within 30 days: ${nomes}${n > 3 ? ` and ${n - 3} more` : ''}`
+    }
   }
 }
 
