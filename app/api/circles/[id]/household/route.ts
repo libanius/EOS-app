@@ -20,6 +20,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { beginCoverageChange, endCoverageChange, mergeCoverageSnaps, type CoverageSnap } from '@/lib/inventory-server'
 import { logError } from '@/lib/error-log'
 
 export const dynamic = 'force-dynamic'
@@ -80,6 +81,23 @@ export async function POST(request: Request, { params }: { params: { id: string 
         ? { household_status: 'confirmed', household_confirmed_at: agora }
         : { household_status: 'none', household_requested_by: null, household_requested_at: null, household_confirmed_at: null }
 
+  // INVENTORY-001 E23: confirmar ou sair muda quem a casa soma e quem cada conta cobre.
+  let coverageSnap: CoverageSnap | null = null
+  if (acao !== 'pedir') {
+    coverageSnap = await beginCoverageChange(auth.user.id)
+    if (acao === 'confirmar') {
+      // Quem já mora lá também é reconciliado antes de a casa mudar.
+      const { data: morador } = await admin
+        .from('circle_members')
+        .select('user_id')
+        .eq('circle_id', circleId)
+        .eq('household_status', 'confirmed')
+        .neq('user_id', auth.user.id)
+        .limit(1)
+      const outro = (morador?.[0] as { user_id?: string } | undefined)?.user_id
+      if (outro) coverageSnap = mergeCoverageSnaps(coverageSnap, await beginCoverageChange(outro))
+    }
+  }
   const { data, error } = await admin
     .from('circle_members')
     .update(patch)
@@ -112,5 +130,6 @@ export async function POST(request: Request, { params }: { params: { id: string 
     return NextResponse.json({ error: 'Essa pessoa não está neste círculo' }, { status: 404 })
   }
 
+  if (coverageSnap) await endCoverageChange(auth.user.id, coverageSnap)
   return NextResponse.json({ ok: true, status: data[0].household_status })
 }

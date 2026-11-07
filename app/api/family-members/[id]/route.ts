@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { beginCoverageChange, endCoverageChange } from '@/lib/inventory-server'
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -87,6 +88,7 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
 
   const { id } = await params
 
+  const coverageSnap = await beginCoverageChange(user.id) // INVENTORY-001 E23
   const { error } = await supabase
     .from('family_members')
     .delete()
@@ -98,5 +100,6 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
+  await endCoverageChange(user.id, coverageSnap) // INVENTORY-001 E23
   return new NextResponse(null, { status: 204 })
 }

@@ -204,6 +204,21 @@ invoices.
 cada linha é um item (duas mochilas na mesma garagem, dois rádios em casa).
 Quantidade gravada é o total (20 gal); comida em gramas.
 
+### stock_locks
+> INVENTORY-001 / INV-T02 (migração `20261108010000_inventory_stock_lock.sql`).
+
+| Column | Type | Notes |
+|---|---|---|
+| profile_id | uuid | PK, FK → profiles.id |
+| token | uuid | quem segura a trava |
+| locked_until | timestamptz | validade curta (15 s); trava vencida não segura ninguém |
+
+Uma escrita de cada vez por conta no estoque (E25). RLS ligada **sem política**:
+só o service role, pelas funções `acquire_stock_lock(uuid[], uuid, int)` (tudo
+ou nada) e `release_stock_lock(uuid)`, `SECURITY DEFINER` executáveis só por
+`service_role` (D-234). `holdings` ganha o índice único parcial
+`holdings_one_informed_per_resource (profile_id, resource_key) WHERE provenance = 'BACKFILL'`.
+
 ### scenarios
 | Column | Type | Notes |
 |---|---|---|

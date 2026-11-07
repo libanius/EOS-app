@@ -25,3 +25,19 @@ $P -c "insert into locations(profile_id,name,kind,holding_id) select profile_id,
 $P -c "update holdings set meals_override=-1 where resource_key='agua'" 2>/dev/null && echo FAIL || echo "ok   meals_override negativo recusado"
 $P -c "update holdings set food_type='pizza' where resource_key='agua'" 2>/dev/null && echo FAIL || echo "ok   food_type fora da lista recusado"
 $P -c "update holdings set provenance='X'" 2>/dev/null && echo FAIL || echo "ok   origem fora do enum recusada"
+
+# INV-T02 — trava de escrita e um informado por recurso (20261108010000)
+$P -c "do \$\$ begin create role service_role; exception when duplicate_object then null; end \$\$;"
+$P -f supabase/migrations/20261108010000_inventory_stock_lock.sql
+$P -f supabase/migrations/20261108010000_inventory_stock_lock.sql
+echo "ok   trava: migração idempotente"
+U=00000000-0000-0000-0000-000000000001
+[ "$($P -c "select acquire_stock_lock(array['$U'::uuid], 'aaaaaaaa-0000-0000-0000-000000000001')")" = "t" ] && echo "ok   trava: primeira requisição pega"
+[ "$($P -c "select acquire_stock_lock(array['$U'::uuid], 'bbbbbbbb-0000-0000-0000-000000000001')")" = "f" ] && echo "ok   trava: segunda requisição espera"
+$P -c "select release_stock_lock('aaaaaaaa-0000-0000-0000-000000000001')"
+[ "$($P -c "select acquire_stock_lock(array['$U'::uuid], 'bbbbbbbb-0000-0000-0000-000000000001')")" = "t" ] && echo "ok   trava: solta, a segunda pega"
+$P -c "update stock_locks set locked_until = now() - interval '1 second'"
+[ "$($P -c "select acquire_stock_lock(array['$U'::uuid], 'cccccccc-0000-0000-0000-000000000001')")" = "t" ] && echo "ok   trava vencida não segura ninguém"
+$P -c "insert into holdings(profile_id,location_id,resource_key,label,quantity,unit,provenance) values ('$U','10000000-0000-0000-0000-000000000001','agua','Água 2',1,'L','BACKFILL')" 2>/dev/null && echo "FAIL dois informados" || echo "ok   um informado por recurso"
+$P -c "insert into holdings(profile_id,location_id,resource_key,label,quantity,unit) values ('$U','10000000-0000-0000-0000-000000000001','agua','Galão',5,'gal')" && echo "ok   item detalhado da mesma chave continua aceito"
+[ "$($P -c "select has_function_privilege('authenticated','acquire_stock_lock(uuid[],uuid,integer)','execute')")" = "f" ] && echo "ok   authenticated não executa a trava"

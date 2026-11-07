@@ -17,6 +17,7 @@
 
 import { LITERS_PER_GALLON } from './units'
 import { locationSubtree, type EosLocation } from './holdings'
+import * as catalog from './resource-catalog'
 
 /* ── Tipos ─────────────────────────────────────────────────────────────── */
 
@@ -229,4 +230,284 @@ export function expiryState(expiresOn: string | null, today: string, days = EXPI
   if (diff < 0) return 'expired'
   if (diff <= days) return 'soon'
   return null
+}
+
+/* ── Reconciliação: os números de hoje ganham do backfill (E10, E11, E24) ── */
+
+/** A linha de `resource_inventory` de uma conta, como está gravada. */
+export type InventoryRow = InventoryProjection & { battery_percent?: number }
+
+/** Item mínimo que a reconciliação precisa saber se é do backfill. */
+export type ReconcileItem = StockItem & { provenance: string }
+
+export type StockOp =
+  | { op: 'create'; item: { resourceKey: string; label: string; kind: 'CONSUMABLE' | 'DURABLE'; quantity: number; unit: string | null } }
+  | { op: 'update'; id: string; quantity: number; unit: string | null }
+  | { op: 'delete'; id: string }
+
+/** Nome do item que guarda "o que a conta informou" sem detalhar. */
+export const INFORMED_LABEL: Record<string, string> = {
+  agua: 'Água (estoque informado)',
+  comida: 'Comida (estoque informado)',
+  combustivel: 'Combustível (estoque informado)',
+  dinheiro: 'Dinheiro (estoque informado)',
+  'kit-medico': 'Kit médico (estoque informado)',
+  'radio-comunicacao': 'Rádio (estoque informado)',
+}
+
+const EPS = 0.001
+
+type Measured = { key: 'agua' | 'combustivel' | 'dinheiro' | 'comida'; unit: string }
+const MEASURED: Measured[] = [
+  { key: 'agua', unit: 'L' },
+  { key: 'combustivel', unit: 'L' },
+  { key: 'dinheiro', unit: 'USD' },
+  { key: 'comida', unit: 'refeicoes' },
+]
+
+/**
+ * Dinheiro não converte moeda (como hoje): o item informado mantém a moeda que
+ * já tem (o backfill de agosto gravou BRL). Os outros vão para a unidade-base.
+ */
+function keepUnit(key: string, item: StockItem, base: string): string {
+  return key === 'dinheiro' && item.unit ? item.unit : base
+}
+
+/** Quanto um item vale na unidade-base da chave: L, moeda, refeições. */
+function baseValue(i: StockItem): number {
+  if (i.resourceKey === 'comida') return mealsOf(i)?.meals ?? 0
+  if (i.resourceKey === 'dinheiro') return i.quantity
+  return litersOf(i.quantity, i.unit) ?? 0
+}
+
+/** O alvo da chave, na unidade-base, a partir da linha gravada. */
+function targetOf(key: Measured['key'], row: InventoryRow, coverage: number): number {
+  const people = coverage > 0 ? coverage : 1
+  if (key === 'agua') return Number(row.water_liters) || 0
+  if (key === 'combustivel') return Number(row.fuel_liters) || 0
+  if (key === 'dinheiro') return Number(row.cash_amount) || 0
+  return (Number(row.food_days) || 0) * people * MEALS_PER_DAY
+}
+
+/**
+ * O que mudar no estoque de UMA conta para que a soma dele bata com a linha de
+ * `resource_inventory` gravada AGORA — antes de qualquer escrita nova.
+ *
+ * Só mexe em itens `BACKFILL` (o "estoque informado"). Item detalhado pela
+ * pessoa nunca muda aqui. Quando os detalhados já passam do número gravado, o
+ * estoque ganha: não há o que tirar, e a projeção seguinte corrige a linha.
+ *
+ * `items` são os itens da conta SOB A CASA. `row` nula = conta sem linha:
+ * nada a reconciliar.
+ */
+export function reconcilePlan(items: ReconcileItem[], row: InventoryRow | null, coverage: number): StockOp[] {
+  if (!row) return []
+  const ops: StockOp[] = []
+
+  for (const m of MEASURED) {
+    const mine = items.filter(i => i.resourceKey === m.key)
+    const informed = mine.filter(i => i.provenance === 'BACKFILL')
+    const detailed = mine.filter(i => i.provenance !== 'BACKFILL')
+    const target = targetOf(m.key, row, coverage)
+    const detailedSum = detailed.reduce((s, i) => s + baseValue(i), 0)
+    const informedSum = informed.reduce((s, i) => s + baseValue(i), 0)
+    const want = Math.max(0, round3(target - detailedSum))
+    if (Math.abs(want - informedSum) < EPS) continue
+
+    // Um item informado por chave: o primeiro absorve, os outros saem.
+    const [first, ...rest] = informed
+    for (const r of rest) ops.push({ op: 'delete', id: r.id })
+    if (!first && want > EPS) {
+      ops.push({ op: 'create', item: { resourceKey: m.key, label: INFORMED_LABEL[m.key], kind: 'CONSUMABLE', quantity: want, unit: m.unit } })
+    } else if (first && want <= EPS) {
+      ops.push({ op: 'delete', id: first.id })
+    } else if (first) {
+      ops.push({ op: 'update', id: first.id, quantity: want, unit: keepUnit(m.key, first, m.unit) })
+    }
+  }
+
+  const flags: Array<['kit-medico' | 'radio-comunicacao', boolean]> = [
+    ['kit-medico', Boolean(row.has_medical_kit)],
+    ['radio-comunicacao', Boolean(row.has_communication_device)],
+  ]
+  for (const [key, has] of flags) {
+    const mine = items.filter(i => i.resourceKey === key && i.quantity > 0)
+    if (has && mine.length === 0) {
+      ops.push({ op: 'create', item: { resourceKey: key, label: INFORMED_LABEL[key], kind: 'DURABLE', quantity: 1, unit: 'un' } })
+    }
+    // A linha diz "não tem", mas o estoque tem: só sai o que era informado.
+    if (!has && mine.length > 0) {
+      for (const i of mine) if (i.provenance === 'BACKFILL') ops.push({ op: 'delete', id: i.id })
+    }
+  }
+  return ops
+}
+
+/* ── Escrita legada pelo /api/inventory (E9) ───────────────────────────── */
+
+export type LegacyWrite = Partial<{
+  water_liters: number
+  food_days: number
+  fuel_liters: number
+  cash_amount: number
+  has_medical_kit: boolean
+  has_communication_device: boolean
+}>
+
+export type LegacyPlan = { ok: true; ops: StockOp[] } | { ok: false; field: string; detailed: number }
+
+/**
+ * Os números da tela antiga viram o "estoque informado" de cada chave.
+ *
+ * Valor = detalhados + informado. Se os detalhados já passam do valor pedido,
+ * recusa (409): baixar o número exigiria apagar itens que a pessoa detalhou,
+ * e isso só se faz na tela do estoque, item a item. O mesmo vale para "não
+ * tenho kit médico" quando há kit detalhado.
+ *
+ * Chamada DEPOIS da reconciliação, sobre os itens já reconciliados.
+ */
+export function legacyWritePlan(items: ReconcileItem[], write: LegacyWrite, coverage: number): LegacyPlan {
+  const people = coverage > 0 ? coverage : 1
+  const fields: Array<[keyof LegacyWrite, Measured['key'], (v: number) => number]> = [
+    ['water_liters', 'agua', v => v],
+    ['fuel_liters', 'combustivel', v => v],
+    ['cash_amount', 'dinheiro', v => v],
+    ['food_days', 'comida', v => v * people * MEALS_PER_DAY],
+  ]
+  const ops: StockOp[] = []
+
+  for (const [field, key, toBase] of fields) {
+    const raw = write[field]
+    if (raw === undefined) continue
+    const target = toBase(Number(raw))
+    const mine = items.filter(i => i.resourceKey === key)
+    const detailedSum = mine.filter(i => i.provenance !== 'BACKFILL').reduce((s, i) => s + baseValue(i), 0)
+    if (detailedSum - target > EPS) return { ok: false, field, detailed: round3(detailedSum) }
+    const unit = MEASURED.find(m => m.key === key)!.unit
+    const informed = mine.filter(i => i.provenance === 'BACKFILL')
+    const want = round3(target - detailedSum)
+    const [first, ...rest] = informed
+    for (const r of rest) ops.push({ op: 'delete', id: r.id })
+    if (!first && want > EPS) ops.push({ op: 'create', item: { resourceKey: key, label: INFORMED_LABEL[key], kind: 'CONSUMABLE', quantity: want, unit } })
+    else if (first && want <= EPS) ops.push({ op: 'delete', id: first.id })
+    else if (first) ops.push({ op: 'update', id: first.id, quantity: want, unit: keepUnit(key, first, unit) })
+  }
+
+  const flags: Array<[keyof LegacyWrite, 'kit-medico' | 'radio-comunicacao']> = [
+    ['has_medical_kit', 'kit-medico'],
+    ['has_communication_device', 'radio-comunicacao'],
+  ]
+  for (const [field, key] of flags) {
+    const raw = write[field]
+    if (raw === undefined) continue
+    const mine = items.filter(i => i.resourceKey === key && i.quantity > 0)
+    if (raw === true && mine.length === 0) {
+      ops.push({ op: 'create', item: { resourceKey: key, label: INFORMED_LABEL[key], kind: 'DURABLE', quantity: 1, unit: 'un' } })
+    }
+    if (raw === false) {
+      const detailed = mine.filter(i => i.provenance !== 'BACKFILL')
+      if (detailed.length) return { ok: false, field, detailed: detailed.length }
+      for (const i of mine) ops.push({ op: 'delete', id: i.id })
+    }
+  }
+  return { ok: true, ops }
+}
+
+/* ── Validação do que chega na API (§4.3) ──────────────────────────────── */
+
+export type ItemInput = {
+  label: string
+  resourceKey: string
+  kind: 'CONSUMABLE' | 'DURABLE'
+  quantity: number
+  unit: string | null
+  brand: string | null
+  model: string | null
+  notes: string | null
+  expiresOn: string | null
+  foodType: FoodType | null
+  mealsOverride: number | null
+  category: string
+}
+
+export type ItemCheck = { ok: true; value: ItemInput } | { ok: false; status: 400 | 422; error: string }
+
+const text = (v: unknown, max: number): string | null | undefined => {
+  if (v === undefined) return undefined
+  if (v === null) return null
+  if (typeof v !== 'string') return undefined
+  const t = v.trim()
+  return t ? t.slice(0, max) : null
+}
+
+/**
+ * Normaliza e confere um item. `base` = o item atual, numa edição (PATCH):
+ * só os campos enviados mudam. Sem `base`, é criação e `label` é obrigatório.
+ */
+export function checkItemInput(body: Record<string, unknown>, base?: ItemInput): ItemCheck {
+  const label = text(body.label, 120)
+  const finalLabel = label === undefined ? base?.label : label
+  if (!finalLabel) return { ok: false, status: 400, error: 'Dê um nome ao item.' }
+
+  let resourceKey = typeof body.resourceKey === 'string' && body.resourceKey.trim() ? body.resourceKey.trim() : base?.resourceKey
+  if (!resourceKey) resourceKey = catalog.customKey(finalLabel)
+  if (!resourceKey) return { ok: false, status: 400, error: 'Nome inválido.' }
+  const entry = catalog.catalogEntry(resourceKey)
+  if (!entry && !catalog.isCustomKey(resourceKey)) {
+    return { ok: false, status: 422, error: 'Recurso desconhecido.' }
+  }
+
+  const qRaw = body.quantity === undefined ? base?.quantity : Number(body.quantity)
+  const quantity = qRaw === undefined ? 1 : qRaw
+  if (!Number.isFinite(quantity) || quantity < 0) return { ok: false, status: 422, error: 'Quantidade deve ser 0 ou mais.' }
+
+  const accepted = catalog.unitsFor(resourceKey)
+  let unit = body.unit === undefined ? base?.unit ?? null : typeof body.unit === 'string' ? body.unit.trim() : null
+  if (!unit && accepted.length === 1) unit = accepted[0]
+  const legacyOk = base && unit === base.unit // linhas do backfill (dia-pessoa, BRL) seguem editáveis
+  if (!unit || (!accepted.includes(unit) && !legacyOk)) {
+    return { ok: false, status: 422, error: `Unidade inválida para este item. Use: ${accepted.join(', ')}.` }
+  }
+
+  const expiresRaw = body.expiresOn === undefined ? base?.expiresOn ?? null : body.expiresOn
+  if (expiresRaw !== null && expiresRaw !== '' && !isIsoDate(expiresRaw)) {
+    return { ok: false, status: 422, error: 'Validade inválida (use AAAA-MM-DD).' }
+  }
+
+  let foodType: FoodType | null = null
+  let mealsOverride: number | null = null
+  if (resourceKey === 'comida') {
+    const ft = body.foodType === undefined ? base?.foodType ?? 'outro' : body.foodType ?? 'outro'
+    if (!isFoodType(ft)) return { ok: false, status: 422, error: 'Tipo de comida inválido.' }
+    foodType = ft
+    const mo = body.mealsOverride === undefined ? base?.mealsOverride ?? null : body.mealsOverride
+    if (mo !== null && mo !== '') {
+      const m = Number(mo)
+      if (!Number.isFinite(m) || m < 0) return { ok: false, status: 422, error: 'Refeições devem ser 0 ou mais.' }
+      mealsOverride = m
+    }
+  }
+
+  const pick = (k: 'brand' | 'model' | 'notes', max: number) => {
+    const v = text(body[k], max)
+    return v === undefined ? base?.[k] ?? null : v
+  }
+
+  return {
+    ok: true,
+    value: {
+      label: finalLabel,
+      resourceKey,
+      kind: entry?.kind ?? 'DURABLE',
+      quantity,
+      unit,
+      brand: pick('brand', 120),
+      model: pick('model', 120),
+      notes: pick('notes', 500),
+      expiresOn: expiresRaw === '' ? null : (expiresRaw as string | null),
+      foodType,
+      mealsOverride,
+      category: catalog.categoryOf(resourceKey),
+    },
+  }
 }
