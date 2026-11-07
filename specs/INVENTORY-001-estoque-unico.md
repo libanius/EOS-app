@@ -1,5 +1,5 @@
 # SPEC — INVENTORY-001: Estoque único da casa
-Version: 1.4 | Status: **Ready** (revisado pelo dono em 2026-11-07, §2) | Author: Paulo Neto
+Version: 1.5 | Status: **Ready** (revisado pelo dono em 2026-11-07, §2) | Author: Paulo Neto
 Depende de: docs/37 §13–§19 (Holding × Requirement), PREP-T04 (tabelas `holdings` e `locations`, aplicadas), SIGNAL-002 (Done)
 
 > Regra 3: os edge cases estão aqui (§7) e não devem ser descobertos no código.
@@ -311,6 +311,15 @@ cobre nenhum Sinal.
   `aria-modal`, Esc fecha, botões ≥ 44 px, 320 px sem corte).
 - Números em gal **e** L para água; refeições **e** dias para comida.
 - Ação destrutiva sempre com confirmação e com o efeito dito em palavras.
+- **Achados da INV-T03 (Regra 4):**
+  - a mochila aparece **uma vez**, como lugar com o conteúdo dentro; tocar no
+    nome dela abre a ficha do item (marca, modelo, validade);
+  - ao escolher uma sugestão do catálogo, o nome digitado vira o da sugestão
+    só quando era o começo dela ("comi" → "Comida não perecível"); nome
+    próprio ("Galão Crystal Geyser") fica;
+  - a **bateria** não é item (§10), mas a tela antiga era o único lugar onde se
+    editava: ela continua no fim da tela do estoque, como controle deslizante,
+    com a nota "não é item do estoque".
 
 ---
 

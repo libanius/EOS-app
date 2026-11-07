@@ -306,31 +306,39 @@ try {
    * o número voltou diferente. Recarregar é o ponto: sem isso ele mediria só o
    * estado em memória, que muda mesmo quando a gravação falha.
    */
-  // O `NumericStepper` só vira `<input>` quando a pessoa toca no número; em
-  // repouso o valor é um `<span>` arrastável. Ler o span é o que o olho lê.
-  const valorAgua = async () => {
-    await page.locator('button[aria-label="Aumentar"]').first().waitFor({ timeout: 20000 })
-    const txt = await page.locator('button[aria-label="Diminuir"]').first()
-      .evaluate(el => el.parentElement?.querySelector('span')?.textContent ?? '')
-    return Number(String(txt).replace(',', '.'))
+  /*
+   * INVENTORY-001 / INV-T03: a tela virou o estoque item a item. A prova
+   * continua sendo a mesma — ESCREVER, RECARREGAR e conferir —, agora criando
+   * um item de água pela ficha e lendo o total da casa no topo.
+   */
+  const totalAgua = async () => {
+    const txt = await page.locator('.st-total').first().locator('b').innerText({ timeout: 20000 })
+    // "5,3 gal · 20 L" → litros
+    const m = txt.match(/([\d.,]+)\s*L$/)
+    return m ? Number(m[1].replace(/\./g, '').replace(',', '.')) : NaN
   }
 
   await page.goto(`${B}/preparedness/o-que-tenho`, { waitUntil: 'networkidle' })
-  const antes = await valorAgua()
+  const antes = await totalAgua()
 
-  await page.locator('button[aria-label="Aumentar"]').first().click()
-  // 600ms de debounce + a ida ao servidor.
+  await page.getByRole('button', { name: /^\+ Item$/ }).click()
+  const ficha = page.getByRole('dialog')
+  await ficha.getByLabel(/^Nome$/).fill('Água')
+  await ficha.getByRole('button', { name: 'Água potável' }).click()
+  await ficha.getByLabel(/^Tamanho de cada$/).fill('10')
+  await ficha.getByLabel(/^Unidade$/).selectOption('L')
+  await ficha.getByRole('button', { name: /^Salvar$/ }).click()
   await page.waitForTimeout(2500)
 
-  const erroVisivel = await page.getByText(/Erro ao salvar/i).count()
+  const erroVisivel = await page.getByText(/Não foi possível gravar/i).count()
   erroVisivel === 0
     ? ok('o estoque não mostra erro ao salvar')
-    : no('o estoque mostrou "Erro ao salvar"')
+    : no('o estoque mostrou "Não foi possível gravar"')
 
   await page.reload({ waitUntil: 'networkidle' })
-  const depois = await valorAgua()
-  depois > antes
-    ? ok(`a água PERSISTE depois de recarregar: ${antes} → ${depois}`)
+  const depois = await totalAgua()
+  depois >= antes + 9.9
+    ? ok(`a água do estoque PERSISTE depois de recarregar: ${antes} L → ${depois} L`)
     : no('a água não persistiu — a gravação falhou', `${antes} → ${depois}`)
 
   // ── 6. O endereço antigo não vira 404 ─────────────────────────────────────
