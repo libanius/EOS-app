@@ -5,6 +5,8 @@ import { generationParams, getOpenAIClient, getOpenAIModel } from '@/lib/openai'
 import { enforceAiBudget, rateLimitHeaders } from '@/lib/rate-limit'
 import { logError } from '@/lib/error-log'
 import { getHousehold, householdDays } from '@/lib/household'
+import { loadHouse } from '@/lib/inventory-server'
+import { pilotStockBlock } from '@/lib/pilot-stock'
 import { evaluateGuard } from '@/lib/pilot-guard'
 import { getRelevantChunks } from '@/lib/knowledge'
 import { formatGallons, GALLON_SHORT } from '@/lib/units'
@@ -806,6 +808,19 @@ export async function POST(request: NextRequest) {
       ? `Autonomia ${d(dias.autonomy)} dias (água ${d(dias.water)}d, comida ${d(dias.food)}d, energia ${d(dias.power)}d, combustível ${d(dias.fuel)}d). Checklist ${context.checklistPct}%.`
       : `Autonomy ${d(dias.autonomy)} days (water ${d(dias.water)}d, food ${d(dias.food)}d, power ${d(dias.power)}d, fuel ${d(dias.fuel)}d). Checklist ${context.checklistPct}%.`)
 
+  /*
+   * INVENTORY-001 §3.6 (INV-T05): o estoque item a item — onde está, de quem é,
+   * o que vence. Falhar aqui não derruba a resposta: sem o bloco, o Pilot só
+   * fica com os totais, como antes.
+   */
+  let stockBlock = ''
+  try {
+    const admin = createAdminClient()
+    if (admin) stockBlock = pilotStockBlock(await loadHouse(admin, user.id), new Date().toISOString().slice(0, 10), pt)
+  } catch (e) {
+    await logError('api/pilot/chat stock', e, { userId: user.id })
+  }
+
   // Real places matching what was asked, with real coordinates.
   const places = await findPlaces(question, context.selfCoords)
   const placesBlock = places.length
@@ -853,6 +868,7 @@ export async function POST(request: NextRequest) {
           : `CIRCLE RECORDS YOU MAY USE NOW:\n${circleRecord}\n\nUse only fields marked as shared. If a field says "not shared in this circle", say that clearly and do not treat it as nonexistent.`)
       : '',
     pt ? `RECURSOS: ${reserves}` : `RESOURCES: ${reserves}`,
+    stockBlock,
     pt
       ? `DADOS AO VIVO QUE VOCÊ TEM AGORA (leitura real dos sensores e provedores do EOS):\n${situationReport(context)}`
       : `LIVE DATA YOU HAVE RIGHT NOW (real readings from the EOS sensors and providers):\n${situationReport(context)}`,

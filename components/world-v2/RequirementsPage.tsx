@@ -35,6 +35,8 @@ import { useRealtimeSync } from '@/hooks/useRealtimeSync'
 import { useLanguage } from '@/lib/i18n'
 import { splitKitType, type Provenance } from '@/lib/requirements'
 import { countsInProgress, statusFromLegacy, type AcquisitionStatus } from '@/lib/acquisition'
+import { coveringItems } from '@/lib/inventory'
+import type { ApiHouse } from '@/lib/stock-view'
 import PreparednessNav from './PreparednessNav'
 import { ChecklistEditDialog, ConfirmDialog, type ChecklistItem, type ChecklistTier } from './ChecklistDialogs'
 
@@ -77,11 +79,17 @@ export default function RequirementsPage() {
   const [filtro, setFiltro] = useState<Filtro>(null)
   const [editando, setEditando] = useState<ChecklistItem | null>(null)
   const [excluindo, setExcluindo] = useState<ChecklistItem | null>(null)
+  /** INVENTORY-001 §3.5: o estoque da casa, para dizer quem cobre cada linha. */
+  const [stock, setStock] = useState<ApiHouse | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/checklist', { cache: 'no-store' })
+      const [res, st] = await Promise.all([
+        fetch('/api/checklist', { cache: 'no-store' }),
+        fetch('/api/holdings', { cache: 'no-store' }).catch(() => null),
+      ])
+      if (st?.ok) setStock(await st.json().catch(() => null))
       if (res.ok) {
         const { items: rows } = await res.json()
         setItems(Array.isArray(rows) ? rows : [])
@@ -94,7 +102,7 @@ export default function RequirementsPage() {
   }, [])
 
   useEffect(() => { void load() }, [load])
-  useRealtimeSync(['checklists'], () => { void load() })
+  useRealtimeSync(['checklists', 'resource_inventory'], () => { void load() })
 
   /**
    * Cada item com suas duas dimensões e o estado.
@@ -126,6 +134,13 @@ export default function RequirementsPage() {
     }
     return { slugs: Array.from(slugs).sort(), temBase }
   }, [separados])
+
+  /** Nomes dos itens da casa que cobrem a chave (mesma regra do Sinal). */
+  const cobertoPor = useCallback((key: string): string[] => {
+    if (!stock) return []
+    return coveringItems(stock.items as never, stock.locations, stock.homeRootIds, key)
+      .map(i => (i as { label: string }).label)
+  }, [stock])
 
   const visiveis = useMemo(() => {
     if (filtro === null) return separados
@@ -324,6 +339,12 @@ export default function RequirementsPage() {
                         <span style={{ ...S.nome, color: item.acquired ? 'var(--mu)' : 'var(--tx)', textDecoration: item.acquired ? 'line-through' : 'none' }}>
                           {item.item_name}
                         </span>
+                        {status === 'met' && cobertoPor(item.canonical_key).length > 0 && (
+                          <span style={S.coberto}>
+                            {pt ? 'Coberto por: ' : 'Covered by: '}{cobertoPor(item.canonical_key).slice(0, 3).join(', ')}
+                            {cobertoPor(item.canonical_key).length > 3 ? ` +${cobertoPor(item.canonical_key).length - 3}` : ''}
+                          </span>
+                        )}
 
                         <span style={S.selos}>
                           <span style={S.qtd}>{item.quantity}{item.unit ? ` ${item.unit}` : ''}</span>
@@ -455,6 +476,7 @@ const S: Record<string, React.CSSProperties> = {
   },
   corpo: { display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 },
   nome: { fontSize: 14 },
+  coberto: { display: 'block', fontSize: 12, color: 'var(--mu)', marginTop: 2 },
   selos: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6 },
   qtd: { fontSize: 12, color: 'var(--mu)', fontFamily: 'ui-monospace,Menlo,monospace' },
   selo: {

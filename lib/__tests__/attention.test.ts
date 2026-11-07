@@ -138,3 +138,21 @@ describe('ordem', () => {
     }
   })
 })
+
+describe('validade (INVENTORY-001 §3.6, critério 11)', () => {
+  it('vencido é crítico, a vencer em 30 dias é baixo, com os primeiros nomes', () => {
+    const itens = attentionItems({
+      ...casa(),
+      expiredNames: ['Arroz', 'Pilhas AA', 'Remédio', 'Leite em pó'],
+      expiringNames: ['Água (galão)'],
+    })
+    const vencido = itens.find(i => i.kind === 'expired')!
+    expect(vencido).toMatchObject({ severity: 'critical', where: 'holdings', detail: { count: 4, names: ['Arroz', 'Pilhas AA', 'Remédio'] } })
+    expect(itens.find(i => i.kind === 'expiring')).toMatchObject({ severity: 'low', detail: { count: 1, names: ['Água (galão)'] } })
+    expect(itens[0].kind).toBe('expired') // crítico vem primeiro
+  })
+  it('E13a: sem itens com validade, nada aparece', () => {
+    expect(attentionItems({ ...casa(), expiredNames: [], expiringNames: [] })).toEqual([])
+    expect(attentionItems(casa())).toEqual([])
+  })
+})
