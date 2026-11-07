@@ -1,5 +1,5 @@
 # SPEC — INVENTORY-001: Estoque único da casa
-Version: 1.1 | Status: **Ready** (revisado pelo dono em 2026-11-07, §2) | Author: Paulo Neto
+Version: 1.2 | Status: **Ready** (revisado pelo dono em 2026-11-07, §2) | Author: Paulo Neto
 Depende de: docs/37 §13–§19 (Holding × Requirement), PREP-T04 (tabelas `holdings` e `locations`, aplicadas), SIGNAL-002 (Done)
 
 > Regra 3: os edge cases estão aqui (§7) e não devem ser descobertos no código.
@@ -244,6 +244,19 @@ os escalares de **uma conta**:
 Toda escrita de item recalcula e grava (upsert) o `resource_inventory` da
 conta dona do item, na mesma requisição.
 
+**A cobertura também muda o `food_days`** (achado do Codex no PR #17). A casa
+lê comida como `food_days × cobertura`; se a cobertura muda e o `food_days`
+não, a comida da casa incha ou encolhe sem ninguém mexer no estoque. Por isso
+o recálculo roda também quando a cobertura de uma conta muda: criar ou remover
+dependente, mudar de quem um dependente depende, e uma conta entrar ou sair da
+casa (E23).
+
+**Antes do primeiro recálculo, reconcilia** (E10–E11, achado do Codex no PR
+#17). Se a projeção do estoque da conta não bate com o `resource_inventory`
+atual dela, o item `BACKFILL` de cada chave é ajustado (ou criado) para que a
+soma bata com o número atual. Só depois a projeção grava. Assim o primeiro
+toque no estoque nunca troca o número de hoje pelo de agosto.
+
 ### 4.3 API
 
 | Rota | O que faz |
@@ -333,6 +346,8 @@ cobre nenhum Sinal.
 | E20 | Paulo e Daniela, cada um com a sua Casa padrão; ela põe a lanterna na Garagem que ele criou | Uma Casa só na tela. A lanterna é dela (`profile_id`), no lugar dele; conta para a casa e para o `resource_inventory` dela. |
 | E21 | Apagar sublugar com itens ou sublugares dentro | Mesma regra da mochila (E14): pede destino, padrão o lugar pai. Apagar a Casa padrão: 422. |
 | E22 | Dois rádios no mesmo lugar | Duas linhas. Possível porque a migração remove o índice "um recurso por lugar". |
+| E23 | Conta com 90 refeições, sozinha (30 dias); cadastra um dependente | O recálculo roda na criação do dependente: `food_days` vira 15. A casa continua lendo 30 pessoa-dias. Sem isso, leria 60. |
+| E24 | Primeiro toque no estoque de uma conta cujo `resource_inventory` diz 40 L e o backfill diz 20 L | Reconcilia antes: o item "Água (estoque informado)" vai para 40 L; depois aplica a edição. |
 
 ---
 
@@ -341,11 +356,11 @@ cobre nenhum Sinal.
 | Tarefa | Escopo |
 |---|---|
 | INV-T01 | Migração §4.1 + `docs/06` e `docs/37` §15–§16 + catálogo §4.4 + projeção pura §4.2 com testes |
-| INV-T02 | API §4.3 (holdings, locations) com escrita da casa e recálculo do `resource_inventory` |
+| INV-T02 | **Virada atômica**: API §4.3 (holdings, locations) com escrita da casa; reconciliação antes do primeiro recálculo (E10, E11, E24); `/api/inventory` passa a escrever itens (E9); recálculo também quando a cobertura muda (E23). Tudo no mesmo deploy, para não existir janela em que a projeção grava sem reconciliar ou o legado escreve sem passar pelo estoque. |
 | INV-T03 | Tela do estoque §3.1–§3.3 (lista, adicionar, ficha, lugares, mochilas) |
 | INV-T04 | Sinais §3.4 (folha e "% pronto" lendo o estoque; água e comida como lista) |
 | INV-T05 | Validade e Pilot §3.6 (atenção `expiring`, fatos do Pilot, "Coberto por" no O que falta) |
-| INV-T06 | Virada: reconciliar backfill (E10–E11), `/api/inventory` passa a escrever itens (E9) |
+| INV-T06 | ~~Virada~~ — incorporada à INV-T02 (achado do Codex no PR #17: sem isso, a primeira edição trocaria o número de hoje pelo de agosto). |
 
 ---
 
@@ -366,6 +381,8 @@ cobre nenhum Sinal.
 13. Item de outra casa: `PATCH`/`DELETE` respondem 403 e nada muda.
 14. Remover mochila com itens sem `moveTo` responde 422; com `moveTo`, os itens mudam de lugar e nenhum é apagado.
 15. Depois da virada, nenhuma conta tem `resource_inventory` diferente da projeção do seu estoque.
+19. Criar ou remover um dependente não muda a comida da casa em pessoa-dia (E23).
+20. A primeira escrita no estoque de uma conta não muda nenhum dos 6 números dela, exceto o que a própria escrita mudou (E24).
 16. A tela do estoque cabe em 320 px sem corte.
 17. "Arroz, 5 kg" grava 5.000 g e é contado como 27 refeições; com `meals_override = 30`, como 30.
 18. Criar e editar item sem validade funciona e não gera aviso.
