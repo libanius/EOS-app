@@ -4,6 +4,26 @@
 
 ---
 
+## D-235 — Marcar como tenho: o item do Sinal grava na casa
+
+**Data**: 2026-11-07. **Status**: DECIDED. **Spec**: `specs/SIGNAL-002-marcar-como-tenho.md`.
+
+O dono testou o FORTRESS no iPhone e esperava que tocar no item registrasse a
+aquisição para o app inteiro. Decisões:
+
+- **D-M1 — a casa toda**: a leitura dos Sinais junta as linhas de base de todas
+  as contas confirmadas da casa; a resposta mais recente vale. Cada conta grava
+  só na própria linha (RLS).
+- **D-M2 — três respostas**: o toque abre Tenho / Ainda não tenho / Não se
+  aplica à minha casa.
+- **D-M3 — quanto tem agora**: água e comida substituem o valor, nunca somam.
+
+Consequências: `requirements.provenance` ganha `PROTOCOL` (antecipado do
+SIGNAL-001 Marco 2). A adoção em bloco do SIGNAL-001 §3.5–§3.6 é substituída pela
+adoção item a item.
+
+---
+
 ## D-234 — Funções SECURITY DEFINER fechadas para quem não deve chamá-las
 
 **Data**: 2026-11-06. **Status**: DECIDED (dono: "pode corrigir essas funções").
