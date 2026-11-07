@@ -1,15 +1,14 @@
 'use client'
 
 /**
- * `/preparedness/o-que-tenho` — o estoque da casa (PREP-T07 fase 2 / D-165).
+ * `/preparedness/o-que-tenho` — o estoque da casa (INVENTORY-001 / INV-T03).
  *
- * `/inventory` redireciona para cá. O endereço antigo existe desde antes da
- * unificação de D-086 e continua salvo por aí; ele volta a ter destino exato
- * em vez de largar a pessoa no topo de uma página que fazia três coisas.
+ * Antes: os seis editores de números (PREP-T07 fase 2 / D-165). Agora: a lista
+ * do estoque item a item, por lugar. `/inventory` continua redirecionando para cá.
  */
 
-import HoldingsPage from '@/components/world-v2/HoldingsPage'
+import StockPage from '@/components/stock/StockPage'
 
 export default function Page() {
-  return <HoldingsPage />
+  return <StockPage />
 }
