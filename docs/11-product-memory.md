@@ -5,6 +5,18 @@
 
 ---
 
+**Nos Sinais, a casa responde junto, mas cada conta grava só na própria linha.**
+`/api/signals/house-state` lê as linhas de base de todas as contas confirmadas
+(service role, mesma regra de `lib/household.ts`) e vale a mais recente. A escrita
+vai sempre para a linha de quem respondeu (RLS). Fora dos Sinais (O que falta,
+Pilot), cada conta ainda vê só as próprias linhas: juntar no app inteiro é outro
+spec. Água e comida já eram da casa.
+
+**A resposta "Tenho" não é derivada.** docs/37 §19 diz que `met` é derivado de
+holdings, mas desde o D-176 o usuário marca à mão, e o SIGNAL-002 segue isso.
+Quando o PREP-T10c tornar `met` derivado, a folha do Sinal passa a criar o
+holding em vez de mudar o status.
+
 **Toda função nova `SECURITY DEFINER` precisa de `REVOKE ... FROM PUBLIC, anon, authenticated`.**
 O Postgres dá `EXECUTE` a `PUBLIC` por padrão e o Supabase expõe tudo em
 `/rest/v1/rpc`. Foi assim que `consume_rate_limit` e `match_documents` ficaram

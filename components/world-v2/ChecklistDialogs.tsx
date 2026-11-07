@@ -34,7 +34,7 @@ export interface ChecklistItem {
    * veio encerrar.
    */
   kit_slug?: string | null
-  provenance?: 'MANUAL' | 'PILOT' | 'EDU' | 'SIMULATION' | 'OFFICIAL_ALERT' | 'PLAN_GAP'
+  provenance?: 'MANUAL' | 'PILOT' | 'EDU' | 'SIMULATION' | 'OFFICIAL_ALERT' | 'PLAN_GAP' | 'PROTOCOL'
 }
 
 const CHECKLIST_TIERS: ChecklistTier[] = ['ESSENTIAL', 'MODERATE', 'EXCELLENT']

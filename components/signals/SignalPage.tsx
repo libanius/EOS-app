@@ -28,6 +28,8 @@ import {
   type SignalModule,
 } from '@/lib/signals'
 import { useSignalHouse } from './useSignalHouse'
+import ItemSheet from './ItemSheet'
+import type { HouseAnswer, HouseItemState } from '@/lib/signal-house'
 import { formatDate } from './SignalsHome'
 
 const T = {
@@ -66,6 +68,9 @@ const T = {
     },
     viaInventory: 'Registrado no inventário',
     viaRequirement: 'Marcado como adquirido',
+    answerHint: 'Toque num item para dizer se a casa tem.',
+    markedBy: (n: string) => `Marcado por ${n || 'outra conta da casa'}`,
+    saved: 'Registrado para a casa',
     nextAction: 'Próxima ação',
     nextWater: (l: number) => `Garantir mais ${l} L de água`,
     nextFood: (m: number) => `Garantir mais ${m} refeições`,
@@ -111,6 +116,9 @@ const T = {
     },
     viaInventory: 'Recorded in your inventory',
     viaRequirement: 'Marked as acquired',
+    answerHint: 'Tap an item to tell us if your home has it.',
+    markedBy: (n: string) => `Marked by ${n || 'someone in your home'}`,
+    saved: 'Recorded for your home',
     nextAction: 'Next action',
     nextWater: (l: number) => `Add ${l} more L of water`,
     nextFood: (m: number) => `Add ${m} more meals`,
@@ -156,7 +164,8 @@ export default function SignalPage({ slug, preview }: SignalPageProps) {
   const videoRef = signal?.video?.[lang]
   const videoEmbed = youtubeEmbedFromId(videoRef?.youtubeId)
   const videoMinutes = videoRef?.durationSec ? Math.max(1, Math.round(videoRef.durationSec / 60)) : null
-  const { loading, house, metKeys, notApplicableKeys } = useSignalHouse()
+  const { loading, house, metKeys, notApplicableKeys, states, accounts, reload, applyState } = useSignalHouse()
+  const [openKey, setOpenKey] = useState<string | null>(null)
   const [degree, setDegree] = useState<Degree>(signal?.protocol.recommendedDegree ?? 'D14')
   const [toast, setToast] = useState<string | null>(null)
 
@@ -205,6 +214,42 @@ export default function SignalPage({ slug, preview }: SignalPageProps) {
       const gap = target.need - target.have
       next = view.limiting === 'agua' ? t.nextWater(Math.ceil(gap)) : t.nextFood(Math.ceil(gap * MEALS_PER_PERSON_DAY))
     }
+  }
+
+  const openView = openKey ? view?.items.find(i => i.item.resourceKey === openKey) ?? null : null
+
+  const flash = (msg: string) => {
+    setToast(msg)
+    window.setTimeout(() => setToast(null), 2600)
+  }
+
+  // SIGNAL-002 §3.2: grava na minha linha de base; a casa lê a resposta mais recente.
+  const answerItem = async (answer: HouseAnswer) => {
+    if (!openKey || preview) return
+    const res = await fetch('/api/signals/items', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slug: signal.slug, resourceKey: openKey, answer, lang }),
+    })
+    if (!res.ok) throw new Error(String(res.status))
+    const d = (await res.json()) as { state: HouseItemState | null }
+    applyState(openKey, d.state)
+    setOpenKey(null)
+    flash(t.saved)
+  }
+
+  // SIGNAL-002 §3.3: "quanto tem agora" — substitui, nunca soma (D-M3).
+  const saveAmount = async (field: 'water_liters' | 'food_days', value: number) => {
+    if (preview) return
+    const res = await fetch('/api/inventory', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ [field]: value }),
+    })
+    if (!res.ok) throw new Error(String(res.status))
+    await reload()
+    setOpenKey(null)
+    flash(t.saved)
   }
 
   const copySummary = async () => {
@@ -357,15 +402,24 @@ export default function SignalPage({ slug, preview }: SignalPageProps) {
         </section>
 
         <section className="sg-stack" aria-labelledby="sg-check">
-          <h2 id="sg-check" className="sg-label" style={{ color: 'var(--sg-ink)', fontSize: 17 }}>{t.checklist(degree)}</h2>
+          <div className="sg-row" style={{ justifyContent: 'space-between', flexWrap: 'nowrap' }}>
+            <h2 id="sg-check" className="sg-label" style={{ color: 'var(--sg-ink)', fontSize: 17 }}>{t.checklist(degree)}</h2>
+            <span className="sg-legend" tabIndex={0} data-tip={t.statusTip} aria-label={t.statusTip}>?</span>
+          </div>
+          <p className="sg-note">{t.answerHint}</p>
           {MODULE_ORDER.filter(m => byModule.has(m)).map(m => (
             <div key={m} className="sg-panel" style={{ paddingBlock: 14 }}>
               <div className="sg-mod"><span className="sg-label">{t.module[m]}</span></div>
               {(byModule.get(m) ?? []).map(v => (
-                <div key={v.item.resourceKey} className="sg-req">
-                  <span className="tip-start" tabIndex={0} data-tip={t.statusTip} style={{ display: 'inline-flex', borderRadius: '50%' }}>
-                    <StatusMark v={v} label={t.status[v.status]} />
-                  </span>
+                <button
+                  key={v.item.resourceKey}
+                  type="button"
+                  className="sg-req sg-req-btn"
+                  aria-haspopup="dialog"
+                  aria-label={`${v.item.label[lang]}: ${t.status[v.status]}. ${t.answerHint}`}
+                  onClick={() => setOpenKey(v.item.resourceKey)}
+                >
+                  <StatusMark v={v} label={t.status[v.status]} />
                   <div style={{ minWidth: 0 }}>
                     <h3>{v.item.label[lang]}</h3>
                     {v.item.kind === 'ENGINE_WATER' && v.have !== null && v.need !== null ? (
@@ -380,11 +434,17 @@ export default function SignalPage({ slug, preview }: SignalPageProps) {
                       </>
                     ) : (
                       <div className="sg-h">
-                        {v.coveredBy === 'inventory' ? t.viaInventory : v.coveredBy === 'requirement' ? t.viaRequirement : v.item.hint?.[lang] ?? t.status[v.status]}
+                        {v.coveredBy === 'inventory'
+                          ? t.viaInventory
+                          : v.coveredBy === 'requirement'
+                            ? accounts > 1 && states[v.item.resourceKey] && !states[v.item.resourceKey].by.isMe
+                              ? t.markedBy(states[v.item.resourceKey].by.name)
+                              : t.viaRequirement
+                            : v.item.hint?.[lang] ?? t.status[v.status]}
                       </div>
                     )}
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           ))}
@@ -393,6 +453,22 @@ export default function SignalPage({ slug, preview }: SignalPageProps) {
         <button type="button" className="sg-btn block" onClick={() => void copySummary()}>{t.copy}</button>
         <div role="status" aria-live="polite" className="sg-note" style={{ textAlign: 'center', minHeight: 20 }}>{toast}</div>
       </div>
+      {openView && (
+        <ItemSheet
+          view={openView}
+          lang={lang}
+          state={states[openView.item.resourceKey] ?? null}
+          accounts={accounts}
+          houseSize={house?.size ?? 0}
+          houseKnown={sizeKnown}
+          houseWaterLiters={house?.waterLiters ?? 0}
+          houseFoodPersonDays={house?.foodPersonDays ?? 0}
+          readOnly={preview ? 'preview' : signal.status === 'archived' ? 'archived' : null}
+          onClose={() => setOpenKey(null)}
+          onAnswer={answerItem}
+          onSaveAmount={saveAmount}
+        />
+      )}
     </main>
   )
 }

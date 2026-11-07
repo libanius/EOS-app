@@ -26,6 +26,8 @@
 
 export type Provenance =
   | 'MANUAL' | 'PILOT' | 'EDU' | 'SIMULATION' | 'OFFICIAL_ALERT' | 'PLAN_GAP'
+  /** Respondido na folha de um Sinal (SIGNAL-002); `provenanceRef` = slug. */
+  | 'PROTOCOL'
 
 export type RequirementStatus = 'proposed' | 'needed' | 'met' | 'not_applicable'
 

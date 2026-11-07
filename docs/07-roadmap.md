@@ -457,11 +457,11 @@ segunda conta de prontidão.*
 
 | Task | Entrega | Status | Notas |
 |---|---|---|---|
-| SIGNAL-002-T01 | Migração `PROTOCOL` em `requirements.provenance`; docs 06 e 37 §18 | IN PROGRESS | |
-| SIGNAL-002-T02 | Funções puras (estado da casa, respostas) | IN PROGRESS | |
-| SIGNAL-002-T03 | `GET /api/signals/house-state`, `POST /api/signals/items` | IN PROGRESS | |
-| SIGNAL-002-T04 | Folha do item e leitura pela casa | IN PROGRESS | |
-| SIGNAL-002-T05 | Conferência 390/320 px, critérios 1–16 | IN PROGRESS | |
+| SIGNAL-002-T01 | Migração `PROTOCOL` em `requirements.provenance`; docs 06 e 37 §18 | ✅ CODE COMPLETE | `20261107000000_requirements_protocol_provenance.sql`, testada duas vezes em Postgres 16. **Aplicar em produção ANTES do merge** (sem ela, "Tenho" num item novo é recusado pelo banco). |
+| SIGNAL-002-T02 | Funções puras (estado da casa, respostas) | ✅ COMPLETE | `lib/signal-house.ts`, 9 testes. |
+| SIGNAL-002-T03 | `GET /api/signals/house-state`, `POST /api/signals/items` | ✅ COMPLETE | `lib/signal-house-server.ts`; 5 testes de rota (origem, preservação, idempotência, marca antiga, 404/409/422). |
+| SIGNAL-002-T04 | Folha do item e leitura pela casa | ✅ COMPLETE | `ItemSheet`; Sinais leem `house-state` em vez de `/api/checklist`; legenda das cores no título; "Marcado por <nome>" na linha. |
+| SIGNAL-002-T05 | Conferência 390/320 px, critérios 1–16 | ✅ COMPLETE | 390 e 320 px com dados simulados: "Tenho" grava e marca verde, quem marcou aparece, 10 gal → 37,85 L, sem rolagem lateral. Critério 15 em Postgres local; 6 e 7 em produção depois do merge. |
 
 ## Pipeline de conteúdo (CONTENT)
 

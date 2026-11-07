@@ -431,6 +431,8 @@ criado, sem mudança, conflito e versão velha), `publish_content_package`
 | `kits` | `id · profile_id · slug · name · icon` | Conjunto nomeado de requisitos. Sem discriminador de propósito (D-157). Único por `(profile_id, slug)` |
 | `requirements` | `id · profile_id · resource_key · label · quantity · unit · kit_id · scenario_id · location_scope_id · tier · status · provenance · provenance_ref` | O que DEVERIA existir. Chave natural `(profile_id, resource_key, kit_id, scenario_id)` com `COALESCE` — **`provenance` fica FORA dela** (D-161) |
 
+> **SIGNAL-002 (2026-11-07, D-235):** `provenance` aceita também `PROTOCOL` (item respondido na folha de um Sinal; `provenance_ref` = slug). Migração `20261107000000_requirements_protocol_provenance.sql`.
+
 `kit_id` NULO = requisito de **linha de base da casa**. É para lá que o
 `kit_type='GERAL'` do legado é projetado: "Preparação Geral" nunca foi uma
 mochila.
