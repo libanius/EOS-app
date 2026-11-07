@@ -225,9 +225,10 @@
 .sg .sg-legend[data-tip]:focus-visible::after { left: auto; right: 0; transform: none; }
 
 /* Folha do item (SIGNAL-002 §6) */
-.sg-sheet-wrap { position: fixed; inset: 0; z-index: 80; background: rgba(4, 7, 12, 0.66); display: flex; align-items: flex-end; justify-content: center; }
+/* Acima da barra de navegação (100) e do AppActions (200): no iPhone a barra cobria o fim da folha. */
+.sg-sheet-wrap { position: fixed; inset: 0; z-index: 900; background: rgba(4, 7, 12, 0.66); display: flex; align-items: flex-end; justify-content: center; }
 .sg-sheet {
-  width: 100%; max-width: 560px; max-height: 88vh; overflow-y: auto;
+  width: 100%; max-width: 560px; max-height: 88vh; max-height: 88dvh; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
   background: var(--sg-surface2); border: 1px solid var(--sg-line2); border-bottom: 0;
   border-radius: 20px 20px 0 0; padding: 12px 20px calc(20px + env(safe-area-inset-bottom, 0px));
   display: flex; flex-direction: column; gap: 14px; animation: sg-up 0.18s ease-out;
@@ -272,3 +273,6 @@
 .sg-remove { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 12px; border: 1px solid rgba(240, 107, 96, 0.45); background: rgba(240, 107, 96, 0.06); }
 .sg-check { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 16px; }
 .sg-check input { width: 22px; height: 22px; accent-color: var(--sg-mint); flex: 0 0 auto; }
+
+/* A folha rola por dentro; nenhum filho encolhe para caber (iPhone, 2026-11-07). */
+.sg-sheet > * { flex-shrink: 0; }

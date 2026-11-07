@@ -57,8 +57,9 @@
 .st-banner.error { background: rgba(255, 107, 107, 0.1); border: 1px solid rgba(255, 107, 107, 0.3); color: var(--ac3); }
 .st-banner.ok { background: rgba(0, 229, 160, 0.08); border: 1px solid rgba(0, 229, 160, 0.3); color: var(--ac); }
 
-.st-sheet-wrap { position: fixed; inset: 0; z-index: 80; background: rgba(4, 7, 12, 0.66); display: flex; align-items: flex-end; justify-content: center; }
-.st-sheet { width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; background: var(--sf2); border: 1px solid var(--bd); border-bottom: 0; border-radius: 20px 20px 0 0; padding: 12px 18px calc(20px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 14px; animation: st-up 0.18s ease-out; }
+/* Acima da barra de navegação (100) e do AppActions (200): no iPhone a barra cobria o fim da folha. */
+.st-sheet-wrap { position: fixed; inset: 0; z-index: 900; background: rgba(4, 7, 12, 0.66); display: flex; align-items: flex-end; justify-content: center; }
+.st-sheet { width: 100%; max-width: 560px; max-height: 90vh; max-height: 90dvh; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; background: var(--sf2); border: 1px solid var(--bd); border-bottom: 0; border-radius: 20px 20px 0 0; padding: 12px 18px calc(20px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 14px; animation: st-up 0.18s ease-out; }
 .st-sheet h2 { font-size: 21px; font-weight: 700; line-height: 1.25; outline: none; overflow-wrap: anywhere; }
 .st-grip { width: 44px; height: 5px; border-radius: 3px; background: var(--bd); margin: 0 auto 2px; }
 .st-field { display: flex; flex-direction: column; gap: 6px; font-size: 14px; color: var(--mu); min-width: 0; }
@@ -75,3 +76,6 @@
 .st-meta { font-size: 12px; color: var(--mu); }
 @keyframes st-up { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .st-sheet { animation: none; } .st-btn:active { transform: none; } }
+
+/* A folha rola por dentro; nenhum filho encolhe para caber (iPhone, 2026-11-07). */
+.st-sheet > * { flex-shrink: 0; }

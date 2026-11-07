@@ -73,6 +73,7 @@ const T = {
     answerHint: 'Toque num item para dizer se a casa tem.',
     markedBy: (n: string) => `Marcado por ${n || 'outra conta da casa'}`,
     saved: 'Registrado para a casa',
+    savedHave: 'Registrado para a casa · toque no item para marca e validade',
     saveError: 'Não foi possível gravar. Tente de novo.',
     nextAction: 'Próxima ação',
     nextWater: (l: number) => `Garantir mais ${l} L de água`,
@@ -122,6 +123,7 @@ const T = {
     answerHint: 'Tap an item to tell us if your home has it.',
     markedBy: (n: string) => `Marked by ${n || 'someone in your home'}`,
     saved: 'Recorded for your home',
+    savedHave: 'Recorded for your home · tap the item for brand and expiration',
     saveError: 'Could not save. Try again.',
     nextAction: 'Next action',
     nextWater: (l: number) => `Add ${l} more L of water`,
@@ -255,9 +257,10 @@ export default function SignalPage({ slug, preview }: SignalPageProps) {
     applyState(openKey, d.state ?? null)
     // Os totais da casa (kit médico, rádio, água) vêm da projeção do estoque.
     await reload()
-    // "Tenho" deixa a folha aberta: ela mostra o item criado e oferece detalhar (D-I1).
-    if (answer !== 'have') setOpenKey(null)
-    flash(t.saved)
+    // Toda resposta grava e fecha a folha (dono, 2026-11-07). O detalhe fica a
+    // um toque: reabrir o item mostra o que a casa tem (D-I1).
+    setOpenKey(null)
+    flash(answer === 'have' ? t.savedHave : t.saved)
     return null
   }
 

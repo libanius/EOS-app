@@ -156,9 +156,15 @@ Para itens de ter ou não ter (`PRESENCE`):
 - A resposta "Tenho" continua gravada em `requirements` (histórico de quem
   respondeu e quando), mas **quem decide o "tem" é o estoque**: remover o último
   item faz o Sinal voltar a "falta" mesmo com a linha em `met`.
-- Depois de "Tenho", a folha **fica aberta** mostrando o item em "Na casa";
+- ~~Depois de "Tenho", a folha fica aberta~~ — **mudado pelo dono em
+  2026-11-07** (testando no iPhone): "Tenho" **grava e fecha a folha**, como as
+  outras respostas, e o aviso diz "Registrado para a casa · toque no item para
+  marca e validade". Reabrir o item mostra o que a casa tem em "Na casa";
   tocar nele abre a ficha do estoque (a mesma de "O que eu tenho") para marca,
-  modelo e validade (D-I1). Os outros botões fecham a folha.
+  modelo e validade (D-I1 continua: grava já, detalha depois).
+- A folha do Sinal e a ficha do estoque ficam **acima da barra de navegação**
+  e rolam por dentro: no iPhone a barra cobria o fim da folha e os botões de
+  baixo ficavam inalcançáveis (achado do dono, 2026-11-07).
 - Na pergunta de remoção, os itens vêm **marcados**; tocar em "Remover
   selecionados" é a confirmação. "Manter" não muda nada.
 - A linha do checklist mostra o item que cobre ("Rádio · Midland ER310",
