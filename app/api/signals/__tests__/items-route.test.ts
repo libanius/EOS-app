@@ -25,8 +25,9 @@ jest.mock('@/lib/supabase/admin', () => ({
 jest.mock('@/lib/error-log', () => ({ logError: jest.fn() }))
 // INVENTORY-001 / INV-T04: o estoque da casa, uma Casa só.
 let stockItems: Array<Record<string, unknown>> = []
+const touchedLog: string[][] = []
 const stockHouse = () => ({
-  me: 'me', accountIds: ['me'], names: new Map([['me', '']]), coverage: new Map([['me', 1]]),
+  me: 'me', accountIds: ['me', 'daniela'], names: new Map([['me', ''], ['daniela', 'Daniela']]), coverage: new Map([['me', 1]]),
   homeRootIds: ['casa'],
   locations: [{ id: 'casa', parentId: null, name: 'Casa', kind: 'HOME', isDefault: true, profileId: 'me', holdingId: null }],
   items: stockItems,
@@ -39,8 +40,10 @@ jest.mock('@/lib/inventory-server', () => {
     serializeHouse: (h: { items: unknown[] }) => ({ items: h.items }),
     defaultHomeOf: () => 'casa',
     ensureDefaultHome: async () => 'casa',
-    withStockWrite: async (_a: unknown, _u: string, _t: unknown, w: (h: unknown) => Promise<unknown>) =>
-      ({ result: await w(stockHouse()), house: stockHouse() }),
+    withStockWrite: async (_a: unknown, _u: string, t: (h: unknown) => string[], w: (h: unknown) => Promise<unknown>) => {
+      touchedLog.push(t(stockHouse()))
+      return { result: await w(stockHouse()), house: stockHouse() }
+    },
   }
 })
 let houseNow: Record<string, unknown> = { lanterna: { status: 'met', by: { name: '', isMe: true } } }
@@ -72,6 +75,17 @@ it('critério 5 (INVENTORY-001): "Tenho" sem item na casa cria 1 unidade no esto
   }) }])
   expect(reqWrites()).toEqual([{ table: 'requirements', op: 'insert', payload: expect.objectContaining({ status: 'met', provenance: 'PROTOCOL', provenance_ref: 'fortress' }) }])
   expect((await res.json()).house).toBeDefined()
+})
+
+it('"Tenho" trava a casa toda (duas pessoas juntas não criam dois itens)', async () => {
+  touchedLog.length = 0
+  await POST(req({ slug: 'fortress', resourceKey: 'lanterna', answer: 'have' }))
+  expect(touchedLog).toEqual([['me', 'daniela']])
+})
+
+it('dinheiro nasce em moeda, não em "un"', async () => {
+  await POST(req({ slug: 'fortress', resourceKey: 'dinheiro', answer: 'have' }))
+  expect(writes.find(w => w.table === 'holdings')?.payload).toMatchObject({ resource_key: 'dinheiro', unit: 'USD' })
 })
 
 it('critério 6 / E4: "Tenho" com o item já na casa não cria outro', async () => {

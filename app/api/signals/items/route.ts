@@ -24,7 +24,7 @@ import {
 import type { AcquisitionStatus } from '@/lib/acquisition'
 import { logError } from '@/lib/error-log'
 import { coveringItems } from '@/lib/inventory'
-import { catalogEntry, categoryOf } from '@/lib/resource-catalog'
+import { catalogEntry, categoryOf, unitsFor } from '@/lib/resource-catalog'
 import { defaultHomeOf, ensureDefaultHome, loadHouse, serializeHouse, StockError, withStockWrite } from '@/lib/inventory-server'
 
 export const dynamic = 'force-dynamic'
@@ -75,7 +75,9 @@ export async function POST(req: NextRequest) {
       }
     }
     if (answer === 'have') {
-      await withStockWrite(admin, userId, () => [userId], async stock => {
+      // A checagem "a casa já tem?" vale para a casa toda: trava todas as contas,
+      // senão duas pessoas tocando "Tenho" juntas criavam dois itens (PR #20).
+      await withStockWrite(admin, userId, h => h.accountIds, async stock => {
         if (coveringItems(stock.items, stock.locations, stock.homeRootIds, resourceKey).length) return
         const home = defaultHomeOf(stock, userId) ?? (await ensureDefaultHome(admin, userId))
         const entry = catalogEntry(resourceKey)
@@ -86,7 +88,8 @@ export async function POST(req: NextRequest) {
           label: check.item.label[lang],
           kind: entry?.kind ?? 'DURABLE',
           quantity: 1,
-          unit: 'un',
+          // A unidade do recurso (dinheiro em moeda, não em "un") — PR #20.
+          unit: unitsFor(resourceKey)[0],
           category: categoryOf(resourceKey),
           provenance: 'PROTOCOL',
           provenance_ref: slug,
