@@ -1,5 +1,5 @@
 # SPEC — INVENTORY-001: Estoque único da casa
-Version: 1.3 | Status: **Ready** (revisado pelo dono em 2026-11-07, §2) | Author: Paulo Neto
+Version: 1.4 | Status: **Ready** (revisado pelo dono em 2026-11-07, §2) | Author: Paulo Neto
 Depende de: docs/37 §13–§19 (Holding × Requirement), PREP-T04 (tabelas `holdings` e `locations`, aplicadas), SIGNAL-002 (Done)
 
 > Regra 3: os edge cases estão aqui (§7) e não devem ser descobertos no código.
@@ -348,6 +348,9 @@ cobre nenhum Sinal.
 | E22 | Dois rádios no mesmo lugar | Duas linhas. Possível porque a migração remove o índice "um recurso por lugar". |
 | E23 | Conta com 90 refeições, sozinha (30 dias); cadastra um dependente | O recálculo roda na criação do dependente: `food_days` vira 15. A casa continua lendo 30 pessoa-dias. Sem isso, leria 60. |
 | E24 | Primeiro toque no estoque de uma conta cujo `resource_inventory` diz 40 L e o backfill diz 20 L | Reconcilia antes: o item "Água (estoque informado)" vai para 40 L; depois aplica a edição. |
+| E25 | Duas escritas juntas na mesma conta (toque duplo; Paulo e Daniela salvando ao mesmo tempo) | Uma de cada vez: trava curta por conta no banco (`acquire_stock_lock`, migração `20261108010000`), tomada antes de ler e solta depois de recalcular. Quem espera tenta por ~5 s e recebe 409 "Alguém da casa está gravando no estoque agora". No máximo um "estoque informado" por conta e recurso (índice único parcial). Achado do Codex no PR #18. |
+| E26 | A leitura da casa falha (`getHousehold` com `known: false`) | Nenhuma escrita no estoque: 503 "Não foi possível ler a casa agora". Nunca presumir uma pessoa — a reconciliação cortaria a comida informada. Achado do Codex no PR #18. |
+| E27 | A reconciliação antes de uma mudança de cobertura falha | A mudança (dependente, casa) acontece; o recálculo depois **não** roda para a conta que não foi reconciliada. Ela fica como estava, nunca sobrescrita pelo backfill. Achado do Codex no PR #18. |
 
 ---
 

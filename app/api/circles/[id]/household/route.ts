@@ -20,7 +20,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { beginCoverageChange, endCoverageChange } from '@/lib/inventory-server'
+import { beginCoverageChange, endCoverageChange, mergeCoverageSnaps, type CoverageSnap } from '@/lib/inventory-server'
 import { logError } from '@/lib/error-log'
 
 export const dynamic = 'force-dynamic'
@@ -82,7 +82,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
         : { household_status: 'none', household_requested_by: null, household_requested_at: null, household_confirmed_at: null }
 
   // INVENTORY-001 E23: confirmar ou sair muda quem a casa soma e quem cada conta cobre.
-  let coverageSnap: string[] | null = null
+  let coverageSnap: CoverageSnap | null = null
   if (acao !== 'pedir') {
     coverageSnap = await beginCoverageChange(auth.user.id)
     if (acao === 'confirmar') {
@@ -95,7 +95,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
         .neq('user_id', auth.user.id)
         .limit(1)
       const outro = (morador?.[0] as { user_id?: string } | undefined)?.user_id
-      if (outro) coverageSnap = coverageSnap.concat(await beginCoverageChange(outro))
+      if (outro) coverageSnap = mergeCoverageSnaps(coverageSnap, await beginCoverageChange(outro))
     }
   }
   const { data, error } = await admin

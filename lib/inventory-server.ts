@@ -14,6 +14,7 @@
  *   4. recalcular o `resource_inventory` de cada conta tocada.
  */
 
+import { randomUUID } from 'crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getHousehold } from './household'
 import { createAdminClient } from './supabase/admin'
@@ -116,6 +117,9 @@ export async function ensureDefaultHome(admin: SupabaseClient, profileId: string
 /** Lê a casa de quem pede: contas confirmadas, cobertura, lugares e itens de todas. */
 export async function loadHouse(admin: SupabaseClient, userId: string): Promise<House> {
   const household = await getHousehold(userId)
+  // Casa não lida: nunca inventar "uma pessoa" (achado P1 do Codex no PR #18).
+  // Com cobertura chutada, a reconciliação cortaria a comida informada.
+  if (!household.known) throw new StockError(503, 'Não foi possível ler a casa agora. Tente de novo.')
   const names = new Map<string, string>()
   const coverage = new Map<string, number>()
   for (const p of household.people) {
@@ -259,15 +263,50 @@ export async function withStockWrite<T>(
   touched: (house: House) => string[],
   write: (house: House) => Promise<T>,
 ): Promise<{ result: T; house: House }> {
-  let house = await loadHouse(admin, userId)
-  const accounts = Array.from(new Set(touched(house))).filter(a => house.accountIds.includes(a))
-  let reconciled = false
-  for (const a of accounts) reconciled = (await reconcileAccount(admin, house, a)) || reconciled
-  if (reconciled) house = await loadHouse(admin, userId)
-  const result = await write(house)
-  house = await loadHouse(admin, userId)
-  for (const a of accounts) await recomputeAccount(admin, house, a)
-  return { result, house }
+  const first = await loadHouse(admin, userId)
+  const accounts = Array.from(new Set(touched(first))).filter(a => first.accountIds.includes(a)).sort()
+  const token = accounts.length ? await acquireStockLock(admin, accounts) : null
+  try {
+    // Relê DEPOIS da trava: o que outra requisição gravou entra na conta (E25).
+    let house = token ? await loadHouse(admin, userId) : first
+    let reconciled = false
+    for (const a of accounts) reconciled = (await reconcileAccount(admin, house, a)) || reconciled
+    if (reconciled) house = await loadHouse(admin, userId)
+    const result = await write(house)
+    house = await loadHouse(admin, userId)
+    for (const a of accounts) await recomputeAccount(admin, house, a)
+    return { result, house }
+  } finally {
+    if (token) await releaseStockLock(admin, token)
+  }
+}
+
+/* ── Trava de escrita por conta (E25, migração 20261108010000) ─────────── */
+
+const LOCK_TRIES = 20
+const LOCK_WAIT_MS = 250
+
+/**
+ * Uma escrita de cada vez por conta: duas requisições juntas (toque duplo, duas
+ * pessoas da casa) liam o mesmo estoque e podiam criar dois "estoque informado"
+ * — 40 L e 50 L virando 90 L. Tudo ou nada, contas em ordem (sem impasse),
+ * validade curta para uma requisição que morrer não segurar a casa.
+ */
+export async function acquireStockLock(admin: SupabaseClient, accounts: string[]): Promise<string> {
+  const token = randomUUID()
+  for (let i = 0; i < LOCK_TRIES; i++) {
+    const { data, error } = await admin.rpc('acquire_stock_lock', { p_keys: accounts, p_token: token, p_ttl_ms: 15000 })
+    if (error) throw new Error(`acquire_stock_lock: ${error.message}`)
+    if (data === true) return token
+    await new Promise(r => setTimeout(r, LOCK_WAIT_MS))
+  }
+  throw new StockError(409, 'Alguém da casa está gravando no estoque agora. Tente de novo.')
+}
+
+export async function releaseStockLock(admin: SupabaseClient, token: string): Promise<void> {
+  const { error } = await admin.rpc('release_stock_lock', { p_token: token })
+  // Falhar ao soltar não desfaz a escrita; a trava vence sozinha em 15 s.
+  if (error) await logError('inventory/release-lock', error)
 }
 
 /**
@@ -278,41 +317,59 @@ export async function withStockWrite<T>(
  *   ...mudança...
  *   await endCoverageChange(userId, snap)            // DEPOIS
  *
- * Antes: reconcilia a casa com a cobertura ANTIGA, para o primeiro recálculo
- * não trocar o número de hoje pelo de agosto (E24). Depois: recalcula todas as
- * contas que estavam na casa e a de quem agiu, cada uma na casa em que ficou.
+ * Antes: trava e reconcilia a casa com a cobertura ANTIGA, para o recálculo
+ * não trocar o número de hoje pelo de agosto (E24). Depois: recalcula SÓ as
+ * contas que foram reconciliadas (achado P2 do Codex no PR #18 — conta não
+ * reconciliada fica como está, nunca é sobrescrita pelo backfill) e solta.
  *
  * O estoque nunca derruba a ação principal: falha aqui é registrada e segue.
  */
-export async function beginCoverageChange(userId: string): Promise<string[]> {
+export type CoverageSnap = { reconciled: string[]; tokens: string[] }
+
+export function mergeCoverageSnaps(a: CoverageSnap, b: CoverageSnap): CoverageSnap {
+  return { reconciled: Array.from(new Set([...a.reconciled, ...b.reconciled])), tokens: [...a.tokens, ...b.tokens] }
+}
+
+export async function beginCoverageChange(userId: string): Promise<CoverageSnap> {
   const admin = createAdminClient()
-  if (!admin) return [userId]
+  if (!admin) return { reconciled: [], tokens: [] }
+  let token: string | null = null
   try {
+    const first = await loadHouse(admin, userId)
+    token = await acquireStockLock(admin, [...first.accountIds].sort())
     const house = await loadHouse(admin, userId)
-    for (const a of house.accountIds) await reconcileAccount(admin, house, a)
-    return house.accountIds
+    const reconciled: string[] = []
+    for (const a of house.accountIds) {
+      await reconcileAccount(admin, house, a)
+      reconciled.push(a)
+    }
+    return { reconciled, tokens: [token] }
   } catch (e) {
     await logError('inventory/coverage-begin', e, { userId })
-    return [userId]
+    if (token) await releaseStockLock(admin, token)
+    return { reconciled: [], tokens: [] }
   }
 }
 
-export async function endCoverageChange(userId: string, before: string[]): Promise<void> {
+export async function endCoverageChange(userId: string, snap: CoverageSnap): Promise<void> {
   const admin = createAdminClient()
   if (!admin) return
   try {
+    const allowed = new Set(snap.reconciled)
     const done = new Set<string>()
-    for (const id of Array.from(new Set([userId, ...before]))) {
+    for (const id of snap.reconciled.length ? [userId, ...snap.reconciled] : []) {
       if (done.has(id)) continue
       const house = await loadHouse(admin, id)
       for (const a of house.accountIds) {
-        if (done.has(a)) continue
+        if (done.has(a) || !allowed.has(a)) continue
         await recomputeAccount(admin, house, a)
         done.add(a)
       }
     }
   } catch (e) {
     await logError('inventory/coverage-end', e, { userId })
+  } finally {
+    for (const t of snap.tokens) await releaseStockLock(admin, t)
   }
 }
 
@@ -358,7 +415,7 @@ export function subtreeOf(house: House, locationId: string): Set<string> {
 
 /** Erro de regra de negócio com status HTTP: a rota devolve, não registra. */
 export class StockError extends Error {
-  constructor(public status: 400 | 403 | 404 | 409 | 422, message: string) {
+  constructor(public status: 400 | 403 | 404 | 409 | 422 | 503, message: string) {
     super(message)
   }
 }
