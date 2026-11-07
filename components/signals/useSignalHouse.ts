@@ -9,9 +9,11 @@
  * vinham de `/api/checklist`, que só enxerga a minha conta.
  */
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { HouseInput } from '@/lib/signals'
 import { houseKeys, type HouseItemState } from '@/lib/signal-house'
+import { coveringItems } from '@/lib/inventory'
+import type { ApiHouse, ApiItem } from '@/lib/stock-view'
 
 export type SignalHouse = {
   loading: boolean
@@ -27,6 +29,12 @@ export type SignalHouse = {
   reload: () => Promise<void>
   /** Aplica na hora a resposta que o servidor devolveu (§3.2). */
   applyState: (resourceKey: string, state: HouseItemState | null) => void
+  /** O estoque da casa (INVENTORY-001). `null` quando não deu para ler. */
+  stock: ApiHouse | null
+  /** Itens da casa que cobrem a chave: mesma chave, quantidade > 0, sob a Casa. */
+  covering: (resourceKey: string) => ApiItem[]
+  /** Troca o estoque pelo que o servidor devolveu, sem reler. */
+  applyStock: (stock: ApiHouse) => void
 }
 
 type HouseholdApi = {
@@ -54,16 +62,18 @@ export function isBaseline(row: ChecklistApiRow): boolean {
   return row.kit_slug === null && row.scenario_id === null
 }
 
-type Data = { loading: boolean; house: HouseInput | null; states: Record<string, HouseItemState>; accounts: number }
+type Data = { loading: boolean; house: HouseInput | null; states: Record<string, HouseItemState>; accounts: number; stock: ApiHouse | null }
 
 export function useSignalHouse(): SignalHouse {
-  const [data, setData] = useState<Data>({ loading: true, house: null, states: {}, accounts: 1 })
+  const [data, setData] = useState<Data>({ loading: true, house: null, states: {}, accounts: 1, stock: null })
 
   const load = useCallback(async () => {
-    const [hRes, sRes] = await Promise.allSettled([
+    const [hRes, sRes, kRes] = await Promise.allSettled([
       fetch('/api/household', { cache: 'no-store' }).then(r => (r.ok ? (r.json() as Promise<HouseholdApi>) : null)),
       fetch('/api/signals/house-state', { cache: 'no-store' }).then(r => (r.ok ? (r.json() as Promise<HouseStateApi>) : null)),
+      fetch('/api/holdings', { cache: 'no-store' }).then(r => (r.ok ? (r.json() as Promise<ApiHouse>) : null)),
     ])
+    const k = kRes.status === 'fulfilled' ? kRes.value : null
     const h = hRes.status === 'fulfilled' ? hRes.value : null
     const s = sRes.status === 'fulfilled' ? sRes.value : null
     const house: HouseInput | null = h
@@ -76,7 +86,7 @@ export function useSignalHouse(): SignalHouse {
           hasCommunicationDevice: Boolean(h.inventory?.hasCommunicationDevice),
         }
       : null
-    setData({ loading: false, house, states: s?.items ?? {}, accounts: Number(s?.accounts) || 1 })
+    setData({ loading: false, house, states: s?.items ?? {}, accounts: Number(s?.accounts) || 1, stock: k })
   }, [])
 
   useEffect(() => {
@@ -98,6 +108,29 @@ export function useSignalHouse(): SignalHouse {
     })
   }, [])
 
-  const { metKeys, notApplicableKeys } = houseKeys(data.states)
-  return { ...data, metKeys, notApplicableKeys, reload: load, applyState }
+  const applyStock = useCallback((stock: ApiHouse) => setData(d => ({ ...d, stock })), [])
+
+  const covering = useCallback(
+    (key: string): ApiItem[] => {
+      const st = data.stock
+      if (!st) return []
+      const ids = new Set(coveringItems(st.items as never, st.locations, st.homeRootIds, key).map(i => i.id))
+      return st.items.filter(i => ids.has(i.id))
+    },
+    [data.stock],
+  )
+
+  /*
+   * INVENTORY-001 §3.4 (INV-T04): "tem" é ter o item no estoque da casa. A
+   * resposta "Tenho" em `requirements` fica como histórico; quem decide é o
+   * estoque. "Não se aplica" continua sendo resposta.
+   */
+  const { metKeys, notApplicableKeys } = useMemo(() => {
+    const fromAnswers = houseKeys(data.states)
+    if (!data.stock) return fromAnswers // sem estoque lido, as respostas seguram a tela
+    const met = new Set<string>()
+    for (const i of data.stock.items) if (covering(i.resourceKey).length) met.add(i.resourceKey)
+    return { metKeys: met, notApplicableKeys: fromAnswers.notApplicableKeys }
+  }, [data.states, data.stock, covering])
+  return { ...data, metKeys, notApplicableKeys, reload: load, applyState, covering, applyStock }
 }

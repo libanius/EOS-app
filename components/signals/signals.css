@@ -263,3 +263,12 @@
   .sg-sheet { animation: none; }
   .sg-card:active, .sg-btn:active, .sg-pill:active { transform: none; }
 }
+
+/* INV-T04: o estoque na folha do Sinal */
+.sg-stock-item { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; width: 100%; text-align: left; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--sg-line); background: var(--sg-surface); color: var(--sg-ink); font: inherit; cursor: pointer; min-height: 52px; }
+.sg-stock-item:disabled { cursor: default; }
+.sg-stock-main { min-width: 0; display: flex; flex-direction: column; gap: 2px; overflow-wrap: anywhere; }
+.sg-stock-qty { flex: 0 0 auto; max-width: 45%; text-align: right; font-weight: 600; font-size: 15px; overflow-wrap: anywhere; }
+.sg-remove { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 12px; border: 1px solid rgba(240, 107, 96, 0.45); background: rgba(240, 107, 96, 0.06); }
+.sg-check { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 16px; }
+.sg-check input { width: 22px; height: 22px; accent-color: var(--sg-mint); flex: 0 0 auto; }

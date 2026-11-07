@@ -13,6 +13,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { catalogEntry, isCustomKey, suggest, unitsFor, type CatalogEntry } from '@/lib/resource-catalog'
 import { FOOD_TYPES, mealsOf, type FoodType } from '@/lib/inventory'
 import { mealsText, placeOptions, removalLeavesHouseWithout, type ApiHouse, type ApiItem } from '@/lib/stock-view'
+import './stock.css'
 
 type Lang = 'pt' | 'en'
 
@@ -70,6 +71,9 @@ type Props = {
   house: ApiHouse
   item: ApiItem | null
   defaultLocationId: string
+  /** Item novo já com o recurso escolhido (a folha do Sinal: "+ Adicionar" em água ou comida). */
+  initialResourceKey?: string
+  initialLabel?: string
   onClose: () => void
   onSave: (payload: ItemPayload, id: string | null) => Promise<string | null>
   onRemove: (id: string) => Promise<string | null>
@@ -78,13 +82,13 @@ type Props = {
 const num = (s: string) => Number(s.replace(',', '.'))
 const isNum = (s: string) => s.trim() !== '' && Number.isFinite(num(s)) && num(s) >= 0
 
-export default function StockItemSheet({ lang, house, item, defaultLocationId, onClose, onSave, onRemove }: Props) {
+export default function StockItemSheet({ lang, house, item, defaultLocationId, initialResourceKey, initialLabel, onClose, onSave, onRemove }: Props) {
   const t = T[lang]
   const titleRef = useRef<HTMLHeadingElement>(null)
   const editing = item !== null
 
-  const [label, setLabel] = useState(item?.label ?? '')
-  const [resourceKey, setResourceKey] = useState<string | null>(item?.resourceKey ?? null)
+  const [label, setLabel] = useState(item?.label ?? initialLabel ?? '')
+  const [resourceKey, setResourceKey] = useState<string | null>(item?.resourceKey ?? initialResourceKey ?? null)
   const entry: CatalogEntry | null = resourceKey ? catalogEntry(resourceKey) : null
   const measure = entry?.measure ?? 'count'
   const units = resourceKey ? unitsFor(resourceKey) : ['un']
