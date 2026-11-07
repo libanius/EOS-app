@@ -170,12 +170,15 @@ invoices.
 | name | text | não vazio |
 | kind | text | `HOME`, `FARM`, `WAREHOUSE`, `OFFICE`, `VEHICLE`, `RV`, `BOAT`, `STORAGE_UNIT`, `SECOND_RESIDENCE`, `CUSTOM`. **`HOME` é o único com efeito de cálculo** — a autonomia da casa lê consumíveis sob ele (D-156) |
 | is_default | boolean | A casa criada pelo sistema. Índice parcial único garante **uma** por perfil |
+| holding_id | uuid | FK → holdings.id (`ON DELETE SET NULL`), único quando presente. **Mochila**: o lugar aponta para o item que ele é; mover o lugar move tudo dentro (INVENTORY-001 / D-236) |
 | lat, lng | double precision | opcionais |
 | created_at | timestamptz | |
 
 ### holdings
-> Aplicada em produção em 2026-08-13 (PREP-T04 / D-160). Nasce vazia: enquanto
-> estiver assim, `lib/holdings-store.ts` projeta `resource_inventory`.
+> Aplicada em produção em 2026-08-13 (PREP-T04 / D-160). **INVENTORY-001 (D-236,
+> migração `20261108000000_inventory_stock.sql`)**: vira o **estoque único da
+> casa**, item a item, e `resource_inventory` passa a ser a soma dele
+> (`lib/inventory.ts` → `projectInventory`).
 
 | Column | Type | Notes |
 |---|---|---|
@@ -187,9 +190,19 @@ invoices.
 | kind | text | `CONSUMABLE` (quantidade, contada uma vez por lugar) ou `DURABLE` (presença; cobre vários kits alcançáveis dali) |
 | quantity | numeric(12,3) | ≥ 0 |
 | unit | text | **Unidade é dado, não convenção** (D-158): `5` + `gal` |
+| brand, model, notes | text | opcionais (INVENTORY-001) |
+| expires_on | date | validade **opcional**; aviso em ≤ 30 dias (D-I4) |
+| category | text | categoria do catálogo (`lib/resource-catalog.ts`) |
+| food_type | text | só comida: `arroz`, `feijao`, `macarrao`, `aveia`, `farinha`, `acucar`, `leite-po`, `castanhas`, `enlatado`, `pronta`, `outro` — define as kcal/kg da estimativa (D-I6) |
+| meals_override | numeric | ≥ 0; refeições digitadas à mão, valem no lugar da estimativa |
+| provenance | text | mesmo enum de `requirements.provenance` + `BACKFILL` (linhas de agosto). Padrão `MANUAL` |
+| provenance_ref | text | ex.: slug do Sinal quando `PROTOCOL` |
+| created_by, updated_by | uuid | FK → profiles.id (`ON DELETE SET NULL`). A casa toda edita; o item guarda quem criou e quem mexeu (D-I5) |
 | created_at, updated_at | timestamptz | `updated_at` por trigger |
 
-Único: `(profile_id, location_id, resource_key)` — um recurso, um lugar, uma linha.
+~~Único: `(profile_id, location_id, resource_key)`~~ — **removido em INVENTORY-001**:
+cada linha é um item (duas mochilas na mesma garagem, dois rádios em casa).
+Quantidade gravada é o total (20 gal); comida em gramas.
 
 ### scenarios
 | Column | Type | Notes |

@@ -28,6 +28,12 @@
  * de onde o app lê. O legado continua sendo a verdade até o cutover (T10d).
  * Se o resultado não agradar, as tabelas novas podem ser esvaziadas sem
  * consequência.
+ *
+ * ⚠️ INVENTORY-001 (2026-11-07) removeu o índice único
+ * `(profile_id, location_id, resource_key)`: o estoque passou a ter um item por
+ * linha. Este script já rodou (PREP-T10c) e NÃO deve rodar de novo — sem o
+ * índice, o `upsert` abaixo falha em vez de atualizar. Falhar é o certo: um
+ * backfill novo duplicaria itens.
  */
 import { config } from 'dotenv'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'

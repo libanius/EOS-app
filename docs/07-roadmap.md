@@ -451,13 +451,27 @@ segunda conta de prontidão.*
 | BASE-001 | Redesenho de `/preparedness` com o padrão do protótipo | DRAFT | Depende de HOLDING-HISTORY-001. |
 | SYSTEMS-001 | Sistemas da casa: internet real; energia, água e celular relatados pelo círculo | DRAFT | LoRa segue bloqueado por G-05; satélite é status manual. |
 
+## Estoque único da casa (INVENTORY-001)
+
+> Spec **Ready**: `specs/INVENTORY-001-estoque-unico.md` (D-236, revisado pelo dono em 2026-11-07).
+
+| Task | Entrega | Status | Notas |
+|---|---|---|---|
+| INV-T00 | Revisão do spec pelo dono → Ready | ✅ COMPLETE | 2026-11-07 — D-I5 (casa toda edita), D-I6 (comida estimada pelo peso), validade opcional. |
+| INV-T01 | Migração + catálogo + projeção pura | ✅ COMPLETE | 2026-11-07 — `20261108000000_inventory_stock.sql` testada duas vezes em Postgres 16 (`scripts/inventory-sql-test.sh`, 9/9); `lib/resource-catalog.ts`, `lib/inventory.ts`, 26 testes. Achados (spec v1.1): o índice "um recurso por lugar" do PREP-T04 impedia duas mochilas — a migração o remove; casa com várias contas tem várias Casas padrão (E20); a conta do arroz no spec estava errada (27, não 26). Migração **aplicada em produção em 2026-11-07** com autorização do dono e conferida por SQL (11 colunas, `locations.holding_id`, índice antigo removido, 17 linhas `BACKFILL`). |
+| INV-T02 | Virada atômica: API do estoque e dos lugares + reconciliação + `/api/inventory` escreve itens + recálculo quando a cobertura muda | PENDING | Spec v1.2: a INV-T06 foi incorporada aqui (achado do Codex no PR #17). |
+| INV-T03 | Tela do estoque (lugares, mochilas) | BLOCKED | |
+| INV-T04 | Sinais lendo o estoque | BLOCKED | |
+| INV-T05 | Validade e Pilot | BLOCKED | |
+| INV-T06 | ~~Virada~~ | ↪ INCORPORADA | Na INV-T02. |
+
 ## Marcar como tenho (SIGNAL-002)
 
 > Spec **Ready**: `specs/SIGNAL-002-marcar-como-tenho.md` (D-235, decisões do dono em 2026-11-07).
 
 | Task | Entrega | Status | Notas |
 |---|---|---|---|
-| SIGNAL-002-T01 | Migração `PROTOCOL` em `requirements.provenance`; docs 06 e 37 §18 | ✅ CODE COMPLETE | `20261107000000_requirements_protocol_provenance.sql`, testada duas vezes em Postgres 16. **Aplicar em produção ANTES do merge** (sem ela, "Tenho" num item novo é recusado pelo banco). |
+| SIGNAL-002-T01 | Migração `PROTOCOL` em `requirements.provenance`; docs 06 e 37 §18 | ✅ COMPLETE | `20261107000000_requirements_protocol_provenance.sql`. Aplicada em produção em 2026-11-07 e conferida por SQL; PR #16 juntado depois. |
 | SIGNAL-002-T02 | Funções puras (estado da casa, respostas) | ✅ COMPLETE | `lib/signal-house.ts`, 9 testes. |
 | SIGNAL-002-T03 | `GET /api/signals/house-state`, `POST /api/signals/items` | ✅ COMPLETE | `lib/signal-house-server.ts`; 5 testes de rota (origem, preservação, idempotência, marca antiga, 404/409/422). |
 | SIGNAL-002-T04 | Folha do item e leitura pela casa | ✅ COMPLETE | `ItemSheet`; Sinais leem `house-state` em vez de `/api/checklist`; legenda das cores no título; "Marcado por <nome>" na linha. |
