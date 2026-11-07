@@ -12,6 +12,11 @@ vai sempre para a linha de quem respondeu (RLS). Fora dos Sinais (O que falta,
 Pilot), cada conta ainda vê só as próprias linhas: juntar no app inteiro é outro
 spec. Água e comida já eram da casa.
 
+**Quantidade acima da meta não vira fração.** Na lista do Sinal, água e comida
+acima do degrau mostram "o que tem · meta" ("36 refeições · meta 27"). "36 de 27"
+lia como erro. Tooltip de elemento colado na borda esquerda usa `.tip-start` (abre
+para a direita).
+
 **A resposta "Tenho" não é derivada.** docs/37 §19 diz que `met` é derivado de
 holdings, mas desde o D-176 o usuário marca à mão, e o SIGNAL-002 segue isso.
 Quando o PREP-T10c tornar `met` derivado, a folha do Sinal passa a criar o
