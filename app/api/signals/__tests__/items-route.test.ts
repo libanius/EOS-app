@@ -17,6 +17,22 @@ jest.mock('@/lib/supabase/server', () => ({
 }))
 jest.mock('@/lib/supabase/admin', () => ({ createAdminClient: () => ({}) }))
 jest.mock('@/lib/error-log', () => ({ logError: jest.fn() }))
+// INVENTORY-001: kit médico e rádio passam pelo estoque. Casa vazia, uma conta.
+let stockItems: Array<Record<string, unknown>> = []
+jest.mock('@/lib/inventory-server', () => {
+  class StockError extends Error { constructor(public status: number, m: string) { super(m) } }
+  return {
+    StockError,
+    accountHomeItems: () => stockItems,
+    defaultHomeOf: () => 'casa',
+    ensureDefaultHome: async () => 'casa',
+    applyStockOps: async (_a: unknown, _p: string, _l: string, ops: unknown[]) => {
+      writes.push({ table: 'holdings', op: 'stock', payload: ops })
+    },
+    withStockWrite: async (_a: unknown, _u: string, _t: unknown, w: (h: unknown) => Promise<unknown>) =>
+      ({ result: await w({ coverage: new Map([['me', 1]]) }), house: {} }),
+  }
+})
 let houseNow: Record<string, unknown> = { lanterna: { status: 'met', by: { name: '', isMe: true } } }
 jest.mock('@/lib/signal-house-server', () => {
   const { signalBySlug } = jest.requireActual('@/lib/signals-content')
@@ -61,13 +77,24 @@ it('E15: minha linha já é met, mas a Daniela respondeu needed depois — regra
   expect(writes).toEqual([{ table: 'requirements', op: 'update', payload: { status: 'met', updated_at: expect.any(String) } }])
 })
 
-it('critério 8: kit médico também grava a marca antiga do inventário', async () => {
+it('critério 8 (INVENTORY-001): kit médico entra e sai pelo estoque, nunca direto no inventário', async () => {
   await POST(req({ slug: 'fortress', resourceKey: 'kit-medico', answer: 'have' }))
-  expect(writes[1]).toEqual({ table: 'resource_inventory', op: 'upsert', payload: expect.objectContaining({ profile_id: 'me', has_medical_kit: true }) })
+  expect(writes[1]).toEqual({ table: 'holdings', op: 'stock', payload: [expect.objectContaining({ op: 'create', item: expect.objectContaining({ resourceKey: 'kit-medico', quantity: 1 }) })] })
+  expect(writes.some(w => w.table === 'resource_inventory')).toBe(false)
+
   writes.length = 0
   existing = { id: 'r2', status: 'met' }
+  stockItems = [{ id: 'b1', resourceKey: 'kit-medico', quantity: 1, provenance: 'BACKFILL' }]
   await POST(req({ slug: 'fortress', resourceKey: 'kit-medico', answer: 'need' }))
-  expect(writes[1]).toEqual({ table: 'resource_inventory', op: 'upsert', payload: expect.objectContaining({ has_medical_kit: false }) })
+  expect(writes[1]).toEqual({ table: 'holdings', op: 'stock', payload: [{ op: 'delete', id: 'b1' }] })
+
+  // Kit detalhado pela pessoa: "Ainda não tenho" não apaga nada (a folha pergunta, INV-T04).
+  writes.length = 0
+  stockItems = [{ id: 'm1', resourceKey: 'kit-medico', quantity: 1, provenance: 'MANUAL' }]
+  const res = await POST(req({ slug: 'fortress', resourceKey: 'kit-medico', answer: 'need' }))
+  expect(res.status).toBe(200)
+  expect(writes.filter(w => w.table === 'holdings')).toEqual([])
+  stockItems = []
 })
 
 it('critério 12: 404 fora do protocolo, 409 arquivado, 422 água — nada gravado', async () => {

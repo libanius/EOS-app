@@ -21,6 +21,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { beginCoverageChange, endCoverageChange } from '@/lib/inventory-server'
 import { formatAddress, isGeocodable, geocodeQuery, type Address } from '@/lib/address'
 import { logError } from '@/lib/error-log'
 import { enforceAiBudget } from '@/lib/rate-limit'
@@ -185,6 +186,7 @@ export async function POST(request: Request) {
     const pares: Array<{ owner_id: string; a_key: string; b_key: string }> = []
     let dependentesCriados = 0
     let convitesGuardados = 0
+    const coverageSnap = await beginCoverageChange(auth.user.id) // INVENTORY-001 E23
 
     for (const m of moradores) {
       const parecidos = findSimilar(m.name, jaMoram)
@@ -273,6 +275,8 @@ export async function POST(request: Request) {
       // Falhar aqui só faz o alerta perguntar de novo — não vale derrubar o salvamento.
       await admin.from('household_distinct_pairs').upsert(pares, { ignoreDuplicates: true }).then(() => {}, () => {})
     }
+
+    if (dependentesCriados) await endCoverageChange(auth.user.id, coverageSnap) // INVENTORY-001 E23
 
     return NextResponse.json({
       ok: true,

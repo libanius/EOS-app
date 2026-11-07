@@ -22,6 +22,8 @@ import {
 } from '@/lib/signal-house'
 import type { AcquisitionStatus } from '@/lib/acquisition'
 import { logError } from '@/lib/error-log'
+import { legacyWritePlan } from '@/lib/inventory'
+import { accountHomeItems, applyStockOps, defaultHomeOf, ensureDefaultHome, StockError, withStockWrite } from '@/lib/inventory-server'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -87,12 +89,21 @@ export async function POST(req: NextRequest) {
       if (error) throw new Error(error.message)
     }
 
+    // Kit médico e rádio: a resposta passa pelo estoque (INVENTORY-001 E9),
+    // nunca direto em `resource_inventory`. "Ainda não tenho" com item
+    // detalhado no estoque não apaga nada: remover é escolha na folha (INV-T04).
     const flag = LEGACY_INVENTORY_FLAG[resourceKey]
     if (flag) {
-      const { error } = await supabase
-        .from('resource_inventory')
-        .upsert({ profile_id: userId, [flag]: answer === 'have', updated_at: new Date().toISOString() }, { onConflict: 'profile_id' })
-      if (error) throw new Error(error.message)
+      try {
+        await withStockWrite(admin, userId, () => [userId], async house => {
+          const plan = legacyWritePlan(accountHomeItems(house, userId), { [flag]: answer === 'have' }, house.coverage.get(userId) ?? 1)
+          if (!plan.ok) return
+          const home = defaultHomeOf(house, userId) ?? (await ensureDefaultHome(admin, userId))
+          await applyStockOps(admin, userId, home, plan.ops, userId)
+        })
+      } catch (e) {
+        if (!(e instanceof StockError)) throw e
+      }
     }
 
     const house = await readHouseState(admin, userId)

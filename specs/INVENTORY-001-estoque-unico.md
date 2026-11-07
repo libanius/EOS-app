@@ -1,5 +1,5 @@
 # SPEC — INVENTORY-001: Estoque único da casa
-Version: 1.2 | Status: **Ready** (revisado pelo dono em 2026-11-07, §2) | Author: Paulo Neto
+Version: 1.3 | Status: **Ready** (revisado pelo dono em 2026-11-07, §2) | Author: Paulo Neto
 Depende de: docs/37 §13–§19 (Holding × Requirement), PREP-T04 (tabelas `holdings` e `locations`, aplicadas), SIGNAL-002 (Done)
 
 > Regra 3: os edge cases estão aqui (§7) e não devem ser descobertos no código.
@@ -264,11 +264,11 @@ toque no estoque nunca troca o número de hoje pelo de agosto.
 | `GET /api/holdings` | Itens e lugares de todas as contas confirmadas da casa, com nome de quem criou; totais da casa. |
 | `POST /api/holdings` | Cria item `{ label, resourceKey, quantity, unit, locationId?, brand?, model?, notes?, expiresOn?, foodType?, mealsOverride?, provenance?, provenanceRef? }`. Sem `locationId` = Casa. Comida exige `foodType` (padrão `outro`). |
 | `PATCH /api/holdings/[id]` | Edita, muda quantidade ou move de lugar. |
-| `DELETE /api/holdings/[id]` | Remove. Se o item é uma mochila com itens, exige `{ moveTo }`. |
+| `DELETE /api/holdings/[id]` | Remove. Se o item é uma mochila com itens, exige `{ moveTo }` (no corpo ou em `?moveTo=`). |
 | `DELETE /api/locations/[id]` | Remove sublugar. Com itens ou sublugares dentro, exige `{ moveTo }`. Casa padrão: 422. |
 | `POST /api/locations` | Cria sublugar `{ name, parentId, kind }` ou mochila `{ name, bag: true, parentId }` (cria item + lugar). |
 | `PATCH /api/locations/[id]` | Renomeia ou move (muda `parent_id`). Recusa ciclo. |
-| `POST /api/signals/items` | Passa a criar item no "Tenho" (§3.4). Mesmo contrato do SIGNAL-002, mais `holdings` na resposta. |
+| `POST /api/signals/items` | Passa a criar item no "Tenho" (§3.4). Mesmo contrato do SIGNAL-002, mais `holdings` na resposta. **Na INV-T02** (achado da implementação, Regra 4): a marca de kit médico e rádio deixa de gravar direto em `resource_inventory` e passa pelo estoque como "estoque informado" — era o último escritor direto, e deixá-lo até a INV-T04 abriria a janela que a virada atômica fecha. "Ainda não tenho" com item detalhado não apaga nada. |
 | `POST /api/inventory` | **Continua aceitando** os números (telas legacy, Pilot). Grava um item "Estoque informado" por chave e recalcula; nunca apaga itens detalhados. Ver E9. |
 
 Todas: 401 sem sessão; 403 se o item ou lugar é de outra casa; 422 em

@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { beginCoverageChange, endCoverageChange } from '@/lib/inventory-server'
 import { ensureProfile } from '@/lib/ensure-profile'
 
 // ─── GET /api/family-members ──────────────────────────────────────────────────
@@ -65,6 +66,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Nome é obrigatório.' }, { status: 400 })
   }
 
+  const coverageSnap = await beginCoverageChange(user.id) // INVENTORY-001 E23
   const { data, error } = await supabase
     .from('family_members')
     .insert({
@@ -87,5 +89,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
+  await endCoverageChange(user.id, coverageSnap) // INVENTORY-001 E23
   return NextResponse.json({ member: data }, { status: 201 })
 }
