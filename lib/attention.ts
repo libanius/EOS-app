@@ -40,6 +40,8 @@ export type AttentionKind =
   | 'medical-kit'
   | 'comms'
   | 'checklist-essential'
+  | 'expired'
+  | 'expiring'
 
 export type AttentionItem = {
   kind: AttentionKind
@@ -52,6 +54,9 @@ export type AttentionItem = {
     percent?: number
     done?: number
     total?: number
+    /** Validade (INVENTORY-001 §3.6): quantos e os primeiros nomes. */
+    count?: number
+    names?: string[]
   }
 }
 
@@ -66,6 +71,13 @@ export type AttentionInput = {
   /** Itens essenciais do checklist. */
   essentialDone: number
   essentialTotal: number
+  /**
+   * Itens do estoque da casa com validade (INVENTORY-001 §3.6, D-I4): nomes dos
+   * vencidos e dos que vencem em até 30 dias. Ausente = estoque não lido; item
+   * sem validade nunca entra aqui (E13a).
+   */
+  expiredNames?: string[]
+  expiringNames?: string[]
 }
 
 /** Pior primeiro. `unknown` acima de `low`: não saber é pior que saber pouco. */
@@ -151,6 +163,19 @@ export function attentionItems(input: AttentionInput): AttentionItem[] {
       where: 'requirements',
       detail: { done: input.essentialDone, total: input.essentialTotal },
     })
+  }
+
+  /*
+   * Validade (INVENTORY-001 §3.6). Vencido é crítico; a vencer em 30 dias é
+   * baixo. Avisa, não decide: o item continua contando nos totais (regra 8).
+   */
+  const vencidos = input.expiredNames ?? []
+  if (vencidos.length) {
+    itens.push({ kind: 'expired', severity: 'critical', where: 'holdings', detail: { count: vencidos.length, names: vencidos.slice(0, 3) } })
+  }
+  const aVencer = input.expiringNames ?? []
+  if (aVencer.length) {
+    itens.push({ kind: 'expiring', severity: 'low', where: 'holdings', detail: { count: aVencer.length, names: aVencer.slice(0, 3) } })
   }
 
   return itens.sort((a, b) => ORDEM[a.severity] - ORDEM[b.severity])
