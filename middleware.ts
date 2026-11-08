@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { AFFILIATE_COOKIE, normalizeAffiliateCode } from '@/lib/affiliate'
+import { publicSignalSharePath } from '@/lib/signal-sharing'
 import { isAdminEmail } from '@/lib/admin'
 
 const PROTECTED_ROUTES = [
@@ -48,6 +49,8 @@ const PROTECTED_EXACT = ['/ficha']
 
 
 export async function middleware(request: NextRequest) {
+  // Public editorial content and social crawlers never need a session or household data.
+  if (publicSignalSharePath(request.nextUrl.pathname)) return NextResponse.next({ request })
   let supabaseResponse = NextResponse.next({ request })
   const affiliateRef = normalizeAffiliateCode(
     request.nextUrl.searchParams.get('ref') ?? request.nextUrl.searchParams.get('affiliate'),

@@ -5,6 +5,10 @@
 
 ---
 
+## Compartilhamento de Sinais — 2026-11-07
+
+SHARE-T01 (SIGNAL-SHARE-001): página pública PT/EN em `/sinais/[slug]/compartilhar`, fora da casca privada. Capa FORTRESS em `public/signals/fortress-share.jpg`; Open Graph, compartilhamento nativo e copiar resumo com um único link EOS. Sem números da família. Cadastro gratuito preserva retorno ao protocolo e planos apontam à oferta existente. Protocolo, inventário e APIs continuam autenticados. Sem migração. Validação: type-check, lint, 848 testes e build; HTTP anônimo verifica conteúdo, capa, metadados, 404 e redirecionamento privado. Próxima tarefa do núcleo permanece CONTENT-T06.
+
 ## Current State
 
 | Field | Value |
