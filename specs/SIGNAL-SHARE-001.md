@@ -18,3 +18,5 @@ Capa promocional EOS por Sinal, com FORTRESS primeiro; fallback Open Graph com t
 
 ## Tarefas
 SHARE-T01: página pública + metadados + capa + botões + retorno de cadastro (COMPLETE).
+
+Gancho aprovado em 2026-11-07: "Sua família está pronta?" / "Is your family ready?"; chamada "Descubra o que sua família precisa para começar a se preparar." na página, metadados e texto compartilhado. Capa FORTRESS PT com o gancho; EN usa a capa editorial EOS.

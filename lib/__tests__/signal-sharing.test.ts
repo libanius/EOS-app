@@ -13,6 +13,7 @@ describe('public Signal sharing', () => {
       for (const full of [false, true]) {
         const text = signalShareText(SIGNALS[0], lang, url, full)
         expect(text.startsWith(url)).toBe(true)
+        expect(text).toContain(lang === 'pt' ? 'Sua família está pronta?' : 'Is your family ready?')
         expect(text.match(/https:\/\//g)).toHaveLength(1)
         expect(text).not.toMatch(/34 L|27 meals|159 L|126 refeições/)
       }

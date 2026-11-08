@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import type { Signal } from '@/lib/signals'
-import { signalSharePath, signalShareText, type ShareLanguage } from '@/lib/signal-sharing'
+import { signalSharePath, signalShareText, signalShareHook, signalShareInvite, type ShareLanguage } from '@/lib/signal-sharing'
 
 export default function SignalShareButtons({ signal, lang }: { signal: Signal; lang: ShareLanguage }) {
   const [message, setMessage] = useState('')
@@ -17,7 +17,7 @@ export default function SignalShareButtons({ signal, lang }: { signal: Signal; l
     const url = `${window.location.origin}${signalSharePath(signal.slug, lang)}`
     if (!navigator.share) { await copy(false); return }
     try {
-      await navigator.share({ title: `EOS · ${signal.title[lang]}`, text: `${signal.summary[lang]}\n\n${pt ? 'Preparação, sem pânico.' : 'Preparation, not panic.'} EOS`, url })
+      await navigator.share({ title: `EOS · ${signalShareHook(lang)}`, text: `${signalShareHook(lang)}\n${signalShareInvite(lang)}\n\n${signal.title[lang]}\n\n${pt ? 'Preparação, sem pânico.' : 'Preparation, not panic.'} EOS`, url })
       setMessage('')
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') return

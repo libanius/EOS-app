@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useState, useTransition } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { onboardingDestination } from '@/lib/onboarding-return'
 import NumericStepper from '@/components/NumericStepper'
 import { useLanguage } from '@/lib/i18n'
 import { simulationLabel, type SimulationConfig } from '@/lib/simulation'
@@ -91,16 +92,7 @@ function OnboardingContent() {
         return
       }
 
-      if (invite?.token) {
-        router.push(`/sim/${invite.token}`)
-        return
-      }
-      if (redirectTo?.startsWith('/sim/')) {
-        router.push(redirectTo)
-        return
-      }
-      // Pass member count as hint to family setup
-      router.push(`/family?members=${members}`)
+      router.push(onboardingDestination(redirectTo, members, invite?.token))
     })
   }
 
