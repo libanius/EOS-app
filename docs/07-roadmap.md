@@ -593,3 +593,4 @@ segunda conta de prontidão.*
 | BRAND-T01 — ícones v0.7 (PWA, maskable, apple-touch, favicons) e pacote da marca em `public/brand/eos/` | ✅ COMPLETE |
 | BRAND-T02 — abertura: O girando como botão de volume enquanto carrega; E e S entram; nunca bloqueia | ✅ COMPLETE |
 | BRAND-T03 — versão (`EOS v0.2.0 · commit`) no rodapé da landing, páginas legais e MAIS | ✅ COMPLETE |
+| BRAND-T04 — iPhone sem tela branca: `start_url` estático `/abrir`, telas de lançamento iOS, abertura mais longa (D-238) | ✅ COMPLETE |

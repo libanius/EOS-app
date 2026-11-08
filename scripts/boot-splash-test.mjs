@@ -65,18 +65,36 @@ const state = page => page.evaluate(() => {
   check(firstVisible, 'abertura aparece na entrada')
   check(angles.size >= 3, `o O gira (ângulos vistos: ${[...angles].join(', ')})`)
   check(scaleOk, 'giro no plano, sem deformar o O (escala 1)')
-  const deadline = Date.now() + 7000
-  let last = await state(page), sawReveal = false
+  const deadline = Date.now() + 9000
+  let last = await state(page), sawReveal = false, sawRight = [...angles].some(a => a > 45)
   while (last.visible && Date.now() < deadline) {
+    if (last.angle > 45) sawRight = true
     if (last.e > 0.95 && last.s > 0.95) { sawReveal = true; check(last.angle === 0, `O parou no centro (${last.angle}°) quando E e S apareceram`) }
     if (sawReveal) break
     await page.waitForTimeout(40); last = await state(page)
   }
+  // D-238: a sequência esquerda → centro → direita → centro aparece inteira
+  check(sawRight, 'o O passou pela direita antes de parar (sequência completa)')
   check(sawReveal, 'E e S entram antes de a abertura sumir')
   await page.waitForFunction(() => document.getElementById('eos-boot')?.hidden, null, { timeout: 7000 }).catch(() => {})
   check(!(await state(page)).visible, 'abertura some sozinha')
   await page.reload({ waitUntil: 'domcontentloaded' })
   check(!(await state(page)).visible, 'não repete na mesma sessão')
+  await ctx.close()
+}
+
+// D-238. porta de entrada do app instalado: a abertura segura até a tela trocar
+{
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } })
+  const page = await ctx.newPage(); watch(page)
+  await page.goto(BASE + '/abrir', { waitUntil: 'commit' })
+  await page.waitForSelector('#eos-boot', { state: 'attached' })
+  check((await state(page)).visible, '/abrir: abertura aparece na hora')
+  await page.waitForFunction(() => location.pathname !== '/abrir', null, { timeout: 9000 }).catch(() => {})
+  const path = await page.evaluate(() => location.pathname)
+  check(path !== '/abrir', `/abrir leva para a tela do app (${path})`)
+  await page.waitForFunction(() => document.getElementById('eos-boot')?.hidden, null, { timeout: 9000 }).catch(() => {})
+  check(!(await state(page)).visible, '/abrir: abertura sai depois que a tela chegou')
   await ctx.close()
 }
 

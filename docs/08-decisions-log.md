@@ -4,6 +4,45 @@
 
 ---
 
+## D-238 — iPhone: sem tela branca na abertura, e abertura mais longa
+
+**Data**: 2026-11-08. **Status**: DECIDED (pedido direto do dono). **Tarefa**: BRAND-T04.
+
+O dono, abrindo o app pelo ícone na tela inicial do iPhone: "primeiro ele fica uns
+4 s em uma tela branca e depois entra a animação… mais tela branca e bem menos
+animação".
+
+**Causa**: o ícone abria `start_url: "/"`. Essa rota é dinâmica: o middleware
+consulta a sessão no Supabase, a página consulta de novo e redireciona para
+`/dashboard`, que passa outra vez pelo middleware e renderiza no servidor. Só
+quando esse HTML final chegava a abertura existia. Até lá o iOS mostra a sua tela
+de lançamento — branca, porque o app não declarava `apple-touch-startup-image`.
+E a abertura começava já quase pronta para sair, então durava pouco.
+
+**Decisões**:
+
+1. **Porta de entrada estática `/abrir`** vira o `start_url`. Sai da CDN (e do
+   service worker, `StaleWhileRevalidate`) sem tocar no Supabase — o middleware
+   a deixa passar. A abertura começa ali na hora; o cliente lê a sessão do
+   próprio aparelho e vai para `/dashboard` (com sessão) ou `/` (sem), por
+   navegação de cliente. O layout raiz continua montado, então a abertura cobre
+   a espera e só sai depois que a tela nova chegou (no máximo 6 s de espera; aos
+   7 s cai para carregamento normal).
+2. **Telas de lançamento do iOS** (`public/splash/`, 13 tamanhos de iPhone,
+   `scripts/gen-ios-splash.py`): o primeiro quadro da abertura — basalto com o O
+   virado para a esquerda, na mesma posição. A tela branca deixa de existir e a
+   passagem para a animação não aparece.
+3. **Abertura mais longa**: volta de 2,4 s (o ritmo da prévia aprovada); a
+   sequência esquerda → centro → direita → centro aparece sempre inteira antes de
+   parar; o logo completo fica 1,7 s na tela. Um toque continua pulando.
+4. Versão 0.2.1.
+
+**Atenção**: o iPhone grava o endereço de abertura e as telas de lançamento no
+momento em que o ícone é adicionado. Quem já tem o ícone precisa removê-lo e
+adicionar de novo pelo Safari para ganhar a correção.
+
+---
+
 ## D-237 — Identidade v0.7: abertura com o O girando, ícones novos e versão no rodapé
 
 **Data**: 2026-11-08. **Status**: DECIDED (pedido direto do dono). **Tarefas**: BRAND-T01, BRAND-T02, BRAND-T03.

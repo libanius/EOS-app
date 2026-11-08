@@ -51,6 +51,9 @@ const PROTECTED_EXACT = ['/ficha']
 export async function middleware(request: NextRequest) {
   // Public editorial content and social crawlers never need a session or household data.
   if (publicSignalSharePath(request.nextUrl.pathname)) return NextResponse.next({ request })
+  // D-238: `/abrir` é a porta de entrada estática do app instalado. Passar pelo
+  // Supabase aqui recolocaria a espera que essa página existe para tirar.
+  if (request.nextUrl.pathname === '/abrir') return NextResponse.next({ request })
   let supabaseResponse = NextResponse.next({ request })
   const affiliateRef = normalizeAffiliateCode(
     request.nextUrl.searchParams.get('ref') ?? request.nextUrl.searchParams.get('affiliate'),

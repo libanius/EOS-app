@@ -43,6 +43,13 @@ const withPWA = nextPwa({
     /^.*dynamic-css-manifest\.json$/,
   ],
   runtimeCaching: [
+    // D-238: a porta de entrada do app instalado. Estática; servida do cache na
+    // hora (e offline) enquanto se atualiza em segundo plano.
+    {
+      urlPattern: /^https?.*\/abrir$/i,
+      handler: 'StaleWhileRevalidate',
+      options: { cacheName: 'eos-entrada', expiration: { maxEntries: 2 } },
+    },
     // Authenticated pages must refresh from the network so post-deploy fixes
     // like push registration are not trapped behind an old service worker cache.
     //

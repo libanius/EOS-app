@@ -5,6 +5,10 @@
 
 ---
 
+## iPhone sem tela branca — 2026-11-08
+
+BRAND-T04 (D-238): `start_url` passa a `/abrir` (estática, fora do middleware, em cache no SW); a abertura roda ali e só sai quando a navegação de cliente chega a `/dashboard` ou `/`. 13 `apple-touch-startup-image` com o primeiro quadro da abertura (`public/splash/`, `scripts/gen-ios-splash.py`). Volta de 2,4 s com sequência completa garantida; logo inteiro 1,7 s. v0.2.1. Validação: type-check, lint, build, `npm test` 850/850, `npm run test:boot` 19/19. Quem já tem o ícone no iPhone precisa adicioná-lo de novo.
+
 ## Identidade v0.7 — 2026-11-08
 
 BRAND-T01…T03 (D-237): abertura em `components/BootSplash.tsx` (O gira no plano esquerda→centro→direita→centro enquanto carrega, para no centro, E e S entram; uma vez por sessão; fora de ficha, Sinal compartilhado e páginas legais; some em 6 s no pior caso). Ícones v0.7 nos mesmos caminhos + `apple-touch-icon.png` e favicons 16/32; `theme_color` basalto. Versão `EOS v0.2.0 · <commit>` no rodapé (landing, legais, MAIS) via `components/AppVersion.tsx` + `next.config.mjs`. Validação: type-check, lint, `next build`, `npm run test:boot` 15/15. Próxima tarefa do núcleo permanece CONTENT-T06.

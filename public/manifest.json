@@ -6,7 +6,7 @@
   "lang": "pt-BR",
   "dir": "ltr",
   "categories": ["utilities", "lifestyle", "weather"],
-  "start_url": "/",
+  "start_url": "/abrir",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
