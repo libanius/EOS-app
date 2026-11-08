@@ -9699,3 +9699,6 @@ enriquecimento do mapa.
    conta de teste não tinha checklist. Passava sem testar nada.
 
 ---
+
+## SIGNAL-SHARE-001 — Sinal compartilhável como entrada pública (2026-11-07)
+Dono aprovou o fluxo proposto e pediu primeira versão pronta para compartilhar. A leitura editorial tem URL pública específica; cálculos e protocolo pessoal permanecem autenticados. Compartilhar carrega somente URL EOS e chamada curta, sem números da casa. Cadastro gratuito é CTA principal e planos existentes são secundários. Capa FORTRESS é ilustração promocional, sem simular evidência jornalística. Implementação da experiência aprovada nesta conversa; sem mudança na navegação do app.

@@ -1,5 +1,7 @@
 'use client'
 
+import SignalShareButtons from '@/components/signals/SignalShareButtons'
+
 /**
  * `/sinais/<slug>` — o protocolo de um Sinal (SIGNAL-001 §3.4, Marco 1).
  *
@@ -296,33 +298,6 @@ export default function SignalPage({ slug, preview }: SignalPageProps) {
     stockCall(id ? `/api/holdings/${id}` : '/api/holdings', id ? 'PATCH' : 'POST', { ...payload, ...(id ? {} : { provenance: 'PROTOCOL', provenanceRef: signal.slug }) })
   const removeStockItem = (id: string) => stockCall(`/api/holdings/${id}`, 'DELETE')
 
-  const copySummary = async () => {
-    const lines = [
-      `EOS · ${signal.title[lang]}`,
-      '',
-      `${t.whatItIs}: ${signal.whatItIs[lang]}`,
-      '',
-      `${t.whatItIsNot}: ${signal.whatItIsNot[lang]}`,
-      '',
-      signal.curatorNote[lang],
-    ]
-    if (sizeKnown && house) {
-      lines.push('')
-      for (const d of signal.protocol.degrees) {
-        const w = Math.round(3.785411784 * house.size * DEGREE_DAYS[d])
-        const m = house.size * DEGREE_DAYS[d] * MEALS_PER_PERSON_DAY
-        lines.push(`• ${DEGREE_LABEL[d]}: ${w} L · ${m} ${lang === 'pt' ? 'refeições' : 'meals'}`)
-      }
-    }
-    lines.push('', ...signal.sources.map(s => `${s.title}: ${s.url}`), '', t.shareTail)
-    try {
-      await navigator.clipboard.writeText(lines.join('\n'))
-      setToast(t.copied)
-    } catch {
-      setToast(t.copyFail)
-    }
-    window.setTimeout(() => setToast(null), 2600)
-  }
 
   return (
     <main className="sg">
@@ -496,7 +471,7 @@ export default function SignalPage({ slug, preview }: SignalPageProps) {
           ))}
         </section>
 
-        <button type="button" className="sg-btn block" onClick={() => void copySummary()}>{t.copy}</button>
+        <SignalShareButtons signal={signal} lang={lang} />
         <div role="status" aria-live="polite" className="sg-note" style={{ textAlign: 'center', minHeight: 20 }}>{toast}</div>
       </div>
       {openView && (

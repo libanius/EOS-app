@@ -581,3 +581,8 @@ segunda conta de prontidão.*
 ---
 
 *Update this file after every implementation session. Mark tasks complete. Promote next task to PENDING or IN PROGRESS.*
+
+## Compartilhamento público de Sinais — autorizado pelo dono (2026-11-07)
+| Tarefa | Status |
+|---|---|
+| SHARE-T01 — página pública, capa FORTRESS, metadados, compartilhar/copiar e cadastro com retorno (SIGNAL-SHARE-001) | ✅ COMPLETE |
