@@ -1,4 +1,10 @@
+import { readFileSync } from 'node:fs'
 import nextPwa from 'next-pwa'
+
+// D-237: a versão aparece no rodapé. Vem do package.json (a versão do produto)
+// e do commit que a Vercel construiu — assim a tela diz exatamente o que está no ar.
+const { version } = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'))
+const commit = (process.env.VERCEL_GIT_COMMIT_SHA || '').slice(0, 7)
 
 const withPWA = nextPwa({
   dest: 'public',
@@ -101,6 +107,11 @@ const withPWA = nextPwa({
 })
 
 /** @type {import('next').NextConfig} */
-const nextConfig = {}
+const nextConfig = {
+  env: {
+    NEXT_PUBLIC_APP_VERSION: version,
+    NEXT_PUBLIC_APP_COMMIT: commit,
+  },
+}
 
 export default withPWA(nextConfig)

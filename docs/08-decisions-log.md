@@ -4,6 +4,48 @@
 
 ---
 
+## D-237 — Identidade v0.7: abertura com o O girando, ícones novos e versão no rodapé
+
+**Data**: 2026-11-08. **Status**: DECIDED (pedido direto do dono). **Tarefas**: BRAND-T01, BRAND-T02, BRAND-T03.
+
+O dono refinou o logo do EOS (v0.7, EDL v1.0 BASALT) e pediu: (1) uma abertura ao
+entrar no app em que o O gira "como um botão de volume" — esquerda → centro →
+direita → centro — sem deformar a letra; (2) o app publicado com esse pacote;
+(3) "sempre coloque a versão no footer do app".
+
+**Decisões**:
+
+1. **Abertura em código, não em vídeo.** HTML + CSS + script inline no layout raiz
+   (`components/BootSplash.tsx`). Um componente cliente só apareceria depois do
+   bundle hidratar — o tempo que a abertura existe para cobrir. Um arquivo de
+   vídeo teria duração fixa e alguns MB; o código pesa menos de 2 KB e acompanha
+   o carregamento real.
+2. **Nunca bloqueia.** O EOS é aberto em emergência. A abertura termina a volta
+   em andamento quando o documento fica pronto (no máximo 1,8 s de giro), some
+   em ~1,3 s depois disso, some sozinha em 6 s mesmo se o script falhar, e um
+   toque pula. Uma vez por sessão (`sessionStorage`).
+3. **Fora das telas públicas de emergência**: `/ficha/…`, `/sinais/…/compartilhar`
+   e páginas legais abrem direto — quem escaneia a ficha de alguém não espera logo.
+4. **Movimento reduzido** respeitado: sem giro.
+5. **Ícones v0.7** substituem os anteriores nos mesmos caminhos (`icon-192/512`,
+   maskable, `icon.svg`, `favicon.ico`) mais `apple-touch-icon.png` (o iPhone
+   ignorava o SVG) e favicons 16/32 desenhados na grade de pixel. `theme_color`
+   do manifest passa de `#22c55e` para o basalto `#0a0a0f`, igual ao viewport.
+   Fonte e regras da marca: `public/brand/eos/` (v0.6 guardada, v0.7 atual).
+   Os ícones da casca nativa (`native/`) continuam com o MOB-T06.
+6. **Versão no rodapé**: `EOS v<package.json> · <commit>` (`components/AppVersion.tsx`),
+   lida no build pelo `next.config.mjs` (`VERCEL_GIT_COMMIT_SHA`). Aparece na
+   landing, nas páginas legais e no fim de MAIS. `package.json` sobe para **0.2.0**
+   neste release; daqui em diante, todo release sobe a versão.
+
+**Consequência**: `npm run test:boot` (`scripts/boot-splash-test.mjs`, 15 checagens
+em Chrome headless) prova o giro no plano (matriz de rotação pura, escala 1),
+a parada em 0° antes de o E e o S aparecerem, o sumiço sozinho, a não repetição,
+a ausência nas telas públicas, o movimento reduzido, a versão no rodapé e zero
+erros de hidratação.
+
+---
+
 ## D-236 — Estoque único da casa: `holdings` vira a verdade
 
 **Data**: 2026-11-07. **Status**: DECIDED. **Spec**: `specs/INVENTORY-001-estoque-unico.md` (Ready).

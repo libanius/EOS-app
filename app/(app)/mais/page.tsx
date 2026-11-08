@@ -7,6 +7,7 @@ import { canAccess, type Plan } from '@/lib/feature-gates'
 import { createClient } from '@/lib/supabase/client'
 import { AFFILIATE_STORAGE_KEY, normalizeAffiliateCode } from '@/lib/affiliate'
 import MaisNav from '@/components/world-v2/MaisNav'
+import AppVersion from '@/components/AppVersion'
 import { isNativeShell } from '@/lib/native/bridge'
 import { desativarPushNativo, registrarPushNativo, tokenNativoSalvo } from '@/lib/native/push'
 import { limparCofre } from '@/lib/native/vault'
@@ -630,6 +631,11 @@ export default function SettingsPage() {
             {busy === 'delete' ? (en ? 'Deleting…' : 'Excluindo…') : (en ? 'Delete my account' : 'Excluir minha conta')}
           </button>
         </div>
+
+        {/* D-237: rodapé com a versão que está no ar. */}
+        <footer style={{ marginTop: 32, textAlign: 'center' }}>
+          <AppVersion />
+        </footer>
       </section>
     </main>
   )

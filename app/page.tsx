@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import AppVersion from '@/components/AppVersion'
 import { createClient } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
 
@@ -122,6 +123,7 @@ export default async function Home() {
           </a>
         </p>
         <p style={s.footMeta}>© 2026 BrightScale Group LLC. All rights reserved.</p>
+        <AppVersion style={{ marginTop: 12 }} />
       </footer>
     </main>
   )

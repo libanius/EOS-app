@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import AppVersion from '@/components/AppVersion'
 
 export default function LegalLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -30,6 +31,7 @@ export default function LegalLayout({ children }: { children: React.ReactNode })
           <Link href="/privacy">Privacy</Link>
           <Link href="/refund">Refunds</Link>
         </nav>
+        <AppVersion style={{ marginTop: 16 }} />
       </footer>
     </main>
   )

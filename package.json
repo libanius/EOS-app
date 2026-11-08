@@ -1,6 +1,6 @@
 {
   "name": "eos-app",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -38,6 +38,7 @@
     "test:circles": "node scripts/circles-page-test.mjs",
     "test:address": "npx tsx scripts/address-flow-test.mjs",
     "test:nav": "node scripts/bottom-nav-test.mjs",
+    "test:boot": "node scripts/boot-splash-test.mjs",
     "test:prep-nav": "node scripts/preparedness-nav-test.mjs",
     "test:conversations": "node scripts/conversations-test.mjs",
     "test:dual-write": "tsx scripts/dual-write-test.ts",

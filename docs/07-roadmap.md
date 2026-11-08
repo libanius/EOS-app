@@ -586,3 +586,10 @@ segunda conta de prontidão.*
 | Tarefa | Status |
 |---|---|
 | SHARE-T01 — página pública, capa FORTRESS, metadados, compartilhar/copiar e cadastro com retorno (SIGNAL-SHARE-001) | ✅ COMPLETE |
+
+## Identidade v0.7 — autorizado pelo dono (2026-11-08, D-237)
+| Tarefa | Status |
+|---|---|
+| BRAND-T01 — ícones v0.7 (PWA, maskable, apple-touch, favicons) e pacote da marca em `public/brand/eos/` | ✅ COMPLETE |
+| BRAND-T02 — abertura: O girando como botão de volume enquanto carrega; E e S entram; nunca bloqueia | ✅ COMPLETE |
+| BRAND-T03 — versão (`EOS v0.2.0 · commit`) no rodapé da landing, páginas legais e MAIS | ✅ COMPLETE |

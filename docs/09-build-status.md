@@ -5,6 +5,10 @@
 
 ---
 
+## Identidade v0.7 — 2026-11-08
+
+BRAND-T01…T03 (D-237): abertura em `components/BootSplash.tsx` (O gira no plano esquerda→centro→direita→centro enquanto carrega, para no centro, E e S entram; uma vez por sessão; fora de ficha, Sinal compartilhado e páginas legais; some em 6 s no pior caso). Ícones v0.7 nos mesmos caminhos + `apple-touch-icon.png` e favicons 16/32; `theme_color` basalto. Versão `EOS v0.2.0 · <commit>` no rodapé (landing, legais, MAIS) via `components/AppVersion.tsx` + `next.config.mjs`. Validação: type-check, lint, `next build`, `npm run test:boot` 15/15. Próxima tarefa do núcleo permanece CONTENT-T06.
+
 ## Compartilhamento de Sinais — 2026-11-07
 
 SHARE-T01 (SIGNAL-SHARE-001): página pública PT/EN em `/sinais/[slug]/compartilhar`, fora da casca privada. Capa FORTRESS em `public/signals/fortress-share.jpg`; Open Graph, compartilhamento nativo e copiar resumo com um único link EOS. Sem números da família. Cadastro gratuito preserva retorno ao protocolo pelo callback e onboarding e planos apontam à oferta existente. Protocolo, inventário e APIs continuam autenticados. Sem migração. Validação: type-check, lint, 850 testes e build; HTTP anônimo verifica conteúdo, capa, metadados, 404 e redirecionamento privado. Próxima tarefa do núcleo permanece CONTENT-T06.

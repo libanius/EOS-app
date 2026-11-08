@@ -3,6 +3,7 @@ import './globals.css'
 import { LanguageProvider } from '@/lib/i18n'
 import AffiliateAttribution from '@/components/AffiliateAttribution'
 import ClientErrorReporter from '@/components/ClientErrorReporter'
+import BootSplash from '@/components/BootSplash'
 
 export const metadata: Metadata = {
   title: 'EOS — Emergency Operating System',
@@ -16,13 +17,17 @@ export const metadata: Metadata = {
     title: 'EOS',
     statusBarStyle: 'black-translucent',
   },
+  // BRAND-T01 / D-237: identidade v0.7 (O chanfrado sobre basalto).
+  // O iPhone ignora SVG como ícone da tela inicial — por isso o PNG de 180.
   icons: {
     icon: [
       { url: '/icon.svg', type: 'image/svg+xml' },
+      { url: '/favicon-32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/favicon-16.png', sizes: '16x16', type: 'image/png' },
       { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
       { url: '/icon-512.png', sizes: '512x512', type: 'image/png' },
     ],
-    apple: [{ url: '/icon.svg' }],
+    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
   },
 }
 
@@ -57,6 +62,8 @@ export default function RootLayout({
         />
       </head>
       <body>
+        {/* BRAND-T02 / D-237: a abertura vem no primeiro HTML, antes do JS. */}
+        <BootSplash />
         <LanguageProvider>
           {/* Raiz de propósito: cobre a tela de entrada, onde uma falha dói mais. */}
           <ClientErrorReporter />
