@@ -600,3 +600,5 @@ segunda conta de prontidão.*
 | Task | Entrega | Status | Observação |
 |---|---|---|---|
 | CONTENT-T07 | Credencial de agente restrita a review, sem substituir a original | ✅ CODE COMPLETE | Prioridade autorizada pelo dono. CONTENT-T06 permanece bloqueada pela revisão do FORTRESS; esta tarefa não faz o cutover. |
+
+| CONTENT-T08 | Falhas de leitura do estado não viram 404 ou ausência silenciosa | ✅ CODE COMPLETE | Correção necessária à conferência da entrega, autorizada no diagnóstico remoto. |

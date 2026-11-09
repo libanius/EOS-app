@@ -10,7 +10,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { authorizePipeline } from '@/lib/content-pipeline-auth'
 import { MAX_PACKAGE_BYTES, packageHash, packageProblems, type ContentPackage } from '@/lib/content-package'
-import { afterArchive, packageState } from '@/lib/content-store'
+import { afterArchive, packageState, ContentStateReadError } from '@/lib/content-store'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -61,8 +61,13 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
 
   // Reenviar uma pauta de arquivo tenta de novo o resumo histórico, se ele ficou pendente.
   const archiveRag = pkg.status === 'archived' ? await afterArchive(admin, pkg.slug) : undefined
-  const state = await packageState(admin, pkg.slug)
-  return json({ outcome, ...state, ...(archiveRag && archiveRag !== 'none' ? { archiveRag } : {}) })
+  try {
+    const state = await packageState(admin, pkg.slug)
+    return json({ outcome, ...state, ...(archiveRag && archiveRag !== 'none' ? { archiveRag } : {}) })
+  } catch (error) {
+    if (!(error instanceof ContentStateReadError)) throw error
+    return json({ error: error.message, code: error.code, table: error.table, received: true, outcome, slug: pkg.slug, version: pkg.version }, 503)
+  }
 }
 
 export async function GET(req: NextRequest, { params }: Ctx) {
@@ -70,7 +75,12 @@ export async function GET(req: NextRequest, { params }: Ctx) {
   if (!auth.ok) return json({ error: auth.error }, auth.status)
   const admin = createAdminClient()
   if (!admin) return json({ error: 'serviço indisponível' }, 503)
-  const state = await packageState(admin, params.slug)
-  if (state.latestVersion === null && state.signal === 'none') return json({ error: 'pauta não encontrada' }, 404)
-  return json(state)
+  try {
+    const state = await packageState(admin, params.slug)
+    if (state.latestVersion === null && state.signal === 'none') return json({ error: 'pauta não encontrada' }, 404)
+    return json(state)
+  } catch (error) {
+    if (!(error instanceof ContentStateReadError)) throw error
+    return json({ error: error.message, code: error.code, table: error.table }, 503)
+  }
 }
