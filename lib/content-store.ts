@@ -8,6 +8,13 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { PackageVideo } from './content-package'
 import { archivedSignalSource, ingestArchivedSignal } from './edu-rag-ingest'
 
+export class ContentStateReadError extends Error {
+  constructor(readonly table: string, readonly code: string) {
+    super(`Não foi possível consultar ${table} (${code}).`)
+    this.name = 'ContentStateReadError'
+  }
+}
+
 export type PackageState = {
   slug: string
   /** Última versão válida recebida do pipeline. */
@@ -27,11 +34,16 @@ export type PackageState = {
 }
 
 export async function packageState(admin: SupabaseClient, slug: string): Promise<PackageState> {
-  const [{ data: pkg }, { data: sig }, { data: edu }] = await Promise.all([
+  const results = await Promise.all([
     admin.from('content_packages').select('version, status').eq('slug', slug).order('version', { ascending: false }).limit(1).maybeSingle(),
     admin.from('signals').select('status, version, video').eq('slug', slug).maybeSingle(),
     admin.from('edu_content').select('status, version, rag_ingested_at').eq('content_slug', slug).maybeSingle(),
   ])
+  const tables = ['content_packages', 'signals', 'edu_content']
+  results.forEach((result, index) => {
+    if (result.error) throw new ContentStateReadError(tables[index], result.error.code || 'unknown')
+  })
+  const [{ data: pkg }, { data: sig }, { data: edu }] = results
   let archiveRag: PackageState['archiveRag'] = 'none'
   if (sig?.status === 'archived') {
     const { count } = await admin

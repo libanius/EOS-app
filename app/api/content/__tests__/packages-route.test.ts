@@ -11,6 +11,7 @@ jest.mock('@/lib/supabase/admin', () => ({
   createAdminClient: () => ({ rpc, from }),
 }))
 jest.mock('@/lib/content-store', () => ({
+  ...jest.requireActual('@/lib/content-store'),
   packageState: jest.fn(async (_a: unknown, slug: string) => ({ slug, latestVersion: 1, liveVersion: null })),
   afterArchive: jest.fn(async () => 'ingested'),
 }))
@@ -18,6 +19,7 @@ jest.mock('@/lib/content-store', () => ({
 import { NextRequest } from 'next/server'
 import { PUT, GET } from '../packages/[slug]/route'
 import { fortressPackage } from '@/lib/__tests__/fixtures/content-fortress'
+import { packageState, ContentStateReadError } from '@/lib/content-store'
 
 const SECRET = 'test-secret-0123456789'
 const req = (body: unknown, secret: string | null = SECRET, method = 'PUT') =>
@@ -30,6 +32,7 @@ const ctx = { params: { slug: 'fortress' } }
 
 beforeEach(() => {
   rpc.mockReset()
+  jest.mocked(packageState).mockReset().mockImplementation(async (_a, slug) => ({ slug, latestVersion: 1, liveVersion: null } as Awaited<ReturnType<typeof packageState>>))
   process.env.CONTENT_PIPELINE_SECRET = SECRET
   delete process.env.CONTENT_PIPELINE_AGENT_SECRET
 })
@@ -157,6 +160,20 @@ describe('PUT /api/content/packages/[slug]', () => {
 })
 
 describe('GET /api/content/packages/[slug]', () => {
+  it('falha de leitura é 503, nunca pauta não encontrada', async () => {
+    jest.mocked(packageState).mockRejectedValueOnce(new ContentStateReadError('content_packages', 'PGRST205'))
+    const res = await GET(req(null, SECRET, 'GET'), ctx)
+    expect(res.status).toBe(503)
+    expect((await res.json()).code).toBe('PGRST205')
+  })
+
+  it('recebimento confirmado não é escondido quando a leitura falha', async () => {
+    rpc.mockResolvedValueOnce({ data: { outcome: 'created' }, error: null })
+    jest.mocked(packageState).mockRejectedValueOnce(new ContentStateReadError('content_packages', '42501'))
+    const res = await PUT(req(fortressPackage()), ctx)
+    expect(res.status).toBe(503)
+    expect(await res.json()).toMatchObject({ received: true, outcome: 'created', version: 1, code: '42501' })
+  })
   it('exige o segredo', async () => {
     expect((await GET(req(null, null, 'GET'), ctx)).status).toBe(401)
     expect((await GET(req(null, SECRET, 'GET'), ctx)).status).toBe(200)

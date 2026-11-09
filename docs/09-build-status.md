@@ -5,6 +5,10 @@
 
 ---
 
+## Conferência da entrega de conteúdo — 2026-11-08
+
+CONTENT-T08: erros de consulta do estado deixam de virar 404/estado vazio. GET/PUT retornam 503 com tabela e código, sem payload; após receive, `received: true` preserva a confirmação da RPC. Pauta de água confirmada em content_packages como review v1, sem publicação. A divergência da API está em diagnóstico.
+
 ## Entrega remota de pautas — 2026-11-08
 
 CONTENT-T07 / D-239: credencial própria de agente, restrita a GET e PUT review; preserva chave original e aprovação do dono no admin. 856 testes, tipos, lint e build aprovados. Variável server-only configurada na Vercel. Sem alteração em fotos, UI, FORTRESS ou cutover CONTENT-T06.
