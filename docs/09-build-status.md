@@ -5,6 +5,10 @@
 
 ---
 
+## Entrega remota de pautas — 2026-11-08
+
+CONTENT-T07 / D-239: credencial própria de agente, restrita a GET e PUT review; preserva chave original e aprovação do dono no admin. 856 testes, tipos, lint e build aprovados. Variável server-only configurada na Vercel. Sem alteração em fotos, UI, FORTRESS ou cutover CONTENT-T06.
+
 ## iPhone sem tela branca — 2026-11-08
 
 BRAND-T04 (D-238): `start_url` passa a `/abrir` (estática, fora do middleware, em cache no SW); a abertura roda ali e só sai quando a navegação de cliente chega a `/dashboard` ou `/`. 13 `apple-touch-startup-image` com o primeiro quadro da abertura (`public/splash/`, `scripts/gen-ios-splash.py`). Volta de 2,4 s com sequência completa garantida; logo inteiro 1,7 s. v0.2.1. Validação: type-check, lint, build, `npm test` 850/850, `npm run test:boot` 19/19. Quem já tem o ícone no iPhone precisa adicioná-lo de novo.

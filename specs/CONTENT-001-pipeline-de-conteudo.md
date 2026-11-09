@@ -1,5 +1,5 @@
 # SPEC — CONTENT-001: Pipeline de conteúdo (uma pauta, três saídas)
-Version: 1.1 | Status: **Ready** (aprovado pelo dono em 2026-11-05; D-P1…D-P5 fechadas) | Author: Paulo Neto | Depende de: SIGNAL-001 (Ready), docs/22 (EDU), docs/32 (Knowledge)
+Version: 1.2 | Status: **Ready** (aprovado pelo dono em 2026-11-05; D-P1…D-P5 fechadas) | Author: Paulo Neto | Depende de: SIGNAL-001 (Ready), docs/22 (EDU), docs/32 (Knowledge)
 
 > Regra 1: nenhum código antes de Ready. Este spec está **Ready**.
 > Regra 3: os edge cases ficam escritos aqui (§7) e não são descobertos no código.
@@ -442,3 +442,9 @@ família.
 | CONTENT-T04 | `/admin/content` (prévia e validação) | T03 |
 | CONTENT-T05 | Vídeo por idioma em `/sinais/<slug>` e em `/preparedness/aprender` | T03 |
 | CONTENT-T06 | Migração do FORTRESS (§6) e remoção de `lib/signals-content.ts` | T03, T04, aprovação do dono |
+
+## 12. Credencial de entrega do agente (D-239 / CONTENT-T07)
+
+Pedido direto do dono: enviar pautas daqui, sem abrir o Mac. `CONTENT_PIPELINE_AGENT_SECRET` é uma segunda credencial server-only; `CONTENT_PIPELINE_SECRET` não é alterada. A primeira é escopo review, a original é escopo full. Ambas usam comparação timing-safe. GET aceita qualquer uma; PUT com a chave de agente aceita somente status review, depois da validação completa e antes de qualquer RPC. Draft e archived com essa chave retornam 403 sem gravação; published continua inválido (422). Rotas admin continuam exigindo a sessão admin existente e não aceitam Bearer do agente. Sem nenhuma credencial configurada: 503. Com chave inválida/ausente: 401. Se ambas forem iguais por erro de configuração, a credencial de agente recebe o escopo restrito.
+
+Critérios: chave original continua aceitando o fluxo existente; agente pode GET e PUT review; agente não pode draft/archived/published; ausência de original não bloqueia agente; nenhuma configuração retorna 503; versão, hash e aprovação pelo dono permanecem iguais. Sem migração ou alteração na UI.

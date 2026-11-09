@@ -31,6 +31,47 @@ const ctx = { params: { slug: 'fortress' } }
 beforeEach(() => {
   rpc.mockReset()
   process.env.CONTENT_PIPELINE_SECRET = SECRET
+  delete process.env.CONTENT_PIPELINE_AGENT_SECRET
+})
+
+afterAll(() => {
+  delete process.env.CONTENT_PIPELINE_SECRET
+  delete process.env.CONTENT_PIPELINE_AGENT_SECRET
+})
+
+describe('Credencial de agente (D-239)', () => {
+  const agent = 'agent-review-0123456789'
+  beforeEach(() => { process.env.CONTENT_PIPELINE_AGENT_SECRET = agent })
+
+  it('envia review sem a chave original e consulta o estado', async () => {
+    delete process.env.CONTENT_PIPELINE_SECRET
+    rpc.mockResolvedValueOnce({ data: { outcome: 'created' }, error: null })
+    expect((await PUT(req(fortressPackage(), agent), ctx)).status).toBe(200)
+    expect(rpc).toHaveBeenCalledWith('receive_content_package', expect.objectContaining({ p_status: 'review' }))
+    expect((await GET(req(null, agent, 'GET'), ctx)).status).toBe(200)
+  })
+
+  it.each(['draft', 'archived'] as const)('recusa %s antes de qualquer RPC', async status => {
+    expect((await PUT(req(fortressPackage({ status }), agent), ctx)).status).toBe(403)
+    expect(rpc).not.toHaveBeenCalled()
+  })
+
+  it('não publica nem aceita chave errada', async () => {
+    expect((await PUT(req({ ...fortressPackage(), status: 'published' }, agent), ctx)).status).toBe(422)
+    expect((await PUT(req(fortressPackage(), 'agent-review-incorrect'), ctx)).status).toBe(401)
+    expect(rpc).not.toHaveBeenCalled()
+  })
+
+  it('mantém a chave original com o fluxo de arquivo', async () => {
+    rpc.mockResolvedValueOnce({ data: { outcome: 'created' }, error: null })
+    expect((await PUT(req(fortressPackage({ status: 'archived' })), ctx)).status).toBe(200)
+  })
+
+  it('prefere o escopo restrito quando as duas chaves coincidem', async () => {
+    process.env.CONTENT_PIPELINE_AGENT_SECRET = SECRET
+    expect((await PUT(req(fortressPackage({ status: 'archived' })), ctx)).status).toBe(403)
+    expect(rpc).not.toHaveBeenCalled()
+  })
 })
 
 describe('PUT /api/content/packages/[slug]', () => {
