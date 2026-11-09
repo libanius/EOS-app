@@ -8,7 +8,8 @@ import { getHousehold, householdDays } from '@/lib/household'
 import { loadHouse } from '@/lib/inventory-server'
 import { pilotStockBlock } from '@/lib/pilot-stock'
 import { evaluateGuard } from '@/lib/pilot-guard'
-import { getRelevantChunks } from '@/lib/knowledge'
+import { getRelevantKnowledge } from '@/lib/knowledge'
+import { loadPilotCatalog, pilotContentContext } from '@/lib/pilot-content'
 import { formatGallons, GALLON_SHORT } from '@/lib/units'
 import {
   crisisCard, detectCrisis, detectDistress, normalizeMode, normalizeSources,
@@ -734,14 +735,14 @@ export async function POST(request: NextRequest) {
       : 'VISIBLE CIRCLE MEMBERS: could not load circle records for this answer.'
   }
 
-  // Ground the answer in the EOS knowledge base (FEMA, Red Cross, WHO, SAS).
-  let knowledge = ''
-  try {
-    const chunks = await getRelevantChunks(question)
-    knowledge = chunks.map(c => (typeof c === 'string' ? c : JSON.stringify(c))).join('\n---\n').slice(0, 6000)
-  } catch {
-    /* Knowledge is enrichment; the specialist still answers without it. */
-  }
+  // Read the same published content as the app, independently of embeddings.
+  const [catalog, retrieved] = await Promise.all([
+    loadPilotCatalog(createAdminClient(), pt),
+    getRelevantKnowledge(question).then(chunks => ({ chunks, unavailable: false })).catch(() => ({ chunks: [], unavailable: true })),
+  ])
+  if (retrieved.unavailable) catalog.unavailable.push(pt ? 'base documental RAG' : 'documentary knowledge base')
+  const published = pilotContentContext(catalog, messages, retrieved.chunks, pt)
+  const knowledge = published.knowledge
 
   /*
    * QUEM MORA NA CASA VEM DO SERVIDOR, NÃO DO CLIENTE (D-134).
@@ -909,6 +910,7 @@ export async function POST(request: NextRequest) {
       : 'PILOT MEMORY: if the user states a preference, constraint, routine, recurring equipment, risk tolerance, family need, or personal rule that will be useful later, propose it in memory. Do not write uncertain statements as absolute facts. Memory is a proposal, not an automatic write.',
 
     placesBlock,
+    published.block,
     knowledge
       ? (pt ? `BASE DE CONHECIMENTO (use e cite quando útil):\n${knowledge}` : `KNOWLEDGE BASE (use and cite when useful):\n${knowledge}`)
       : '',
@@ -987,10 +989,10 @@ export async function POST(request: NextRequest) {
             const final = extractJson(bruto, pt)
             // O texto completo vai junto: se a extração parcial perdeu algo no
             // caminho, o cliente corrige no fim em vez de ficar com metade.
-            envia('done', { ...final, guard })
+            envia('done', { ...final, contentLinks: published.links, guard })
           } catch (e) {
             await logError('api/pilot/chat:stream', e, { userId: user.id })
-            envia('done', { reply: mostrado, mode: 'chat', sources: [], tasks: [], destinations: [], memory: [], guard })
+            envia('done', { reply: mostrado, mode: 'chat', sources: [], contentLinks: published.links, tasks: [], destinations: [], memory: [], guard })
           } finally {
             controller.close()
           }
@@ -1034,6 +1036,7 @@ export async function POST(request: NextRequest) {
       reply,
       mode,
       sources,
+      contentLinks: published.links,
       tasks,
       destinations,
       memory,

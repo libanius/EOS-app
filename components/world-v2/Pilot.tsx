@@ -1,5 +1,7 @@
 'use client'
 
+import type { PilotContentLink } from '@/lib/pilot-content'
+
 /**
  * Pilot — the specialist you talk to.
  *
@@ -64,6 +66,7 @@ type Message = {
   memory?: PilotMemoryProposal[]
   destinations?: PilotDestination[]
   sources?: PilotSource[]
+  contentLinks?: PilotContentLink[]
   caveat?: string
 }
 
@@ -564,7 +567,7 @@ export default function Pilot({
         }
         if (evento === 'done') {
           const d = dados as unknown as {
-            reply?: string; tasks?: PilotTask[]; memory?: PilotMemoryProposal[]; destinations?: PilotDestination[]; sources?: PilotSource[]
+            reply?: string; tasks?: PilotTask[]; memory?: PilotMemoryProposal[]; destinations?: PilotDestination[]; sources?: PilotSource[]; contentLinks?: PilotContentLink[]
           }
           replace(idResposta, m => ({
             ...m,
@@ -573,6 +576,7 @@ export default function Pilot({
             memory: d.memory?.length ? d.memory : undefined,
             destinations: d.destinations?.length ? d.destinations : undefined,
             sources: d.sources?.length ? d.sources : undefined,
+            contentLinks: d.contentLinks?.length ? d.contentLinks : undefined,
           }))
           /*
            * Confiança (spec §19): a resposta chegou, e depois de quanto tempo.
@@ -741,6 +745,15 @@ export default function Pilot({
                       <p className="chat-sources t-foot ink-3">
                         {(pt ? 'Fonte: ' : 'Source: ') + message.sources.map(s => s.label).join(' · ')}
                       </p>
+                    )}
+
+                    {message.contentLinks && message.contentLinks.length > 0 && (
+                      <div className="chat-sources t-foot ink-3">
+                        <p>{pt ? 'Conteúdo consultado:' : 'Content consulted:'}</p>
+                        {message.contentLinks.map(link => (
+                          <p key={link.href}><Link className="underline underline-offset-2" href={link.href} onClick={() => onOpenChange(false)}>{link.label}</Link></p>
+                        ))}
+                      </div>
                     )}
 
                     {message.tasks && (

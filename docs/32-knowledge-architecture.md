@@ -415,3 +415,7 @@ Before implementation, an agent must:
 5. preserve the existing rule: one roadmap task at a time.
 
 Until those steps happen, this file is intentionally **PROPOSED**, not implemented.
+
+## Implementado em 2026-11-09 — conhecimento editorial conectado (D-240)
+
+`PILOT-KNOW-001` adiciona leitura direta de Sinais publicados e EDU aprovado no Pilot, paralela ao RAG. Títulos/assuntos, consultas recentes e IDs vetoriais escolhem documentos; texto e versão sempre vêm da publicação atual. Sem dependência de nova ingestão para reconhecer pauta publicada. Referências consultadas chegam no JSON e SSE como `contentLinks`, separadas das fontes declaradas pelo modelo. Falhas de fonte são explícitas. Isto não implementa biblioteca offline nem altera os demais itens propostos deste documento.

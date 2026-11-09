@@ -602,3 +602,11 @@ segunda conta de prontidão.*
 | CONTENT-T07 | Credencial de agente restrita a review, sem substituir a original | ✅ CODE COMPLETE | Prioridade autorizada pelo dono. CONTENT-T06 permanece bloqueada pela revisão do FORTRESS; esta tarefa não faz o cutover. |
 
 | CONTENT-T08 | Falhas de leitura do estado não viram 404 ou ausência silenciosa | ✅ CODE COMPLETE | Correção necessária à conferência da entrega, autorizada no diagnóstico remoto. |
+
+## Pilot — conhecimento publicado (D-240, 2026-11-09)
+
+Prioridade explicitamente autorizada pelo dono. Não inicia nem pula CONTENT-T06.
+
+| Task ID | Task | Status | Notes |
+|---|---|---|---|
+| PILOT-KNOW-T01 | Sinais + EDU atuais no Pilot, referências, falhas explícitas e acompanhamento | ✅ COMPLETE | `specs/PILOT-KNOW-001-conhecimento-publicado.md` |

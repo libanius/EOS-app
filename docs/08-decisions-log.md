@@ -4,6 +4,12 @@
 
 ---
 
+## D-240 — Pilot lê o conteúdo publicado do próprio EOS
+
+**Data**: 2026-11-09. **Status**: DECIDED (dono: “Ok prossiga para aplicar”). **Tarefa atual autorizada**: PILOT-KNOW-T01; CONTENT-T06 continua bloqueada, sem cutover.
+
+Sinais publicados e todo EDU aprovado passam a ser consultados diretamente pelo Pilot, além do RAG. `rag_enabled` continua controlando ingestão vetorial, não a leitura do texto já publicado. A busca usa nome/assunto e histórico recente para perguntas de acompanhamento, liga Sinal à aula por `content_slug` e mantém datas, fontes, versão e “o que não é”. Não lê `content_packages` nem rascunhos. Versão do banco substitui a estática, inclusive ao arquivar. Falhas são explícitas; não são ausência de conteúdo. Referências clicáveis são montadas no servidor, não inventadas pelo modelo. RAG editorial obsoleto não pode contrariar a publicação atual. Sem escrita de dados da família, publicação automática ou nova migração.
+
 ## D-239 — Credencial de agente para entregar pautas em revisão
 
 **Data**: 2026-11-08. **Status**: DECIDED (pedido direto do dono nesta sessão). **Tarefa**: CONTENT-T07.

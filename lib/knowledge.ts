@@ -12,10 +12,11 @@ import { getOpenAIClient } from './openai'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface MatchDocumentsRow {
+export interface KnowledgeChunk {
   content: string
   source: string
   similarity: number
+  source_version?: string
 }
 
 // ─── Supabase admin client (service role — bypasses RLS) ─────────────────────
@@ -83,10 +84,10 @@ async function toEnglishQuery(query: string): Promise<string> {
   }
 }
 
-export async function getRelevantChunks(
+export async function getRelevantKnowledge(
   query: string,
   scenarioType?: string
-): Promise<string[]> {
+): Promise<KnowledgeChunk[]> {
   const englishQuery = await toEnglishQuery(query)
 
   // 1. Generate query embedding (text-embedding-3-small → 1536 dims)
@@ -100,7 +101,7 @@ export async function getRelevantChunks(
     queryEmbedding = embeddingRes.data[0].embedding
   } catch (err) {
     console.error('[EOS] Embedding generation failed:', err)
-    return []
+    throw err
   }
 
   // 2. Vector similarity search via Supabase RPC
@@ -128,13 +129,21 @@ export async function getRelevantChunks(
 
     if (error) {
       console.error('[EOS] match_documents RPC error:', error)
-      return []
+      throw new Error('Knowledge retrieval unavailable')
     }
 
-    // 3. Return only the content strings
-    return (data as MatchDocumentsRow[]).map((row) => row.content)
+    return (data ?? []) as KnowledgeChunk[]
   } catch (err) {
     console.error('[EOS] Supabase RPC call failed:', err)
+    throw err
+  }
+}
+
+/** Existing consumers retain their content-only contract. */
+export async function getRelevantChunks(query: string, scenarioType?: string): Promise<string[]> {
+  try {
+    return (await getRelevantKnowledge(query, scenarioType)).map(row => row.content)
+  } catch {
     return []
   }
 }

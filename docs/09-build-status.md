@@ -5,6 +5,12 @@
 
 ---
 
+## Pilot conhece Sinais e EDU publicados — 2026-11-09
+
+PILOT-KNOW-T01 / D-240, versão 0.2.4: leitura direta paginada de Sinais e EDU aprovados, busca PT/EN por título/assunto + histórico recente + relevância vetorial, vínculo por content_slug. Dados atuais substituem vetores editoriais antigos. Referências do servidor no JSON e SSE done, links clicáveis no chat. Falhas de leitura são explícitas no contexto; nenhum pacote review ou dado de família é escrito. Link de aula usa `/preparedness/aprender?contentId=...` porque `/edu` redireciona perdendo a query.
+
+Validação: tipos, lint, lint:scripts, 872 testes e build passaram. Snapshot editorial real de produção (1 Sinal publicado e 4 aulas aprovadas), recuperação PT/EN do Fortress e acompanhamento aprovados, com Sinal e aula vinculada presentes mesmo sem embeddings. Testes da rota verificam contexto enviado ao modelo e referências no JSON/SSE com provedor simulado; não equivalem a conversa autenticada com modelo real em produção. Uma execução da suíte encontrou teste APNs pré-existente probabilístico (primeiro byte aleatório da assinatura); repetição isolada e suíte completa passaram, sem alterar push. Próxima tarefa do núcleo permanece CONTENT-T06 (bloqueada por revisão do dono).
+
 ## Conferência da entrega de conteúdo — 2026-11-08
 
 CONTENT-T08: erros de consulta do estado deixam de virar 404/estado vazio. GET/PUT retornam 503 com tabela e código, sem payload; após receive, `received: true` preserva a confirmação da RPC. Pauta de água confirmada em content_packages como review v1, sem publicação. A divergência da API está em diagnóstico.
