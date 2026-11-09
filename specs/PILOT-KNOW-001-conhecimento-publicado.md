@@ -13,3 +13,5 @@ O Pilot deve conhecer Sinais e EDU publicados sem depender de coincidência na b
 7. Novas publicações e revisões entram na próxima pergunta sem reindexação obrigatória; rascunho/arquivo não entram. Fallback estático somente quando não há linha correspondente no banco e a leitura teve sucesso.
 
 Aceite: Fortress por nome; acompanhamento “e para minha família?”; aula extensa por assunto; PT/EN; revisão e arquivo vencem estático/RAG; rascunhos excluídos; falha parcial preserva outra fonte e avisa; paginação além da primeira página; links nas duas respostas e renderizados como links. Tipos, lint, testes e build.
+
+8. D-241: fontes/rótulos em `--ink-2`; links normais/visitados em `--ac` (verde Signal do EOS), sublinhados e com foco visível. Títulos longos quebram dentro da folha. Cor das referências não comunica risco.

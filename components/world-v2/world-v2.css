@@ -1677,6 +1677,24 @@
   color: var(--verdict);
   background: rgba(255, 255, 255, 0.06);
 }
+/* Editorial references use brand Signal, never the browser default blue.
+   Keep risk-state colours reserved for operational status. */
+.wv2-pilot-chat .chat-sources { color: var(--ink-2); }
+.wv2-pilot-chat .chat-sources a,
+.wv2-pilot-chat .chat-sources a:visited {
+  color: var(--ac);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  overflow-wrap: anywhere;
+}
+.wv2-pilot-chat .chat-sources a:hover,
+.wv2-pilot-chat .chat-sources a:focus-visible { color: var(--ink); }
+.wv2-pilot-chat .chat-sources a:focus-visible {
+  outline: 2px solid var(--ac);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
 .wv2-pilot-chat .chat-headline { margin: 0 0 var(--s2); color: var(--ink); text-wrap: balance; }
 .wv2-pilot-chat .chat-pilot p { margin: 0 0 var(--s2); }
 .wv2-pilot-chat .chat-pilot p:last-child { margin-bottom: 0; }

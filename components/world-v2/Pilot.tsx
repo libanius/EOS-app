@@ -742,16 +742,16 @@ export default function Pilot({
                     {message.caveat && <p className="chat-caveat t-foot">{message.caveat}</p>}
 
                     {message.sources && message.sources.length > 0 && (
-                      <p className="chat-sources t-foot ink-3">
+                      <p className="chat-sources t-foot ink-2">
                         {(pt ? 'Fonte: ' : 'Source: ') + message.sources.map(s => s.label).join(' · ')}
                       </p>
                     )}
 
                     {message.contentLinks && message.contentLinks.length > 0 && (
-                      <div className="chat-sources t-foot ink-3">
+                      <div className="chat-sources t-foot ink-2">
                         <p>{pt ? 'Conteúdo consultado:' : 'Content consulted:'}</p>
                         {message.contentLinks.map(link => (
-                          <p key={link.href}><Link className="underline underline-offset-2" href={link.href} onClick={() => onOpenChange(false)}>{link.label}</Link></p>
+                          <p key={link.href}><Link href={link.href} onClick={() => onOpenChange(false)}>{link.label}</Link></p>
                         ))}
                       </div>
                     )}

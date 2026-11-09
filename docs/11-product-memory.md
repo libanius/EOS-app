@@ -1817,3 +1817,5 @@ Verificar via Supabase Dashboard → SQL Editor: `SELECT name FROM supabase_migr
 - CONTENT-T08: packageState não pode ignorar result.error. Se a RPC receber mas a consulta falhar, o remetente deve receber 503 + received:true, nunca latestVersion:null como se não existisse. Pauta agua-cinco-metodos-filtro-dois-baldes está review v1; não reenviar com nova versão para tentar fazê-la aparecer.
 
 - D-240 / PILOT-KNOW-T01: publicação visível não pode depender de embeddings. Pilot lê Sinais/EDU atuais a cada pergunta; vetores editoriais servem apenas para escolher IDs, nunca como corpo antigo. Linha arquivada do banco suprime fallback estático. `rag_enabled` continua sendo opção de ingestão, não de visibilidade de EDU aprovado no Pilot. Links são calculados pelo servidor e rotulados “Conteúdo consultado”. `/edu` perde query no redirect; link de aula deve ser `/preparedness/aprender?contentId=...`.
+
+- D-241: links editoriais do Pilot usam `--ac` global (Signal), não `--accent` de risco nem azul padrão do navegador. Fontes usam tinta secundária; link visitado preserva a cor da marca.

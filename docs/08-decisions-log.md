@@ -4,6 +4,12 @@
 
 ---
 
+## D-241 — Referências legíveis no Pilot
+
+**Data**: 2026-11-09. **Status**: DECIDED (dono enviou captura e pediu cores do design system). **Tarefa**: PILOT-KNOW-T02.
+
+Fontes e rótulos usam `--ink-2`, em vez da tinta terciária. Links de conteúdo usam o verde Signal existente `--ac`, inclusive visitados; sublinhado permanece, com foco visível e quebra de títulos longos. Cor editorial fixa, independente da cor semântica de risco. Correção visual local ao Pilot, autorizada como prioridade; sem mudanças de navegação.
+
 ## D-240 — Pilot lê o conteúdo publicado do próprio EOS
 
 **Data**: 2026-11-09. **Status**: DECIDED (dono: “Ok prossiga para aplicar”). **Tarefa atual autorizada**: PILOT-KNOW-T01; CONTENT-T06 continua bloqueada, sem cutover.

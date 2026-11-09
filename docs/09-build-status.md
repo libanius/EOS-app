@@ -5,6 +5,10 @@
 
 ---
 
+## Referências do Pilot legíveis — 2026-11-09
+
+PILOT-KNOW-T02 / D-241, versão 0.2.5: fontes/rótulos sobem para `--ink-2`; links normais e visitados usam o token global `--ac` (Signal), com sublinhado, foco e quebra de títulos longos. A cor de risco não interfere na referência editorial. Tipos, lint e diff-check aprovados. Contraste calculado sobre fundo de referência #343e35: Signal 6,74:1, texto secundário 5,11:1; não é medição de todos os fundos translúcidos.
+
 ## Pilot conhece Sinais e EDU publicados — 2026-11-09
 
 PILOT-KNOW-T01 / D-240, versão 0.2.4: leitura direta paginada de Sinais e EDU aprovados, busca PT/EN por título/assunto + histórico recente + relevância vetorial, vínculo por content_slug. Dados atuais substituem vetores editoriais antigos. Referências do servidor no JSON e SSE done, links clicáveis no chat. Falhas de leitura são explícitas no contexto; nenhum pacote review ou dado de família é escrito. Link de aula usa `/preparedness/aprender?contentId=...` porque `/edu` redireciona perdendo a query.

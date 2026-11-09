@@ -610,3 +610,5 @@ Prioridade explicitamente autorizada pelo dono. Não inicia nem pula CONTENT-T06
 | Task ID | Task | Status | Notes |
 |---|---|---|---|
 | PILOT-KNOW-T01 | Sinais + EDU atuais no Pilot, referências, falhas explícitas e acompanhamento | ✅ COMPLETE | `specs/PILOT-KNOW-001-conhecimento-publicado.md` |
+
+| PILOT-KNOW-T02 | Contraste e cores EOS nas referências do Pilot (D-241) | ✅ COMPLETE | Correção visual solicitada pelo dono. |
