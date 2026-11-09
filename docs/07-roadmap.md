@@ -602,3 +602,5 @@ segunda conta de prontidão.*
 | CONTENT-T07 | Credencial de agente restrita a review, sem substituir a original | ✅ CODE COMPLETE | Prioridade autorizada pelo dono. CONTENT-T06 permanece bloqueada pela revisão do FORTRESS; esta tarefa não faz o cutover. |
 
 | CONTENT-T08 | Falhas de leitura do estado não viram 404 ou ausência silenciosa | ✅ CODE COMPLETE | Correção necessária à conferência da entrega, autorizada no diagnóstico remoto. |
+
+| CONTENT-T09 | Alternativas clicáveis no requisito com registro do modelo existente | ✅ CODE COMPLETE | D-240; prioridade pedida pelo dono. Mantém revisão de conteúdo pelo pipeline. |

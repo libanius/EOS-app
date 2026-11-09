@@ -35,6 +35,49 @@ export const MODULE_ORDER: SignalModule[] = [
 /** Texto nos dois idiomas da tela (D-225: uma tela, um idioma). */
 export type Bilingual = { pt: string; en: string }
 
+/** Alternativas editoriais de um mesmo recurso; não mudam sua cobertura. */
+export type ProtocolOption = {
+  id: string
+  label: Bilingual
+  description: Bilingual
+  advantage: Bilingual
+  limitation: Bilingual
+  brand?: string
+  model?: string
+  notes?: Bilingual
+  imageUrl?: string
+  sourceUrl?: string
+  purchaseUrl?: string
+}
+
+export function optionUrlAllowed(value: unknown): value is string {
+  if (typeof value !== 'string') return false
+  try {
+    const url = new URL(value)
+    return url.protocol === 'https:' && !url.username && !url.password
+  } catch { return false }
+}
+
+export function protocolOptionsProblems(options: unknown): string[] {
+  if (options === undefined) return []
+  if (!Array.isArray(options) || options.length > 12) return ['opções devem ser uma lista de até 12 alternativas']
+  const problems: string[] = []
+  const ids = new Set<string>()
+  options.forEach((option, index) => {
+    if (!option || typeof option !== 'object' || Array.isArray(option)) { problems.push(`opção ${index} inválida`); return }
+    if (typeof option.id !== 'string' || !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(option.id)) problems.push(`opção ${index} sem id válido`)
+    else if (ids.has(option.id)) problems.push(`opção repetida: ${option.id}`)
+    else ids.add(option.id)
+    for (const field of ['label', 'description', 'advantage', 'limitation', ...(option.notes === undefined ? [] : ['notes'])]) {
+      const value = option[field]
+      if (!value || typeof value.pt !== 'string' || !value.pt.trim() || typeof value.en !== 'string' || !value.en.trim()) problems.push(`opção ${index}: ${field} deve ter pt e en`)
+    }
+    for (const field of ['brand', 'model']) if (option[field] !== undefined && typeof option[field] !== 'string') problems.push(`opção ${index}: ${field} inválido`)
+    for (const field of ['imageUrl', 'sourceUrl', 'purchaseUrl']) if (option[field] !== undefined && !optionUrlAllowed(option[field])) problems.push(`opção ${index}: ${field} deve ser HTTPS`)
+  })
+  return problems
+}
+
 /**
  * Um item do protocolo.
  *
@@ -48,6 +91,7 @@ export type ProtocolItem = {
   minDegree: Degree
   label: Bilingual
   hint?: Bilingual
+  options?: ProtocolOption[]
 }
 
 export type Protocol = {
@@ -115,6 +159,7 @@ export function signalProblems(s: Signal): string[] {
     if (keys.has(item.resourceKey)) p.push(`item repetido: ${item.resourceKey}`)
     keys.add(item.resourceKey)
     if (!filled(item.label)) p.push(`item sem rótulo: ${item.resourceKey}`)
+    for (const problem of protocolOptionsProblems(item.options)) p.push(`item ${item.resourceKey}: ${problem}`)
   }
   return p
 }

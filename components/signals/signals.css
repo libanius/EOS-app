@@ -276,3 +276,16 @@
 
 /* A folha rola por dentro; nenhum filho encolhe para caber (iPhone, 2026-11-07). */
 .sg-sheet > * { flex-shrink: 0; }
+.sg-options{padding:0 0 20px 46px;display:grid;gap:10px}
+.sg-options h4{margin:0;font-size:17px;color:var(--sg-ink)}
+.sg-option{border:1px solid var(--sg-line,#354154);border-radius:14px;overflow:hidden;min-width:0}
+.sg-option-toggle{width:100%;display:flex;align-items:center;gap:12px;padding:14px;text-align:left;color:inherit;background:transparent;border:0;cursor:pointer;font:inherit}
+.sg-option-toggle>span:first-of-type{flex:1;min-width:0;overflow-wrap:anywhere}
+.sg-option-toggle strong,.sg-option-toggle .sg-note{display:block}
+.sg-option-image{flex:none;width:56px;height:64px;object-fit:contain;border-radius:8px;background:#f4f5f2}
+.sg-option-details{display:grid;gap:12px;padding:0 14px 16px;overflow-wrap:anywhere}
+.sg-option-details p{margin:0;font-size:15px;line-height:1.55}
+.sg-option-details a{color:var(--sg-mint,#66ddbb)}
+.sg-option-details .sg-note{white-space:pre-line}
+.sg-option-toggle:focus-visible{outline:2px solid var(--sg-mint,#66ddbb);outline-offset:-3px}
+@media(max-width:420px){.sg-options{padding-left:0}.sg-option-toggle{padding:12px}}

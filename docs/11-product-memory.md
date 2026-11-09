@@ -1815,3 +1815,5 @@ Verificar via Supabase Dashboard → SQL Editor: `SELECT name FROM supabase_migr
 - D-239 / CONTENT-T07: a credencial `CONTENT_PIPELINE_AGENT_SECRET` só permite GET e PUT `review`. A original continua aceita; agente nunca arquiva nem publica. Se as duas chaves coincidirem, o escopo restrito vence. A variável de agente é cifrada e recuperável pela conexão autorizada Vercel para não depender de arquivo no Mac. Nenhum segredo vai ao Git.
 
 - CONTENT-T08: packageState não pode ignorar result.error. Se a RPC receber mas a consulta falhar, o remetente deve receber 503 + received:true, nunca latestVersion:null como se não existisse. Pauta agua-cinco-metodos-filtro-dois-baldes está review v1; não reenviar com nova versão para tentar fazê-la aparecer.
+
+- D-240 / CONTENT-T09: alternativas de produto pertencem ao mesmo ProtocolItem; não crie resourceKeys por modelo nem exija cinco compras. Navegar não grava. O registro reabre o item próprio com modelo exato ou o único genérico próprio; nunca edita item de outra conta. Links e imagens só HTTPS, compra só se purchaseUrl existir. Pauta v2 segue review.

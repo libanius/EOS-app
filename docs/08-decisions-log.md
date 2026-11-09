@@ -4,6 +4,14 @@
 
 ---
 
+## D-240 — Alternativas clicáveis no item do protocolo
+
+**Data**: 2026-11-08. **Status**: DECIDED (pedido direto do dono com captura do checklist). **Tarefa**: CONTENT-T09.
+
+O item filtro-agua apresenta todas as cinco alternativas da pauta: SteriPEN Ultra, GRAYL GeoPress, LifeStraw Mission, LifeStraw Escape e estação DIY de dois baldes de 5 galões com vela e torneira. São alternativas de um único requisito, não cinco compras obrigatórias. As alternativas ficam visíveis sob o item mesmo quando coberto. Cada cartão permite ler descrição, vantagem, limitação e fonte; fotos quando disponíveis. A pessoa pode abrir a ficha de estoque pré-preenchida com o modelo que já possui. Navegar ou escolher não grava estoque: somente Salvar confirma. Não transforma filtro em litros de água armazenada.
+
+`ProtocolItem.options` é opcional e bilíngue; campos de imagem e links aceitam apenas HTTPS. `purchaseUrl` é opcional para a futura etapa de compra: sem URL, não existe botão de compra. Sem novas tabelas, sem mudança na cobertura por resourceKey e sem entrada no estoque ao apenas clicar. Pauta nova continua em revisão até aprovação do dono. A alteração amplia o conteúdo do checklist existente; não muda navegação ou hierarquia de telas.
+
 ## D-239 — Credencial de agente para entregar pautas em revisão
 
 **Data**: 2026-11-08. **Status**: DECIDED (pedido direto do dono nesta sessão). **Tarefa**: CONTENT-T07.
