@@ -14,7 +14,7 @@ export function generateMetadata({ params, searchParams }: Props): Metadata {
   if (!signal) return { title: 'EOS — Signal not found', robots: { index: false } }
   const lang = shareLanguage(searchParams.lang)
   const url = `${getSiteUrl()}${signalSharePath(signal.slug, lang)}`
-  const image = signal.slug === 'fortress' ? `${getSiteUrl()}/signals/fortress-share${lang === 'pt' ? '-pt' : ''}.jpg` : `${getSiteUrl()}/sinais/${signal.slug}/compartilhar/capa`
+  const image = signal.slug === 'fortress' ? `${getSiteUrl()}/signals/fortress-share-v2${lang === 'pt' ? '-pt' : ''}.jpg` : `${getSiteUrl()}/sinais/${signal.slug}/compartilhar/capa?lang=${lang}`
   return { metadataBase: new URL(getSiteUrl()), title: `EOS · ${signalShareHook(lang)} — ${signal.slug.toUpperCase()}`, description: `${signalShareInvite(lang)} ${signal.summary[lang]}`, alternates: { canonical: url },
     openGraph: { title: `EOS · ${signalShareHook(lang)} — ${signal.slug.toUpperCase()}`, description: `${signalShareInvite(lang)} ${signal.summary[lang]}`, url, type: 'article', locale: lang === 'pt' ? 'pt_BR' : 'en_US', images: [{ url: image, width: 1200, height: 630, alt: `EOS · ${signal.title[lang]}` }] },
     twitter: { card: 'summary_large_image', title: `EOS · ${signalShareHook(lang)} — ${signal.slug.toUpperCase()}`, description: `${signalShareInvite(lang)} ${signal.summary[lang]}`, images: [image] } }
@@ -29,7 +29,7 @@ export default function PublicSignal({ params, searchParams }: Props) {
     <header><Link href="/">EOS <span>Emergency Operating System</span></Link><nav aria-label="Language"><Link href={signalSharePath(signal.slug, 'pt')} aria-current={pt ? 'page' : undefined}>PT</Link><Link href={signalSharePath(signal.slug, 'en')} aria-current={!pt ? 'page' : undefined}>EN</Link></nav></header>
     <article>
       <p className="eyebrow">{pt ? 'SINAIS · CONTEXTO PARA SE PREPARAR' : 'SIGNALS · CONTEXT TO PREPARE'}</p>
-      {signal.slug === 'fortress' && <figure><Image priority src={lang === 'pt' ? '/signals/fortress-share-pt.jpg' : '/signals/fortress-share.jpg'} width={1200} height={630} alt={pt ? 'EOS FORTRESS: equipamentos organizados para preparação familiar' : 'EOS FORTRESS: organized family preparedness supplies'} /><figcaption>{pt ? 'Imagem promocional ilustrativa do EOS.' : 'Illustrative EOS promotional image.'}</figcaption></figure>}
+      {signal.slug === 'fortress' && <figure><Image priority src={lang === 'pt' ? '/signals/fortress-share-v2-pt.jpg' : '/signals/fortress-share-v2.jpg'} width={1200} height={630} alt={pt ? 'EOS FORTRESS: equipamentos organizados para preparação familiar' : 'EOS FORTRESS: organized family preparedness supplies'} /><figcaption>{pt ? 'Imagem promocional ilustrativa do EOS.' : 'Illustrative EOS promotional image.'}</figcaption></figure>}
       <h1>{signalShareHook(lang)}</h1><p className="lead">{signalShareInvite(lang)}</p>
       <h2>{signal.title[lang]}</h2><p>{signal.summary[lang]}</p>
       <p className="date">{pt ? 'Publicado em' : 'Published'} {signal.publishedOn}</p>
