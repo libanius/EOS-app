@@ -20,3 +20,12 @@ Capa promocional EOS por Sinal, com FORTRESS primeiro; fallback Open Graph com t
 SHARE-T01: página pública + metadados + capa + botões + retorno de cadastro (COMPLETE).
 
 Gancho aprovado em 2026-11-07: "Sua família está pronta?" / "Is your family ready?"; chamada "Descubra o que sua família precisa para começar a se preparar." na página, metadados e texto compartilhado. Capa FORTRESS PT com o gancho; EN usa a capa editorial EOS.
+
+## Capa v2 (dono, 2026-11-08)
+O dono pediu que a miniatura do link (WhatsApp e outros) tenha o logo e um design mais sofisticado, condizente com o app.
+- Logo oficial v0.7 (`public/brand/eos/v0.7/lockup/eos-horizontal-dark.svg`), nunca o nome digitado em fonte (regra da marca).
+- Painel basalto à esquerda com borda Signal `#00E5A0`, olho "SINAL · NÍVEL" em DM Mono, nome do Sinal em Barlow Condensed (fonte dos títulos do Sinal), gancho em DM Sans, rodapé "Preparação, sem pânico".
+- Foto ilustrativa à direita, cortada para não mostrar textos antigos, com fusão suave no painel.
+- FORTRESS: arquivos novos `fortress-share-v2(-pt).jpg` — nome novo para o WhatsApp não reaproveitar a miniatura antiga em cache.
+- Sinais sem foto (capa gerada): mesma composição, sem a foto.
+- Critério: 1200×630, logo legível, nenhum texto da foto antiga visível, PT e EN.
