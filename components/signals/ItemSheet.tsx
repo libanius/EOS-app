@@ -15,7 +15,8 @@
  */
 
 import { useEffect, useRef, useState } from 'react'
-import { MEALS_PER_PERSON_DAY, type ItemView } from '@/lib/signals'
+import { MEALS_PER_PERSON_DAY, type ItemView, type ProtocolOption } from '@/lib/signals'
+import ProtocolOptions from './ProtocolOptions'
 import type { HouseAnswer, HouseItemState } from '@/lib/signal-house'
 import { litersToGallons } from '@/lib/units'
 import { mealsText, quantityText, type ApiItem } from '@/lib/stock-view'
@@ -110,6 +111,7 @@ export type ItemSheetProps = {
   onRemoveItems: (ids: string[]) => Promise<void>
   onOpenItem: (item: ApiItem) => void
   onAddItem: () => void
+  onChooseOption?: (option: ProtocolOption) => void
 }
 
 export default function ItemSheet(p: ItemSheetProps) {
@@ -191,6 +193,8 @@ export default function ItemSheet(p: ItemSheetProps) {
         {p.view.item.hint && <p className="sg-muted">{p.view.item.hint[p.lang]}</p>}
 
         {p.readOnly && <p className="sg-sheet-note">{p.readOnly === 'preview' ? t.preview : t.archived}</p>}
+        {p.view.item.options?.length && p.onChooseOption ? <ProtocolOptions options={p.view.item.options} lang={p.lang}
+          readOnly={Boolean(p.readOnly) || !p.houseKnown} onHave={p.onChooseOption} /> : null}
 
         {kind === 'PRESENCE' ? (
           <>

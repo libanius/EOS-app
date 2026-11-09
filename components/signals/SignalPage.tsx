@@ -1,6 +1,8 @@
 'use client'
 
 import SignalShareButtons from '@/components/signals/SignalShareButtons'
+import ProtocolOptions from '@/components/signals/ProtocolOptions'
+import { optionStockItem } from '@/lib/protocol-choice'
 
 /**
  * `/sinais/<slug>` — o protocolo de um Sinal (SIGNAL-001 §3.4, Marco 1).
@@ -28,6 +30,7 @@ import {
   type ItemView,
   type Signal,
   type SignalModule,
+  type ProtocolOption,
 } from '@/lib/signals'
 import { useSignalHouse } from './useSignalHouse'
 import ItemSheet, { type AnswerResult } from './ItemSheet'
@@ -175,7 +178,7 @@ export default function SignalPage({ slug, preview }: SignalPageProps) {
   const { loading, house, metKeys, notApplicableKeys, states, accounts, reload, applyState, stock, covering, applyStock } = useSignalHouse()
   const [openKey, setOpenKey] = useState<string | null>(null)
   // A ficha do estoque aberta por cima da folha do Sinal (INV-T04).
-  const [stockSheet, setStockSheet] = useState<{ item: ApiItem | null; resourceKey: string; label: string } | null>(null)
+  const [stockSheet, setStockSheet] = useState<{ item: ApiItem | null; resourceKey: string; label: string; option?: ProtocolOption } | null>(null)
   const [degree, setDegree] = useState<Degree>(signal?.protocol.recommendedDegree ?? 'D14')
   const [toast, setToast] = useState<string | null>(null)
 
@@ -430,6 +433,7 @@ export default function SignalPage({ slug, preview }: SignalPageProps) {
             <div key={m} className="sg-panel" style={{ paddingBlock: 14 }}>
               <div className="sg-mod"><span className="sg-label">{t.module[m]}</span></div>
               {(byModule.get(m) ?? []).map(v => (
+                <div key={v.item.resourceKey}>
                 <button
                   key={v.item.resourceKey}
                   type="button"
@@ -466,6 +470,10 @@ export default function SignalPage({ slug, preview }: SignalPageProps) {
                     )}
                   </div>
                 </button>
+                {v.item.options?.length ? <ProtocolOptions options={v.item.options} lang={lang}
+                  readOnly={Boolean(preview) || signal.status === 'archived' || !stock || !sizeKnown}
+                  onHave={option => setStockSheet({ item: optionStockItem(covering(v.item.resourceKey), option, stock?.me ?? null), resourceKey: v.item.resourceKey, label: option.label[lang], option })} /> : null}
+                </div>
               ))}
             </div>
           ))}
@@ -491,16 +499,24 @@ export default function SignalPage({ slug, preview }: SignalPageProps) {
           onRemoveItems={removeItems}
           onOpenItem={item => setStockSheet({ item, resourceKey: item.resourceKey, label: item.label })}
           onAddItem={() => setStockSheet({ item: null, resourceKey: openView.item.resourceKey, label: openView.item.label[lang] })}
+          onChooseOption={option => {
+            setStockSheet({ item: optionStockItem(covering(openView.item.resourceKey), option, stock?.me ?? null), resourceKey: openView.item.resourceKey, label: option.label[lang], option })
+            setOpenKey(null)
+          }}
         />
       )}
       {stockSheet && stock && (
         <StockItemSheet
+          key={`${stockSheet.item?.id ?? 'new'}:${stockSheet.option?.id ?? ''}`}
           lang={lang}
           house={stock}
           item={stockSheet.item}
           defaultLocationId={myHomeId(stock)}
           initialResourceKey={stockSheet.resourceKey}
           initialLabel={stockSheet.label}
+          initialBrand={stockSheet.option?.brand}
+          initialModel={stockSheet.option?.model}
+          initialNotes={stockSheet.option?.notes?.[lang]}
           onClose={() => setStockSheet(null)}
           onSave={saveStockItem}
           onRemove={removeStockItem}

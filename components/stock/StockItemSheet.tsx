@@ -74,6 +74,9 @@ type Props = {
   /** Item novo já com o recurso escolhido (a folha do Sinal: "+ Adicionar" em água ou comida). */
   initialResourceKey?: string
   initialLabel?: string
+  initialBrand?: string
+  initialModel?: string
+  initialNotes?: string
   onClose: () => void
   onSave: (payload: ItemPayload, id: string | null) => Promise<string | null>
   onRemove: (id: string) => Promise<string | null>
@@ -82,7 +85,7 @@ type Props = {
 const num = (s: string) => Number(s.replace(',', '.'))
 const isNum = (s: string) => s.trim() !== '' && Number.isFinite(num(s)) && num(s) >= 0
 
-export default function StockItemSheet({ lang, house, item, defaultLocationId, initialResourceKey, initialLabel, onClose, onSave, onRemove }: Props) {
+export default function StockItemSheet({ lang, house, item, defaultLocationId, initialResourceKey, initialLabel, initialBrand, initialModel, initialNotes, onClose, onSave, onRemove }: Props) {
   const t = T[lang]
   const titleRef = useRef<HTMLHeadingElement>(null)
   const editing = item !== null
@@ -98,9 +101,9 @@ export default function StockItemSheet({ lang, house, item, defaultLocationId, i
   const [foodType, setFoodType] = useState<FoodType>((item?.foodType as FoodType) ?? 'outro')
   const [override, setOverride] = useState(item?.mealsOverride !== null && item?.mealsOverride !== undefined ? String(item.mealsOverride) : '')
   const [locationId, setLocationId] = useState(item?.locationId ?? defaultLocationId)
-  const [brand, setBrand] = useState(item?.brand ?? '')
-  const [model, setModel] = useState(item?.model ?? '')
-  const [notes, setNotes] = useState(item?.notes ?? '')
+  const [brand, setBrand] = useState(item?.brand || initialBrand || '')
+  const [model, setModel] = useState(item?.model || initialModel || '')
+  const [notes, setNotes] = useState(item?.notes ?? initialNotes ?? '')
   const [expiresOn, setExpiresOn] = useState(item?.expiresOn ?? '')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)

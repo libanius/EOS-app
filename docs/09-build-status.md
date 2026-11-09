@@ -5,6 +5,10 @@
 
 ---
 
+## Alternativas no requisito — 2026-11-08
+
+CONTENT-T09 / D-240: ProtocolItem.options bilíngue; cinco alternativas de tratamento de água no checklist e na folha do item, com fotos, descrição, vantagem, limitação e fonte. Tenho este modelo abre a ficha existente do modelo ou a única genérica própria, sem duplicação; grava só ao Salvar. Sem purchaseUrl, não há botão de compra. Pauta v2 permanece em review para o dono. Validação: 867 testes, type-check e lint aprovados; build pelo CI. Sem migração ou mudança na conta de prontidão.
+
 ## Conferência da entrega de conteúdo — 2026-11-08
 
 CONTENT-T08: erros de consulta do estado deixam de virar 404/estado vazio. GET/PUT retornam 503 com tabela e código, sem payload; após receive, `received: true` preserva a confirmação da RPC. Pauta de água confirmada em content_packages como review v1, sem publicação. A divergência da API está em diagnóstico.

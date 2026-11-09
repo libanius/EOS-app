@@ -451,3 +451,11 @@ Critérios: chave original continua aceitando o fluxo existente; agente pode GET
 
 ## Correção operacional — CONTENT-T08
 A leitura de estado não pode converter falha do Data API em ausência de pauta. packageState deve propagar erro tipado com tabela e código, sem payload. GET/PUT retornam 503 em falha de leitura; 404 fica reservado a consulta bem-sucedida sem pacote nem sinal. PUT com RPC bem-sucedida e leitura falha informa que o recebimento foi confirmado, para que o remetente não aumente a versão ou duplique a entrega. Validação: teste de falha de leitura no GET e após receive.
+
+## Alternativas de um requisito — CONTENT-T09 / D-240
+
+ProtocolItem pode ter options?: ProtocolOption[]. Cada opção: id (slug único no item), label/description/advantage/limitation bilíngues, brand/model/notes opcionais e imageUrl/sourceUrl/purchaseUrl opcionais HTTPS. Um item pode ter até 12 alternativas; opções não viram resourceKeys. Validação rejeita campo bilíngue vazio, lista inválida, ids duplicados ou URL não HTTPS. Schema eos.content/1 permanece compatível: campo opcional dentro do JSON protocol já persistido.
+
+A página mostra todas as alternativas abaixo do requisito. Cartões abrem detalhes no próprio bloco; foco, aria-expanded e imagens com alt. Prévia e arquivo permitem leitura e links, mas não gravação. Tenho este modelo abre StockItemSheet com nome, marca, modelo e observação; somente Salvar chama a escrita existente. Nenhuma compra ou aquisição automática. Sem purchaseUrl não há botão de compra. Opções continuam visíveis para item coberto, permitindo comparar outro modelo. Água e recipiente continuam requisitos próprios; o projeto DIY inteiro é uma alternativa do filtro.
+
+Critérios: cinco alternativas da pauta visíveis em PT/EN; navegação não altera cobertura; registro usa filtro-agua e não dobra requisito; preview não escreve; links inseguros são recusados; legado sem options mantém comportamento; telas estreitas rolam sem estouro; uma revisão nova da pauta aguarda o dono.
