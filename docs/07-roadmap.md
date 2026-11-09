@@ -594,3 +594,9 @@ segunda conta de prontidão.*
 | BRAND-T02 — abertura: O girando como botão de volume enquanto carrega; E e S entram; nunca bloqueia | ✅ COMPLETE |
 | BRAND-T03 — versão (`EOS v0.2.0 · commit`) no rodapé da landing, páginas legais e MAIS | ✅ COMPLETE |
 | BRAND-T04 — iPhone sem tela branca: `start_url` estático `/abrir`, telas de lançamento iOS, abertura mais longa (D-238) | ✅ COMPLETE |
+
+### CONTENT-T07 — acesso remoto de entrega (D-239)
+
+| Task | Entrega | Status | Observação |
+|---|---|---|---|
+| CONTENT-T07 | Credencial de agente restrita a review, sem substituir a original | ✅ CODE COMPLETE | Prioridade autorizada pelo dono. CONTENT-T06 permanece bloqueada pela revisão do FORTRESS; esta tarefa não faz o cutover. |

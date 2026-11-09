@@ -4,6 +4,16 @@
 
 ---
 
+## D-239 — Credencial de agente para entregar pautas em revisão
+
+**Data**: 2026-11-08. **Status**: DECIDED (pedido direto do dono nesta sessão). **Tarefa**: CONTENT-T07.
+
+O dono autorizou o acesso remoto do agente ao pipeline sem depender do Mac. A chave `CONTENT_PIPELINE_SECRET` existente é Secret na Vercel e não pode ser recuperada. Ela permanece intacta.
+
+Adicionar `CONTENT_PIPELINE_AGENT_SECRET`, uma credencial própria de entrega, aceita por `authorizePipeline()` com escopo `review`. Pode consultar o estado e enviar apenas pacotes `status: review`; não pode arquivar, publicar ou gravar em outras rotas. Publicação continua exclusivamente na sessão admin do dono. Comparações permanecem em tempo constante. Revogar a credencial é remover a variável e implantar novamente.
+
+A variável nova é server-only, cifrada em repouso e recuperável apenas pela conexão autorizada de administração do projeto para execuções futuras. Nunca entra no Git, no conteúdo, na resposta ao usuário ou nos logs. A chave original preserva seus comportamentos. Nenhuma mudança em inventário, RAG, UI, fotos ou FORTRESS neste recorte.
+
 ## D-238 — iPhone: sem tela branca na abertura, e abertura mais longa
 
 **Data**: 2026-11-08. **Status**: DECIDED (pedido direto do dono). **Tarefa**: BRAND-T04.

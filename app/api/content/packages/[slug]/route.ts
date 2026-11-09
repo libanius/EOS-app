@@ -43,6 +43,9 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
   if (!admin) return json({ error: 'serviço indisponível' }, 503)
 
   const pkg = body as ContentPackage
+  if (auth.scope === 'review' && pkg.status !== 'review') {
+    return json({ error: 'credencial de entrega permite apenas pautas em revisão' }, 403)
+  }
   const { data, error } = await admin.rpc('receive_content_package', {
     p_slug: pkg.slug,
     p_version: pkg.version,
