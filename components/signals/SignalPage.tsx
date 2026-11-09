@@ -2,7 +2,7 @@
 
 import SignalShareButtons from '@/components/signals/SignalShareButtons'
 import ProtocolOptions from '@/components/signals/ProtocolOptions'
-import { optionStockItem } from '@/lib/protocol-choice'
+import { optionStockItem, optionStockNote } from '@/lib/protocol-choice'
 
 /**
  * `/sinais/<slug>` — o protocolo de um Sinal (SIGNAL-001 §3.4, Marco 1).
@@ -516,7 +516,7 @@ export default function SignalPage({ slug, preview }: SignalPageProps) {
           initialLabel={stockSheet.label}
           initialBrand={stockSheet.option?.brand}
           initialModel={stockSheet.option?.model}
-          initialNotes={stockSheet.option?.notes?.[lang]}
+          initialNotes={stockSheet.option ? optionStockNote(stockSheet.option, lang) : undefined}
           onClose={() => setStockSheet(null)}
           onSave={saveStockItem}
           onRemove={removeStockItem}

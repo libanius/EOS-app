@@ -1,6 +1,6 @@
 import { optionUrlAllowed, protocolOptionsProblems, protocolView, type ProtocolOption } from '../signals'
 import { packageProblems, type ContentPackage } from '../content-package'
-import { optionStockItem } from '../protocol-choice'
+import { optionStockItem, optionStockNote } from '../protocol-choice'
 import type { ApiItem } from '../stock-view'
 import water from '../../content/pautas/agua-cinco-metodos-filtro-dois-baldes.v2.json'
 
@@ -14,6 +14,10 @@ it('inclui todas as cinco alternativas na pauta válida, sem cinco requisitos', 
   expect(packageProblems(pkg)).toEqual([])
   expect(protocol.items.filter(item => item.resourceKey === 'filtro-agua')).toHaveLength(1)
   expect(options.every(option => !option.purchaseUrl)).toBe(true)
+  for (const option of options) for (const lang of ['pt', 'en'] as const) {
+    expect(optionStockNote(option, lang)).toBe(option.limitation[lang])
+    expect(optionStockNote(option, lang).length).toBeLessThanOrEqual(500)
+  }
 })
 
 it('alternativas não mudam a conta da casa nem a água armazenada', () => {

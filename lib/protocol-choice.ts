@@ -10,3 +10,8 @@ export function optionStockItem(items: ApiItem[], option: ProtocolOption, me: st
   const generic = own.filter(item => !item.brand && !item.model)
   return generic.length === 1 ? generic[0] : null
 }
+
+/** O estoque guarda o limite de uso; o tutorial completo fica no cartão. */
+export function optionStockNote(option: ProtocolOption, lang: 'pt' | 'en'): string {
+  return option.limitation[lang].slice(0, 500)
+}
