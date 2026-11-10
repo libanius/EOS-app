@@ -6,7 +6,7 @@ for (const [file, entry] of Object.entries(entries)) {
   const result = await build({ entryPoints: [entry], bundle: true, platform: 'browser', format: 'iife',
     target: ['es2020'], minify: true, legalComments: 'inline', write: false, logLevel: 'silent' })
   const content = result.outputFiles[0].text
-  for (const dir of ['public', ...(existsSync('native/www') ? ['native/www'] : [])]) {
+  for (const dir of ['public', ...(!process.env.VERCEL && existsSync('native/package.json') ? ['native/www'] : [])]) {
     const path = `${dir}/${file}`
     if (process.argv.includes('--check')) {
       if (readFileSync(path, 'utf8') !== content) throw new Error(`Stale local AI artifact: ${path}`)
