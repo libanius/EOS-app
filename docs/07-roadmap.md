@@ -10,8 +10,8 @@ Esta é a tarefa atual autorizada pelo dono; demais tarefas de código aguardam.
 
 | Task ID | Entrega | Status |
 |---|---|---|
-| OFFGRID-KNOW-T01 | Snapshot automático de manuais/RAG + Sinais publicados + EDU aprovado, busca/leitura offline no Pilot/PWA/fallback nativo; spec OFFGRID-KNOW-001 | IN PROGRESS |
-| OFFGRID-KNOW-T02 | Raciocínio conversacional local sobre a mesma biblioteca, compatível com Capacitor | BLOCKED — após T01 |
+| OFFGRID-KNOW-T01 | Snapshot automático de manuais/RAG + Sinais publicados + EDU aprovado, busca/leitura offline no Pilot/PWA/fallback nativo; spec OFFGRID-KNOW-001 | CODE COMPLETE — validação física/release pendentes (PR #28) |
+| OFFGRID-KNOW-T02 | Raciocínio conversacional local sobre a mesma biblioteca, compatível com Capacitor; PILOT-LOCAL-001 / D-243 | CODE COMPLETE — em revisão; modelo real, Xcode e aparelho pendentes. Autorizado pelo dono sobre T01 em revisão |
 
 
 ## Phase 0 — App Spine Migration

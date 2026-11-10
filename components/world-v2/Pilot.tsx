@@ -1,5 +1,7 @@
 'use client'
 
+import LocalAIControls from '@/components/LocalAIControls'
+import { localRuntime } from '@/lib/local-ai-client'
 import { offlineKnowledgeReply, type KnowledgePack } from '@/lib/offline-knowledge'
 import { readOfflineKnowledge, syncOfflineKnowledge } from '@/lib/offline-knowledge-client'
 import type { PilotContentLink } from '@/lib/pilot-content'
@@ -362,6 +364,7 @@ export default function Pilot({
   }
 
   const [knowledge, setKnowledge] = useState<{ count: number; syncedAt: string } | null>(null)
+  const [localBusy, setLocalBusy] = useState(false)
   const [knowledgeFailed, setKnowledgeFailed] = useState(false)
   useEffect(() => {
     let active = true
@@ -376,11 +379,32 @@ export default function Pilot({
   }, [])
 
   const answerOffline = async (question: string, incomplete = false) => {
-    const pack = await readOfflineKnowledge()
-    const result = offlineKnowledgeReply(pack, question, pt)
-    push({ id: nextId(), role: 'pilot', kind: 'chat',
-      text: (incomplete ? (pt ? 'A resposta online foi interrompida.\n\n' : 'The online answer was interrupted.\n\n') : '') + result.text,
-      actions: [{ label: pt ? 'Abrir biblioteca salva' : 'Open saved library', href: '/offline.html', primary: true }] })
+    setBusy(true); setLocalBusy(true)
+    try {
+      const pack = await readOfflineKnowledge()
+      const localGuard = askPilot('now', ctx)
+      const history = messages.filter(m => m.role === 'user' || m.kind === 'chat')
+        .slice(-6).map(m => ({ role: m.role === 'user' ? 'user' as const : 'assistant' as const, content: m.text }))
+      const context = ctx.household.known
+        ? `Last known household: ${ctx.household.people} people. Deterministic saved autonomy: ${ctx.autonomyDays} days; water: ${ctx.waterDays} days; food: ${ctx.foodDays} days. Not a live refresh.`
+        : 'Household details unavailable. Do not assume people, equipment or supplies.'
+      let result
+      try {
+        result = await (await localRuntime()).answer({ pack, question, pt, history, context,
+          guard: { verdict: localGuard.verdict, headline: localGuard.headline, body: localGuard.body } })
+      } catch (error) {
+        if (error instanceof Error && error.message === 'local_cancelled') return
+        result = { mode: 'documents' as const, text: offlineKnowledgeReply(pack, question, pt).text, sources: [] }
+      }
+      const header = result.mode === 'local_ai' ? (pt ? 'IA local · biblioteca salva' : 'Local AI · saved library') : ''
+      const sourceText = result.sources.map(source => `${source.title} · ${source.version} · ${source.source}`).join('\n')
+      push({ id: nextId(), role: 'pilot', kind: 'chat',
+        text: [incomplete ? (pt ? 'A resposta online foi interrompida.' : 'The online answer was interrupted.') : '', header, result.text,
+          sourceText ? `${pt ? 'Fontes consultadas' : 'Sources consulted'}:\n${sourceText}\n${pt ? 'Cópia salva em' : 'Copy saved on'}: ${pack?.syncedAt}` : ''].filter(Boolean).join('\n\n'),
+        verdict: ctx.riskState === 'critical' ? localGuard.verdict : undefined,
+        caveat: ctx.riskState === 'critical' ? `${localGuard.headline} — ${localGuard.body}` : undefined,
+        actions: [{ label: pt ? 'Abrir biblioteca salva' : 'Open saved library', href: '/offline.html', primary: true }] })
+    } finally { setLocalBusy(false); setBusy(false) }
   }
 
   /** Connected reasoning falls back to the downloaded documentary library. */
@@ -962,6 +986,11 @@ export default function Pilot({
                 void syncOfflineKnowledge().then(pack => { setKnowledge({ count: pack.documents.length, syncedAt: pack.syncedAt }); setKnowledgeFailed(false) }).catch(() => setKnowledgeFailed(true))
               }}>{pt ? 'Atualizar cópia' : 'Update copy'}</button>
             </div>
+            <LocalAIControls pt={pt} busy={localBusy} />
+            <button type="button" className="wv2-pill" disabled={busy && !localBusy} onClick={() => {
+              void localRuntime().then(r => r.cancel()).catch(() => {})
+              setMessages([fromAnswer(opening)]); setDraft('')
+            }}>{pt ? 'Limpar conversa' : 'Clear conversation'}</button>
             <form
               className="chat-compose"
               onSubmit={event => {

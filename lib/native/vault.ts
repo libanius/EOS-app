@@ -29,6 +29,7 @@
  * dono, não resolvido em silêncio aqui.
  */
 
+import { clearLocalAISession } from '@/lib/local-ai-client'
 import type { PlanDocument } from '@/lib/family-plan'
 import { nativeGet, nativeRemove, nativeSet } from '@/lib/native/bridge'
 
@@ -226,5 +227,6 @@ export async function salvarCofre(
  * tela offline do aparelho — para quem quer que abrisse o app depois.
  */
 export async function limparCofre(scope?: unknown): Promise<boolean> {
+  await clearLocalAISession().catch(() => {})
   return nativeRemove(VAULT_KEY, scope)
 }

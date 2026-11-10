@@ -4,6 +4,17 @@
 
 ---
 
+## D-243 — Pilot conversacional local sobre a biblioteca offline
+
+**Data**: 2026-11-10. **Status**: DECIDED — dono: “Vamos fazer esse raciocínio conversasional”. **Tarefa atual**: OFFGRID-KNOW-T02, autorizada sobre a implementação T01 do PR #28, ainda em revisão; sem declarar os testes físicos de T01 concluídos.
+
+O mesmo Pilot deve conversar sem infraestrutura: interpretar pergunta e acompanhamento, recuperar os textos salvos e transformar as referências em explicação e próximos passos, com fontes verificáveis. A orientação deve pedir informação ausente em vez de supor equipamento, condições atuais ou dados da casa. Regras determinísticas mantêm autoridade; contas de autonomia/quantidades não vão para o modelo. Sem escrita automática de plano, estoque ou memória.
+
+Implementação: contrato portátil de raciocínio local e recuperação contextual; WebLLM/WebGPU com Qwen2.5 1.5B quantizado para PWA/navegador compatível, preparado explicitamente enquanto online; adaptador Foundation Models para casca iOS 26+ quando disponível. Provedores compartilham o mesmo contexto restrito, fontes e validação. Download de pesos é opcional e explícito, nunca automático ao abrir. Nativo não depende do cache de pesos de outra origem. Falta de capacidade, modelo, bateria, contexto, cancelamento ou falha retorna à biblioteca; nunca finge IA local. Perguntas/histórico não são enviados a servidor no caminho LOCAL_AI. Conversa fica na sessão, com botão de limpar/cancelar. Primeiro atendimento offline não pode depender de autorização remota ou cobrança.
+
+Compatibilidade e limites precisam ser medidos no iPhone real antes de release. O modelo de sistema interpreta/redige; decisões quantitativas e risco permanecem em código. A implementação e os testes de contrato não equivalem a validação de qualidade do modelo real.
+
+
 ## D-242 — Continuidade do conhecimento offline é prioridade total
 
 **Data**: 2026-11-10. **Status**: DECIDED, pedido explícito do dono após teste em modo avião. **Tarefa prioritária**: OFFGRID-KNOW-T01. Esta prioridade antecede as demais tarefas de código; CONTENT-T06 permanece bloqueada e não é executada nem descartada.

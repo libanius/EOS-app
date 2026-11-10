@@ -56,6 +56,19 @@ const avisa = (cond, msg) => { if (!cond) avisos.push(msg) }
   exige(engine?.includes('eos.offline.knowledge.v1'), 'Chave da biblioteca offline ausente')
 }
 
+// D-243: plugin, custom controller, source membership and local worker must travel together.
+{
+  const plugin = ler(join(NATIVE, 'ios/App/App/EOSLocalAIPlugin.swift'))
+  const controller = ler(join(NATIVE, 'ios/App/App/EOSViewController.swift'))
+  const storyboard = ler(join(NATIVE, 'ios/App/App/Base.lproj/Main.storyboard'))
+  const project = ler(join(NATIVE, 'ios/App/App.xcodeproj/project.pbxproj'))
+  exige(plugin?.includes('jsName = "EOSLocalAI"'), 'Plugin conversacional não tem o nome da ponte JS')
+  exige(controller?.includes('registerPluginInstance(EOSLocalAIPlugin())'), 'Plugin local não registrado no controller')
+  exige(storyboard?.includes('customClass="EOSViewController"'), 'Storyboard não abre o controller com o plugin local')
+  exige(project?.includes('EOSLocalAIPlugin.swift in Sources') && project?.includes('EOSViewController.swift in Sources'), 'Fontes da IA local fora do alvo Xcode')
+  exige(ler(join(NATIVE, 'www/local-ai-runtime.js')) && ler(join(NATIVE, 'www/local-ai-worker.js')), 'Gere os arquivos locais com npm run build:local-ai na raiz antes do sync nativo')
+}
+
 // ─── 2. O id do canal de notificação do Android ─────────────────────────────
 {
   const servidor = ler(join(RAIZ, 'lib/push-native.ts'))

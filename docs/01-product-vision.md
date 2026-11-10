@@ -66,3 +66,6 @@ NCTSN PFA, Red Cross Disaster Handbook, SAMHSA (3 guides), SAS Survival Handbook
 ## Prioridade autorizada em 2026-11-10 — D-242
 
 `specs/OFFGRID-KNOW-001-continuidade-do-conhecimento.md` torna mandatória a continuidade de manuais/RAG, Sinais publicados e EDU aprovado. SURVIVAL deve incluir busca e leitura documental local além das regras. Alimentar/publicar conteúdo deve alimentar automaticamente a próxima cópia sincronizada do aparelho, sem nova ingestão editorial. A biblioteca é compartilhada pelo Pilot, PWA e fallback Capacitor; modelo local virá sobre essa base. A disponibilidade efetiva depende de download completo confirmado e preserva fonte/versão/data. Esta decisão prevalece sobre descrições históricas de SURVIVAL como "rules only"; não afirma que a implementação está pronta.
+
+
+D-243 (2026-11-10): raciocínio conversacional LOCAL_AI autorizado sobre a biblioteca offline, com WebGPU/WebLLM no navegador compatível e Foundation Models na casca iOS compatível. Spec PILOT-LOCAL-001. Preparação explícita, capacidade verificada e fallback documental; não substitui as regras nem promete disponibilidade antes de teste real.

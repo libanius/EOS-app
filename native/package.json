@@ -10,7 +10,11 @@
     "open:ios": "cap open ios",
     "open:android": "cap open android",
     "doctor": "cap doctor",
-    "check": "node scripts/native-shell-check.mjs"
+    "check": "node scripts/native-shell-check.mjs",
+    "prepare:local-ai": "cd .. && node scripts/build-offline-library.mjs && node scripts/build-local-ai.mjs",
+    "presync": "npm run prepare:local-ai",
+    "presync:ios": "npm run prepare:local-ai",
+    "presync:android": "npm run prepare:local-ai"
   },
   "dependencies": {
     "@capacitor/android": "8.5.0",

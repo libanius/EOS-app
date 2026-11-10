@@ -109,6 +109,86 @@
       }
     })
   }
+  var history = []
+  var chatBusy = false
+  var preparing = false
+  var localStatus = null
+  var messages = document.getElementById('local-messages')
+  var localQuestion = document.getElementById('local-question')
+  var prepareButton = document.getElementById('local-prepare')
+  var stopButton = document.getElementById('local-stop')
+  var removeButton = document.getElementById('local-remove')
+  function runtime() { return globalThis.EOSLocalAI }
+  function paintLocal() {
+    var pt = lang === 'pt'
+    text('local-title', pt ? 'Pilot · conversa offline' : 'Pilot · offline conversation')
+    text('local-label', pt ? 'Converse usando a biblioteca salva' : 'Converse using the saved library')
+    text('local-send', pt ? 'Enviar' : 'Send'); text('local-clear', pt ? 'Limpar conversa' : 'Clear conversation')
+    text('local-prepare', pt ? 'Preparar conversa offline' : 'Prepare offline conversation')
+    text('local-stop', pt ? 'Interromper IA local' : 'Stop local AI')
+    text('local-remove', pt ? 'Remover modelo baixado' : 'Remove downloaded model')
+    text('local-download', localStatus && localStatus.state === 'needs_download'
+      ? (pt ? 'Download opcional de aproximadamente 1 GB. Prefira Wi-Fi; prepare antes de ficar sem rede.' : 'Optional download of about 1 GB. Prefer Wi-Fi; prepare before losing connection.') : '')
+    prepareButton.hidden = preparing || chatBusy || !localStatus || ['unsupported', 'ready'].includes(localStatus.state)
+    stopButton.hidden = !preparing && !chatBusy && (!localStatus || localStatus.state !== 'ready')
+    removeButton.hidden = preparing || chatBusy || !localStatus || localStatus.provider !== 'webllm' || !['ready', 'cached'].includes(localStatus.state)
+    localQuestion.disabled = chatBusy
+    document.getElementById('local-send').disabled = chatBusy
+  }
+  async function updateLocalStatus() {
+    try {
+      localStatus = runtime() ? await runtime().status() : null
+      var state = localStatus && localStatus.state
+      text('local-status', state === 'ready' ? (lang === 'pt' ? 'IA local pronta nesta sessão' : 'Local AI ready in this session')
+        : state === 'unsupported' ? (lang === 'pt' ? 'IA local indisponível aqui. A consulta documental continua disponível.' : 'Local AI unavailable here. Document lookup remains available.')
+        : (lang === 'pt' ? 'Prepare ou carregue o modelo para conversar sem rede.' : 'Prepare or load the model to converse without network.'))
+    } catch (_) { text('local-status', lang === 'pt' ? 'Modelo indisponível. Use a biblioteca salva.' : 'Model unavailable. Use the saved library.') }
+    paintLocal()
+  }
+  prepareButton.addEventListener('click', async function () {
+    preparing = true; paintLocal()
+    try {
+      await runtime().prepare(function (progress) { text('local-status', (lang === 'pt' ? 'Preparando IA local' : 'Preparing local AI') + ' · ' + Math.round(progress * 100) + '%') })
+      await updateLocalStatus()
+    } catch (_) { text('local-status', lang === 'pt' ? 'Preparação não concluída. A biblioteca foi preservada.' : 'Preparation did not finish. The library was preserved.') }
+    finally { preparing = false; paintLocal() }
+  })
+  stopButton.addEventListener('click', async function () {
+    if (runtime()) await runtime().cancel()
+    preparing = false; await updateLocalStatus()
+  })
+  removeButton.addEventListener('click', async function () {
+    if (runtime()) await runtime().remove()
+    await updateLocalStatus()
+  })
+  document.getElementById('local-clear').addEventListener('click', async function () {
+    if (runtime()) await runtime().cancel()
+    history = []; messages.replaceChildren(); await updateLocalStatus()
+  })
+  document.getElementById('local-form').addEventListener('submit', async function (event) {
+    event.preventDefault()
+    var question = localQuestion.value.trim()
+    if (!question || chatBusy) return
+    chatBusy = true; localQuestion.value = ''; paintLocal()
+    messages.appendChild(element('p', question))
+    text('local-status', lang === 'pt' ? 'Consultando no aparelho…' : 'Consulting on this device…')
+    try {
+      var result = runtime() ? await runtime().answer({ question: question, pt: lang === 'pt', history: history, pack: pack })
+        : { mode: 'documents', text: engine.offlineKnowledgeReply(pack, question, lang === 'pt').text, sources: [] }
+      var body = element('p', result.text); body.className = 'knowledge-text'; messages.appendChild(body)
+      result.sources.forEach(function (source) {
+        var details = element('details')
+        details.appendChild(element('summary', source.title + ' · ' + source.version))
+        var reference = element('p', source.text); reference.className = 'knowledge-text'; details.appendChild(reference)
+        messages.appendChild(details)
+      })
+      if (result.mode === 'local_ai') messages.appendChild(element('p', (lang === 'pt' ? 'IA local · cópia salva em ' : 'Local AI · copy saved on ') + result.syncedAt))
+      history.push({ role: 'user', content: question }, { role: 'assistant', content: result.text })
+      history = history.slice(-6)
+    } catch (_) { messages.appendChild(element('p', lang === 'pt' ? 'Conversa interrompida. A biblioteca continua disponível.' : 'Conversation interrupted. The library remains available.')) }
+    finally { chatBusy = false; await updateLocalStatus(); paintLocal() }
+  })
+  void updateLocalStatus()
   async function load() {
     try {
       var cap = window.Capacitor
@@ -118,7 +198,7 @@
     } catch (_) { pack = null }
     render()
   }
-  select.addEventListener('change', function () { lang = select.value === 'pt' ? 'pt' : 'en'; render() })
+  select.addEventListener('change', function () { lang = select.value === 'pt' ? 'pt' : 'en'; render(); void updateLocalStatus() })
   document.getElementById('knowledge-form').addEventListener('submit', function (event) { event.preventDefault(); render() })
   if (window.Capacitor) void load()
   else { void load(); document.addEventListener('deviceready', load, { once: true }) }

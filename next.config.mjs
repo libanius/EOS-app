@@ -42,6 +42,7 @@ const withPWA = nextPwa({
     /\.map$/,
     /^.*dynamic-css-manifest\.json$/,
   ],
+  maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
   runtimeCaching: [
     // D-238: a porta de entrada do app instalado. Estática; servida do cache na
     // hora (e offline) enquanto se atualiza em segundo plano.

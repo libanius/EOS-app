@@ -90,7 +90,23 @@
     <p id="knowledge-note" class="stamp"></p>
     <div id="knowledge-results" aria-live="polite"></div>
   </section>
+  <section id="local-chat">
+    <h2 id="local-title">Pilot · conversa offline</h2>
+    <p id="local-status" role="status">Verificando a IA local…</p>
+    <p id="local-download" class="stamp"></p>
+    <button id="local-prepare" type="button" hidden>Preparar conversa offline</button>
+    <button id="local-stop" class="ghost" type="button" hidden>Interromper IA local</button>
+    <button id="local-remove" class="ghost" type="button" hidden>Remover modelo baixado</button>
+    <div id="local-messages" aria-live="polite"></div>
+    <form id="local-form">
+      <label id="local-label" for="local-question">Converse usando a biblioteca salva</label>
+      <input id="local-question" maxlength="1200" autocomplete="off" />
+      <button id="local-send" type="submit">Enviar</button>
+    </form>
+    <button id="local-clear" class="ghost" type="button">Limpar conversa</button>
+  </section>
   <script src="knowledge.js"></script>
+  <script src="local-ai-runtime.js" defer></script>
   <script src="knowledge-ui.js" defer></script>
 
   <button id="retry">Tentar de novo</button>
