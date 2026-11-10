@@ -4,6 +4,15 @@
 
 ---
 
+## D-242 — Continuidade do conhecimento offline é prioridade total
+
+**Data**: 2026-11-10. **Status**: DECIDED, pedido explícito do dono após teste em modo avião. **Tarefa prioritária**: OFFGRID-KNOW-T01. Esta prioridade antecede as demais tarefas de código; CONTENT-T06 permanece bloqueada e não é executada nem descartada.
+
+O acervo de manuais/RAG, todo Sinal publicado e todo EDU aprovado devem acompanhar o aparelho para consulta sem infraestrutura. Publicação/aprovação alimenta automaticamente o próximo snapshot local, sem exigir abrir cada artigo nem nova ingestão vetorial editorial. Rascunhos/review ficam fora. Alterações e arquivamentos substituem versões anteriores após sincronização completa. Falha parcial nunca apaga a última cópia íntegra. Fontes, idioma, versão e data da cópia ficam visíveis; links/vídeos externos não são anunciados como baixados.
+
+Primeira entrega: busca e leitura local dos textos completos disponíveis no banco, com trechos identificados, no Pilot, PWA e fallback nativo. Não equivale a raciocínio generativo local: este continua uma entrega seguinte sobre a MESMA biblioteca. Não depende de OpenAI/embeddings para baixar ou pesquisar. Limite inicial explícito de 32 MiB por snapshot, sem corte silencioso; no nativo, blocos em Preferences com ponteiro atômico para não guardar um único valor gigante. Só confirmar disponibilidade após gravar e reler. Testar queda de rede, reinício sem rede, atualização/arquivamento, falha parcial e fontes militar/psicologia/EDU/Sinais.
+
+
 ## D-241 — Referências legíveis no Pilot
 
 **Data**: 2026-11-09. **Status**: DECIDED (dono enviou captura e pediu cores do design system). **Tarefa**: PILOT-KNOW-T02.

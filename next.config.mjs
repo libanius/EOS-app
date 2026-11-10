@@ -90,6 +90,7 @@ const withPWA = nextPwa({
       handler: 'NetworkOnly',
       method: 'GET',
     },
+    { urlPattern: /\/api\/pilot\/offline-pack(?:\?|$)/i, handler: 'NetworkOnly', method: 'GET' },
     // API → network-first with 10s timeout; fallback to cache
     {
       urlPattern: /\/api\/.*$/i,

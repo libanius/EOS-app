@@ -53,7 +53,7 @@ export async function middleware(request: NextRequest) {
   if (publicSignalSharePath(request.nextUrl.pathname)) return NextResponse.next({ request })
   // D-238: `/abrir` é a porta de entrada estática do app instalado. Passar pelo
   // Supabase aqui recolocaria a espera que essa página existe para tirar.
-  if (request.nextUrl.pathname === '/abrir') return NextResponse.next({ request })
+  if (['/abrir', '/offline.html', '/knowledge.js', '/knowledge-ui.js'].includes(request.nextUrl.pathname)) return NextResponse.next({ request })
   let supabaseResponse = NextResponse.next({ request })
   const affiliateRef = normalizeAffiliateCode(
     request.nextUrl.searchParams.get('ref') ?? request.nextUrl.searchParams.get('affiliate'),

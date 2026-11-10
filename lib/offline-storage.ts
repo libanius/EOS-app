@@ -20,6 +20,7 @@
  *   clearAll
  */
 
+import type { KnowledgePack } from './offline-knowledge'
 import type { IDBPDatabase } from 'idb'
 import type { PlanDocument, PlanSummary } from './family-plan'
 import type { MapBaseMode } from './map-base-mode'
@@ -419,4 +420,17 @@ export async function clearAll(): Promise<void> {
   await tx.objectStore('plans').clear()
   await tx.objectStore('checklist').clear()
   await tx.done
+}
+
+/** D-242: one IndexedDB value makes replacement atomic, including removals. */
+export async function saveKnowledgePack(pack: KnowledgePack): Promise<boolean> {
+  const db = await getDB()
+  if (!db) return false
+  await db.put('kv', pack, 'knowledge:pack')
+  const saved = await db.get('kv', 'knowledge:pack') as KnowledgePack | undefined
+  return saved?.version === pack.version
+}
+export async function getKnowledgePack(): Promise<KnowledgePack | null> {
+  const db = await getDB()
+  return db ? (await db.get('kv', 'knowledge:pack') as KnowledgePack | undefined) ?? null : null
 }

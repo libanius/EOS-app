@@ -47,6 +47,15 @@ const avisa = (cond, msg) => { if (!cond) avisos.push(msg) }
   )
 }
 
+// D-242: no separate/offline-only knowledge engine can silently drift.
+{
+  const engine = ler(join(NATIVE, 'www/knowledge.js'))
+  exige(engine && engine === ler(join(RAIZ, 'public/knowledge.js')), 'Motor offline nativo diverge do PWA')
+  exige(ler(join(NATIVE, 'www/knowledge-ui.js')) === ler(join(RAIZ, 'public/knowledge-ui.js')), 'Leitor offline diverge do PWA')
+  exige(ler(join(NATIVE, 'www/offline.html')) === ler(join(RAIZ, 'public/offline.html')), 'Fallback offline diverge do PWA')
+  exige(engine?.includes('eos.offline.knowledge.v1'), 'Chave da biblioteca offline ausente')
+}
+
 // ─── 2. O id do canal de notificação do Android ─────────────────────────────
 {
   const servidor = ler(join(RAIZ, 'lib/push-native.ts'))

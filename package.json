@@ -1,6 +1,6 @@
 {
   "name": "eos-app",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -47,7 +47,8 @@
     "bench:rag": "node scripts/rag-bench.mjs",
     "check:push": "npx tsx scripts/push-credentials-check.ts",
     "setup:push": "node scripts/push-credentials-setup.mjs",
-    "test:content-sql": "bash scripts/content-pipeline-sql-test.sh"
+    "test:content-sql": "bash scripts/content-pipeline-sql-test.sh",
+    "prebuild": "node scripts/build-offline-library.mjs --check"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.86.1",

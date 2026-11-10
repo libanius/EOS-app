@@ -1,5 +1,7 @@
 'use client'
 
+import { offlineKnowledgeReply, type KnowledgePack } from '@/lib/offline-knowledge'
+import { readOfflineKnowledge, syncOfflineKnowledge } from '@/lib/offline-knowledge-client'
 import type { PilotContentLink } from '@/lib/pilot-content'
 
 /**
@@ -82,7 +84,7 @@ const COPY = {
     placeholder: 'Pergunte ao seu especialista',
     send: 'Enviar',
     thinking: 'Analisando com a base de conhecimento…',
-    offline: 'Sem rede. O Pilot segue respondendo pelo motor local — toque nas perguntas abaixo.',
+    offline: 'Pergunte à biblioteca offline',
     unavailable: 'Não consegui falar com a base agora. As respostas locais continuam funcionando.',
     addTask: 'Adicionar',
     added: 'Na preparação',
@@ -116,7 +118,7 @@ const COPY = {
     placeholder: 'Ask your specialist',
     send: 'Send',
     thinking: 'Checking the knowledge base…',
-    offline: 'No network. The Pilot still answers from the local engine — tap a question below.',
+    offline: 'Ask the offline library',
     unavailable: 'I could not reach the knowledge base. Local answers still work.',
     addTask: 'Add',
     added: 'In preparedness',
@@ -359,7 +361,29 @@ export default function Pilot({
     push(fromAnswer(askPilot(intent, ctx)))
   }
 
-  /** The specialist. Needs network; degrades honestly when it is missing. */
+  const [knowledge, setKnowledge] = useState<{ count: number; syncedAt: string } | null>(null)
+  const [knowledgeFailed, setKnowledgeFailed] = useState(false)
+  useEffect(() => {
+    let active = true
+    void readOfflineKnowledge().then(pack => { if (active && pack) setKnowledge({ count: pack.documents.length, syncedAt: pack.syncedAt }) })
+    const update = (event: Event) => {
+      const detail = (event as CustomEvent<{ pack?: KnowledgePack; error?: boolean }>).detail
+      setKnowledgeFailed(!!detail.error)
+      if (detail.pack) setKnowledge({ count: detail.pack.documents.length, syncedAt: detail.pack.syncedAt })
+    }
+    window.addEventListener('eos:knowledge-sync', update)
+    return () => { active = false; window.removeEventListener('eos:knowledge-sync', update) }
+  }, [])
+
+  const answerOffline = async (question: string, incomplete = false) => {
+    const pack = await readOfflineKnowledge()
+    const result = offlineKnowledgeReply(pack, question, pt)
+    push({ id: nextId(), role: 'pilot', kind: 'chat',
+      text: (incomplete ? (pt ? 'A resposta online foi interrompida.\n\n' : 'The online answer was interrupted.\n\n') : '') + result.text,
+      actions: [{ label: pt ? 'Abrir biblioteca salva' : 'Open saved library', href: '/offline.html', primary: true }] })
+  }
+
+  /** Connected reasoning falls back to the downloaded documentary library. */
   const send = async () => {
     const question = draft.trim()
     if (!question || busy) return
@@ -390,7 +414,7 @@ export default function Pilot({
       // recebe sem rede diz se a promessa "responde quando a rede caiu" está
       // sendo cobrada de verdade.
       notePilot('offline', { intent: 'free' })
-      push({ id: nextId(), role: 'pilot', text: c.offline })
+      await answerOffline(question)
       return
     }
 
@@ -402,8 +426,12 @@ export default function Pilot({
       .slice(-PILOT_HISTORY)
       .map(m => ({ role: m.role === 'user' ? ('user' as const) : ('assistant' as const), content: m.text }))
 
+    const controller = new AbortController()
+    let timeout = setTimeout(() => controller.abort(), 8000)
+    let streamComplete = false
     try {
       const response = await fetch('/api/pilot/chat?stream=1', {
+        signal: controller.signal,
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -516,6 +544,8 @@ export default function Pilot({
           },
         }),
       })
+      if (!response.ok) throw new Error('pilot_unavailable')
+
       /*
        * A resposta CHEGA ESCREVENDO (D-125).
        *
@@ -559,6 +589,8 @@ export default function Pilot({
           return
         }
         if (evento === 'delta') {
+          clearTimeout(timeout)
+          timeout = setTimeout(() => controller.abort(), 12000)
           acumulado += String((dados as { text?: string }).text ?? '')
           if (!criada) { push({ id: idResposta, role: 'pilot', kind: 'chat', text: acumulado }); criada = true }
           else replace(idResposta, m => ({ ...m, text: acumulado }))
@@ -566,6 +598,8 @@ export default function Pilot({
           return
         }
         if (evento === 'done') {
+          streamComplete = true
+          clearTimeout(timeout)
           const d = dados as unknown as {
             reply?: string; tasks?: PilotTask[]; memory?: PilotMemoryProposal[]; destinations?: PilotDestination[]; sources?: PilotSource[]; contentLinks?: PilotContentLink[]
           }
@@ -608,10 +642,11 @@ export default function Pilot({
           try { aplicar(evento, JSON.parse(dados)) } catch { /* bloco parcial: o próximo fecha */ }
         }
       }
-      if (!criada) push({ id: idResposta, role: 'pilot', kind: 'chat', text: c.unavailable })
+      if (!streamComplete) await answerOffline(question, criada)
     } catch {
-      push({ id: nextId(), role: 'pilot', kind: 'chat', text: c.unavailable })
+      await answerOffline(question, !streamComplete)
     } finally {
+      clearTimeout(timeout)
       setBusy(false)
       scrollToEnd()
     }
@@ -917,6 +952,16 @@ export default function Pilot({
               </button>
             )}
 
+            <div className="t-foot ink-2" style={{ padding: '8px 16px' }}>
+              <a href="/offline.html" style={{ color: 'var(--ac)', textDecoration: 'underline' }}>
+                {pt ? 'Biblioteca offline' : 'Offline library'}
+              </a>
+              {' · '}{knowledge ? `${knowledge.count} ${pt ? 'textos salvos' : 'saved texts'} · ${new Date(knowledge.syncedAt).toLocaleString()}` : (pt ? 'ainda não baixada' : 'not downloaded yet')}
+              {knowledgeFailed && <span>{pt ? ' · atualização falhou; última cópia preservada' : ' · update failed; last copy preserved'}</span>}
+              <button type="button" className="wv2-pill" onClick={() => {
+                void syncOfflineKnowledge().then(pack => { setKnowledge({ count: pack.documents.length, syncedAt: pack.syncedAt }); setKnowledgeFailed(false) }).catch(() => setKnowledgeFailed(true))
+              }}>{pt ? 'Atualizar cópia' : 'Update copy'}</button>
+            </div>
             <form
               className="chat-compose"
               onSubmit={event => {

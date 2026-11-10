@@ -1,9 +1,20 @@
 # 09 — Build Status
 
 > The single most important file for resuming a session. Read this first after AGENTS.md.
-> Last updated: 2026-09-03
+> Last updated: 2026-11-10
 
 ---
+
+## OFFGRID-KNOW-T01 — primeira implementação preparada (2026-11-10)
+
+v0.2.6, branch `codex/offline-knowledge-continuity`. Download autenticado por manifesto/partes da mesma versão, SHA-256, textos completos do acervo e do editorial publicado/aprovado em PT/EN. Consulta offline no Pilot, fallback de erro/timeout/stream parcial, biblioteca estática de leitura integral em `/offline.html`, abertura PWA offline e espelho nativo em blocos com geração anterior preservada. Sincronização ao abrir/reconectar/retornar e a cada cinco minutos visíveis. Conteúdo novo só fica disponível após sincronização completa. Não baixa vídeo/mídia externa; não implementa modelo local nem geração de plano adaptado sem rede. Sem migração ou publicação de pautas.
+
+Validação: type-check, lint, lint:scripts, suíte completa, build e guarda nativa aprovados. Precaching gerado contém `offline.html`, `knowledge.js` e `knowledge-ui.js`. Teste DOM executou os arquivos reais com amostras reais dos manuais do banco, sem rede, sobre IndexedDB e Preferences simulados: busca PT, fonte, texto completo e ausência de resultado aprovados. O script Playwright foi preparado, mas Chromium não abriu por restrição de socket neste executor: **conferência visual, cold start real e iPhone físico permanecem pendentes**. Código em revisão; tarefa continua IN PROGRESS, sem alegar deploy ou disponibilidade no telefone. OFFGRID-KNOW-T02 é a sequência sobre a mesma biblioteca.
+
+## Prioridade atual — conhecimento offline (2026-11-10)
+
+D-242 / OFFGRID-KNOW-T01 está IN PROGRESS por pedido explícito do dono. O teste em modo avião mostrou que a conversa para antes de consultar o acervo. A base documental depende de OpenAI + Supabase; a integração editorial D-240 é online. Entrega atual: snapshot automático completo textual, busca e leitura local no Pilot/PWA/fallback nativo. Raciocínio por modelo local é próximo passo, não implementado por esta tarefa. Não marcar pronto até verificação. CONTENT-T06 continua bloqueada.
+
 
 ## Referências do Pilot legíveis — 2026-11-09
 
@@ -42,10 +53,10 @@ SHARE-T01 (SIGNAL-SHARE-001): página pública PT/EN em `/sinais/[slug]/comparti
 | **Current Phase** | **Casca Nativa (MOB)** — o EOS deixou de ser só Web/PWA em 2026-08-31 (D-228). Execução de Plano (EXEC) segue viva no núcleo, que agora serve as duas superfícies. |
 | **Migração aplicada** | ✅ `20260828000000_ndl_dedup_arbiter.sql` (D-222) — aplicada pelo dono em 2026-08-28 e verificada: `npm run test:hazard-dedup` passou de **1/6 para 6/6**, incluindo o controle negativo. Dedup e cooldown de 30 min voltaram a valer. |
 | **Agendador migrado** | ✅ pg_cron (D-222 / ALERT-T08) — `supabase/pg_cron_hazard_scan.sql` rodado pelo dono em 2026-08-28. **Disparo autônomo confirmado** às 17:20:03 e 17:40:03 UTC, três segundos após a marca dos 10 min, partindo de dentro do banco. Cadência real: 10 min (era mediana de 43 min com buracos de até 11,6 h). `CRON_SECRET` no Vault, não no corpo do job. |
-| **Current Task** | **MOB-T06 — release nas lojas. É tarefa do DONO, não de código.** Contas Apple/Google, App ID com Push e Associated Domains, chave `.p8`, `google-services.json`, keystore, `.well-known`, ícones. Lista fechada em `docs/39-native-shell.md` §5. |
+| **Current Task** | **OFFGRID-KNOW-T01 — prioridade total D-242.** Código em revisão, validação de navegador/iPhone pendente. MOB-T06 permanece com o dono. |
 | **✅ Migração `push_devices`** | **Aplicada.** `20260831000000_push_devices.sql` existe em produção — verificado pelo dono no SQL Editor em 2026-11-02. O que ainda impede o push nativo de entregar são só as credenciais `APNS_*` e `FCM_SERVICE_ACCOUNT_JSON` (`npm run setup:push`). |
 | **⚠️ Bloqueio operacional** | **`APNS_*` e `FCM_SERVICE_ACCOUNT_JSON` não estão configuradas.** Com elas ausentes o app instala, abre e **não notifica**. `enviarParaAparelhos` conta esses aparelhos como **falha**, nunca como "sem aparelho" — a D-119 existe para que "não enviei" nunca se confunda com "enviei". |
-| **Próxima tarefa de código** | **AUTHOR-T01 — rascunho persistente em IndexedDB.** Não iniciar sem ler `specs/PLAN-AUTHOR-001-autoria-do-plano.md`. |
+| **Próxima tarefa de código** | Concluir OFFGRID-KNOW-T01; depois OFFGRID-KNOW-T02 (raciocínio local). AUTHOR-T01 aguarda a prioridade D-242, sem ser descartada. |
 | **Deploy Vercel** | ✅ Hotfix 2026-09-03 — `.vercelignore` passou de `native` para `/native`. A forma antiga também removia `lib/native/{bridge,push,vault}.ts` do pacote enviado ao Vercel, e o `next build` falhava com `Module not found: Can't resolve '@/lib/native/…'`. |
 | **Last Completed Task** | **INV-T05 — Validade e Pilot (2026-11-07, INVENTORY-001)** — vencidos e a vencer em "precisa de atenção"; o Pilot lê o estoque item a item (onde está, de quem é, o que vence); "O que falta" mostra o item que cobre. Fecha o código da INVENTORY-001 (T01–T05). **Próxima:** CONTENT-T06 — telas do Sinal lendo do banco. |
 | **Anterior** | **HOUSEHOLD-FIX-001 / D-231 — Casa à prova de erro (2026-11-03)** — aviso de nome parecido no endereço e ao corrigir convite; lista "já moram aqui" no formulário; convites com Enviar / Corrigir nome / Remover; dependente removível do cartão; "Desfazer" de 8 s; círculo criado no toque de "Enviar convite" (plano Família); alerta de duplicata cobre convite, dependente e conta; "São duas pessoas" persistido. Migração `20261103180000_household_distinct_pairs.sql` **aplicada** em produção. 14 testes novos (669 passando), lint, type-check e `next build` limpos. |

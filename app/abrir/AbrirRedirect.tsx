@@ -21,6 +21,7 @@ export default function AbrirRedirect() {
   const router = useRouter()
 
   useEffect(() => {
+    if (!navigator.onLine) { window.location.replace('/offline.html'); return }
     let alvo = '/'
     let foi = false
     const ir = () => {
@@ -29,7 +30,7 @@ export default function AbrirRedirect() {
       router.replace(alvo)
     }
     const reserva = window.setTimeout(() => {
-      if (window.location.pathname === '/abrir') window.location.replace(alvo)
+      if (window.location.pathname === '/abrir') window.location.replace('/offline.html')
     }, 7000)
 
     createClient()
