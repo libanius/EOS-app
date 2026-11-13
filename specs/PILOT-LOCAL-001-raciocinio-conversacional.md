@@ -25,6 +25,10 @@ Pilot do app e leitor estático offline compartilham o mesmo orquestrador. Leito
 
 Em PT/EN, distinguir verificação, preparo em andamento, arquivos encontrados, conversa pronta, interrupção, falha e indisponibilidade. Ao final do progresso, mostrar que o preparo está finalizando até confirmação do runtime. Exibir a próxima ação junto do estado, com instruções específicas para causas conhecidas e acesso à consulta documental quando a conversa não está pronta. Quando pronta, indicar onde digitar a pergunta e como testar sem internet.
 
+## Recuperação após encerramento
+
+No navegador, marcar carregamento e geração ativos em armazenamento local quando disponível. Limpar o marcador ao concluir, inclusive em erros tratados. Se restar um marcador após reabrir, não iniciar o modelo em resposta a uma pergunta até nova ativação explícita. Indicar a interrupção e preservar a leitura documental. Navegação ao dashboard com rede indisponível deve abrir o leitor precacheado quando o service worker já estiver ativo.
+
 ## Aceitação
 
 - Duas perguntas com acompanhamento mantêm o tema e usam fontes salvas.

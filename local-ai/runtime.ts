@@ -27,6 +27,20 @@ let sessionEnabled = false
 const enabledKey = 'eos.local-ai.enabled.v1'
 const pending = new Map<number, { resolve(value: unknown): void; reject(error: Error): void; progress?: (value: number) => void }>()
 const cancellers = new Set<(error: Error) => void>()
+const operationKey = 'eos.local-ai.pending.v1'
+function interrupted() {
+  try { return !!globalThis.localStorage?.getItem(operationKey) } catch { return false }
+}
+async function trackWebOperation<T>(run: () => Promise<T>): Promise<T> {
+  const token = `${Date.now()}-${Math.random()}`
+  try { globalThis.localStorage?.setItem(operationKey, token) } catch { /* Storage can be unavailable in embedded browsers. */ }
+  try { return await run() }
+  finally {
+    try {
+      if (globalThis.localStorage?.getItem(operationKey) === token) globalThis.localStorage.removeItem(operationKey)
+    } catch { /* The current session can still use the library. */ }
+  }
+}
 function ios() { return scope.Capacitor?.getPlatform?.() === 'ios' }
 function plugin(): ApplePlugin | null {
   if (!ios()) return null
@@ -82,6 +96,7 @@ async function status(): Promise<LocalStatus> {
   if (!globalThis.isSecureContext || !navigator.gpu) return { state: 'unsupported', provider: 'none', reason: 'webgpu_unavailable' }
   if (engineReady) return { state: 'ready', provider: 'webllm' }
   if (loading) return { state: 'loading', provider: 'webllm' }
+  if (interrupted()) return { state: 'error', provider: 'webllm', reason: 'model_interrupted' }
   try { return { state: await bounded(rpc('hasCache'), 15000) ? 'cached' : 'needs_download', provider: 'webllm' } }
   catch { return { state: 'error', provider: 'webllm', reason: 'model_cache_unavailable' } }
 }
@@ -97,8 +112,8 @@ async function load(progress?: (value: number) => void, allowDownload = false): 
     if (!navigator.gpu || !await navigator.gpu.requestAdapter()) throw new Error('webgpu_unavailable')
     if (current !== generation) throw new Error('local_cancelled')
     const cached = await bounded(rpc('hasCache'), 15000)
-    if (!cached && !allowDownload) throw new Error('model_not_prepared')
     if (!cached && !navigator.onLine) throw new Error('model_download_requires_connection')
+    if (!cached && !allowDownload) throw new Error('model_not_prepared')
     if (!cached) {
       const storage = await navigator.storage?.estimate?.()
       if (storage?.quota && storage.quota - (storage.usage ?? 0) < 1400 * 1024 * 1024) throw new Error('insufficient_storage')
@@ -122,7 +137,7 @@ async function prepare(progress?: (value: number) => void): Promise<LocalStatus>
     sessionEnabled = true; await setEnabled(true); progress?.(1)
     return { state: 'ready', provider: 'apple' }
   }
-  await bounded(load(progress, true), 10 * 60 * 1000)
+  await trackWebOperation(() => bounded(load(progress, navigator.onLine), 10 * 60 * 1000))
   return { state: 'ready', provider: 'webllm' }
 }
 async function cancel() {
@@ -140,9 +155,12 @@ async function generate(prompt: LocalPrompt): Promise<unknown> {
     if (!p) throw new Error('native_plugin_missing')
     return bounded(p.generate({ instructions: prompt.instructions, prompt: prompt.prompt, requestId: String(generation) }))
   }
-  await bounded(load(undefined, false))
-  if (!engineReady) throw new Error('model_unavailable')
-  return bounded(rpc('generate', prompt))
+  if (!engineReady && interrupted()) throw new Error('model_interrupted')
+  return trackWebOperation(async () => {
+    await bounded(load(undefined, false))
+    if (!engineReady) throw new Error('model_unavailable')
+    return bounded(rpc('generate', prompt))
+  })
 }
 async function answer(request: LocalRequest): Promise<LocalResult> {
   if (busy) throw new Error('local_busy')

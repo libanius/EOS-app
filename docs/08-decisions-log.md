@@ -4,6 +4,12 @@
 
 ---
 
+## D-245 — Recuperar consulta offline após encerramento do navegador
+
+**Data**: 2026-11-13. **Status**: DECIDED — correção de robustez no OFFGRID-KNOW-T02 após o teste do dono. A página do dashboard reiniciou em modo avião depois do preparo do modelo web. A captura não comprova a causa do encerramento.
+
+Ao reabrir o dashboard sem acesso à rede, servir o leitor salvo pelo service worker. Preservar biblioteca e pesos. Se o navegador encerrar durante carregamento ou geração, a próxima pergunta usa os textos salvos até o usuário escolher tentar o modelo novamente.
+
 ## D-244 — Resultado e próximo passo do preparo offline
 
 **Data**: 2026-11-13. **Status**: DECIDED — pedido do dono no teste da prévia do Pilot. OFFGRID-KNOW-T02 mantém a validação física pendente.

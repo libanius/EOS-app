@@ -126,7 +126,7 @@
     text('local-title', pt ? 'Pilot · conversa offline' : 'Pilot · offline conversation')
     text('local-label', pt ? 'Converse usando a biblioteca salva' : 'Converse using the saved library')
     text('local-send', pt ? 'Enviar' : 'Send'); text('local-clear', pt ? 'Limpar conversa' : 'Clear conversation')
-    text('local-prepare', localIssue ? (pt ? 'Tentar novamente' : 'Try again')
+    text('local-prepare', localIssue || (localStatus && localStatus.state === 'error') ? (pt ? 'Tentar novamente' : 'Try again')
       : localStatus && localStatus.state === 'cached' ? (pt ? 'Carregar modelo local' : 'Load local model')
       : (pt ? 'Preparar conversa offline' : 'Prepare offline conversation'))
     paintPreparation()

@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { runInNewContext } from 'node:vm'
 import type { LocalRuntime } from '../../local-ai/runtime'
 import type { LocalRequest } from '@/lib/local-ai-core'
-function setup(options: { native?: boolean; cached?: boolean; gpu?: boolean; slow?: boolean } = {}) {
+function setup(options: { native?: boolean; cached?: boolean; gpu?: boolean; slow?: boolean; interrupted?: boolean } = {}) {
   const posts: Array<{ method: string; data: unknown }> = []
   const fetch = jest.fn(() => { throw new Error('Network forbidden in this test') })
   let terminated = 0
@@ -21,7 +21,14 @@ function setup(options: { native?: boolean; cached?: boolean; gpu?: boolean; slo
   }
   const nativeCalls = { generate: jest.fn(async () => mockResult), cancel: jest.fn(async () => {}) }
   const preferences = new Map<string, string>()
+  const storage = new Map<string, string>()
+  if (options.interrupted) storage.set('eos.local-ai.pending.v1', 'abandoned')
   const scope = {
+    localStorage: {
+      getItem: (key: string) => storage.get(key) ?? null,
+      setItem: (key: string, value: string) => { storage.set(key, value) },
+      removeItem: (key: string) => { storage.delete(key) },
+    },
     URL, Error, Promise, Map, Set, console, setTimeout, clearTimeout,
     document: { currentScript: { src: 'https://eos.test/local-ai-runtime.js' }, addEventListener: jest.fn() },
     location: { href: 'https://eos.test/preparedness/plano' }, isSecureContext: true,
@@ -82,4 +89,16 @@ it('cancellation terminates active generation and never delivers its late result
   await s.runtime.cancel()
   await rejected
   expect(s.terminated()).toBeGreaterThan(0)
+})
+
+it('keeps saved documents available after an interrupted model operation until explicit retry', async () => {
+  const s = setup({ interrupted: true })
+  expect(await s.runtime.status()).toMatchObject({ state: 'error', reason: 'model_interrupted' })
+  expect((await s.runtime.answer(request)).mode).toBe('documents')
+  expect(s.posts).toEqual([])
+  expect((await s.runtime.prepare()).state).toBe('ready')
+  expect(s.posts.find(p => p.method === 'load')?.data).toEqual({ allowDownload: false })
+  expect((await s.runtime.answer(request)).mode).toBe('local_ai')
+  await s.runtime.cancel()
+  expect((await s.runtime.status()).state).toBe('cached')
 })

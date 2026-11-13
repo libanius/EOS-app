@@ -1832,3 +1832,5 @@ Verificar via Supabase Dashboard → SQL Editor: `SELECT name FROM supabase_migr
 - O cache de pesos do navegador pertence à origem. Portanto a casca iOS usa o modelo do sistema e a preferência de ativação em Preferences do aplicativo, não uma flag de localStorage nem o cache da origem remota. O controller customizado registra `EOSLocalAIPlugin` e precisa estar tanto no storyboard quanto na fase Sources do Xcode. Compilar em Xcode 26 e testar no aparelho continuam necessários.
 
 - D-244: a biblioteca offline e o modelo são preparados separadamente. No teste do iPhone, 3.901 textos estavam salvos mesmo após falhar o preparo do modelo. A porcentagem do runtime não comprova sucesso; só a confirmação de disponibilidade autoriza mostrar “Conversa offline pronta”.
+
+- D-245: a tela de erro do navegador após o preparo web não identifica a causa. Navegação offline ao dashboard usa o leitor precacheado, e o marcador local de operação interrompida evita recarregar automaticamente os pesos após encerramento durante carga ou geração. O usuário pode tentar novamente explicitamente.

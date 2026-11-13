@@ -18,6 +18,11 @@ export function preparationFeedback(
       tone: 'normal',
     }
   }
+  if (!issue && status?.reason === 'model_interrupted') return {
+    title: pt ? 'A conversa offline foi interrompida' : 'Offline chat was interrupted',
+    next: pt ? 'Consulte os textos salvos ou toque em “Tentar novamente” para carregar o modelo.' : 'Search saved texts or tap “Try again” to load the model.',
+    tone: 'warning',
+  }
   if (issue || status?.state === 'error') {
     const cancelled = issue === 'local_cancelled'
     let next = pt

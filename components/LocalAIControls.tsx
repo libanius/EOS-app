@@ -37,7 +37,7 @@ export default function LocalAIControls({ pt, busy = false }: { pt: boolean; bus
   const feedback = preparationFeedback(pt, status, progress, issue)
   const color = feedback.tone === 'ready' ? 'var(--ac)' : feedback.tone === 'warning' ? 'var(--warn)' : 'var(--tx)'
   const canPrepare = !preparing && !busy && status && !['unsupported', 'ready', 'loading'].includes(status.state)
-  const prepareLabel = issue
+  const prepareLabel = issue || status?.state === 'error'
     ? (pt ? 'Tentar novamente' : 'Try again')
     : status?.state === 'cached'
       ? (pt ? 'Carregar modelo local' : 'Load local model')

@@ -1,9 +1,13 @@
 # 09 — Build Status
 
 > The single most important file for resuming a session. Read this first after AGENTS.md.
-> Last updated: 2026-11-10
+> Last updated: 2026-11-13
 
 ---
+
+## OFFGRID-KNOW-T02 — recuperação após encerramento (2026-11-13)
+
+O dono concluiu o download web e viu a página do dashboard encerrar/recarregar em modo avião. A captura não prova falta de memória nem falha de GPU. D-245 adiciona fallback de navegação do dashboard para o leitor precacheado e evita reativação automática se houver marcador de carregamento/geração abandonado. Download e biblioteca permanecem separados. Novo teste físico ainda necessário.
 
 ## OFFGRID-KNOW-T02 — preparo no iPhone (2026-11-13)
 

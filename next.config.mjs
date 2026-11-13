@@ -51,6 +51,14 @@ const withPWA = nextPwa({
       handler: 'StaleWhileRevalidate',
       options: { cacheName: 'eos-entrada', expiration: { maxEntries: 2 } },
     },
+    // Reopening the dashboard offline goes straight to the lightweight reader.
+    // Avoid reviving a cached dashboard after the browser killed its page.
+    {
+      urlPattern: ({ url, request, sameOrigin }) =>
+        sameOrigin && request.mode === 'navigate' && url.pathname === '/dashboard',
+      handler: 'NetworkOnly',
+      options: { precacheFallback: { fallbackURL: '/offline.html' } },
+    },
     // Authenticated pages must refresh from the network so post-deploy fixes
     // like push registration are not trapped behind an old service worker cache.
     //
