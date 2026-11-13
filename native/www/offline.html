@@ -67,6 +67,10 @@
   .empty { color: var(--muted); margin: 0; }
   input, select { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font: inherit; margin: 8px 0; }
   a { color: var(--accent); overflow-wrap: anywhere; }
+  #local-status { font-weight: 700; }
+  #local-status[data-tone="ready"] { color: var(--accent); }
+  #local-status[data-tone="warning"] { color: var(--warn, #ffb347); }
+  #local-progress { width: 100%; accent-color: var(--accent); }
   .knowledge-text { white-space: pre-wrap; overflow-wrap: anywhere; }
   summary { cursor: pointer; padding: 12px 0; color: var(--accent); }
   [hidden] { display: none !important; }
@@ -93,7 +97,8 @@
   <section id="local-chat">
     <h2 id="local-title">Pilot · conversa offline</h2>
     <p id="local-status" role="status">Verificando a IA local…</p>
-    <p id="local-download" class="stamp"></p>
+    <p id="local-next" class="stamp"></p>
+    <progress id="local-progress" max="1" hidden></progress>
     <button id="local-prepare" type="button" hidden>Preparar conversa offline</button>
     <button id="local-stop" class="ghost" type="button" hidden>Interromper IA local</button>
     <button id="local-remove" class="ghost" type="button" hidden>Remover modelo baixado</button>

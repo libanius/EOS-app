@@ -4,6 +4,12 @@
 
 ---
 
+## D-244 — Resultado e próximo passo do preparo offline
+
+**Data**: 2026-11-13. **Status**: DECIDED — pedido do dono no teste da prévia do Pilot. OFFGRID-KNOW-T02 mantém a validação física pendente.
+
+Mostrar um resultado claro do preparo e a ação seguinte no Pilot e no leitor offline. Só confirmar que a conversa está pronta depois que o modelo estiver carregado ou o provedor nativo ativado. Progresso e arquivos em cache não equivalem a sucesso. Em falha ou interrupção, orientar nova tentativa e manter acesso à biblioteca.
+
 ## D-243 — Pilot conversacional local sobre a biblioteca offline
 
 **Data**: 2026-11-10. **Status**: DECIDED — dono: “Vamos fazer esse raciocínio conversasional”. **Tarefa atual**: OFFGRID-KNOW-T02, autorizada sobre a implementação T01 do PR #28, ainda em revisão; sem declarar os testes físicos de T01 concluídos.

@@ -1,8 +1,10 @@
+import { preparationFeedback } from './preparation-feedback'
 /** Standalone local inference for the app and cold-start screen. No remote prompt endpoint. */
 import { answerLocally, type LocalRequest, type LocalPrompt, type LocalResult } from '../lib/local-ai-core'
 const WORKER_URL = new URL('local-ai-worker.js', (document.currentScript as HTMLScriptElement | null)?.src || new URL('/local-ai-runtime.js', location.href).href).href
 export type LocalStatus = { state: 'unsupported' | 'needs_download' | 'cached' | 'loading' | 'ready' | 'error'; provider: 'webllm' | 'apple' | 'none'; reason?: string; progress?: number }
 export type LocalRuntime = {
+  preparationFeedback: typeof preparationFeedback
   status(): Promise<LocalStatus>; prepare(progress?: (value: number) => void): Promise<LocalStatus>
   answer(request: LocalRequest): Promise<LocalResult>; cancel(): Promise<void>; remove(): Promise<void>
 }
@@ -93,6 +95,7 @@ async function load(progress?: (value: number) => void, allowDownload = false): 
   const current = generation
   loading = (async () => {
     if (!navigator.gpu || !await navigator.gpu.requestAdapter()) throw new Error('webgpu_unavailable')
+    if (current !== generation) throw new Error('local_cancelled')
     const cached = await bounded(rpc('hasCache'), 15000)
     if (!cached && !allowDownload) throw new Error('model_not_prepared')
     if (!cached && !navigator.onLine) throw new Error('model_download_requires_connection')
@@ -101,6 +104,7 @@ async function load(progress?: (value: number) => void, allowDownload = false): 
       if (storage?.quota && storage.quota - (storage.usage ?? 0) < 1400 * 1024 * 1024) throw new Error('insufficient_storage')
       await navigator.storage?.persist?.().catch(() => false)
     }
+    if (current !== generation) throw new Error('local_cancelled')
     await rpc('load', { allowDownload }, value => progress?.(Math.max(0, Math.min(1, value))))
     if (current !== generation) throw new Error('local_cancelled')
     engineReady = true; progress?.(1)
@@ -108,9 +112,12 @@ async function load(progress?: (value: number) => void, allowDownload = false): 
   return loading
 }
 async function prepare(progress?: (value: number) => void): Promise<LocalStatus> {
+  const current = generation
   if (await lowBattery()) throw new Error('low_battery')
+  if (current !== generation) throw new Error('local_cancelled')
   if (ios()) {
     const s = await status()
+    if (current !== generation) throw new Error('local_cancelled')
     if (s.state === 'unsupported') throw new Error(s.reason)
     sessionEnabled = true; await setEnabled(true); progress?.(1)
     return { state: 'ready', provider: 'apple' }
@@ -152,4 +159,4 @@ async function remove() {
   if (!ios()) { await bounded(rpc('remove'), 15000); terminateWorker('local_removed') }
 }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') void cancel() })
-scope.EOSLocalAI = { status, prepare, answer, cancel, remove }
+scope.EOSLocalAI = { preparationFeedback, status, prepare, answer, cancel, remove }

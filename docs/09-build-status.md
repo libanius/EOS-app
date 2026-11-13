@@ -5,6 +5,10 @@
 
 ---
 
+## OFFGRID-KNOW-T02 — preparo no iPhone (2026-11-13)
+
+A prévia no iPhone mostrou 3.901 textos salvos e falha ao preparar o modelo. O print não identifica a causa da falha. D-244 diferencia progresso, finalização, sucesso e falha, com próxima ação no Pilot e no leitor. O teste com modelo real, a compilação Xcode e a publicação seguem pendentes.
+
 ## Bloqueio da prévia identificado — 2026-11-10
 
 A captura do dono ainda mostra a mensagem antiga. Conferido: produção está em `b690a18` (v0.2.5), PR #28 aberto/draft em `c783cb2`, sem merge. A prévia da equipe EOS `dpl_GzejNbrX2jAVuy5KXYHbVQqW9e8h` falhou no prebuild: `ENOENT native/www/knowledge.js`. Um diretório nativo residual no cache bastava para o gerador tentar validar arquivos excluídos por `.vercelignore`. Correção v0.2.8 no próprio T02: builds Vercel ignoram espelho nativo independentemente de diretórios residuais; fora da Vercel, só espelham quando `native/package.json` existe. Teste de regressão reproduz cache parcial; 903 testes/79 suítes, tipos e lint aprovados. Validação da prévia hospedada em andamento. Não tratar teste do dono como falha do modelo novo; ele ainda recebeu a versão antiga. Publicação/qualidade real permanecem pendentes.

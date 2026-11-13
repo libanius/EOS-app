@@ -113,6 +113,8 @@
   var chatBusy = false
   var preparing = false
   var localStatus = null
+  var localProgress = null
+  var localIssue = null
   var messages = document.getElementById('local-messages')
   var localQuestion = document.getElementById('local-question')
   var prepareButton = document.getElementById('local-prepare')
@@ -124,41 +126,54 @@
     text('local-title', pt ? 'Pilot · conversa offline' : 'Pilot · offline conversation')
     text('local-label', pt ? 'Converse usando a biblioteca salva' : 'Converse using the saved library')
     text('local-send', pt ? 'Enviar' : 'Send'); text('local-clear', pt ? 'Limpar conversa' : 'Clear conversation')
-    text('local-prepare', pt ? 'Preparar conversa offline' : 'Prepare offline conversation')
+    text('local-prepare', localIssue ? (pt ? 'Tentar novamente' : 'Try again')
+      : localStatus && localStatus.state === 'cached' ? (pt ? 'Carregar modelo local' : 'Load local model')
+      : (pt ? 'Preparar conversa offline' : 'Prepare offline conversation'))
+    paintPreparation()
     text('local-stop', pt ? 'Interromper IA local' : 'Stop local AI')
     text('local-remove', pt ? 'Remover modelo baixado' : 'Remove downloaded model')
-    text('local-download', localStatus && localStatus.state === 'needs_download'
-      ? (pt ? 'Download opcional de aproximadamente 1 GB. Prefira Wi-Fi; prepare antes de ficar sem rede.' : 'Optional download of about 1 GB. Prefer Wi-Fi; prepare before losing connection.') : '')
-    prepareButton.hidden = preparing || chatBusy || !localStatus || ['unsupported', 'ready'].includes(localStatus.state)
+    prepareButton.hidden = preparing || chatBusy || !localStatus || ['unsupported', 'ready', 'loading'].includes(localStatus.state)
     stopButton.hidden = !preparing && !chatBusy && (!localStatus || localStatus.state !== 'ready')
     removeButton.hidden = preparing || chatBusy || !localStatus || localStatus.provider !== 'webllm' || !['ready', 'cached'].includes(localStatus.state)
-    localQuestion.disabled = chatBusy
-    document.getElementById('local-send').disabled = chatBusy
+    localQuestion.disabled = chatBusy || preparing
+    document.getElementById('local-send').disabled = chatBusy || preparing
+  }
+  function paintPreparation() {
+    var pt = lang === 'pt'
+    var feedback = runtime() && runtime().preparationFeedback
+      ? runtime().preparationFeedback(pt, localStatus, localProgress, localIssue)
+      : { title: pt ? 'Conversa offline indisponível aqui' : 'Offline chat unavailable here',
+          next: pt ? 'Consulte os textos na Biblioteca offline.' : 'Search your saved texts in the Offline library.',
+          tone: 'warning' }
+    text('local-status', feedback.title)
+    document.getElementById('local-status').dataset.tone = feedback.tone
+    text('local-next', feedback.next)
+    var bar = document.getElementById('local-progress')
+    if (!bar) return
+    bar.hidden = localProgress === null
+    if (localProgress > 0 && localProgress < 1) bar.value = localProgress
+    else bar.removeAttribute('value')
+    bar.setAttribute('aria-label', pt ? 'Progresso da preparação' : 'Setup progress')
   }
   async function updateLocalStatus() {
-    try {
-      localStatus = runtime() ? await runtime().status() : null
-      var state = localStatus && localStatus.state
-      text('local-status', state === 'ready' ? (lang === 'pt' ? 'IA local pronta nesta sessão' : 'Local AI ready in this session')
-        : state === 'unsupported' ? (lang === 'pt' ? 'IA local indisponível aqui. A consulta documental continua disponível.' : 'Local AI unavailable here. Document lookup remains available.')
-        : (lang === 'pt' ? 'Prepare ou carregue o modelo para conversar sem rede.' : 'Prepare or load the model to converse without network.'))
-    } catch (_) { text('local-status', lang === 'pt' ? 'Modelo indisponível. Use a biblioteca salva.' : 'Model unavailable. Use the saved library.') }
+    try { localStatus = runtime() ? await runtime().status() : null }
+    catch (_) { localIssue = 'local_runtime_missing' }
     paintLocal()
   }
   prepareButton.addEventListener('click', async function () {
-    preparing = true; paintLocal()
+    preparing = true; localProgress = 0; localIssue = null; paintLocal()
     try {
-      await runtime().prepare(function (progress) { text('local-status', (lang === 'pt' ? 'Preparando IA local' : 'Preparing local AI') + ' · ' + Math.round(progress * 100) + '%') })
-      await updateLocalStatus()
-    } catch (_) { text('local-status', lang === 'pt' ? 'Preparação não concluída. A biblioteca foi preservada.' : 'Preparation did not finish. The library was preserved.') }
-    finally { preparing = false; paintLocal() }
+      localStatus = await runtime().prepare(function (progress) { localProgress = progress; paintPreparation() })
+    } catch (error) { localIssue = error instanceof Error ? error.message : 'local_worker_failed' }
+    finally { preparing = false; localProgress = null; await updateLocalStatus() }
   })
   stopButton.addEventListener('click', async function () {
     if (runtime()) await runtime().cancel()
-    preparing = false; await updateLocalStatus()
+    if (!preparing) await updateLocalStatus()
   })
   removeButton.addEventListener('click', async function () {
     if (runtime()) await runtime().remove()
+    localIssue = null
     await updateLocalStatus()
   })
   document.getElementById('local-clear').addEventListener('click', async function () {
@@ -168,7 +183,7 @@
   document.getElementById('local-form').addEventListener('submit', async function (event) {
     event.preventDefault()
     var question = localQuestion.value.trim()
-    if (!question || chatBusy) return
+    if (!question || chatBusy || preparing) return
     chatBusy = true; localQuestion.value = ''; paintLocal()
     messages.appendChild(element('p', question))
     text('local-status', lang === 'pt' ? 'Consultando no aparelho…' : 'Consulting on this device…')
