@@ -1834,3 +1834,5 @@ Verificar via Supabase Dashboard → SQL Editor: `SELECT name FROM supabase_migr
 - D-244: a biblioteca offline e o modelo são preparados separadamente. No teste do iPhone, 3.901 textos estavam salvos mesmo após falhar o preparo do modelo. A porcentagem do runtime não comprova sucesso; só a confirmação de disponibilidade autoriza mostrar “Conversa offline pronta”.
 
 - D-245: a tela de erro do navegador após o preparo web não identifica a causa. Navegação offline ao dashboard usa o leitor precacheado, e o marcador local de operação interrompida evita recarregar automaticamente os pesos após encerramento durante carga ou geração. O usuário pode tentar novamente explicitamente.
+
+- D-246: contagem de textos confirma o pacote, não o precache. No navegador, verificar HTML, scripts de busca e controle do service worker antes de indicar que a biblioteca pode reabrir sem rede.

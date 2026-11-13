@@ -5,6 +5,10 @@
 
 ---
 
+## OFFGRID-KNOW-T02 — prontidão da biblioteca (2026-11-13)
+
+D-246 distingue conteúdo salvo de leitor disponível offline no navegador. A confirmação exige controle do service worker e HTML/scripts essenciais no precache. O Pilot mostra entrada explícita para o leitor. Validação no iPhone e na casca nativa segue pendente.
+
 ## OFFGRID-KNOW-T02 — recuperação após encerramento (2026-11-13)
 
 O dono concluiu o download web e viu a página do dashboard encerrar/recarregar em modo avião. A captura não prova falta de memória nem falha de GPU. D-245 adiciona fallback de navegação do dashboard para o leitor precacheado e evita reativação automática se houver marcador de carregamento/geração abandonado. Download e biblioteca permanecem separados. Novo teste físico ainda necessário.

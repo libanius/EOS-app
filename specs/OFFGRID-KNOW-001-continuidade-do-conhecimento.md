@@ -13,6 +13,8 @@ Status: **Ready** — D-242, prioridade total autorizada pelo dono em 2026-11-10
 - Conteúdo completo textual publicado inclui protocolo, alternativas, advertências e fontes. Vídeos, imagens, páginas externas e produtos continuam links; baixar mídia é entrega separada.
 - UI usa tokens/cores EOS e não muda navegação ou propriedade das telas: entrada pelo Pilot e abertura offline.
 
+No navegador, a contagem de textos salvos é independente da prontidão da tela offline. Verificar controle pelo service worker e presença do HTML e scripts essenciais no precache. Exibir no Pilot um botão claro para abrir e verificar o leitor e uma mensagem caso a abertura offline ainda não esteja pronta.
+
 ## Aceitação
 
 1. Publicar/aprovar novo Sinal/EDU, sincronizar sem abrir o artigo, desligar toda rede e encontrar título e corpo.

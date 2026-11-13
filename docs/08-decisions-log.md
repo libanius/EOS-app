@@ -4,6 +4,10 @@
 
 ---
 
+## D-246 — Confirmar que a biblioteca pode abrir sem rede
+
+**Data**: 2026-11-13. **Status**: DECIDED — prioridade offline reafirmada pelo dono. A cópia dos textos e a capacidade de reabrir o leitor são verificações separadas. No navegador, o Pilot só indica biblioteca pronta para abrir sem internet se os textos estiverem salvos, o service worker controlar a página e os arquivos do leitor estiverem em cache. A IA local permanece opcional.
+
 ## D-245 — Recuperar consulta offline após encerramento do navegador
 
 **Data**: 2026-11-13. **Status**: DECIDED — correção de robustez no OFFGRID-KNOW-T02 após o teste do dono. A página do dashboard reiniciou em modo avião depois do preparo do modelo web. A captura não comprova a causa do encerramento.

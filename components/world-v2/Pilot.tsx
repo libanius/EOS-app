@@ -1,5 +1,7 @@
 'use client'
 
+import { offlineReaderReady } from '@/lib/offline-reader-readiness'
+import { isNativeShell } from '@/lib/native/bridge'
 import LocalAIControls from '@/components/LocalAIControls'
 import { localRuntime } from '@/lib/local-ai-client'
 import { offlineKnowledgeReply, type KnowledgePack } from '@/lib/offline-knowledge'
@@ -366,6 +368,22 @@ export default function Pilot({
   const [knowledge, setKnowledge] = useState<{ count: number; syncedAt: string } | null>(null)
   const [localBusy, setLocalBusy] = useState(false)
   const [knowledgeFailed, setKnowledgeFailed] = useState(false)
+  const [readerReady, setReaderReady] = useState<boolean | null>(null)
+  useEffect(() => {
+    if (!knowledge || isNativeShell()) return
+    let active = true
+    const check = () => { void offlineReaderReady().then(ready => { if (active) setReaderReady(ready) }) }
+    const sw = navigator.serviceWorker
+    check()
+    sw?.addEventListener('controllerchange', check)
+    window.addEventListener('focus', check)
+    return () => {
+      active = false
+      sw?.removeEventListener('controllerchange', check)
+      window.removeEventListener('focus', check)
+    }
+  }, [knowledge])
+
   useEffect(() => {
     let active = true
     void readOfflineKnowledge().then(pack => { if (active && pack) setKnowledge({ count: pack.documents.length, syncedAt: pack.syncedAt }) })
@@ -977,11 +995,15 @@ export default function Pilot({
             )}
 
             <div className="t-foot ink-2" style={{ padding: '8px 16px' }}>
-              <a href="/offline.html" style={{ color: 'var(--ac)', textDecoration: 'underline' }}>
-                {pt ? 'Biblioteca offline' : 'Offline library'}
-              </a>
-              {' · '}{knowledge ? `${knowledge.count} ${pt ? 'textos salvos' : 'saved texts'} · ${new Date(knowledge.syncedAt).toLocaleString()}` : (pt ? 'ainda não baixada' : 'not downloaded yet')}
-              {knowledgeFailed && <span>{pt ? ' · atualização falhou; última cópia preservada' : ' · update failed; last copy preserved'}</span>}
+              <p style={{ color: readerReady ? 'var(--ac)' : 'var(--tx)', fontWeight: 700 }}>
+                {readerReady ? (pt ? 'Biblioteca pronta para abrir sem internet' : 'Library ready to open offline') : (pt ? 'Biblioteca offline' : 'Offline library')}
+              </p>
+              <p>{knowledge ? `${knowledge.count} ${pt ? 'textos salvos' : 'saved texts'} · ${new Date(knowledge.syncedAt).toLocaleString()}` : (pt ? 'Aguardando a primeira sincronização.' : 'Waiting for the first sync.')}</p>
+              {knowledge && readerReady === false && <p>{pt ? 'Textos salvos. A abertura sem internet ainda não está pronta. Reabra o EOS com conexão.' : 'Texts saved. Offline opening is not ready yet. Reopen EOS while connected.'}</p>}
+              <a href="/offline.html" className="wv2-pill">{pt ? 'Abrir biblioteca offline' : 'Open offline library'}</a>
+              {knowledgeFailed && <p role="status">{knowledge
+                ? (pt ? 'A atualização falhou. A última cópia continua salva.' : 'Update failed. The last copy is still saved.')
+                : (pt ? 'A primeira sincronização falhou. Tente atualizar com internet.' : 'The first sync failed. Try updating while connected.')}</p>}
               <button type="button" className="wv2-pill" onClick={() => {
                 void syncOfflineKnowledge().then(pack => { setKnowledge({ count: pack.documents.length, syncedAt: pack.syncedAt }); setKnowledgeFailed(false) }).catch(() => setKnowledgeFailed(true))
               }}>{pt ? 'Atualizar cópia' : 'Update copy'}</button>

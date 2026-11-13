@@ -137,3 +137,20 @@ it('a publication changing mid-download never commits a mixed snapshot', async (
   await expect(syncOfflineKnowledge()).rejects.toThrow('409')
   expect(saveKnowledgePack).not.toHaveBeenCalled()
 })
+
+it('makes newly published EDU and Sinais searchable from the next saved copy without opening either article', async () => {
+  const previous = pack()
+  jest.mocked(getKnowledgePack).mockResolvedValue(previous)
+  const updated = pack([...previous.documents,
+    doc({ id: 'edu:new', kind: 'edu', lang: 'pt', title: 'Abrigo temporário', text: 'Corpo aprovado da aula de abrigo.' }),
+    doc({ id: 'signal:new', kind: 'signal', lang: 'pt', title: 'Pane regional', text: 'Corpo publicado do sinal sobre pane regional.' }),
+  ])
+  global.fetch = download(updated)
+  await syncOfflineKnowledge()
+  const saved = jest.mocked(saveKnowledgePack).mock.calls[0][0]
+  global.fetch = jest.fn(() => { throw new Error('offline') })
+  expect(searchKnowledge(saved, 'abrigo temporário', 'pt')[0].document.text).toBe(updated.documents[1].text)
+  expect(searchKnowledge(saved, 'pane regional', 'pt')[0].document.text).toBe(updated.documents[2].text)
+  expect(searchKnowledge(saved, 'water treatment', 'en')[0].document.id).toBe(previous.documents[0].id)
+  expect(global.fetch).not.toHaveBeenCalled()
+})
