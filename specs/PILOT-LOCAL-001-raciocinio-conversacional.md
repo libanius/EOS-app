@@ -23,6 +23,8 @@ Pilot do app e leitor estático offline compartilham o mesmo orquestrador. Leito
 
 No Pilot, perguntas offline e fallback de rede mostram o resultado documental imediatamente após ler a biblioteca. Preparar o modelo não muda o modo padrão. A opção explícita de IA local permite acrescentar uma resposta gerada à consulta, mantendo histórico e fontes. A indicação de progresso deve distinguir busca nos textos salvos de geração local. O formulário separado de conversa no leitor estático continua sendo uma escolha explícita.
 
+Na folha do Pilot, o histórico ocupa o espaço disponível entre o cabeçalho compacto e o campo de pergunta. Sugestões ficam no histórico inicial. Configuração da biblioteca, IA e limpeza de conversa ficam em Opções dentro da mesma folha. O status global não sobrepõe o Pilot; o cabeçalho indica offline. Respostas longas começam pelo início para quem acompanha a conversa, e o leitor que rolou para cima pode usar um atalho para o início da última resposta. Opções não desmontam o histórico.
+
 ## Feedback do preparo
 
 Em PT/EN, distinguir verificação, preparo em andamento, arquivos encontrados, conversa pronta, interrupção, falha e indisponibilidade. Ao final do progresso, mostrar que o preparo está finalizando até confirmação do runtime. Exibir a próxima ação junto do estado, com instruções específicas para causas conhecidas e acesso à consulta documental quando a conversa não está pronta. Quando pronta, indicar onde digitar a pergunta e como testar sem internet.

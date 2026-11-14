@@ -199,9 +199,11 @@ export default function Pilot({
   const [messages, setMessages] = useState<Message[]>([])
   const [draft, setDraft] = useState('')
   const [busy, setBusy] = useState(false)
+  const [showOptions, setShowOptions] = useState(false)
   const [addedTasks, setAddedTasks] = useState<Set<string>>(new Set())
   const [savedMemory, setSavedMemory] = useState<Set<string>>(new Set())
   const streamRef = useRef<HTMLDivElement>(null)
+  const optionsScrollTop = useRef<number | null>(null)
   /** Há resposta nova abaixo e a pessoa está lendo mais acima. */
   const [temNovidade, setTemNovidade] = useState(false)
 
@@ -256,7 +258,15 @@ export default function Pilot({
     }
     requestAnimationFrame(() => {
       const el = streamRef.current
-      if (el) el.scrollTop = el.scrollHeight
+      if (!el || el.hidden) return
+      const latest = el.querySelector<HTMLElement>('[data-latest-answer]')
+      const last = el.lastElementChild
+      const answerAtEnd = latest === last || last?.classList.contains('chat-thinking')
+      if (latest && (forcar || (answerAtEnd && latest.offsetHeight > el.clientHeight - 24))) {
+        el.scrollTop = latest.offsetTop - 12
+      } else {
+        el.scrollTop = el.scrollHeight
+      }
       setTemNovidade(false)
     })
   }, [])
@@ -282,7 +292,7 @@ export default function Pilot({
    */
   const aberturaAutomatica = useRef<string | null>(null)
   useEffect(() => {
-    if (!open) return
+    if (!open) { setShowOptions(false); return }
     const nova = fromAnswer(opening)
     setMessages(current => {
       if (!current.length) {
@@ -299,13 +309,23 @@ export default function Pilot({
   }, [open, opening, scrollToEnd])
 
   useEffect(() => {
+    const stream = streamRef.current
+    if (showOptions || !stream || optionsScrollTop.current === null) return
+    stream.scrollTop = optionsScrollTop.current
+    optionsScrollTop.current = null
+  }, [showOptions])
+
+  useEffect(() => {
     if (!open) return
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onOpenChange(false)
+      if (event.key === 'Escape') {
+        if (showOptions) setShowOptions(false)
+        else onOpenChange(false)
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [open, onOpenChange])
+  }, [open, onOpenChange, showOptions])
 
   // Mobile keyboards shrink the visual viewport WITHOUT changing dvh, so the
   // compose field slid under the keyboard and vanished. Track the real visible
@@ -446,6 +466,8 @@ export default function Pilot({
   const sendQuestion = async (question: string) => {
     if (!question.trim() || busy) return
     haptic.impact()
+    setShowOptions(false)
+    grudadoNoFim.current = true
     setDraft('')
     push({ id: nextId(), role: 'user', text: question })
 
@@ -750,6 +772,9 @@ export default function Pilot({
     })
   }
 
+  const latestAnswerId = [...messages].reverse().find(message => message.role === 'pilot')?.id
+  const hasQuestion = messages.some(message => message.role === 'user')
+
   return (
     <>
       <AnimatePresence>
@@ -771,28 +796,37 @@ export default function Pilot({
       <AnimatePresence>
         {open && (
           <motion.section
-            className="wv2-pilot-chat wv2-fume"
+            className="wv2-pilot-chat"
             data-state={ctx.riskState}
             role="dialog"
             aria-label={c.title}
-            initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 40, filter: 'blur(14px)' }}
-            animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, filter: 'blur(0px)' }}
-            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 30, filter: 'blur(10px)' }}
+            initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 24 }}
+            animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
+            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 20 }}
             transition={reduceMotion ? { duration: 0.12 } : SPRING.sheet}
           >
             <header className="chat-head">
               <span className="chat-id">
                 <strong className="t-title2">{c.title}</strong>
-                <em className="t-foot">{c.subtitleByState[ctx.riskState]}</em>
+                <em className="t-foot">{!online ? (pt ? 'Offline · textos salvos' : 'Offline · saved library') : c.subtitleByState[ctx.riskState]}</em>
               </span>
-              <button type="button" className="chat-close" onClick={() => onOpenChange(false)} aria-label={c.close}>
-                <CloseIcon />
-              </button>
+              <div className="chat-head-actions">
+                <button type="button" className="chat-options-toggle" aria-expanded={showOptions} onClick={() => {
+                  if (!showOptions) optionsScrollTop.current = streamRef.current?.scrollTop ?? null
+                  setShowOptions(!showOptions)
+                }}>
+                  {showOptions ? (pt ? 'Voltar à conversa' : 'Back to chat') : (pt ? 'Opções' : 'Options')}
+                </button>
+                <button type="button" className="chat-close" onClick={() => onOpenChange(false)} aria-label={c.close}>
+                  <CloseIcon />
+                </button>
+              </div>
             </header>
 
             <div
               className="chat-stream"
               ref={streamRef}
+              hidden={showOptions}
               onScroll={() => {
                 // Quem chegou ao fim volta a ser levado pelo fim; quem subiu
                 // para reler deixa de ser arrastado.
@@ -804,7 +838,7 @@ export default function Pilot({
                 message.role === 'user' ? (
                   <p key={message.id} className="chat-user t-body">{message.text}</p>
                 ) : (
-                  <article key={message.id} className="chat-pilot" data-verdict={message.verdict}>
+                  <article key={message.id} className="chat-pilot" data-latest-answer={message.id === latestAnswerId ? true : undefined} data-verdict={message.verdict}>
                     {message.verdict && (
                       <span className="chat-verdict t-caps">{VERDICT_LABEL[message.verdict][pt ? 'pt' : 'en']}</span>
                     )}
@@ -974,61 +1008,58 @@ export default function Pilot({
                 ),
               )}
               {busy && <p className="chat-thinking t-sub ink-2">{localBusy ? (pt ? 'Gerando complemento com IA local…' : 'Generating a local AI answer…') : offlineLookupBusy ? (pt ? 'Buscando nos textos salvos…' : 'Searching saved texts…') : c.thinking}</p>}
+              {!hasQuestion && (
+                <div className="chat-suggestions" aria-label={c.suggestions}>
+                  {PILOT_INTENTS.map(intent => (
+                    <button
+                      key={intent.id}
+                      type="button"
+                      className="pilot-chip"
+                      onClick={() => askLocal(intent.id, pt ? intent.pt : intent.en)}
+                    >
+                      {pt ? intent.pt : intent.en}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
-            <div className="chat-suggestions" aria-label={c.suggestions}>
-              {PILOT_INTENTS.map(intent => (
-                <button
-                  key={intent.id}
-                  type="button"
-                  className="pilot-chip"
-                  onClick={() => askLocal(intent.id, pt ? intent.pt : intent.en)}
-                >
-                  {pt ? intent.pt : intent.en}
-                </button>
-              ))}
-            </div>
-
-            {/*
-              Aviso de conteúdo novo, para quem está lendo mais acima.
-              Substitui o salto automático: em vez de arrastar a pessoa, avisa
-              e deixa ela decidir quando descer.
-            */}
-            {temNovidade && (
-              <button
-                type="button"
-                className="chat-jump"
-                onClick={() => { grudadoNoFim.current = true; scrollToEnd(true) }}
-              >
-                {pt ? 'Resposta nova ↓' : 'New answer ↓'}
+            {!showOptions && temNovidade && (
+              <button type="button" className="chat-jump" onClick={() => scrollToEnd(true)}>
+                {pt ? 'Ver resposta mais recente' : 'View latest answer'}
               </button>
             )}
 
-            <div className="t-foot ink-2" style={{ padding: '8px 16px' }}>
-              <p style={{ color: readerReady ? 'var(--ac)' : 'var(--tx)', fontWeight: 700 }}>
-                {readerReady ? (pt ? 'Biblioteca pronta para abrir sem internet' : 'Library ready to open offline') : (pt ? 'Biblioteca offline' : 'Offline library')}
-              </p>
-              <p>{knowledge ? `${knowledge.count} ${pt ? 'textos salvos' : 'saved texts'} · ${new Date(knowledge.syncedAt).toLocaleString()}` : (pt ? 'Aguardando a primeira sincronização.' : 'Waiting for the first sync.')}</p>
-              {knowledge && readerReady === false && <p>{pt ? 'Textos salvos. A abertura sem internet ainda não está pronta. Reabra o EOS com conexão.' : 'Texts saved. Offline opening is not ready yet. Reopen EOS while connected.'}</p>}
-              <a href="/offline.html" className="wv2-pill">{pt ? 'Abrir biblioteca offline' : 'Open offline library'}</a>
-              {knowledgeFailed && <p role="status">{knowledge
-                ? (pt ? 'A atualização falhou. A última cópia continua salva.' : 'Update failed. The last copy is still saved.')
-                : (pt ? 'A primeira sincronização falhou. Tente atualizar com internet.' : 'The first sync failed. Try updating while connected.')}</p>}
-              <button type="button" className="wv2-pill" onClick={() => {
-                void syncOfflineKnowledge().then(pack => { setKnowledge({ count: pack.documents.length, syncedAt: pack.syncedAt }); setKnowledgeFailed(false) }).catch(() => setKnowledgeFailed(true))
-              }}>{pt ? 'Atualizar cópia' : 'Update copy'}</button>
+            <div className="chat-options" hidden={!showOptions}>
+              <div className="t-foot ink-2" style={{ padding: '8px 16px' }}>
+                <p style={{ color: readerReady ? 'var(--ac)' : 'var(--tx)', fontWeight: 700 }}>
+                  {readerReady ? (pt ? 'Biblioteca pronta para abrir sem internet' : 'Library ready to open offline') : (pt ? 'Biblioteca offline' : 'Offline library')}
+                </p>
+                <p>{knowledge ? `${knowledge.count} ${pt ? 'textos salvos' : 'saved texts'} · ${new Date(knowledge.syncedAt).toLocaleString()}` : (pt ? 'Aguardando a primeira sincronização.' : 'Waiting for the first sync.')}</p>
+                {knowledge && readerReady === false && <p>{pt ? 'Textos salvos. A abertura sem internet ainda não está pronta. Reabra o EOS com conexão.' : 'Texts saved. Offline opening is not ready yet. Reopen EOS while connected.'}</p>}
+                <a href="/offline.html" className="wv2-pill">{pt ? 'Abrir biblioteca offline' : 'Open offline library'}</a>
+                {knowledgeFailed && <p role="status">{knowledge
+                  ? (pt ? 'A atualização falhou. A última cópia continua salva.' : 'Update failed. The last copy is still saved.')
+                  : (pt ? 'A primeira sincronização falhou. Tente atualizar com internet.' : 'The first sync failed. Try updating while connected.')}</p>}
+                <button type="button" className="wv2-pill" onClick={() => {
+                  void syncOfflineKnowledge().then(pack => { setKnowledge({ count: pack.documents.length, syncedAt: pack.syncedAt }); setKnowledgeFailed(false) }).catch(() => setKnowledgeFailed(true))
+                }}>{pt ? 'Atualizar cópia' : 'Update copy'}</button>
+              </div>
+              <LocalAIControls pt={pt} busy={localBusy} />
+              {!online && <label className="t-foot ink-2" style={{ padding: '0 16px 8px' }}>
+                <input type="checkbox" checked={useOfflineAI} disabled={busy} onChange={event => setUseOfflineAI(event.target.checked)} />
+                {' '}{pt ? 'Complementar com IA local' : 'Add a local AI answer'}
+              </label>}
+              <button type="button" className="wv2-pill" disabled={busy && !localBusy} onClick={() => {
+                void localRuntime().then(r => r.cancel()).catch(() => {})
+                setMessages([fromAnswer(opening)]); setDraft(''); setUseOfflineAI(false); setShowOptions(false); setTemNovidade(false)
+                grudadoNoFim.current = true
+                optionsScrollTop.current = null
+              }}>{pt ? 'Limpar conversa' : 'Clear conversation'}</button>
             </div>
-            <LocalAIControls pt={pt} busy={localBusy} />
-            {!online && <label className="t-foot ink-2" style={{ padding: '0 16px 8px' }}>
-              <input type="checkbox" checked={useOfflineAI} disabled={busy} onChange={event => setUseOfflineAI(event.target.checked)} />
-              {' '}{pt ? 'Complementar com IA local' : 'Add a local AI answer'}
-            </label>}
-            <button type="button" className="wv2-pill" disabled={busy && !localBusy} onClick={() => {
-              void localRuntime().then(r => r.cancel()).catch(() => {})
-              setMessages([fromAnswer(opening)]); setDraft(''); setUseOfflineAI(false)
-            }}>{pt ? 'Limpar conversa' : 'Clear conversation'}</button>
             <form
               className="chat-compose"
+              hidden={showOptions}
               onSubmit={event => {
                 event.preventDefault()
                 void send()

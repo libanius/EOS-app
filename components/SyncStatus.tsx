@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useOfflineQueue } from '@/hooks/useOfflineQueue'
 import { flushQueue } from '@/lib/sync'
+import { usePilot } from '@/components/world-v2/PilotProvider'
 
 export default function SyncStatus({ onReconnect }: { onReconnect?: () => void }) {
+  const { open: pilotOpen } = usePilot()
   const [lastSync, setLastSync] = useState<Date | null>(null)
   const [visible, setVisible] = useState(false)
 
@@ -34,7 +36,7 @@ export default function SyncStatus({ onReconnect }: { onReconnect?: () => void }
     onReconnect?.()
   }
 
-  if (!visible) return null
+  if (!visible || pilotOpen) return null
 
   const color = !online ? '#f87171' : flushing ? '#fbbf24' : queueSize > 0 ? '#f97316' : '#34d399'
   const label = !online

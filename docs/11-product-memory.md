@@ -1838,3 +1838,5 @@ Verificar via Supabase Dashboard → SQL Editor: `SELECT name FROM supabase_migr
 - D-246: contagem de textos confirma o pacote, não o precache. No navegador, verificar HTML, scripts de busca e controle do service worker antes de indicar que a biblioteca pode reabrir sem rede.
 
 - D-247: preparar os pesos não ativa geração automática no Pilot. A pergunta offline exibe primeiro a consulta aos textos salvos; complemento com IA é opção da sessão.
+
+- D-248: a consulta documental funcionou no teste iPhone, mas o excesso de controles fixos ocultava a prosa. Opções ficam no próprio Pilot, com histórico preservado. Status global some durante o diálogo e o estado offline aparece no cabeçalho.

@@ -4,6 +4,10 @@
 
 ---
 
+## D-248 — Priorizar leitura na tela do Pilot
+
+**Data**: 2026-11-13. **Status**: DECIDED — auditoria solicitada pelo dono no teste de OFFGRID-KNOW-T02. No print, controles fixos ocupam a maior parte da folha, a notificação global cruza o campo e o salto ao fim esconde o início da resposta. Manter conversa e campo como áreas principais, controles offline sob Opções no próprio Pilot, superfície opaca, prosa legível e atalho ao início da última resposta. Preservar a posição durante a leitura.
+
 ## D-247 — Consulta documental antes da IA local
 
 **Data**: 2026-11-13. **Status**: DECIDED — OFFGRID-KNOW-T02. Em modo avião, o Pilot voltou à tela World antes de responder mesmo com biblioteca e modelo preparados. A causa do encerramento ainda não foi confirmada. A consulta offline entrega trechos com fonte primeiro. O modelo local fica disponível por escolha explícita na sessão, sem bloquear a consulta. A resposta documental permanece se a geração falhar ou for cancelada.

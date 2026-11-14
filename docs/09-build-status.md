@@ -5,6 +5,10 @@
 
 ---
 
+## OFFGRID-KNOW-T02 — leitura no Pilot (2026-11-13)
+
+A consulta em modo avião exibiu trechos no iPhone. A captura mostrou resposta comprimida por sugestões e controles fixos, com status global sobre o campo. D-248 move controles para Opções, preserva posição do histórico, usa fundo opaco e mantém o início de respostas longas ao alcance. Validar com teclado e respostas longas no iPhone.
+
 ## OFFGRID-KNOW-T02 — resposta documental primeiro (2026-11-13)
 
 O teste em modo avião mostrou biblioteca com 3.901 textos e modelo preparado, mas o Pilot voltou à tela World sem resposta. D-247 remove a espera pelo modelo do fluxo documental padrão e permite complemento de IA por opção explícita. A causa do retorno à tela World e a estabilidade da inferência ainda precisam de teste no aparelho.
