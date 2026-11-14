@@ -1840,3 +1840,5 @@ Verificar via Supabase Dashboard → SQL Editor: `SELECT name FROM supabase_migr
 - D-247: preparar os pesos não ativa geração automática no Pilot. A pergunta offline exibe primeiro a consulta aos textos salvos; complemento com IA é opção da sessão.
 
 - D-248: a consulta documental funcionou no teste iPhone, mas o excesso de controles fixos ocultava a prosa. Opções ficam no próprio Pilot, com histórico preservado. Status global some durante o diálogo e o estado offline aparece no cabeçalho.
+
+- D-249: comparar o commit da origem principal e da prévia antes de atribuir visual antigo ao cache. /abrir e /dashboard usam rede na navegação e leitor offline se ela falhar. O aviso fica abaixo da folha mesmo durante sua animação.

@@ -1,9 +1,13 @@
 # 09 — Build Status
 
 > The single most important file for resuming a session. Read this first after AGENTS.md.
-> Last updated: 2026-11-13
+> Last updated: 2026-11-14
 
 ---
+
+## OFFGRID-KNOW-T02 — reabertura e aviso (2026-11-14)
+
+O dono viu o Pilot antigo ao reconectar e o aviso global sobre o campo. Produção b690a18 e prévia f04d9d4 foram conferidas; o endereço usado no reteste ainda é desconhecido. D-249 remove cache de documento na abertura online da mesma origem e mantém o aviso abaixo da folha. Reteste físico ainda pendente.
 
 ## OFFGRID-KNOW-T02 — leitura no Pilot (2026-11-13)
 

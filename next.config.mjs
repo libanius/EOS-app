@@ -44,20 +44,16 @@ const withPWA = nextPwa({
   ],
   maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
   runtimeCaching: [
-    // D-238: a porta de entrada do app instalado. Estática; servida do cache na
-    // hora (e offline) enquanto se atualiza em segundo plano.
-    {
-      urlPattern: /^https?.*\/abrir$/i,
-      handler: 'StaleWhileRevalidate',
-      options: { cacheName: 'eos-entrada', expiration: { maxEntries: 2 } },
-    },
-    // Reopening the dashboard offline goes straight to the lightweight reader.
-    // Avoid reviving a cached dashboard after the browser killed its page.
+    // Full navigations always ask for the current app on this origin.
+    // If the network is unavailable, open the precached reader rather than older app HTML.
     {
       urlPattern: ({ url, request, sameOrigin }) =>
-        sameOrigin && request.mode === 'navigate' && url.pathname === '/dashboard',
+        sameOrigin && request.mode === 'navigate' && /^\/(abrir|dashboard)\/?$/.test(url.pathname),
       handler: 'NetworkOnly',
-      options: { precacheFallback: { fallbackURL: '/offline.html' } },
+      options: {
+        fetchOptions: { cache: 'no-store' },
+        precacheFallback: { fallbackURL: '/offline.html' },
+      },
     },
     // Authenticated pages must refresh from the network so post-deploy fixes
     // like push registration are not trapped behind an old service worker cache.

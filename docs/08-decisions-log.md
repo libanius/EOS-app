@@ -4,6 +4,10 @@
 
 ---
 
+## D-249 — Reabertura online atual e aviso fora do Pilot
+
+**Data**: 2026-11-14. **Status**: DECIDED — correção no OFFGRID-KNOW-T02. A prévia e a produção continuam em versões distintas. Na mesma origem, as navegações para /abrir e /dashboard buscam o documento pela rede e usam o leitor local se ela falhar. O aviso global fica sob o diálogo e continua suprimido enquanto o Pilot está aberto.
+
 ## D-248 — Priorizar leitura na tela do Pilot
 
 **Data**: 2026-11-13. **Status**: DECIDED — auditoria solicitada pelo dono no teste de OFFGRID-KNOW-T02. No print, controles fixos ocupam a maior parte da folha, a notificação global cruza o campo e o salto ao fim esconde o início da resposta. Manter conversa e campo como áreas principais, controles offline sob Opções no próprio Pilot, superfície opaca, prosa legível e atalho ao início da última resposta. Preservar a posição durante a leitura.
