@@ -5,6 +5,10 @@
 
 ---
 
+## OFFGRID-KNOW-T02 — resposta documental primeiro (2026-11-13)
+
+O teste em modo avião mostrou biblioteca com 3.901 textos e modelo preparado, mas o Pilot voltou à tela World sem resposta. D-247 remove a espera pelo modelo do fluxo documental padrão e permite complemento de IA por opção explícita. A causa do retorno à tela World e a estabilidade da inferência ainda precisam de teste no aparelho.
+
 ## OFFGRID-KNOW-T02 — prontidão da biblioteca (2026-11-13)
 
 D-246 distingue conteúdo salvo de leitor disponível offline no navegador. A confirmação exige controle do service worker e HTML/scripts essenciais no precache. O Pilot mostra entrada explícita para o leitor. Validação no iPhone e na casca nativa segue pendente.

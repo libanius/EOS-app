@@ -21,6 +21,8 @@ Status: **Ready**, D-243; implementação sobre a biblioteca D-242. Pedido diret
 
 Pilot do app e leitor estático offline compartilham o mesmo orquestrador. Leitor mantém formulário de consulta documental e adiciona conversa/estado do modelo sem mudar navegação. Artefatos JS/worker são locais ao app e cacheados no SW/embutidos no nativo; não carregados de CDN durante a emergência.
 
+No Pilot, perguntas offline e fallback de rede mostram o resultado documental imediatamente após ler a biblioteca. Preparar o modelo não muda o modo padrão. A opção explícita de IA local permite acrescentar uma resposta gerada à consulta, mantendo histórico e fontes. A indicação de progresso deve distinguir busca nos textos salvos de geração local. O formulário separado de conversa no leitor estático continua sendo uma escolha explícita.
+
 ## Feedback do preparo
 
 Em PT/EN, distinguir verificação, preparo em andamento, arquivos encontrados, conversa pronta, interrupção, falha e indisponibilidade. Ao final do progresso, mostrar que o preparo está finalizando até confirmação do runtime. Exibir a próxima ação junto do estado, com instruções específicas para causas conhecidas e acesso à consulta documental quando a conversa não está pronta. Quando pronta, indicar onde digitar a pergunta e como testar sem internet.

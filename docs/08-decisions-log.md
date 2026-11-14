@@ -4,6 +4,10 @@
 
 ---
 
+## D-247 — Consulta documental antes da IA local
+
+**Data**: 2026-11-13. **Status**: DECIDED — OFFGRID-KNOW-T02. Em modo avião, o Pilot voltou à tela World antes de responder mesmo com biblioteca e modelo preparados. A causa do encerramento ainda não foi confirmada. A consulta offline entrega trechos com fonte primeiro. O modelo local fica disponível por escolha explícita na sessão, sem bloquear a consulta. A resposta documental permanece se a geração falhar ou for cancelada.
+
 ## D-246 — Confirmar que a biblioteca pode abrir sem rede
 
 **Data**: 2026-11-13. **Status**: DECIDED — prioridade offline reafirmada pelo dono. A cópia dos textos e a capacidade de reabrir o leitor são verificações separadas. No navegador, o Pilot só indica biblioteca pronta para abrir sem internet se os textos estiverem salvos, o service worker controlar a página e os arquivos do leitor estiverem em cache. A IA local permanece opcional.

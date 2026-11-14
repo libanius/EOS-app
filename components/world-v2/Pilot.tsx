@@ -88,7 +88,7 @@ const COPY = {
     placeholder: 'Pergunte ao seu especialista',
     send: 'Enviar',
     thinking: 'Analisando com a base de conhecimento…',
-    offline: 'Pergunte à biblioteca offline',
+    offline: 'Pergunte aos textos salvos',
     unavailable: 'Não consegui falar com a base agora. As respostas locais continuam funcionando.',
     addTask: 'Adicionar',
     added: 'Na preparação',
@@ -122,7 +122,7 @@ const COPY = {
     placeholder: 'Ask your specialist',
     send: 'Send',
     thinking: 'Checking the knowledge base…',
-    offline: 'Ask the offline library',
+    offline: 'Ask the saved library',
     unavailable: 'I could not reach the knowledge base. Local answers still work.',
     addTask: 'Add',
     added: 'In preparedness',
@@ -367,6 +367,8 @@ export default function Pilot({
 
   const [knowledge, setKnowledge] = useState<{ count: number; syncedAt: string } | null>(null)
   const [localBusy, setLocalBusy] = useState(false)
+  const [offlineLookupBusy, setOfflineLookupBusy] = useState(false)
+  const [useOfflineAI, setUseOfflineAI] = useState(false)
   const [knowledgeFailed, setKnowledgeFailed] = useState(false)
   const [readerReady, setReaderReady] = useState<boolean | null>(null)
   useEffect(() => {
@@ -397,32 +399,40 @@ export default function Pilot({
   }, [])
 
   const answerOffline = async (question: string, incomplete = false) => {
-    setBusy(true); setLocalBusy(true)
+    setBusy(true); setOfflineLookupBusy(true)
     try {
       const pack = await readOfflineKnowledge()
       const localGuard = askPilot('now', ctx)
+      const guard = { verdict: localGuard.verdict, headline: localGuard.headline, body: localGuard.body }
+      const documentary = offlineKnowledgeReply(pack, question, pt)
+      push({ id: nextId(), role: 'pilot', kind: 'chat',
+        text: [incomplete ? (pt ? 'A resposta online foi interrompida.' : 'The online answer was interrupted.') : '', documentary.text].filter(Boolean).join('\n\n'),
+        verdict: ctx.riskState === 'critical' ? guard.verdict : undefined,
+        caveat: ctx.riskState === 'critical' ? `${guard.headline} — ${guard.body}` : undefined,
+        actions: [{ label: pt ? 'Abrir biblioteca salva' : 'Open saved library', href: '/offline.html', primary: true }] })
+      setOfflineLookupBusy(false)
+      if (!useOfflineAI || !pack) return
+      setLocalBusy(true)
       const history = messages.filter(m => m.role === 'user' || m.kind === 'chat')
         .slice(-6).map(m => ({ role: m.role === 'user' ? 'user' as const : 'assistant' as const, content: m.text }))
       const context = ctx.household.known
         ? `Last known household: ${ctx.household.people} people. Deterministic saved autonomy: ${ctx.autonomyDays} days; water: ${ctx.waterDays} days; food: ${ctx.foodDays} days. Not a live refresh.`
         : 'Household details unavailable. Do not assume people, equipment or supplies.'
-      let result
-      try {
-        result = await (await localRuntime()).answer({ pack, question, pt, history, context,
-          guard: { verdict: localGuard.verdict, headline: localGuard.headline, body: localGuard.body } })
-      } catch (error) {
-        if (error instanceof Error && error.message === 'local_cancelled') return
-        result = { mode: 'documents' as const, text: offlineKnowledgeReply(pack, question, pt).text, sources: [] }
-      }
-      const header = result.mode === 'local_ai' ? (pt ? 'IA local · biblioteca salva' : 'Local AI · saved library') : ''
+      const result = await (await localRuntime()).answer({ pack, question, pt, history, context, guard })
+      if (result.mode !== 'local_ai') return
+      const header = pt ? 'IA local · biblioteca salva' : 'Local AI · saved library'
       const sourceText = result.sources.map(source => `${source.title} · ${source.version} · ${source.source}`).join('\n')
       push({ id: nextId(), role: 'pilot', kind: 'chat',
-        text: [incomplete ? (pt ? 'A resposta online foi interrompida.' : 'The online answer was interrupted.') : '', header, result.text,
+        text: [header, result.text,
           sourceText ? `${pt ? 'Fontes consultadas' : 'Sources consulted'}:\n${sourceText}\n${pt ? 'Cópia salva em' : 'Copy saved on'}: ${pack?.syncedAt}` : ''].filter(Boolean).join('\n\n'),
         verdict: ctx.riskState === 'critical' ? localGuard.verdict : undefined,
         caveat: ctx.riskState === 'critical' ? `${localGuard.headline} — ${localGuard.body}` : undefined,
         actions: [{ label: pt ? 'Abrir biblioteca salva' : 'Open saved library', href: '/offline.html', primary: true }] })
-    } finally { setLocalBusy(false); setBusy(false) }
+    } catch {
+      // The documentary answer is already visible if local generation fails or is cancelled.
+    } finally {
+      setOfflineLookupBusy(false); setLocalBusy(false); setBusy(false)
+    }
   }
 
   /** Connected reasoning falls back to the downloaded documentary library. */
@@ -451,7 +461,7 @@ export default function Pilot({
       return
     }
 
-    if (!online) {
+    if (!online || !navigator.onLine) {
       // A degradação honesta também é métrica: quantas perguntas o produto
       // recebe sem rede diz se a promessa "responde quando a rede caiu" está
       // sendo cobrada de verdade.
@@ -963,7 +973,7 @@ export default function Pilot({
                   </article>
                 ),
               )}
-              {busy && <p className="chat-thinking t-sub ink-2">{c.thinking}</p>}
+              {busy && <p className="chat-thinking t-sub ink-2">{localBusy ? (pt ? 'Gerando complemento com IA local…' : 'Generating a local AI answer…') : offlineLookupBusy ? (pt ? 'Buscando nos textos salvos…' : 'Searching saved texts…') : c.thinking}</p>}
             </div>
 
             <div className="chat-suggestions" aria-label={c.suggestions}>
@@ -1009,9 +1019,13 @@ export default function Pilot({
               }}>{pt ? 'Atualizar cópia' : 'Update copy'}</button>
             </div>
             <LocalAIControls pt={pt} busy={localBusy} />
+            {!online && <label className="t-foot ink-2" style={{ padding: '0 16px 8px' }}>
+              <input type="checkbox" checked={useOfflineAI} disabled={busy} onChange={event => setUseOfflineAI(event.target.checked)} />
+              {' '}{pt ? 'Complementar com IA local' : 'Add a local AI answer'}
+            </label>}
             <button type="button" className="wv2-pill" disabled={busy && !localBusy} onClick={() => {
               void localRuntime().then(r => r.cancel()).catch(() => {})
-              setMessages([fromAnswer(opening)]); setDraft('')
+              setMessages([fromAnswer(opening)]); setDraft(''); setUseOfflineAI(false)
             }}>{pt ? 'Limpar conversa' : 'Clear conversation'}</button>
             <form
               className="chat-compose"
