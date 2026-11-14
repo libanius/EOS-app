@@ -1,8 +1,18 @@
 # 07 — Roadmap
 
-> Last updated: 2026-08-10
+> Last updated: 2026-11-10
 
 ---
+
+## PRIORIDADE TOTAL — Continuidade offline (D-242, 2026-11-10)
+
+Esta é a tarefa atual autorizada pelo dono; demais tarefas de código aguardam. CONTENT-T06 permanece bloqueada, sem cutover.
+
+| Task ID | Entrega | Status |
+|---|---|---|
+| OFFGRID-KNOW-T01 | Snapshot automático de manuais/RAG + Sinais publicados + EDU aprovado, busca/leitura offline no Pilot/PWA/fallback nativo; spec OFFGRID-KNOW-001 | CODE COMPLETE — validação física/release pendentes (PR #28) |
+| OFFGRID-KNOW-T02 | Raciocínio conversacional local sobre a mesma biblioteca, compatível com Capacitor; PILOT-LOCAL-001 / D-243 | IN PROGRESS — reabertura e camada do aviso (D-249), leitura no Pilot e recuperação. Modelo real, Xcode e aparelho pendentes. |
+
 
 ## Phase 0 — App Spine Migration
 

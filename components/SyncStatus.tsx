@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useOfflineQueue } from '@/hooks/useOfflineQueue'
 import { flushQueue } from '@/lib/sync'
+import { usePilot } from '@/components/world-v2/PilotProvider'
 
 export default function SyncStatus({ onReconnect }: { onReconnect?: () => void }) {
+  const { open: pilotOpen } = usePilot()
   const [lastSync, setLastSync] = useState<Date | null>(null)
   const [visible, setVisible] = useState(false)
 
@@ -34,7 +36,7 @@ export default function SyncStatus({ onReconnect }: { onReconnect?: () => void }
     onReconnect?.()
   }
 
-  if (!visible) return null
+  if (!visible || pilotOpen) return null
 
   const color = !online ? '#f87171' : flushing ? '#fbbf24' : queueSize > 0 ? '#f97316' : '#34d399'
   const label = !online
@@ -51,7 +53,8 @@ export default function SyncStatus({ onReconnect }: { onReconnect?: () => void }
       margin: '0 auto', padding: '8px 14px',
       background: '#111116', border: `1px solid ${color}44`,
       borderRadius: 10, display: 'flex', alignItems: 'center', gap: 8,
-      zIndex: 999, boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+      // Keep below the Pilot scrim (899) and sheet (900), including exit animation.
+      zIndex: 890, boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
     }}>
       <span style={{
         width: 8, height: 8, borderRadius: '50%', flexShrink: 0,

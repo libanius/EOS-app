@@ -1,3 +1,4 @@
+import KnowledgeSync from '@/components/KnowledgeSync'
 import BottomNav from '@/components/BottomNav'
 import SyncStatus from '@/components/SyncStatus'
 import FichaFirstRun from '@/components/FichaFirstRun'
@@ -50,6 +51,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <SimulationDebrief />
       {/* D-075: sem isto o service worker só existia para quem abria /settings. */}
       <ServiceWorkerRegistrar />
+      <KnowledgeSync />
       <FichaFirstRun />
       {/* D-064: silent unless the user consented AND already granted GPS. */}
       <LocationReporter />

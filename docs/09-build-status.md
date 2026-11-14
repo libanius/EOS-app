@@ -1,9 +1,60 @@
 # 09 — Build Status
 
 > The single most important file for resuming a session. Read this first after AGENTS.md.
-> Last updated: 2026-09-03
+> Last updated: 2026-11-14
 
 ---
+
+## OFFGRID-KNOW-T02 — reabertura e aviso (2026-11-14)
+
+O dono viu o Pilot antigo ao reconectar e o aviso global sobre o campo. Produção b690a18 e prévia f04d9d4 foram conferidas; o endereço usado no reteste ainda é desconhecido. D-249 remove cache de documento na abertura online da mesma origem e mantém o aviso abaixo da folha. Reteste físico ainda pendente.
+
+## OFFGRID-KNOW-T02 — leitura no Pilot (2026-11-13)
+
+A consulta em modo avião exibiu trechos no iPhone. A captura mostrou resposta comprimida por sugestões e controles fixos, com status global sobre o campo. D-248 move controles para Opções, preserva posição do histórico, usa fundo opaco e mantém o início de respostas longas ao alcance. Validar com teclado e respostas longas no iPhone.
+
+## OFFGRID-KNOW-T02 — resposta documental primeiro (2026-11-13)
+
+O teste em modo avião mostrou biblioteca com 3.901 textos e modelo preparado, mas o Pilot voltou à tela World sem resposta. D-247 remove a espera pelo modelo do fluxo documental padrão e permite complemento de IA por opção explícita. A causa do retorno à tela World e a estabilidade da inferência ainda precisam de teste no aparelho.
+
+## OFFGRID-KNOW-T02 — prontidão da biblioteca (2026-11-13)
+
+D-246 distingue conteúdo salvo de leitor disponível offline no navegador. A confirmação exige controle do service worker e HTML/scripts essenciais no precache. O Pilot mostra entrada explícita para o leitor. Validação no iPhone e na casca nativa segue pendente.
+
+## OFFGRID-KNOW-T02 — recuperação após encerramento (2026-11-13)
+
+O dono concluiu o download web e viu a página do dashboard encerrar/recarregar em modo avião. A captura não prova falta de memória nem falha de GPU. D-245 adiciona fallback de navegação do dashboard para o leitor precacheado e evita reativação automática se houver marcador de carregamento/geração abandonado. Download e biblioteca permanecem separados. Novo teste físico ainda necessário.
+
+## OFFGRID-KNOW-T02 — preparo no iPhone (2026-11-13)
+
+A prévia no iPhone mostrou 3.901 textos salvos e falha ao preparar o modelo. O print não identifica a causa da falha. D-244 diferencia progresso, finalização, sucesso e falha, com próxima ação no Pilot e no leitor. O teste com modelo real, a compilação Xcode e a publicação seguem pendentes.
+
+## Bloqueio da prévia identificado — 2026-11-10
+
+A captura do dono ainda mostra a mensagem antiga. Conferido: produção está em `b690a18` (v0.2.5), PR #28 aberto/draft em `c783cb2`, sem merge. A prévia da equipe EOS `dpl_GzejNbrX2jAVuy5KXYHbVQqW9e8h` falhou no prebuild: `ENOENT native/www/knowledge.js`. Um diretório nativo residual no cache bastava para o gerador tentar validar arquivos excluídos por `.vercelignore`. Correção v0.2.8 no próprio T02: builds Vercel ignoram espelho nativo independentemente de diretórios residuais; fora da Vercel, só espelham quando `native/package.json` existe. Teste de regressão reproduz cache parcial; 903 testes/79 suítes, tipos e lint aprovados. Validação da prévia hospedada em andamento. Não tratar teste do dono como falha do modelo novo; ele ainda recebeu a versão antiga. Publicação/qualidade real permanecem pendentes.
+
+
+## OFFGRID-KNOW-T02 — código preparado para validação (2026-11-10)
+
+O PR #28 passa a reunir biblioteca e conversa local (D-242/D-243), sem merge/release. Orquestrador e UI do Pilot/leitor estático compartilham fonte, histórico limitado e fallback. Runtime browser tem interface de aproximadamente 13 KB e worker de aproximadamente 6 MB, gerados no build e precacheados; pesos de aproximadamente 1 GB exigem preparo explícito. Não há download automático de pesos ao abrir nem fetch permitido no worker durante inferência/cold load de cache. iOS nativo usa Foundation Models com disponibilidade checada e ativação guardada em Preferences; o controller customizado e o plugin constam no projeto Xcode. Android continua documental nesta entrega.
+
+Verificação: 902 testes em 78 suítes, tipos, lint e lint:scripts aprovados. DOM real dos arquivos distribuídos com provedor nativo simulado, fetch proibido: duas perguntas, assunto de acompanhamento, fontes e limpar conversa passaram. Geradores testados em pasta sem `/native`, como no pacote web; guarda nativa aprovada. Modelos locais reais, desempenho/GPU/RAM/bateria, compilação Xcode e iPhone físico **não foram verificados neste executor Linux**. Não interpretar os mocks como avaliação de qualidade nem como capacidade já disponível no telefone. O gate de liberação continua pendente.
+
+## Tarefa atual — OFFGRID-KNOW-T02 (2026-11-10)
+
+D-243 autoriza a conversa local, sobre a biblioteca T01 do PR #28. v0.2.7 em preparação: recuperação por pergunta + últimos turnos do usuário, fontes completas dentro do orçamento, saída estruturada com IDs verificados, WebLLM 0.2.88/Qwen2.5 1.5B em worker dedicado e plugin iOS Foundation Models. Controle explícito de preparo, progresso, cancelamento, remoção de pesos, baixa bateria, timeout e limpeza da sessão. Worker bloqueia fetch de rede fora do preparo explícito; pesos e WASM têm revisão fixada. Modelo não é carregado ao abrir o app. Safari/PWA exige WebGPU e preparo prévio; casca iOS exige iOS 26/modelo disponível. Android mantém consulta documental nesta primeira entrega. T01 permanece com validação física pendente, sem merge/release automático. Não afirmar que LOCAL_AI já roda no telefone.
+
+
+## OFFGRID-KNOW-T01 — primeira implementação preparada (2026-11-10)
+
+v0.2.6, branch `codex/offline-knowledge-continuity`. Download autenticado por manifesto/partes da mesma versão, SHA-256, textos completos do acervo e do editorial publicado/aprovado em PT/EN. Consulta offline no Pilot, fallback de erro/timeout/stream parcial, biblioteca estática de leitura integral em `/offline.html`, abertura PWA offline e espelho nativo em blocos com geração anterior preservada. Sincronização ao abrir/reconectar/retornar e a cada cinco minutos visíveis. Conteúdo novo só fica disponível após sincronização completa. Não baixa vídeo/mídia externa; não implementa modelo local nem geração de plano adaptado sem rede. Sem migração ou publicação de pautas.
+
+Validação: type-check, lint, lint:scripts, suíte completa, build e guarda nativa aprovados. Precaching gerado contém `offline.html`, `knowledge.js` e `knowledge-ui.js`. Teste DOM executou os arquivos reais com amostras reais dos manuais do banco, sem rede, sobre IndexedDB e Preferences simulados: busca PT, fonte, texto completo e ausência de resultado aprovados. O script Playwright foi preparado, mas Chromium não abriu por restrição de socket neste executor: **conferência visual, cold start real e iPhone físico permanecem pendentes**. Código em revisão; tarefa continua IN PROGRESS, sem alegar deploy ou disponibilidade no telefone. OFFGRID-KNOW-T02 é a sequência sobre a mesma biblioteca.
+
+## Prioridade atual — conhecimento offline (2026-11-10)
+
+D-242 / OFFGRID-KNOW-T01 está IN PROGRESS por pedido explícito do dono. O teste em modo avião mostrou que a conversa para antes de consultar o acervo. A base documental depende de OpenAI + Supabase; a integração editorial D-240 é online. Entrega atual: snapshot automático completo textual, busca e leitura local no Pilot/PWA/fallback nativo. Raciocínio por modelo local é próximo passo, não implementado por esta tarefa. Não marcar pronto até verificação. CONTENT-T06 continua bloqueada.
+
 
 ## Referências do Pilot legíveis — 2026-11-09
 
@@ -42,10 +93,10 @@ SHARE-T01 (SIGNAL-SHARE-001): página pública PT/EN em `/sinais/[slug]/comparti
 | **Current Phase** | **Casca Nativa (MOB)** — o EOS deixou de ser só Web/PWA em 2026-08-31 (D-228). Execução de Plano (EXEC) segue viva no núcleo, que agora serve as duas superfícies. |
 | **Migração aplicada** | ✅ `20260828000000_ndl_dedup_arbiter.sql` (D-222) — aplicada pelo dono em 2026-08-28 e verificada: `npm run test:hazard-dedup` passou de **1/6 para 6/6**, incluindo o controle negativo. Dedup e cooldown de 30 min voltaram a valer. |
 | **Agendador migrado** | ✅ pg_cron (D-222 / ALERT-T08) — `supabase/pg_cron_hazard_scan.sql` rodado pelo dono em 2026-08-28. **Disparo autônomo confirmado** às 17:20:03 e 17:40:03 UTC, três segundos após a marca dos 10 min, partindo de dentro do banco. Cadência real: 10 min (era mediana de 43 min com buracos de até 11,6 h). `CRON_SECRET` no Vault, não no corpo do job. |
-| **Current Task** | **MOB-T06 — release nas lojas. É tarefa do DONO, não de código.** Contas Apple/Google, App ID com Push e Associated Domains, chave `.p8`, `google-services.json`, keystore, `.well-known`, ícones. Lista fechada em `docs/39-native-shell.md` §5. |
+| **Current Task** | **OFFGRID-KNOW-T02 — conversa local D-243.** T01 e T02 em revisão, validação de navegador/iPhone pendente. MOB-T06 permanece com o dono. |
 | **✅ Migração `push_devices`** | **Aplicada.** `20260831000000_push_devices.sql` existe em produção — verificado pelo dono no SQL Editor em 2026-11-02. O que ainda impede o push nativo de entregar são só as credenciais `APNS_*` e `FCM_SERVICE_ACCOUNT_JSON` (`npm run setup:push`). |
 | **⚠️ Bloqueio operacional** | **`APNS_*` e `FCM_SERVICE_ACCOUNT_JSON` não estão configuradas.** Com elas ausentes o app instala, abre e **não notifica**. `enviarParaAparelhos` conta esses aparelhos como **falha**, nunca como "sem aparelho" — a D-119 existe para que "não enviei" nunca se confunda com "enviei". |
-| **Próxima tarefa de código** | **AUTHOR-T01 — rascunho persistente em IndexedDB.** Não iniciar sem ler `specs/PLAN-AUTHOR-001-autoria-do-plano.md`. |
+| **Próxima tarefa de código** | Validar OFFGRID-KNOW-T01/T02 em navegador e iPhone, compilar o plugin e medir a qualidade real antes de liberar. AUTHOR-T01 aguarda a prioridade, sem ser descartada. |
 | **Deploy Vercel** | ✅ Hotfix 2026-09-03 — `.vercelignore` passou de `native` para `/native`. A forma antiga também removia `lib/native/{bridge,push,vault}.ts` do pacote enviado ao Vercel, e o `next build` falhava com `Module not found: Can't resolve '@/lib/native/…'`. |
 | **Last Completed Task** | **INV-T05 — Validade e Pilot (2026-11-07, INVENTORY-001)** — vencidos e a vencer em "precisa de atenção"; o Pilot lê o estoque item a item (onde está, de quem é, o que vence); "O que falta" mostra o item que cobre. Fecha o código da INVENTORY-001 (T01–T05). **Próxima:** CONTENT-T06 — telas do Sinal lendo do banco. |
 | **Anterior** | **HOUSEHOLD-FIX-001 / D-231 — Casa à prova de erro (2026-11-03)** — aviso de nome parecido no endereço e ao corrigir convite; lista "já moram aqui" no formulário; convites com Enviar / Corrigir nome / Remover; dependente removível do cartão; "Desfazer" de 8 s; círculo criado no toque de "Enviar convite" (plano Família); alerta de duplicata cobre convite, dependente e conta; "São duas pessoas" persistido. Migração `20261103180000_household_distinct_pairs.sql` **aplicada** em produção. 14 testes novos (669 passando), lint, type-check e `next build` limpos. |

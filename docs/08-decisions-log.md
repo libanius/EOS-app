@@ -4,6 +4,54 @@
 
 ---
 
+## D-249 — Reabertura online atual e aviso fora do Pilot
+
+**Data**: 2026-11-14. **Status**: DECIDED — correção no OFFGRID-KNOW-T02. A prévia e a produção continuam em versões distintas. Na mesma origem, as navegações para /abrir e /dashboard buscam o documento pela rede e usam o leitor local se ela falhar. O aviso global fica sob o diálogo e continua suprimido enquanto o Pilot está aberto.
+
+## D-248 — Priorizar leitura na tela do Pilot
+
+**Data**: 2026-11-13. **Status**: DECIDED — auditoria solicitada pelo dono no teste de OFFGRID-KNOW-T02. No print, controles fixos ocupam a maior parte da folha, a notificação global cruza o campo e o salto ao fim esconde o início da resposta. Manter conversa e campo como áreas principais, controles offline sob Opções no próprio Pilot, superfície opaca, prosa legível e atalho ao início da última resposta. Preservar a posição durante a leitura.
+
+## D-247 — Consulta documental antes da IA local
+
+**Data**: 2026-11-13. **Status**: DECIDED — OFFGRID-KNOW-T02. Em modo avião, o Pilot voltou à tela World antes de responder mesmo com biblioteca e modelo preparados. A causa do encerramento ainda não foi confirmada. A consulta offline entrega trechos com fonte primeiro. O modelo local fica disponível por escolha explícita na sessão, sem bloquear a consulta. A resposta documental permanece se a geração falhar ou for cancelada.
+
+## D-246 — Confirmar que a biblioteca pode abrir sem rede
+
+**Data**: 2026-11-13. **Status**: DECIDED — prioridade offline reafirmada pelo dono. A cópia dos textos e a capacidade de reabrir o leitor são verificações separadas. No navegador, o Pilot só indica biblioteca pronta para abrir sem internet se os textos estiverem salvos, o service worker controlar a página e os arquivos do leitor estiverem em cache. A IA local permanece opcional.
+
+## D-245 — Recuperar consulta offline após encerramento do navegador
+
+**Data**: 2026-11-13. **Status**: DECIDED — correção de robustez no OFFGRID-KNOW-T02 após o teste do dono. A página do dashboard reiniciou em modo avião depois do preparo do modelo web. A captura não comprova a causa do encerramento.
+
+Ao reabrir o dashboard sem acesso à rede, servir o leitor salvo pelo service worker. Preservar biblioteca e pesos. Se o navegador encerrar durante carregamento ou geração, a próxima pergunta usa os textos salvos até o usuário escolher tentar o modelo novamente.
+
+## D-244 — Resultado e próximo passo do preparo offline
+
+**Data**: 2026-11-13. **Status**: DECIDED — pedido do dono no teste da prévia do Pilot. OFFGRID-KNOW-T02 mantém a validação física pendente.
+
+Mostrar um resultado claro do preparo e a ação seguinte no Pilot e no leitor offline. Só confirmar que a conversa está pronta depois que o modelo estiver carregado ou o provedor nativo ativado. Progresso e arquivos em cache não equivalem a sucesso. Em falha ou interrupção, orientar nova tentativa e manter acesso à biblioteca.
+
+## D-243 — Pilot conversacional local sobre a biblioteca offline
+
+**Data**: 2026-11-10. **Status**: DECIDED — dono: “Vamos fazer esse raciocínio conversasional”. **Tarefa atual**: OFFGRID-KNOW-T02, autorizada sobre a implementação T01 do PR #28, ainda em revisão; sem declarar os testes físicos de T01 concluídos.
+
+O mesmo Pilot deve conversar sem infraestrutura: interpretar pergunta e acompanhamento, recuperar os textos salvos e transformar as referências em explicação e próximos passos, com fontes verificáveis. A orientação deve pedir informação ausente em vez de supor equipamento, condições atuais ou dados da casa. Regras determinísticas mantêm autoridade; contas de autonomia/quantidades não vão para o modelo. Sem escrita automática de plano, estoque ou memória.
+
+Implementação: contrato portátil de raciocínio local e recuperação contextual; WebLLM/WebGPU com Qwen2.5 1.5B quantizado para PWA/navegador compatível, preparado explicitamente enquanto online; adaptador Foundation Models para casca iOS 26+ quando disponível. Provedores compartilham o mesmo contexto restrito, fontes e validação. Download de pesos é opcional e explícito, nunca automático ao abrir. Nativo não depende do cache de pesos de outra origem. Falta de capacidade, modelo, bateria, contexto, cancelamento ou falha retorna à biblioteca; nunca finge IA local. Perguntas/histórico não são enviados a servidor no caminho LOCAL_AI. Conversa fica na sessão, com botão de limpar/cancelar. Primeiro atendimento offline não pode depender de autorização remota ou cobrança.
+
+Compatibilidade e limites precisam ser medidos no iPhone real antes de release. O modelo de sistema interpreta/redige; decisões quantitativas e risco permanecem em código. A implementação e os testes de contrato não equivalem a validação de qualidade do modelo real.
+
+
+## D-242 — Continuidade do conhecimento offline é prioridade total
+
+**Data**: 2026-11-10. **Status**: DECIDED, pedido explícito do dono após teste em modo avião. **Tarefa prioritária**: OFFGRID-KNOW-T01. Esta prioridade antecede as demais tarefas de código; CONTENT-T06 permanece bloqueada e não é executada nem descartada.
+
+O acervo de manuais/RAG, todo Sinal publicado e todo EDU aprovado devem acompanhar o aparelho para consulta sem infraestrutura. Publicação/aprovação alimenta automaticamente o próximo snapshot local, sem exigir abrir cada artigo nem nova ingestão vetorial editorial. Rascunhos/review ficam fora. Alterações e arquivamentos substituem versões anteriores após sincronização completa. Falha parcial nunca apaga a última cópia íntegra. Fontes, idioma, versão e data da cópia ficam visíveis; links/vídeos externos não são anunciados como baixados.
+
+Primeira entrega: busca e leitura local dos textos completos disponíveis no banco, com trechos identificados, no Pilot, PWA e fallback nativo. Não equivale a raciocínio generativo local: este continua uma entrega seguinte sobre a MESMA biblioteca. Não depende de OpenAI/embeddings para baixar ou pesquisar. Limite inicial explícito de 32 MiB por snapshot, sem corte silencioso; no nativo, blocos em Preferences com ponteiro atômico para não guardar um único valor gigante. Só confirmar disponibilidade após gravar e reler. Testar queda de rede, reinício sem rede, atualização/arquivamento, falha parcial e fontes militar/psicologia/EDU/Sinais.
+
+
 ## D-241 — Referências legíveis no Pilot
 
 **Data**: 2026-11-09. **Status**: DECIDED (dono enviou captura e pediu cores do design system). **Tarefa**: PILOT-KNOW-T02.
