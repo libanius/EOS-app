@@ -5,9 +5,9 @@
  * país em vez de fixar um formato: o app fala pt-BR e en, e um formato único
  * quebraria metade dos usuários.
  *
- * O CAMPO DE UNIDADE NÃO É DETALHE. O próprio dono mora num condomínio onde
- * vários prédios dividem o mesmo número de rua — é `Unit 4124` que separa a
- * casa dele da do vizinho. Sem esse campo, duas famílias diferentes escreveriam
+ * O CAMPO DE UNIDADE NÃO É DETALHE. Em condomínios onde vários prédios
+ * dividem o mesmo número de rua, é a unidade (ex.: `Unit 4B`) que separa uma
+ * casa da do vizinho. Sem esse campo, duas famílias diferentes escreveriam
  * exatamente o mesmo endereço.
  *
  * E é por isso que **endereço nunca vira vínculo automático** neste app. Se
@@ -30,22 +30,31 @@ export const EMPTY_ADDRESS: Address = {
   country: '', line1: '', unit: '', city: '', region: '', postal: '',
 }
 
-/** Os países que o EOS atende hoje, com os rótulos que cada um usa. */
-export const COUNTRIES: Array<{
+type Labels = { line1: string; unit: string; city: string; region: string; postal: string }
+
+export type Country = {
   code: string
   pt: string
   en: string
-  labels: { line1: string; unit: string; city: string; region: string; postal: string }
-  labelsEn: { line1: string; unit: string; city: string; region: string; postal: string }
+  labels: Labels
+  labelsEn: Labels
+  /** Exemplos INVENTADOS para os placeholders — nunca dado real (ADDRESS-002). */
+  examples: Labels
+  examplesEn: Labels
   /** Regiões conhecidas, para virar lista em vez de campo livre. */
   regions?: string[]
-}> = [
+}
+
+/** Os dois países com formato próprio — ficam no topo da lista. */
+const FEATURED: Country[] = [
   {
     code: 'US',
     pt: 'Estados Unidos',
     en: 'United States',
     labels: { line1: 'Rua e número', unit: 'Unidade / apto', city: 'Cidade', region: 'Estado', postal: 'ZIP' },
     labelsEn: { line1: 'Street address', unit: 'Unit / apt', city: 'City', region: 'State', postal: 'ZIP' },
+    examples: { line1: '123 Main St', unit: 'Apt 4B', city: 'Springfield', region: '', postal: '12345' },
+    examplesEn: { line1: '123 Main St', unit: 'Apt 4B', city: 'Springfield', region: '', postal: '12345' },
     regions: ['AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY','DC'],
   },
   {
@@ -54,9 +63,58 @@ export const COUNTRIES: Array<{
     en: 'Brazil',
     labels: { line1: 'Rua e número', unit: 'Complemento', city: 'Cidade', region: 'Estado', postal: 'CEP' },
     labelsEn: { line1: 'Street and number', unit: 'Unit', city: 'City', region: 'State', postal: 'Postcode' },
+    examples: { line1: 'Rua das Flores, 100', unit: 'Apto 12', city: 'Campinas', region: '', postal: '00000-000' },
+    examplesEn: { line1: 'Rua das Flores, 100', unit: 'Apt 12', city: 'Campinas', region: '', postal: '00000-000' },
     regions: ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'],
   },
 ]
+
+/** ISO-3166 alpha-2 — todos os outros países (ADDRESS-002). */
+const OTHER_CODES = (
+  'AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BS BT BV BW BY BZ ' +
+  'CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR ' +
+  'GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP ' +
+  'KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT ' +
+  'MU MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW ' +
+  'SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG ' +
+  'UM UY UZ VA VC VE VG VI VN VU WF WS YE YT ZA ZM ZW'
+).split(' ')
+
+const GENERIC_LABELS: Labels = { line1: 'Endereço', unit: 'Complemento', city: 'Cidade', region: 'Estado / província', postal: 'Código postal' }
+const GENERIC_LABELS_EN: Labels = { line1: 'Street address', unit: 'Unit / apt', city: 'City', region: 'State / province', postal: 'Postal code' }
+const GENERIC_EXAMPLES: Labels = { line1: 'Rua Exemplo, 10', unit: 'Apto 1', city: 'Cidade', region: '', postal: '' }
+const GENERIC_EXAMPLES_EN: Labels = { line1: '10 Example Street', unit: 'Apt 1', city: 'City', region: '', postal: '' }
+
+/** Nome do país no idioma pedido; sem Intl.DisplayNames, o próprio código. */
+function countryName(code: string, locale: string): string {
+  try {
+    return new Intl.DisplayNames([locale], { type: 'region' }).of(code) ?? code
+  } catch {
+    return code
+  }
+}
+
+const OTHERS: Country[] = OTHER_CODES.map(code => ({
+  code,
+  pt: countryName(code, 'pt-BR'),
+  en: countryName(code, 'en'),
+  labels: GENERIC_LABELS,
+  labelsEn: GENERIC_LABELS_EN,
+  examples: GENERIC_EXAMPLES,
+  examplesEn: GENERIC_EXAMPLES_EN,
+}))
+
+/** Todos os países: EUA e Brasil primeiro, o resto vem ordenado na tela. */
+export const COUNTRIES: Country[] = [...FEATURED, ...OTHERS]
+
+/** Quantos países abrem a lista antes do separador. */
+export const FEATURED_COUNT = FEATURED.length
+
+/** O resto da lista, em ordem alfabética no idioma da tela. */
+export function otherCountriesSorted(pt: boolean): Country[] {
+  const locale = pt ? 'pt-BR' : 'en'
+  return [...OTHERS].sort((a, b) => (pt ? a.pt : a.en).localeCompare(pt ? b.pt : b.en, locale))
+}
 
 export function countryOf(code: string) {
   return COUNTRIES.find(c => c.code === code) ?? null
@@ -107,7 +165,7 @@ export function isGeocodable(a: Address): boolean {
  * A consulta que vai para o geocodificador.
  *
  * A UNIDADE FICA DE FORA de propósito: nenhum geocodificador sabe onde fica o
- * apartamento 4124, e mandá-la só piora o resultado — alguns devolvem o centro
+ * apartamento 4B, e mandá-la só piora o resultado — alguns devolvem o centro
  * da cidade quando não casam a string inteira. A unidade importa para a pessoa
  * que vai bater na porta, não para o mapa.
  */

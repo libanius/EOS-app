@@ -20,7 +20,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { COUNTRIES, countryOf, formatAddress, isGeocodable, EMPTY_ADDRESS, type Address } from '@/lib/address'
+import { COUNTRIES, FEATURED_COUNT, otherCountriesSorted, countryOf, formatAddress, isGeocodable, EMPTY_ADDRESS, type Address } from '@/lib/address'
 import { findSimilar, normalizeName, type NamedPerson } from '@/lib/household-names'
 
 /*
@@ -74,6 +74,8 @@ export default function HomeAddress({
 
   const pais = countryOf(a.country)
   const r = pais ? (pt ? pais.labels : pais.labelsEn) : null
+  /** Exemplos inventados — nunca o endereço de alguém de verdade (ADDRESS-002). */
+  const ex = pais ? (pt ? pais.examples : pais.examplesEn) : null
   const campo = (k: keyof Address) => (v: string) => { setA(c => ({ ...c, [k]: v })); setOk(null) }
 
   /**
@@ -221,22 +223,26 @@ export default function HomeAddress({
         <span className="ha-label">{pt ? 'País' : 'Country'}</span>
         <select className="ha-input" value={a.country} onChange={e => campo('country')(e.target.value)}>
           <option value="">{pt ? 'Escolha…' : 'Choose…'}</option>
-          {COUNTRIES.map(c => (
+          {COUNTRIES.slice(0, FEATURED_COUNT).map(c => (
+            <option key={c.code} value={c.code}>{pt ? c.pt : c.en}</option>
+          ))}
+          <option disabled>──────────</option>
+          {otherCountriesSorted(pt).map(c => (
             <option key={c.code} value={c.code}>{pt ? c.pt : c.en}</option>
           ))}
         </select>
       </label>
 
-      {pais && r && (
+      {pais && r && ex && (
         <>
           <label className="ha-field">
             <span className="ha-label">{r.line1}</span>
-            <input className="ha-input" value={a.line1} onChange={e => campo('line1')(e.target.value)} placeholder="5851 Holmberg Rd" />
+            <input className="ha-input" value={a.line1} onChange={e => campo('line1')(e.target.value)} placeholder={ex.line1} />
           </label>
 
           <label className="ha-field">
             <span className="ha-label">{r.unit}</span>
-            <input className="ha-input" value={a.unit} onChange={e => campo('unit')(e.target.value)} placeholder="4124" />
+            <input className="ha-input" value={a.unit} onChange={e => campo('unit')(e.target.value)} placeholder={ex.unit} />
             {/* O motivo do campo, dito onde ele é preenchido. */}
             <span className="ha-hint">
               {pt
@@ -248,7 +254,7 @@ export default function HomeAddress({
           <div className="ha-row">
             <label className="ha-field">
               <span className="ha-label">{r.city}</span>
-              <input className="ha-input" value={a.city} onChange={e => campo('city')(e.target.value)} placeholder="Parkland" />
+              <input className="ha-input" value={a.city} onChange={e => campo('city')(e.target.value)} placeholder={ex.city} />
             </label>
             <label className="ha-field ha-narrow">
               <span className="ha-label">{r.region}</span>
@@ -263,7 +269,7 @@ export default function HomeAddress({
             </label>
             <label className="ha-field ha-narrow">
               <span className="ha-label">{r.postal}</span>
-              <input className="ha-input" value={a.postal} onChange={e => campo('postal')(e.target.value)} placeholder="33067" inputMode="numeric" />
+              <input className="ha-input" value={a.postal} onChange={e => campo('postal')(e.target.value)} placeholder={ex.postal || undefined} inputMode={a.country === 'US' ? 'numeric' : 'text'} />
             </label>
           </div>
 

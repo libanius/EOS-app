@@ -9805,3 +9805,13 @@ enriquecimento do mapa.
 
 ## SIGNAL-SHARE-001 — Sinal compartilhável como entrada pública (2026-11-07)
 Dono aprovou o fluxo proposto e pediu primeira versão pronta para compartilhar. A leitura editorial tem URL pública específica; cálculos e protocolo pessoal permanecem autenticados. Compartilhar carrega somente URL EOS e chamada curta, sem números da casa. Cadastro gratuito é CTA principal e planos existentes são secundários. Capa FORTRESS é ilustração promocional, sem simular evidência jornalística. Implementação da experiência aprovada nesta conversa; sem mudança na navegação do app.
+
+---
+
+## ADDRESS-002 — Todos os países e placeholders inventados (2026-11-16)
+O dono notou que o seletor de país do endereço só tinha EUA e Brasil e que os
+placeholders mostravam o endereço real da casa dele para todo usuário. Decisão:
+lista completa ISO-3166 (EUA e Brasil no topo, resto em ordem alfabética no
+idioma da tela, nomes via `Intl.DisplayNames`), rótulos genéricos fora de
+EUA/BR, e placeholders inventados por país. Endereço comercial das páginas
+legais fica fora do escopo. Spec: `specs/ADDRESS-002-paises-e-exemplos.md`.

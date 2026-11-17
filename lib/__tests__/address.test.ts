@@ -7,7 +7,7 @@
  * exatamente o mesmo endereço.
  */
 
-import { formatAddress, isGeocodable, geocodeQuery, parseNames, countryOf, EMPTY_ADDRESS } from '@/lib/address'
+import { formatAddress, isGeocodable, geocodeQuery, parseNames, countryOf, EMPTY_ADDRESS, COUNTRIES, FEATURED_COUNT, otherCountriesSorted } from '@/lib/address'
 
 const eua = { ...EMPTY_ADDRESS, country: 'US', line1: '5851 Holmberg Rd', unit: '4124', city: 'Parkland', region: 'FL', postal: '33067' }
 const brasil = { ...EMPTY_ADDRESS, country: 'BR', line1: 'Rua das Laranjeiras, 120', unit: 'apto 501', city: 'Rio de Janeiro', region: 'RJ', postal: '22240-003' }
@@ -88,5 +88,32 @@ describe('os países atendidos', () => {
   it('país desconhecido não quebra', () => {
     expect(countryOf('XX')).toBeNull()
     expect(() => formatAddress({ ...eua, country: 'XX' })).not.toThrow()
+  })
+})
+
+describe('ADDRESS-002 — todos os países e exemplos inventados', () => {
+  it('CA1 — a lista tem todos os países', () => {
+    expect(COUNTRIES.length).toBeGreaterThan(240)
+    expect(new Set(COUNTRIES.map(c => c.code)).size).toBe(COUNTRIES.length)
+  })
+
+  it('CA2 — EUA e Brasil abrem a lista', () => {
+    expect(COUNTRIES.slice(0, FEATURED_COUNT).map(c => c.code)).toEqual(['US', 'BR'])
+    expect(otherCountriesSorted(true).some(c => c.code === 'US' || c.code === 'BR')).toBe(false)
+  })
+
+  it('CA3 — outros países têm rótulos genéricos e região livre', () => {
+    for (const code of ['PT', 'JP']) {
+      const c = countryOf(code)
+      expect(c).not.toBeNull()
+      expect(c?.regions).toBeUndefined()
+      expect(c?.labels.postal).toBe('Código postal')
+    }
+    expect(countryOf('PT')?.pt).toBe('Portugal')
+  })
+
+  it('CA4 — nenhum placeholder usa endereço real', () => {
+    const tudo = JSON.stringify(COUNTRIES.map(c => [c.examples, c.examplesEn]))
+    expect(tudo).not.toMatch(/Holmberg|4124|33067|Parkland/)
   })
 })
