@@ -48,11 +48,11 @@ migração. Endereços já salvos com `US` ou `BR` continuam idênticos.
 
 ## 6. Critérios de Aceitação
 
-- [x] CA O seletor de país tem mais de 240 opções.
-- [x] CA EUA e Brasil são as duas primeiras opções.
-- [x] CA `countryOf('PT')`, `countryOf('JP')` devolvem país com rótulos genéricos e sem `regions`.
-- [x] CA Nenhum arquivo em `components/` ou `lib/` (fora de testes) contém `Holmberg`, `4124` ou `33067`.
-- [x] CA Testes de `lib/__tests__/address.test.ts` passam, incluindo os novos.
+- [x] CA1 — O seletor de país tem mais de 240 opções.
+- [x] CA2 — EUA e Brasil são as duas primeiras opções.
+- [x] CA3 — `countryOf('PT')`, `countryOf('JP')` devolvem país com rótulos genéricos e sem `regions`.
+- [x] CA4 — Nenhum arquivo em `components/` ou `lib/` (fora de testes) contém `Holmberg`, `4124` ou `33067`.
+- [x] CA5 — Testes de `lib/__tests__/address.test.ts` passam, incluindo os novos.
 
 ## 7. Fora do Escopo
 
