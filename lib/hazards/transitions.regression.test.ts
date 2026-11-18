@@ -13,7 +13,7 @@ const previous = (severity: 'minor' | 'moderate', hazardType = 'wildfire'): Stor
 const current = (severity: 'minor' | 'moderate', source = 'nasa_eonet'): HazardEvent => ({
   id: 'eonet:EONET_22791',
   sourceEventId: 'EONET_22791',
-  source,
+  source: source as HazardEvent['source'],
   authority: 'official',
   visualClass: 'OFFICIAL_ALERT',
   hazardType: 'wildfire',
