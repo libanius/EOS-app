@@ -214,7 +214,7 @@ export function detectTransitions({ previous, current, ownedIds }: DetectOptions
     // Comparing those location-relative values creates false upgrades/downgrades
     // on every scan. Keep the event visible, but do not announce a change in
     // fire intensity without an actual source-provided intensity metric.
-    if (event.source === 'eonet' && event.hazardType === 'wildfire' &&
+    if (event.source === 'nasa_eonet' && event.hazardType === 'wildfire' &&
         !event.metrics && !prev.metrics) continue
 
     const before = intensityRank(prev)
