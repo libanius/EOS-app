@@ -208,6 +208,15 @@ export function detectTransitions({ previous, current, ownedIds }: DetectOptions
       continue
     }
 
+    // EONET wildfire severity is derived from distance to the *scanned location*,
+    // not from a change in the fire itself. hazard_events is keyed globally by
+    // event ID, so different households overwrite the same previous severity.
+    // Comparing those location-relative values creates false upgrades/downgrades
+    // on every scan. Keep the event visible, but do not announce a change in
+    // fire intensity without an actual source-provided intensity metric.
+    if (event.source === 'eonet' && event.hazardType === 'wildfire' &&
+        !event.metrics && !prev.metrics) continue
+
     const before = intensityRank(prev)
     const after = intensityRank(event)
     if (after === before) continue
