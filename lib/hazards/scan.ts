@@ -637,7 +637,7 @@ async function deliver(
       const dead = subs
         .filter((_, i) => {
           const r = results[i]
-          return r.status === 'rejected' && (r.reason as { statusCode?: number })?.statusCode === 410
+          return r.status === 'rejected' && [404, 410].includes((r.reason as { statusCode?: number })?.statusCode ?? 0)
         })
         .map(s => s.endpoint)
       if (dead.length) {
@@ -661,7 +661,14 @@ async function deliver(
           detail: copy.body.slice(0, 500),
         })
       } else {
-        rows.push(log(user.userId, t, 'failed'))
+        const webErrors = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+        const webStatus = webErrors.map(r => (r.reason as { statusCode?: number })?.statusCode ?? 'unknown')
+        const detail = [
+          webStatus.length ? `web_push_status=${webStatus.join(',')}` : null,
+          nativo.failed ? `native_failed=${nativo.failed}` : null,
+          nativo.notConfigured.length ? `native_not_configured=${nativo.notConfigured.join(',')}` : null,
+        ].filter(Boolean).join('; ') || 'no transport acknowledged push'
+        rows.push(log(user.userId, t, 'failed', detail))
       }
     }
   }
