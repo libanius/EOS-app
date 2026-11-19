@@ -15,7 +15,7 @@ const current = (severity: 'minor' | 'moderate', source = 'nasa_eonet'): HazardE
   sourceEventId: 'EONET_22791',
   source: source as HazardEvent['source'],
   authority: 'official',
-  visualClass: 'OFFICIAL_ALERT',
+  visualClass: 'DETECTED_EVENT',
   hazardType: 'wildfire',
   eventType: 'wildfire',
   title: 'Wildfire THE H1',
@@ -25,7 +25,7 @@ const current = (severity: 'minor' | 'moderate', source = 'nasa_eonet'): HazardE
   certainty: 'observed',
   detectedAt: '2026-11-18T00:00:00Z',
   updatedAt: '2026-11-18T00:00:00Z',
-} as HazardEvent)
+})
 
 describe('cross-location wildfire severity regression', () => {
   it.each([
