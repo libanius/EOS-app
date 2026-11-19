@@ -637,7 +637,7 @@ async function deliver(
       const dead = subs
         .filter((_, i) => {
           const r = results[i]
-          return r.status === 'rejected' && [404, 410].includes((r.reason as { statusCode?: number })?.statusCode ?? 0)
+          return r?.status === 'rejected' && [404, 410].includes((r.reason as { statusCode?: number })?.statusCode ?? 0)
         })
         .map(s => s.endpoint)
       if (dead.length) {
@@ -662,7 +662,14 @@ async function deliver(
         })
       } else {
         const webErrors = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected')
-        const webStatus = webErrors.map(r => (r.reason as { statusCode?: number })?.statusCode ?? 'unknown')
+        const webStatus = results.flatMap((r, i) => {
+          if (r.status !== 'rejected') return []
+          const status = (r.reason as { statusCode?: number })?.statusCode ?? 'unknown'
+          // Record only the push-service hostname, never the subscription endpoint or keys.
+          let host = 'unknown'
+          try { host = new URL(subs[i].endpoint).hostname } catch { /* invalid endpoint */ }
+          return [`${status}@${host}`]
+        })
         const detail = [
           webStatus.length ? `web_push_status=${webStatus.join(',')}` : null,
           nativo.failed ? `native_failed=${nativo.failed}` : null,
