@@ -17,12 +17,12 @@
 -->
 <style>
   :root {
-    --bg: #0a0a0f;
-    --surface: #12121a;
+    --bg: #151b18;
+    --surface: #232e27;
     --border: #232331;
     --text: #f4f4f5;
     --muted: #9b9ba7;
-    --accent: #22c55e;
+    --accent: #00e5a0;
     --warn: #f59e0b;
     --danger: #ef4444;
   }
@@ -65,6 +65,14 @@
   ol li:last-child { margin-bottom: 0; }
   .stamp { font-size: 12px; color: var(--muted); margin-top: 14px; }
   .empty { color: var(--muted); margin: 0; }
+  input, select { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font: inherit; margin: 8px 0; }
+  a { color: var(--accent); overflow-wrap: anywhere; }
+  #local-status { font-weight: 700; }
+  #local-status[data-tone="ready"] { color: var(--accent); }
+  #local-status[data-tone="warning"] { color: var(--warn, #ffb347); }
+  #local-progress { width: 100%; accent-color: var(--accent); }
+  .knowledge-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+  summary { cursor: pointer; padding: 12px 0; color: var(--accent); }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -73,9 +81,42 @@
   <h1 id="s-title">O EOS está offline</h1>
   <p class="lede" id="s-lede">Esta tela funciona sem rede. O que está abaixo foi salvo no aparelho na última vez que o app sincronizou.</p>
 
+  <section id="knowledge">
+    <h2 id="knowledge-title">Biblioteca offline</h2>
+    <label for="knowledge-language">Idioma / Language</label>
+    <select id="knowledge-language"><option value="pt">Português</option><option value="en">English</option></select>
+    <p id="knowledge-status" role="status">Verificando a cópia salva…</p>
+    <form id="knowledge-form">
+      <label id="knowledge-label" for="knowledge-query">Qual assunto você precisa consultar?</label>
+      <input id="knowledge-query" type="search" placeholder="Água, fogo, abrigo, comida, medo…" />
+      <button id="knowledge-search" type="submit">Consultar no aparelho</button>
+    </form>
+    <p id="knowledge-note" class="stamp"></p>
+    <div id="knowledge-results" aria-live="polite"></div>
+  </section>
+  <section id="local-chat">
+    <h2 id="local-title">Pilot · conversa offline</h2>
+    <p id="local-status" role="status">Verificando a IA local…</p>
+    <p id="local-next" class="stamp"></p>
+    <progress id="local-progress" max="1" hidden></progress>
+    <button id="local-prepare" type="button" hidden>Preparar conversa offline</button>
+    <button id="local-stop" class="ghost" type="button" hidden>Interromper IA local</button>
+    <button id="local-remove" class="ghost" type="button" hidden>Remover modelo baixado</button>
+    <div id="local-messages" aria-live="polite"></div>
+    <form id="local-form">
+      <label id="local-label" for="local-question">Converse usando a biblioteca salva</label>
+      <input id="local-question" maxlength="1200" autocomplete="off" />
+      <button id="local-send" type="submit">Enviar</button>
+    </form>
+    <button id="local-clear" class="ghost" type="button">Limpar conversa</button>
+  </section>
+  <script src="knowledge.js"></script>
+  <script src="local-ai-runtime.js" defer></script>
+  <script src="knowledge-ui.js" defer></script>
+
   <button id="retry">Tentar de novo</button>
 
-  <p id="empty" class="empty" hidden>Nada foi salvo neste aparelho ainda. Abra o EOS uma vez com conexão para que a ficha e o plano fiquem disponíveis offline.</p>
+  <p id="empty" class="empty" hidden>A ficha e o plano ainda não foram salvos neste aparelho. Abra essas telas com conexão para salvá-los.</p>
 
   <section id="ficha" hidden>
     <h2 id="s-ficha">Ficha de emergência</h2>
@@ -101,7 +142,7 @@
     status: 'Sem conexão', title: 'O EOS está offline',
     lede: 'Esta tela funciona sem rede. O que está abaixo foi salvo no aparelho na última vez que o app sincronizou.',
     retry: 'Tentar de novo', ficha: 'Ficha de emergência', plano: 'Plano da família',
-    empty: 'Nada foi salvo neste aparelho ainda. Abra o EOS uma vez com conexão para que a ficha e o plano fiquem disponíveis offline.',
+    empty: 'A ficha e o plano ainda não foram salvos neste aparelho. Abra essas telas com conexão para salvá-los.',
     blood: 'Tipo sanguíneo', allergies: 'Alergias', meds: 'Medicamentos', notes: 'Observações',
     contact: 'Contato de emergência', saved: 'Salvo em', version: 'versão'
   }
@@ -109,7 +150,7 @@
     status: 'Offline', title: 'EOS is offline',
     lede: 'This screen works with no network. What follows was saved on this device the last time the app synced.',
     retry: 'Try again', ficha: 'Emergency record', plano: 'Family plan',
-    empty: 'Nothing has been saved on this device yet. Open EOS once with a connection so the record and the plan become available offline.',
+    empty: 'The record and plan have not been saved on this device yet. Open those screens with a connection to save them.',
     blood: 'Blood type', allergies: 'Allergies', meds: 'Medications', notes: 'Notes',
     contact: 'Emergency contact', saved: 'Saved on', version: 'version'
   }
@@ -132,7 +173,8 @@
 
   document.getElementById('retry').addEventListener('click', function () {
     // `reload()` volta para a origem remota configurada, não para esta página.
-    window.location.reload()
+    if (window.Capacitor) window.location.reload()
+    else window.location.assign('/abrir')
   })
 
   function render(vault) {

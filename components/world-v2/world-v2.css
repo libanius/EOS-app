@@ -1594,7 +1594,9 @@
   left: 0;
   right: 0;
   bottom: 0;
-  top: 72px;
+  top: max(12px, env(safe-area-inset-top));
+  background: #111418;
+  border: 1px solid var(--sep-strong);
   display: flex;
   flex-direction: column;
   border-radius: var(--r-sheet) var(--r-sheet) 0 0;
@@ -1621,7 +1623,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--s3);
-  padding: var(--s4) var(--s5) var(--s3);
+  padding: var(--s2) var(--s4);
   border-bottom: 1px solid var(--sep);
 }
 .wv2-pilot-chat .chat-id { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
@@ -1640,7 +1642,31 @@
 }
 .wv2-pilot-chat .chat-close:active { transform: scale(0.92); }
 
+.wv2-pilot-chat [hidden] { display: none !important; }
+.wv2-pilot-chat .chat-head-actions { display: flex; align-items: center; gap: 8px; }
+.wv2-pilot-chat .chat-options-toggle {
+  min-height: 44px;
+  padding-inline: 12px;
+  border: 1px solid var(--sep-strong);
+  border-radius: var(--r-pill);
+  background: var(--fill-2);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+.wv2-pilot-chat .chat-options {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 12px 0 calc(16px + env(safe-area-inset-bottom));
+}
+.wv2-pilot-chat .chat-options > label { display: block; }
+.wv2-pilot-chat .chat-options > button { margin-inline: 16px; }
+.wv2-pilot-chat .chat-options .wv2-pill { margin-block: 4px; }
 .wv2-pilot-chat .chat-stream {
+  position: relative;
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -1654,6 +1680,8 @@
 /* The user's turn: a quiet aligned bubble. The specialist does the talking. */
 .wv2-pilot-chat .chat-user {
   align-self: flex-end;
+  flex-shrink: 0;
+  overflow-wrap: anywhere;
   max-width: 84%;
   margin: 0;
   padding: var(--s3) var(--s4);
@@ -1662,7 +1690,7 @@
   color: var(--ink);
 }
 
-.wv2-pilot-chat .chat-pilot { --verdict: var(--accent); }
+.wv2-pilot-chat .chat-pilot { --verdict: var(--accent); flex-shrink: 0; min-width: 0; }
 .wv2-pilot-chat .chat-pilot[data-verdict='ready'] { --verdict: #30d158; }
 .wv2-pilot-chat .chat-pilot[data-verdict='watch'] { --verdict: #ffd60a; }
 .wv2-pilot-chat .chat-pilot[data-verdict='hold']  { --verdict: #ff9f0a; }
@@ -1844,7 +1872,7 @@
   border: 1px solid var(--sep-strong);
   background: var(--fill-2);
   color: var(--ink);
-  font: inherit; font-size: 0.9375rem; letter-spacing: -0.006em;
+  font: inherit; font-size: 1rem; letter-spacing: -0.006em;
 }
 .wv2-pilot-chat .chat-compose input:focus {
   outline: none;
@@ -2245,10 +2273,10 @@
 
 
 
-/* The compose field was rendering UNDER the bottom nav (fixed, z-index 100),
-   which is why it was invisible on a real phone. `max()` keeps the sheet above
-   whichever is taller at the time: the nav, or the on-screen keyboard. */
-.wv2-pilot-chat { bottom: max(var(--nav-inset), var(--wv2-keyboard, 0px)); }
+/* On phones the Pilot covers the bottom nav and keeps its composer above the keyboard. */
+@media (max-width: 899px) {
+  .wv2-pilot-chat { bottom: var(--wv2-keyboard, 0px); }
+}
 
 @media (prefers-reduced-motion: reduce) {
 
@@ -4536,41 +4564,31 @@
    O chat livre renderizava parágrafos inteiros em `t-title2`, corpo de
    manchete. Era o que o dono chamou de poluído — e o que não deixava espaço
    para a etiqueta determinística. */
-.wv2 .chat-prose {
+.wv2-pilot-chat .chat-prose {
   margin: 0;
-  line-height: 1.55;
+  color: var(--ink);
+  font-size: 1.125rem;
+  line-height: 1.6;
   white-space: pre-wrap;      /* o modelo escreve em parágrafos; respeitá-los */
   overflow-wrap: anywhere;
 }
 
 /* Aviso de resposta nova, para quem subiu para reler.
    Substitui o salto automático que arrastava a pessoa para o fim. */
-.wv2 .chat-jump {
-  position: absolute;
-  left: 50%;
-  bottom: calc(var(--s8) + env(safe-area-inset-bottom));
-  transform: translateX(-50%);
-  z-index: 3;
+.wv2-pilot-chat .chat-jump {
+  flex: none;
+  align-self: center;
   min-height: 44px;
+  margin: 4px 12px;
   padding: 0 var(--s4);
   border-radius: var(--r-pill);
   border: 1px solid var(--sep-strong);
-  background: var(--mat-thick);
-  backdrop-filter: blur(var(--mat-blur-md)) saturate(var(--mat-sat));
-  -webkit-backdrop-filter: blur(var(--mat-blur-md)) saturate(var(--mat-sat));
+  background: var(--fill-2);
   color: var(--ink);
   font: inherit;
   font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;
-  animation: chatJumpIn 240ms cubic-bezier(0.2, 0.9, 0.25, 1) both;
-}
-@keyframes chatJumpIn {
-  from { opacity: 0; transform: translate(-50%, 8px) }
-  to   { opacity: 1; transform: translate(-50%, 0) }
-}
-@media (prefers-reduced-motion: reduce) {
-  .wv2 .chat-jump { animation-duration: 1ms; }
 }
 
 /* ── Camadas: três saídas em vez de nenhuma (D-128) ──────────────────────────
