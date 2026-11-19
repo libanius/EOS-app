@@ -661,7 +661,6 @@ async function deliver(
           detail: copy.body.slice(0, 500),
         })
       } else {
-        const webErrors = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected')
         const webStatus = results.flatMap((r, i) => {
           if (r.status !== 'rejected') return []
           const status = (r.reason as { statusCode?: number })?.statusCode ?? 'unknown'
