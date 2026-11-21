@@ -1,6 +1,6 @@
 {
   "name": "eos-app",
-  "version": "0.2.5",
+  "version": "0.2.14",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -47,11 +47,15 @@
     "bench:rag": "node scripts/rag-bench.mjs",
     "check:push": "npx tsx scripts/push-credentials-check.ts",
     "setup:push": "node scripts/push-credentials-setup.mjs",
-    "test:content-sql": "bash scripts/content-pipeline-sql-test.sh"
+    "test:content-sql": "bash scripts/content-pipeline-sql-test.sh",
+    "prebuild": "node scripts/build-offline-library.mjs --check && node scripts/build-local-ai.mjs",
+    "build:local-ai": "node scripts/build-local-ai.mjs",
+    "pretest": "node scripts/build-local-ai.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.86.1",
     "@fontsource/barlow-condensed": "^5.1.0",
+    "@mlc-ai/web-llm": "0.2.88",
     "@sentry/nextjs": "^9.4.0",
     "@supabase/ssr": "^0.10.0",
     "@supabase/supabase-js": "^2.102.1",
@@ -84,6 +88,7 @@
     "@types/web-push": "^3.6.4",
     "@typescript-eslint/eslint-plugin": "^8.58.0",
     "@typescript-eslint/parser": "^8.58.0",
+    "esbuild": "0.28.2",
     "eslint": "^8",
     "eslint-config-next": "14.2.35",
     "eslint-config-prettier": "^10.1.8",

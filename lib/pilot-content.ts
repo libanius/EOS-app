@@ -47,19 +47,20 @@ function signalDoc(s: Signal, version: string, pt: boolean): Doc {
   }
 }
 
-function eduDoc(e: EduContent, pt: boolean): Doc {
+function eduDoc(e: EduContent, pt: boolean, offline = false): Doc {
   const lang = pt ? 'pt' : 'en'
   return {
     id: `edu:${e.id}`, kind: 'edu', title: e.lesson?.title[lang] || e.title,
     searchTitle: `${e.title} ${e.lesson?.title.pt ?? ''} ${e.lesson?.title.en ?? ''} ${e.content_slug ?? ''} ${e.scenario_tags.join(' ')}`,
     href: `/preparedness/aprender?contentId=${encodeURIComponent(e.id)}`, slug: e.content_slug || undefined, version: `v${e.version}`,
     text: [e.lesson?.summary[lang] || e.summary, e.lesson?.body[lang] || e.transcript,
+      offline && e.lesson?.body[lang] && e.transcript ? e.transcript : '',
       `Approved: ${e.approved_at ?? 'undated'}; updated: ${e.updated_at ?? 'undated'}`,
       e.source_url ? `Source: ${e.source_url}` : ''].filter(Boolean).join('\n\n'),
   }
 }
 
-export async function loadPilotCatalog(admin: SupabaseClient | null, pt: boolean): Promise<PilotCatalog> {
+export async function loadPilotCatalog(admin: SupabaseClient | null, pt: boolean, offline = false): Promise<PilotCatalog> {
   if (!admin) return { docs: [], unavailable: ['Sinais', 'EDU'] }
   const [signals, edu] = await Promise.allSettled([
     readPages<SignalRow>(admin, 'signals', SIGNAL_COLUMNS, 'slug'),
@@ -73,10 +74,10 @@ export async function loadPilotCatalog(admin: SupabaseClient | null, pt: boolean
     docs.push(...signals.value.filter(s => s.status === 'published').map(s => signalDoc(rowToSignal(s), `v${s.version}`, pt)))
     docs.push(...SIGNALS.filter(s => s.status === 'published' && !slugs.has(s.slug)).map(s => signalDoc(s, 'static', pt)))
   } else unavailable.push('Sinais')
-  if (edu.status === 'fulfilled') docs.push(...edu.value.filter(e => e.status === 'approved').map(e => eduDoc(e, pt)))
+  if (edu.status === 'fulfilled') docs.push(...edu.value.filter(e => e.status === 'approved').map(e => eduDoc(e, pt, offline)))
   else {
     // Match the existing EDU endpoint only for an absent table, not an outage.
-    if (String(edu.reason).includes('42P01')) docs.push(...DEFAULT_EDU_CONTENT.map(e => eduDoc(e, pt)))
+    if (String(edu.reason).includes('42P01')) docs.push(...DEFAULT_EDU_CONTENT.map(e => eduDoc(e, pt, offline)))
     else unavailable.push('EDU')
   }
   return { docs, unavailable }

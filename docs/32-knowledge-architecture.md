@@ -419,3 +419,11 @@ Until those steps happen, this file is intentionally **PROPOSED**, not implement
 ## Implementado em 2026-11-09 — conhecimento editorial conectado (D-240)
 
 `PILOT-KNOW-001` adiciona leitura direta de Sinais publicados e EDU aprovado no Pilot, paralela ao RAG. Títulos/assuntos, consultas recentes e IDs vetoriais escolhem documentos; texto e versão sempre vêm da publicação atual. Sem dependência de nova ingestão para reconhecer pauta publicada. Referências consultadas chegam no JSON e SSE como `contentLinks`, separadas das fontes declaradas pelo modelo. Falhas de fonte são explícitas. Isto não implementa biblioteca offline nem altera os demais itens propostos deste documento.
+
+
+## Prioridade autorizada em 2026-11-10 — D-242
+
+`specs/OFFGRID-KNOW-001-continuidade-do-conhecimento.md` torna mandatória a continuidade de manuais/RAG, Sinais publicados e EDU aprovado. SURVIVAL deve incluir busca e leitura documental local além das regras. Alimentar/publicar conteúdo deve alimentar automaticamente a próxima cópia sincronizada do aparelho, sem nova ingestão editorial. A biblioteca é compartilhada pelo Pilot, PWA e fallback Capacitor; modelo local virá sobre essa base. A disponibilidade efetiva depende de download completo confirmado e preserva fonte/versão/data. Esta decisão prevalece sobre descrições históricas de SURVIVAL como "rules only"; não afirma que a implementação está pronta.
+
+
+D-243 (2026-11-10): raciocínio conversacional LOCAL_AI autorizado sobre a biblioteca offline, com WebGPU/WebLLM no navegador compatível e Foundation Models na casca iOS compatível. Spec PILOT-LOCAL-001. Preparação explícita, capacidade verificada e fallback documental; não substitui as regras nem promete disponibilidade antes de teste real.

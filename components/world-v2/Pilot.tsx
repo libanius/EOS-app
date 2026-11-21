@@ -1,5 +1,11 @@
 'use client'
 
+import { offlineReaderReady } from '@/lib/offline-reader-readiness'
+import { isNativeShell } from '@/lib/native/bridge'
+import LocalAIControls from '@/components/LocalAIControls'
+import { localRuntime } from '@/lib/local-ai-client'
+import { offlineKnowledgeReply, type KnowledgePack } from '@/lib/offline-knowledge'
+import { readOfflineKnowledge, syncOfflineKnowledge } from '@/lib/offline-knowledge-client'
 import type { PilotContentLink } from '@/lib/pilot-content'
 
 /**
@@ -82,7 +88,7 @@ const COPY = {
     placeholder: 'Pergunte ao seu especialista',
     send: 'Enviar',
     thinking: 'Analisando com a base de conhecimento…',
-    offline: 'Sem rede. O Pilot segue respondendo pelo motor local — toque nas perguntas abaixo.',
+    offline: 'Pergunte aos textos salvos',
     unavailable: 'Não consegui falar com a base agora. As respostas locais continuam funcionando.',
     addTask: 'Adicionar',
     added: 'Na preparação',
@@ -116,7 +122,7 @@ const COPY = {
     placeholder: 'Ask your specialist',
     send: 'Send',
     thinking: 'Checking the knowledge base…',
-    offline: 'No network. The Pilot still answers from the local engine — tap a question below.',
+    offline: 'Ask the saved library',
     unavailable: 'I could not reach the knowledge base. Local answers still work.',
     addTask: 'Add',
     added: 'In preparedness',
@@ -193,9 +199,11 @@ export default function Pilot({
   const [messages, setMessages] = useState<Message[]>([])
   const [draft, setDraft] = useState('')
   const [busy, setBusy] = useState(false)
+  const [showOptions, setShowOptions] = useState(false)
   const [addedTasks, setAddedTasks] = useState<Set<string>>(new Set())
   const [savedMemory, setSavedMemory] = useState<Set<string>>(new Set())
   const streamRef = useRef<HTMLDivElement>(null)
+  const optionsScrollTop = useRef<number | null>(null)
   /** Há resposta nova abaixo e a pessoa está lendo mais acima. */
   const [temNovidade, setTemNovidade] = useState(false)
 
@@ -250,7 +258,15 @@ export default function Pilot({
     }
     requestAnimationFrame(() => {
       const el = streamRef.current
-      if (el) el.scrollTop = el.scrollHeight
+      if (!el || el.hidden) return
+      const latest = el.querySelector<HTMLElement>('[data-latest-answer]')
+      const last = el.lastElementChild
+      const answerAtEnd = latest === last || last?.classList.contains('chat-thinking')
+      if (latest && (forcar || (answerAtEnd && latest.offsetHeight > el.clientHeight - 24))) {
+        el.scrollTop = latest.offsetTop - 12
+      } else {
+        el.scrollTop = el.scrollHeight
+      }
       setTemNovidade(false)
     })
   }, [])
@@ -276,7 +292,7 @@ export default function Pilot({
    */
   const aberturaAutomatica = useRef<string | null>(null)
   useEffect(() => {
-    if (!open) return
+    if (!open) { setShowOptions(false); return }
     const nova = fromAnswer(opening)
     setMessages(current => {
       if (!current.length) {
@@ -293,13 +309,23 @@ export default function Pilot({
   }, [open, opening, scrollToEnd])
 
   useEffect(() => {
+    const stream = streamRef.current
+    if (showOptions || !stream || optionsScrollTop.current === null) return
+    stream.scrollTop = optionsScrollTop.current
+    optionsScrollTop.current = null
+  }, [showOptions])
+
+  useEffect(() => {
     if (!open) return
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onOpenChange(false)
+      if (event.key === 'Escape') {
+        if (showOptions) setShowOptions(false)
+        else onOpenChange(false)
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [open, onOpenChange])
+  }, [open, onOpenChange, showOptions])
 
   // Mobile keyboards shrink the visual viewport WITHOUT changing dvh, so the
   // compose field slid under the keyboard and vanished. Track the real visible
@@ -359,7 +385,77 @@ export default function Pilot({
     push(fromAnswer(askPilot(intent, ctx)))
   }
 
-  /** The specialist. Needs network; degrades honestly when it is missing. */
+  const [knowledge, setKnowledge] = useState<{ count: number; syncedAt: string } | null>(null)
+  const [localBusy, setLocalBusy] = useState(false)
+  const [offlineLookupBusy, setOfflineLookupBusy] = useState(false)
+  const [useOfflineAI, setUseOfflineAI] = useState(false)
+  const [knowledgeFailed, setKnowledgeFailed] = useState(false)
+  const [readerReady, setReaderReady] = useState<boolean | null>(null)
+  useEffect(() => {
+    if (!knowledge || isNativeShell()) return
+    let active = true
+    const check = () => { void offlineReaderReady().then(ready => { if (active) setReaderReady(ready) }) }
+    const sw = navigator.serviceWorker
+    check()
+    sw?.addEventListener('controllerchange', check)
+    window.addEventListener('focus', check)
+    return () => {
+      active = false
+      sw?.removeEventListener('controllerchange', check)
+      window.removeEventListener('focus', check)
+    }
+  }, [knowledge])
+
+  useEffect(() => {
+    let active = true
+    void readOfflineKnowledge().then(pack => { if (active && pack) setKnowledge({ count: pack.documents.length, syncedAt: pack.syncedAt }) })
+    const update = (event: Event) => {
+      const detail = (event as CustomEvent<{ pack?: KnowledgePack; error?: boolean }>).detail
+      setKnowledgeFailed(!!detail.error)
+      if (detail.pack) setKnowledge({ count: detail.pack.documents.length, syncedAt: detail.pack.syncedAt })
+    }
+    window.addEventListener('eos:knowledge-sync', update)
+    return () => { active = false; window.removeEventListener('eos:knowledge-sync', update) }
+  }, [])
+
+  const answerOffline = async (question: string, incomplete = false) => {
+    setBusy(true); setOfflineLookupBusy(true)
+    try {
+      const pack = await readOfflineKnowledge()
+      const localGuard = askPilot('now', ctx)
+      const guard = { verdict: localGuard.verdict, headline: localGuard.headline, body: localGuard.body }
+      const documentary = offlineKnowledgeReply(pack, question, pt)
+      push({ id: nextId(), role: 'pilot', kind: 'chat',
+        text: [incomplete ? (pt ? 'A resposta online foi interrompida.' : 'The online answer was interrupted.') : '', documentary.text].filter(Boolean).join('\n\n'),
+        verdict: ctx.riskState === 'critical' ? guard.verdict : undefined,
+        caveat: ctx.riskState === 'critical' ? `${guard.headline} — ${guard.body}` : undefined,
+        actions: [{ label: pt ? 'Abrir biblioteca salva' : 'Open saved library', href: '/offline.html', primary: true }] })
+      setOfflineLookupBusy(false)
+      if (!useOfflineAI || !pack) return
+      setLocalBusy(true)
+      const history = messages.filter(m => m.role === 'user' || m.kind === 'chat')
+        .slice(-6).map(m => ({ role: m.role === 'user' ? 'user' as const : 'assistant' as const, content: m.text }))
+      const context = ctx.household.known
+        ? `Last known household: ${ctx.household.people} people. Deterministic saved autonomy: ${ctx.autonomyDays} days; water: ${ctx.waterDays} days; food: ${ctx.foodDays} days. Not a live refresh.`
+        : 'Household details unavailable. Do not assume people, equipment or supplies.'
+      const result = await (await localRuntime()).answer({ pack, question, pt, history, context, guard })
+      if (result.mode !== 'local_ai') return
+      const header = pt ? 'IA local · biblioteca salva' : 'Local AI · saved library'
+      const sourceText = result.sources.map(source => `${source.title} · ${source.version} · ${source.source}`).join('\n')
+      push({ id: nextId(), role: 'pilot', kind: 'chat',
+        text: [header, result.text,
+          sourceText ? `${pt ? 'Fontes consultadas' : 'Sources consulted'}:\n${sourceText}\n${pt ? 'Cópia salva em' : 'Copy saved on'}: ${pack?.syncedAt}` : ''].filter(Boolean).join('\n\n'),
+        verdict: ctx.riskState === 'critical' ? localGuard.verdict : undefined,
+        caveat: ctx.riskState === 'critical' ? `${localGuard.headline} — ${localGuard.body}` : undefined,
+        actions: [{ label: pt ? 'Abrir biblioteca salva' : 'Open saved library', href: '/offline.html', primary: true }] })
+    } catch {
+      // The documentary answer is already visible if local generation fails or is cancelled.
+    } finally {
+      setOfflineLookupBusy(false); setLocalBusy(false); setBusy(false)
+    }
+  }
+
+  /** Connected reasoning falls back to the downloaded documentary library. */
   const send = async () => {
     const question = draft.trim()
     if (!question || busy) return
@@ -370,6 +466,8 @@ export default function Pilot({
   const sendQuestion = async (question: string) => {
     if (!question.trim() || busy) return
     haptic.impact()
+    setShowOptions(false)
+    grudadoNoFim.current = true
     setDraft('')
     push({ id: nextId(), role: 'user', text: question })
 
@@ -385,12 +483,12 @@ export default function Pilot({
       return
     }
 
-    if (!online) {
+    if (!online || !navigator.onLine) {
       // A degradação honesta também é métrica: quantas perguntas o produto
       // recebe sem rede diz se a promessa "responde quando a rede caiu" está
       // sendo cobrada de verdade.
       notePilot('offline', { intent: 'free' })
-      push({ id: nextId(), role: 'pilot', text: c.offline })
+      await answerOffline(question)
       return
     }
 
@@ -402,8 +500,12 @@ export default function Pilot({
       .slice(-PILOT_HISTORY)
       .map(m => ({ role: m.role === 'user' ? ('user' as const) : ('assistant' as const), content: m.text }))
 
+    const controller = new AbortController()
+    let timeout = setTimeout(() => controller.abort(), 8000)
+    let streamComplete = false
     try {
       const response = await fetch('/api/pilot/chat?stream=1', {
+        signal: controller.signal,
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -516,6 +618,8 @@ export default function Pilot({
           },
         }),
       })
+      if (!response.ok) throw new Error('pilot_unavailable')
+
       /*
        * A resposta CHEGA ESCREVENDO (D-125).
        *
@@ -559,6 +663,8 @@ export default function Pilot({
           return
         }
         if (evento === 'delta') {
+          clearTimeout(timeout)
+          timeout = setTimeout(() => controller.abort(), 12000)
           acumulado += String((dados as { text?: string }).text ?? '')
           if (!criada) { push({ id: idResposta, role: 'pilot', kind: 'chat', text: acumulado }); criada = true }
           else replace(idResposta, m => ({ ...m, text: acumulado }))
@@ -566,6 +672,8 @@ export default function Pilot({
           return
         }
         if (evento === 'done') {
+          streamComplete = true
+          clearTimeout(timeout)
           const d = dados as unknown as {
             reply?: string; tasks?: PilotTask[]; memory?: PilotMemoryProposal[]; destinations?: PilotDestination[]; sources?: PilotSource[]; contentLinks?: PilotContentLink[]
           }
@@ -608,10 +716,11 @@ export default function Pilot({
           try { aplicar(evento, JSON.parse(dados)) } catch { /* bloco parcial: o próximo fecha */ }
         }
       }
-      if (!criada) push({ id: idResposta, role: 'pilot', kind: 'chat', text: c.unavailable })
+      if (!streamComplete) await answerOffline(question, criada)
     } catch {
-      push({ id: nextId(), role: 'pilot', kind: 'chat', text: c.unavailable })
+      await answerOffline(question, !streamComplete)
     } finally {
+      clearTimeout(timeout)
       setBusy(false)
       scrollToEnd()
     }
@@ -663,6 +772,9 @@ export default function Pilot({
     })
   }
 
+  const latestAnswerId = [...messages].reverse().find(message => message.role === 'pilot')?.id
+  const hasQuestion = messages.some(message => message.role === 'user')
+
   return (
     <>
       <AnimatePresence>
@@ -684,28 +796,37 @@ export default function Pilot({
       <AnimatePresence>
         {open && (
           <motion.section
-            className="wv2-pilot-chat wv2-fume"
+            className="wv2-pilot-chat"
             data-state={ctx.riskState}
             role="dialog"
             aria-label={c.title}
-            initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 40, filter: 'blur(14px)' }}
-            animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, filter: 'blur(0px)' }}
-            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 30, filter: 'blur(10px)' }}
+            initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 24 }}
+            animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
+            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 20 }}
             transition={reduceMotion ? { duration: 0.12 } : SPRING.sheet}
           >
             <header className="chat-head">
               <span className="chat-id">
                 <strong className="t-title2">{c.title}</strong>
-                <em className="t-foot">{c.subtitleByState[ctx.riskState]}</em>
+                <em className="t-foot">{!online ? (pt ? 'Offline · textos salvos' : 'Offline · saved library') : c.subtitleByState[ctx.riskState]}</em>
               </span>
-              <button type="button" className="chat-close" onClick={() => onOpenChange(false)} aria-label={c.close}>
-                <CloseIcon />
-              </button>
+              <div className="chat-head-actions">
+                <button type="button" className="chat-options-toggle" aria-expanded={showOptions} onClick={() => {
+                  if (!showOptions) optionsScrollTop.current = streamRef.current?.scrollTop ?? null
+                  setShowOptions(!showOptions)
+                }}>
+                  {showOptions ? (pt ? 'Voltar à conversa' : 'Back to chat') : (pt ? 'Opções' : 'Options')}
+                </button>
+                <button type="button" className="chat-close" onClick={() => onOpenChange(false)} aria-label={c.close}>
+                  <CloseIcon />
+                </button>
+              </div>
             </header>
 
             <div
               className="chat-stream"
               ref={streamRef}
+              hidden={showOptions}
               onScroll={() => {
                 // Quem chegou ao fim volta a ser levado pelo fim; quem subiu
                 // para reler deixa de ser arrastado.
@@ -717,7 +838,7 @@ export default function Pilot({
                 message.role === 'user' ? (
                   <p key={message.id} className="chat-user t-body">{message.text}</p>
                 ) : (
-                  <article key={message.id} className="chat-pilot" data-verdict={message.verdict}>
+                  <article key={message.id} className="chat-pilot" data-latest-answer={message.id === latestAnswerId ? true : undefined} data-verdict={message.verdict}>
                     {message.verdict && (
                       <span className="chat-verdict t-caps">{VERDICT_LABEL[message.verdict][pt ? 'pt' : 'en']}</span>
                     )}
@@ -886,39 +1007,59 @@ export default function Pilot({
                   </article>
                 ),
               )}
-              {busy && <p className="chat-thinking t-sub ink-2">{c.thinking}</p>}
+              {busy && <p className="chat-thinking t-sub ink-2">{localBusy ? (pt ? 'Gerando complemento com IA local…' : 'Generating a local AI answer…') : offlineLookupBusy ? (pt ? 'Buscando nos textos salvos…' : 'Searching saved texts…') : c.thinking}</p>}
+              {!hasQuestion && (
+                <div className="chat-suggestions" aria-label={c.suggestions}>
+                  {PILOT_INTENTS.map(intent => (
+                    <button
+                      key={intent.id}
+                      type="button"
+                      className="pilot-chip"
+                      onClick={() => askLocal(intent.id, pt ? intent.pt : intent.en)}
+                    >
+                      {pt ? intent.pt : intent.en}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
-            <div className="chat-suggestions" aria-label={c.suggestions}>
-              {PILOT_INTENTS.map(intent => (
-                <button
-                  key={intent.id}
-                  type="button"
-                  className="pilot-chip"
-                  onClick={() => askLocal(intent.id, pt ? intent.pt : intent.en)}
-                >
-                  {pt ? intent.pt : intent.en}
-                </button>
-              ))}
-            </div>
-
-            {/*
-              Aviso de conteúdo novo, para quem está lendo mais acima.
-              Substitui o salto automático: em vez de arrastar a pessoa, avisa
-              e deixa ela decidir quando descer.
-            */}
-            {temNovidade && (
-              <button
-                type="button"
-                className="chat-jump"
-                onClick={() => { grudadoNoFim.current = true; scrollToEnd(true) }}
-              >
-                {pt ? 'Resposta nova ↓' : 'New answer ↓'}
+            {!showOptions && temNovidade && (
+              <button type="button" className="chat-jump" onClick={() => scrollToEnd(true)}>
+                {pt ? 'Ver resposta mais recente' : 'View latest answer'}
               </button>
             )}
 
+            <div className="chat-options" hidden={!showOptions}>
+              <div className="t-foot ink-2" style={{ padding: '8px 16px' }}>
+                <p style={{ color: readerReady ? 'var(--ac)' : 'var(--tx)', fontWeight: 700 }}>
+                  {readerReady ? (pt ? 'Biblioteca pronta para abrir sem internet' : 'Library ready to open offline') : (pt ? 'Biblioteca offline' : 'Offline library')}
+                </p>
+                <p>{knowledge ? `${knowledge.count} ${pt ? 'textos salvos' : 'saved texts'} · ${new Date(knowledge.syncedAt).toLocaleString()}` : (pt ? 'Aguardando a primeira sincronização.' : 'Waiting for the first sync.')}</p>
+                {knowledge && readerReady === false && <p>{pt ? 'Textos salvos. A abertura sem internet ainda não está pronta. Reabra o EOS com conexão.' : 'Texts saved. Offline opening is not ready yet. Reopen EOS while connected.'}</p>}
+                <a href="/offline.html" className="wv2-pill">{pt ? 'Abrir biblioteca offline' : 'Open offline library'}</a>
+                {knowledgeFailed && <p role="status">{knowledge
+                  ? (pt ? 'A atualização falhou. A última cópia continua salva.' : 'Update failed. The last copy is still saved.')
+                  : (pt ? 'A primeira sincronização falhou. Tente atualizar com internet.' : 'The first sync failed. Try updating while connected.')}</p>}
+                <button type="button" className="wv2-pill" onClick={() => {
+                  void syncOfflineKnowledge().then(pack => { setKnowledge({ count: pack.documents.length, syncedAt: pack.syncedAt }); setKnowledgeFailed(false) }).catch(() => setKnowledgeFailed(true))
+                }}>{pt ? 'Atualizar cópia' : 'Update copy'}</button>
+              </div>
+              <LocalAIControls pt={pt} busy={localBusy} />
+              {!online && <label className="t-foot ink-2" style={{ padding: '0 16px 8px' }}>
+                <input type="checkbox" checked={useOfflineAI} disabled={busy} onChange={event => setUseOfflineAI(event.target.checked)} />
+                {' '}{pt ? 'Complementar com IA local' : 'Add a local AI answer'}
+              </label>}
+              <button type="button" className="wv2-pill" disabled={busy && !localBusy} onClick={() => {
+                void localRuntime().then(r => r.cancel()).catch(() => {})
+                setMessages([fromAnswer(opening)]); setDraft(''); setUseOfflineAI(false); setShowOptions(false); setTemNovidade(false)
+                grudadoNoFim.current = true
+                optionsScrollTop.current = null
+              }}>{pt ? 'Limpar conversa' : 'Clear conversation'}</button>
+            </div>
             <form
               className="chat-compose"
+              hidden={showOptions}
               onSubmit={event => {
                 event.preventDefault()
                 void send()
