@@ -22,7 +22,7 @@ export default function TornadoEmergency({ event, expiresAt, source, onShowMap }
     <p>Expires: {expiresAt || 'Unknown — check official updates'}</p>
     <ol>{tornadoInstructions(phase).map(step => <li key={step} style={{ marginBottom: 10 }}>{step}</li>)}</ol>
     {onShowMap && <button type="button" onClick={onShowMap} style={{ padding: 12, marginRight: 8 }}>View official alert area</button>}
-    {danger && <button type="button" onClick={() => { setSheltered(true); setConfirmedAt(new Date().toISOString()) }} style={{ padding: 12, background: '#35c97a', color: '#07140d', fontWeight: 700, borderRadius: 8 }}>I'm in shelter</button>}
+    {danger && <button type="button" onClick={() => { setSheltered(true); setConfirmedAt(new Date().toISOString()) }} style={{ padding: 12, background: '#35c97a', color: '#07140d', fontWeight: 700, borderRadius: 8 }}>I am in shelter</button>}
     {confirmedAt && <p role="status">Shelter check-in saved in this screen at {confirmedAt}. This does not mean the danger has passed or notify contacts.</p>}
     <p style={{ fontSize: 12, opacity: .8 }}>Instructions available in the installed app only when this screen and its assets have been cached. New alerts require connectivity.</p>
   </section>
