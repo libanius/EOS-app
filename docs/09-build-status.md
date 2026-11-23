@@ -5,6 +5,25 @@
 
 ---
 
+## HANDOFF PRIORITÁRIO — EOS Alerts / iPhone Web Push — 2026-11-23
+
+**Estado: NÃO CONCLUÍDO. Nenhuma notificação de teste foi enviada ao iPhone. Não aguardar execução em background.** O proprietário autorizou testes controlados e correções, e quer um resultado verificável, não promessas de trabalho futuro. Próxima LLM deve executar a etapa técnica durante sua sessão e reportar o resultado.
+
+- Dispositivo: iPhone com EOS instalado via Safari > Add to Home Screen, abrindo em tela cheia (PWA, não app nativo). Em More > Alertas Push, UI mostra **ATIVADO** e `Push alerts enabled on this device.` Não pedir para desativar, apagar PWA ou recriar inscrição sem necessidade.
+- Supabase EOS: conexão chamada **EOS**, project ref `alxurmgpyxjhvnliivbf` (não confundir com organização Primary). Consulta SQL de leitura funcionou em 2026-11-23. `public.push_subscriptions` tem `id,user_id,endpoint,p256dh,auth,created_at`. Consulta agregada encontrou **6** inscrições Apple `web.push.apple.com` e **1** FCM. Nova inscrição Apple registrada em **2026-11-23 17:53:05.962833 UTC (12:53 ET)**, coincidindo com a ativação no iPhone; é forte indício, **não prova identidade por si só**. Não expor endpoint completo, chaves, user_id ou credenciais nos relatórios.
+- Logs de 48h consultados em 2026-11-22: `notification_delivery_log` com **21 failed**, todos com `detail=web_push_status=403`; **19 no_subscription**; **1 sent** (aceitação do transporte, não comprova chegada ao aparelho). Não atribuir 403 à Apple sem correlacionar o endpoint de cada tentativa; a tabela de logs não armazena host.
+- `hazard_events` recebe NWS; `hazard_transitions` registra transições. `provider_health` estava vazia na consulta. Isso não comprova cobertura integral nem confiabilidade do sistema.
+- Branch `feat/eos-tornado-emergency-ux-20261121`, PR draft **#33** https://github.com/libanius/EOS-app/pull/33, último commit de integração **bd47ed274b74210acd699323beeb79d5b144b408**. Integra `TornadoEmergency` em `components/world-v2/AlertsPage.tsx` usando `ev.hazardType === 'tornado_warning' || 'tornado_watch'`, com componentes em `components/world-v2/TornadoEmergency.tsx` e `lib/hazards/tornado-experience.ts`. Preview Vercel desse commit **READY**; NÃO é produção e CI mais recente não foi confirmado como concluído. Verificar CI/preview antes de merge. Mapa NWS e offline persistente ainda não validados.
+- PR #32 https://github.com/libanius/EOS-app/pull/32 contém diagnóstico Web Push 403, não correção demonstrada; verificar estado e conflitos antes de integrar.
+- Código: `app/api/push/subscribe/route.ts` autentica usuário e grava inscrição; `lib/push.ts` usa `web-push` e VAPID; `lib/hazards/scan.ts` também envia diretamente via `webpush.sendNotification`. Não foi encontrada rota de teste nos caminhos `app/api/push/test/route.ts` e `app/api/notifications/test/route.ts`; isso não prova ausência em todo o repositório. Não usar SQL para enviar push, nem notificar todos os assinantes.
+
+**PRÓXIMA AÇÃO EXATA:** (1) identificar o usuário/inscrição correta por vínculo autenticado com a PWA e pelo horário, sem adivinhar; (2) encontrar ou criar endpoint de teste **autenticado e restrito ao próprio usuário**, com rate limit, sem secrets no cliente, usando credenciais VAPID server-side, e mensagem inequivocamente **“TESTE EOS — Nenhuma emergência está acontecendo”**; (3) verificar deployment e disparar **uma única** notificação de teste para o dispositivo do proprietário; (4) reportar status HTTP/host de forma segura e pedir confirmação de recebimento no iPhone com app fechado; (5) corrigir 403 se persistir; (6) testar evento NWS histórico, geometria, UX, offline e dedup sem alertas falsos a terceiros; (7) só então considerar merge/deploy. Proprietário já autorizou testes e correções; para mudanças de risco ou mensagens reais a terceiros, confirmar escopo.
+
+**REGRA DE COMUNICAÇÃO:** Ao encerrar, dizer explicitamente “envio realizado” ou “não enviado”, o que foi verificado e o bloqueio. A LLM não trabalha depois de terminar a resposta; não dizer “vou continuar” sem executar ferramentas. Usuário não deve ficar esperando um push que não foi enviado.
+
+---
+
+
 ## Referências do Pilot legíveis — 2026-11-09
 
 PILOT-KNOW-T02 / D-241, versão 0.2.5: fontes/rótulos sobem para `--ink-2`; links normais e visitados usam o token global `--ac` (Signal), com sublinhado, foco e quebra de títulos longos. A cor de risco não interfere na referência editorial. Tipos, lint e diff-check aprovados. Contraste calculado sobre fundo de referência #343e35: Signal 6,74:1, texto secundário 5,11:1; não é medição de todos os fundos translúcidos.
