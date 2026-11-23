@@ -1,5 +1,14 @@
 # 08 — Decisions Log
 
+
+## D-242 — Self-service diagnostic for a single Apple Web Push PWA (2026-11-23)
+
+**Status:** owner-approved operational diagnostic in EOS Alerts handoff. **Task:** ALERT-T10.
+
+Timestamp coincidence (new Apple registration at 17:53 UTC on 23 Nov) is suggestive, not proof of phone identity. Instead the installed PWA reads its current PushManager subscription and POSTs only its endpoint. The server checks same-origin, authenticates the user, verifies that EXACT endpoint belongs to the authenticated account, restricts host to web.push.apple.com, uses VAPID only on the server, applies an atomic distributed 1-per-10-minutes fail-closed rate limit, and sends only one web-push with the explicit wording “TESTE EOS — Nenhuma emergência está acontecendo”.
+
+No dispatch by SQL, no background trigger, no broadcast, no account-list iteration. Provider HTTP 2xx is acceptance, not proof the device displayed it; 403 is failure. Log/report provider host and HTTP only, never endpoint, keys, IDs or secrets. Do not prune subscriptions on 403, notify other users, or merge tornado draft PR #33 for this test. Release requires CI review and a production deploy; owner must then tap button in existing PWA.
+
 > Decisions made. Not up for re-discussion without a new entry.
 
 ---

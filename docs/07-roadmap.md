@@ -1,5 +1,16 @@
 # 07 — Roadmap
 
+
+## Operational hotfix ALERT-T10 — iPhone Web Push self-test (2026-11-23)
+
+| Task | Status | Acceptance |
+|---|---|---|
+| ALERT-T10a — User-initiated Apple PWA push test | CODE PREPARED, DEPLOY PENDING | Exactly one subscription from the authenticated PWA; no circle broadcast, no cron, no new subscription; VAPID server-only, fail-closed atomic rate limit |
+| ALERT-T10b — Verify production delivery | PENDING | On deployed PWA, owner taps “Enviar TESTE EOS”; API gives provider+HTTP; owner confirms arrival on locked iPhone |
+| ALERT-T10c — Diagnose HTTP 403 | PENDING | Correlate Apple response to this test. Do not delete on 403 or infer transport success means device delivery |
+
+Owner-authorized operational priority. Does not advance CONTENT-T06, unrelated ALERT tasks, or the tornado draft PR #33.
+
 > Last updated: 2026-08-10
 
 ---

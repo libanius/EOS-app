@@ -95,6 +95,9 @@ export default function SettingsPage() {
   const [tokenNativo, setTokenNativo] = useState<string | null>(null)
   const [pushBusy, setPushBusy] = useState(false)
   const [pushMsg, setPushMsg] = useState('')
+  const [pushTestBusy, setPushTestBusy] = useState(false)
+  const [pushTestMsg, setPushTestMsg] = useState('')
+  const [pushTestDone, setPushTestDone] = useState(false)
   const [email, setEmail] = useState<string | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
   const [busy, setBusy] = useState<null | 'logout' | 'delete'>(null)
@@ -363,6 +366,39 @@ export default function SettingsPage() {
     finally { setPushBusy(false) }
   }
 
+  // Uses this installed PWA's existing subscription, without re-subscribing.
+  const testPushHere = async () => {
+    if (pushTestBusy || pushTestDone || nativo || !pushEnabled) return
+    setPushTestBusy(true)
+    setPushTestMsg('')
+    try {
+      const reg = await getPushServiceWorkerRegistration()
+      const sub = await reg.pushManager.getSubscription()
+      if (!sub) throw new Error(en ? 'No active subscription on this device.' : 'Não há inscrição ativa neste aparelho.')
+      const res = await fetch('/api/push/self-test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ endpoint: sub.endpoint }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) {
+        const code = data.providerStatus ? ' · provider HTTP ' + data.providerStatus : ''
+        setPushTestMsg((en ? 'NOT SENT' : 'NÃO ENVIADO') + ' · HTTP ' + res.status + code + ' · ' +
+          String(data.error ?? (en ? 'Request failed.' : 'Falha na requisição.')))
+        return
+      }
+      setPushTestDone(true)
+      setPushTestMsg(en
+        ? 'Apple accepted the test (HTTP ' + data.providerStatus + '). Close EOS and check the iPhone lock screen. Acceptance does not confirm arrival.'
+        : 'A Apple aceitou o teste (HTTP ' + data.providerStatus + '). Feche o EOS e confira a tela bloqueada do iPhone. Aceitação não comprova recebimento.')
+    } catch (err) {
+      setPushTestMsg((en ? 'NOT SENT · ' : 'NÃO ENVIADO · ') +
+        (err instanceof Error ? err.message : (en ? 'Network error.' : 'Erro de rede.')))
+    } finally {
+      setPushTestBusy(false)
+    }
+  }
+
   const userPlan: Plan = plan ?? 'free'
 
   return (
@@ -577,6 +613,26 @@ export default function SettingsPage() {
             >
               {pushBusy ? 'Aguarde…' : pushEnabled ? 'Desativar alertas push' : 'Ativar alertas push'}
             </button>
+            {pushEnabled && !nativo && (
+              <div style={{ marginTop: 12 }}>
+                <button
+                  type="button"
+                  onClick={testPushHere}
+                  disabled={pushTestBusy || pushTestDone}
+                  style={{ ...styles.upgradeBtn, background: 'rgba(255,255,255,0.05)', color: '#f5f5f5', borderColor: 'rgba(255,255,255,0.2)' }}
+                >
+                  {pushTestBusy
+                    ? (en ? 'Testing this iPhone…' : 'Testando este iPhone…')
+                    : pushTestDone
+                      ? (en ? 'Test requested' : 'Teste solicitado')
+                      : (en ? 'Send TEST EOS to this iPhone' : 'Enviar TESTE EOS para este iPhone')}
+                </button>
+                <p style={{ color: '#a1a1aa', fontSize: 12, lineHeight: 1.5 }}>
+                  {en ? 'Only this installed PWA. No real emergency is triggered.' : 'Somente este PWA instalado. Nenhuma emergência real será acionada.'}
+                </p>
+                {pushTestMsg && <p role="status" style={{ color: pushTestDone ? '#22c55e' : '#f59e0b', fontSize: 13, lineHeight: 1.5 }}>{pushTestMsg}</p>}
+              </div>
+            )}
             {pushMsg && (
               <p role="status" style={{ margin: '10px 0 0', color: pushEnabled ? '#22c55e' : '#f59e0b', fontSize: 13, lineHeight: 1.45 }}>
                 {pushMsg}
