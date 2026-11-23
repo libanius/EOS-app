@@ -305,9 +305,9 @@ function HazardEventCard({ ev, focused, system, language }: { ev: HazardEvent; f
       {summary && summary !== ev.title && (
         <p style={{ margin: '3px 0 0', fontSize: 11, color: '#a1a1aa', lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{summary}</p>
       )}
-      {ev.source.toLowerCase() === 'nws' && ev.visualClass === 'OFFICIAL_WARNING' && /^tornado warning\\b/i.test(ev.title) && (
+      {ev.source.toLowerCase() === 'nws' && (ev.hazardType === 'tornado_warning' || ev.hazardType === 'tornado_watch') && (
         <div style={{ marginTop: 12 }}>
-          <TornadoEmergency event="Tornado Warning" expiresAt={ev.expiresAt ?? ''} source="National Weather Service" />
+          <TornadoEmergency event={ev.hazardType === 'tornado_warning' ? 'Tornado Warning' : 'Tornado Watch'} expiresAt={ev.expiresAt ?? ''} source="National Weather Service" />
         </div>
       )}
       {ev.officialUrl && (
