@@ -1,5 +1,12 @@
 # 09 — Build Status
 
+
+## Operational handoff 2026-11-23 — ALERT-T10: iPhone TESTE EOS
+
+Branch: fix/eos-iphone-self-push-test-20261123 (separate from unfinished tornado PR #33 / commit 45c1d77). Server route POST /api/push/self-test binds the browser's PushManager endpoint to the authenticated EOS account. Refuses external origins and non-Apple push hosts; distributed atomic rate limit fails closed. Sends one fixed, non-emergency notification via server-side VAPID. UI in MAIS > Alertas Push has “Enviar TESTE EOS para este iPhone”. No re-subscription required and no other household members receive it.
+
+**Push status: NOT SENT yet.** Code preparation is not live delivery. Gate: CI/build, merge of this *separate* hotfix, production Vercel READY, then owner taps test from installed PWA with EOS closed afterward. Capture provider host/HTTP and ask owner whether it appeared on lock screen. Existing errors web_push_status=403 are NOT fixed by this diagnostic endpoint and their provider cannot be assumed from existing logs. Apple registration at 12:53 ET is only time correlation. Keep PR #32 (403 diagnostics) and PR #33 (tornado UX) independent.
+
 > The single most important file for resuming a session. Read this first after AGENTS.md.
 > Last updated: 2026-09-03
 

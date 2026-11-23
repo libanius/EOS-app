@@ -1,5 +1,8 @@
 # 11 — Product Memory
 
+
+**Apple PWA ownership cannot be inferred from registration time (23 Nov 2026).** The 17:53 UTC Apple subscription aligns with owner enabling push, but must not be selected manually as “the iPhone” based on time. ALERT-T10 gets the endpoint via navigator.serviceWorker registration.pushManager.getSubscription() IN the installed PWA and checks user_id+endpoint on the server. A successful Web Push provider HTTP response is not confirmation of iOS display; a 403 must be diagnosed with correlated provider host, not guessed. Never use a SQL procedure to send, and never run sendPush() over every device for a single-phone diagnostic. PWA Web Push and Capacitor native APNs are different transports. D-242.
+
 > Non-obvious facts that don't belong in code comments but must survive across sessions.
 > Last updated: 2026-11-06
 
