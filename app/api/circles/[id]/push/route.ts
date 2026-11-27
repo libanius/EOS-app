@@ -4,10 +4,14 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import webpush from 'web-push'
 import { enviarNativoParaUsuarios } from '@/lib/push-native-fanout'
 import { canAccess } from '@/lib/feature-gates'
+import { DEFAULT_VAPID_SUBJECT, readVapid } from '@/lib/vapid'
 
-const VAPID_PUBLIC = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? ''
-const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY ?? ''
-const VAPID_SUBJECT = process.env.VAPID_SUBJECT ?? 'mailto:brightscalegroup@gmail.com'
+// PUSH-403-001: VAPID limpo e conferido em `lib/vapid.ts`. Par inválido vira
+// "não configurado" — melhor não enviar do que enviar assinatura que a Apple recusa.
+const VAPID = readVapid()
+const VAPID_PUBLIC = VAPID.ok ? VAPID.config.publicKey : ''
+const VAPID_PRIVATE = VAPID.ok ? VAPID.config.privateKey : ''
+const VAPID_SUBJECT = VAPID.ok ? VAPID.config.subject : DEFAULT_VAPID_SUBJECT
 
 interface Ctx { params: { id: string } }
 

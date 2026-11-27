@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createCommsNotifications, getCircleName, getProfileName } from '@/lib/comms-notifications'
 import { simulationLabel, type SimulationConfig } from '@/lib/simulation'
+import { DEFAULT_VAPID_SUBJECT, readVapid } from '@/lib/vapid'
 
 /**
  * Shared simulation drills (D-071 / SIM-T07).
@@ -20,9 +21,12 @@ import { simulationLabel, type SimulationConfig } from '@/lib/simulation'
  *    could otherwise create.
  */
 
-const VAPID_PUBLIC = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? ''
-const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY ?? ''
-const VAPID_SUBJECT = process.env.VAPID_SUBJECT ?? 'mailto:brightscalegroup@gmail.com'
+// PUSH-403-001: VAPID limpo e conferido em `lib/vapid.ts`. Par inválido vira
+// "não configurado" — melhor não enviar do que enviar assinatura que a Apple recusa.
+const VAPID = readVapid()
+const VAPID_PUBLIC = VAPID.ok ? VAPID.config.publicKey : ''
+const VAPID_PRIVATE = VAPID.ok ? VAPID.config.privateKey : ''
+const VAPID_SUBJECT = VAPID.ok ? VAPID.config.subject : DEFAULT_VAPID_SUBJECT
 
 /** A drill nobody ended is over after this — no one inherits a stale scenario. */
 const MAX_AGE_MINUTES = 90

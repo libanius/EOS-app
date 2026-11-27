@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sentryConfigured } from '@/lib/error-log'
+import { readVapid } from '@/lib/vapid'
 
 /**
  * GET /api/health — o que está ligado e o que não está (D-118).
@@ -77,7 +78,7 @@ export async function GET(request: Request) {
     // metade do problema que o D-119 existe para resolver.
     errorAlerts: process.env.ERROR_ALERT_USER_IDS ? 'ok' : 'not_configured',
     openai: process.env.OPENAI_API_KEY ? 'ok' : 'not_configured',
-    push: process.env.VAPID_PRIVATE_KEY ? 'ok' : 'not_configured',
+    push: readVapid().ok ? 'ok' : 'not_configured',
   }
 
   const degraded = Object.values(checks).some(v => v !== 'ok')

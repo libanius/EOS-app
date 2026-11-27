@@ -1,5 +1,9 @@
 # 09 — Build Status
 
+## Operational handoff 2026-11-27 (fim) — PUSH-403-001 ✅
+
+Push no iPhone funcionando de ponta a ponta: PR #35 (VAPID limpo/conferido) em produção; teste das 12:02 ET apareceu na tela bloqueada. O 201 anterior sem notificação era a **permissão de notificação do EOS negada no iOS**, não o servidor. Projeto duplicado `abre-usa-s-projects/eos-app` apagado pelo dono. PR #36 (recibo de entrega) fechado sem merge por decisão do dono. Este PR migra as 7 rotas/arquivos restantes que liam VAPID cru (incl. `lib/hazards/scan.ts`, alertas reais) para `lib/vapid.ts`. Próximo: confirmar um alerta real ou ping de família chegando no iPhone.
+
 ## Operational handoff 2026-11-27 — PUSH-403-001: Apple 403 no TESTE EOS
 
 Dono testou no iPhone: `NÃO ENVIADO · HTTP 502 · provider HTTP 403`. 403 da Apple = JWT VAPID recusado para aquela inscrição. Correção em `specs/PUSH-403-001-apple-recusa-push.md`: `lib/vapid.ts` limpa `\n`/aspas/espaços das variáveis, normaliza `VAPID_SUBJECT`, confere matematicamente o par pública/privada (503 `key_pair_mismatch` antes de gastar a cota); rota de teste devolve `providerReason` (ex. `BadJwtToken`); `lib/push.ts` usa o mesmo módulo e loga `status@host reason=`. No iPhone, a tela MAIS renova sozinha a inscrição feita com chave antiga e renova também após um 403. Pendente: deploy e CA8 (teste no iPhone). Rotas que ainda leem `process.env` direto: planos, círculos, ping, simulação, varredura de perigos.

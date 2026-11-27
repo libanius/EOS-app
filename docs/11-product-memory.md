@@ -1695,6 +1695,10 @@ Sentry is wired up (`sentry.client.config.ts`, `sentry.server.config.ts`, `sentr
 
 ## Push notifications / VAPID (D-036)
 
+- **PUSH-403-001 (2026-11-27):** VAPID é lido SEMPRE por `lib/vapid.ts` (limpa `\n`/aspas, normaliza `VAPID_SUBJECT`, confere o par pública/privada). As variáveis na Vercel são Sensitive — ninguém lê o valor; o diagnóstico vem do código (`vapidProblem`, `providerReason`).
+- **iOS: 201 da Apple e nada na tela = primeiro suspeito é a permissão de notificação do EOS no iPhone** (o app mostra "Notification permission was not granted"; o selo "Ativado" pode estar desatualizado). Foco "Personal" NÃO bloqueou o EOS no teste de 2026-11-27.
+- Produção única: `eoss-projects/eos-app` → `eos-app-fawn.vercel.app`. Logs de runtime na Vercel Hobby duram **1 hora**.
+
 - Env vars: `NEXT_PUBLIC_VAPID_PUBLIC_KEY` (client subscribe + server send, **inlined em build-time** → mudar exige redeploy), `VAPID_PRIVATE_KEY` (server send), `VAPID_SUBJECT` (mailto).
 - Público e privado **devem ser um par** gerado junto (`npx web-push generate-vapid-keys`). Setar só um quebra o envio. O par atual foi gerado em 2026-07-05 e está no `.env.local` (gitignored) + Vercel Prod+Preview.
 - Rotas: `app/api/push/subscribe` (salva subscription), `app/api/circles/[id]/push` (admin do círculo envia via `web-push`), toggle em `/settings`.

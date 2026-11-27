@@ -1,5 +1,5 @@
 # SPEC — PUSH-403-001: Apple recusa o push do iPhone (HTTP 403)
-Version: 1.0 | Status: **Ready** (pedido direto do dono no chat em 2026-11-27: "Corrija") | Author: Paulo Neto
+Version: 1.1 | Status: **Ready** (pedido direto do dono no chat em 2026-11-27: "Corrija") | Author: Paulo Neto
 
 > Regra 1: nenhum código antes de Ready. Este spec está **Ready**.
 > Regra 5: critérios binários.
@@ -78,10 +78,24 @@ Causas possíveis, todas invisíveis hoje:
 - [x] CA5 — `readVapid` aceita par com sujeira e cai no remetente padrão quando o assunto é inválido.
 - [x] CA6 — `providerReason` devolve `BadJwtToken` do corpo da Apple e `null` para corpo estranho.
 - [x] CA7 — `tsc --noEmit` e a suíte Jest inteira passam.
-- [ ] CA8 — No iPhone, após o deploy: tocar no teste mostra "A Apple aceitou o teste (HTTP 201)" e a notificação TESTE EOS aparece na tela bloqueada.
+- [x] CA8a — No iPhone, após o deploy: o teste mostra "A Apple aceitou o teste (HTTP 201)" (2026-11-27 11:50 ET).
+- [x] CA8b — A notificação TESTE EOS aparece na tela bloqueada (2026-11-27 12:02 ET). O 1º teste com 201 não apareceu porque a permissão de notificação do EOS estava negada no iOS (o app mostrou "Notification permission was not granted"); depois de liberada, chegou — mesmo com Foco "Personal" ligado.
+- [x] CA10 — Nenhum arquivo em `app/` ou `lib/` (fora de `lib/vapid.ts` e testes) lê `VAPID_SUBJECT` ou `VAPID_PRIVATE_KEY` de `process.env`.
+
+## 8. Todas as rotas de envio (adendo 2026-11-27)
+
+O conserto valia só para `/api/push/self-test` e `lib/push.ts`. As demais rotas
+liam o VAPID cru e continuariam levando 403 da Apple — entre elas a varredura de
+perigos, que manda os alertas reais. Passam a usar `readVapid()`:
+`lib/hazards/scan.ts`, `lib/plan-execution-notices.ts`, `app/api/plans/route.ts`,
+`app/api/plans/[id]/route.ts`, `app/api/circles/[id]/push/route.ts`,
+`app/api/family/ping/route.ts`, `app/api/simulation/route.ts` e o indicador de
+`app/api/health/route.ts`. Par inválido vira "não configurado" (não envia).
+
+O recibo de entrega do service worker (PR #36) foi **descartado** por decisão do
+dono: o problema de entrega era a permissão do iOS, não o worker.
 
 ## 7. Fora do Escopo
 
 - Trocar as chaves VAPID.
 - Mudar o limite de 1 teste a cada 10 minutos.
-- Migrar as demais rotas de envio para `lib/vapid.ts`.
