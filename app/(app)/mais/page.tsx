@@ -424,7 +424,14 @@ export default function SettingsPage() {
             extra = en
               ? ' · This iPhone subscription was renewed. Try the test again in 10 minutes.'
               : ' · A inscrição deste iPhone foi renovada. Teste de novo em 10 minutos.'
-          } catch { /* mantém só o diagnóstico */ }
+          } catch {
+            // A antiga já pode ter saído: o selo tem de contar a verdade.
+            const atual = await reg.pushManager.getSubscription().catch(() => null)
+            setPushEnabled(!!atual)
+            extra = en
+              ? ' · Could not renew this iPhone subscription. Turn push alerts on again.'
+              : ' · Não foi possível renovar a inscrição deste iPhone. Ative os alertas push de novo.'
+          }
         }
         setPushTestMsg((en ? 'NOT SENT' : 'NÃO ENVIADO') + ' · HTTP ' + res.status + code + reason + ' · ' +
           String(data.error ?? (en ? 'Request failed.' : 'Falha na requisição.')) + extra)
@@ -828,14 +835,22 @@ async function renovarInscricao(
   }).catch(() => {})
   await antiga.unsubscribe().catch(() => {})
   const nova = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: chave })
-  const res = await fetch('/api/push/subscribe', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(nova.toJSON()),
-  })
-  if (!res.ok) {
+  // Inscrição que o servidor não guardou não recebe alerta nenhum: desfaz em
+  // qualquer falha — HTTP de erro OU rede caindo no meio do POST.
+  let erro: Error | null = null
+  try {
+    const res = await fetch('/api/push/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(nova.toJSON()),
+    })
+    if (!res.ok) erro = new Error((await res.json().catch(() => ({}))).error ?? `HTTP ${res.status}`)
+  } catch (e) {
+    erro = e instanceof Error ? e : new Error('Erro de rede')
+  }
+  if (erro) {
     await nova.unsubscribe().catch(() => {})
-    throw new Error((await res.json().catch(() => ({}))).error ?? `HTTP ${res.status}`)
+    throw erro
   }
   return nova
 }
