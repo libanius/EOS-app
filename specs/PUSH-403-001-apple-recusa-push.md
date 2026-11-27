@@ -95,8 +95,10 @@ iOS (Foco, permissões). Para separá-las:
   e responde 204. Sem tabela, sem dado pessoal além do prefixo do id.
 
 Leitura do próximo teste:
-- **sem recibo** → o worker não acordou: Apple não entregou ao aparelho ou o
-  worker instalado é antigo/quebrado → reinstalar o PWA / investigar o worker;
+- **sem recibo** → **inconclusivo, com forte indício** de que o worker não
+  acordou (Apple não entregou ao aparelho, ou o worker instalado é antigo/
+  quebrado). O recibo tenta 2 vezes; ainda assim a rede pode tê-lo perdido.
+  Confirmar com um 2º teste antes de agir (reinstalar o PWA / investigar o worker);
 - **`shown=false`** → `showNotification` falhou dentro do worker (erro no log);
 - **`shown=true`** e nada na tela → o iOS escondeu (Foco, ajustes do EOS).
 

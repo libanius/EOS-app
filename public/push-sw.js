@@ -26,13 +26,20 @@ self.addEventListener('push', event => {
    * que ESTE worker acordou e se a notificação foi exibida — o resto (Foco,
    * ajustes de notificação) é do iPhone.
    */
-  const recibo = (shown, erro) =>
+  // Uma nova tentativa após 2 s: rede instável no iPhone não pode apagar a
+  // única prova de que o worker rodou. Ainda assim, recibo AUSENTE é
+  // inconclusivo — ver o spec §8.
+  const enviarRecibo = (shown, erro) =>
     fetch('/api/push/receipt', {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ tag: data.tag || null, shown, error: erro || null }),
-    }).catch(() => {})
+    }).then(r => { if (!r.ok) throw new Error('receipt ' + r.status) })
+  const recibo = (shown, erro) =>
+    enviarRecibo(shown, erro)
+      .catch(() => new Promise(r => setTimeout(r, 2000)).then(() => enviarRecibo(shown, erro)))
+      .catch(() => {})
 
   event.waitUntil(
     self.registration.showNotification(data.title || 'EOS', {

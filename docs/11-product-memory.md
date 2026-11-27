@@ -1695,6 +1695,10 @@ Sentry is wired up (`sentry.client.config.ts`, `sentry.server.config.ts`, `sentr
 
 ## Push notifications / VAPID (D-036)
 
+- **Apple Web Push (PUSH-403-001, 2026-11-27):** HTTP 201 da Apple só prova que a Apple ACEITOU — não que o iPhone mostrou. Entre os dois há o service worker (`public/push-sw.js`) e os ajustes do iOS (Foco silencia PWAs não liberados). Use o recibo `[EOS push-receipt]` (PR #36) para separar; recibo ausente é inconclusivo.
+- VAPID é lido SEMPRE por `lib/vapid.ts` (limpa `\n`/aspas, normaliza `VAPID_SUBJECT`, confere o par). As variáveis na Vercel são Sensitive — nem o dono nem agentes leem o valor; o diagnóstico vem do código (`vapidProblem`).
+- Logs de runtime na Vercel Hobby duram **1 hora**: ler logo após o teste.
+
 - Env vars: `NEXT_PUBLIC_VAPID_PUBLIC_KEY` (client subscribe + server send, **inlined em build-time** → mudar exige redeploy), `VAPID_PRIVATE_KEY` (server send), `VAPID_SUBJECT` (mailto).
 - Público e privado **devem ser um par** gerado junto (`npx web-push generate-vapid-keys`). Setar só um quebra o envio. O par atual foi gerado em 2026-07-05 e está no `.env.local` (gitignored) + Vercel Prod+Preview.
 - Rotas: `app/api/push/subscribe` (salva subscription), `app/api/circles/[id]/push` (admin do círculo envia via `web-push`), toggle em `/settings`.

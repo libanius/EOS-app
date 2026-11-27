@@ -7,7 +7,7 @@
 |---|---|---|
 | ALERT-T10a — User-initiated Apple PWA push test | CODE PREPARED, DEPLOY PENDING | Exactly one subscription from the authenticated PWA; no circle broadcast, no cron, no new subscription; VAPID server-only, fail-closed atomic rate limit |
 | ALERT-T10b — Verify production delivery | PENDING | On deployed PWA, owner taps “Enviar TESTE EOS”; API gives provider+HTTP; owner confirms arrival on locked iPhone |
-| ALERT-T10c — Diagnose HTTP 403 | CODE PREPARED (PUSH-403-001), DEPLOY PENDING | Owner saw `HTTP 502 · provider HTTP 403` on 2026-11-27. Fix: cleaned/verified VAPID (`lib/vapid.ts`), Apple reason surfaced, iPhone auto-renews a subscription made with an old key. Done when CA8 of `specs/PUSH-403-001` passes |
+| ALERT-T10c — Diagnose HTTP 403 | ✅ 403 FIXED (PR #35, prod 2026-11-27) · DEVICE DELIVERY PENDING (PUSH-403-001 §8) | Apple now returns 201 to the owner's iPhone, but nothing appeared on the lock screen. Next gate: PR #36 receipt in prod, owner test, log `[EOS push-receipt]` read and diagnosis recorded in spec CA9. Device delivery is NOT complete |
 
 Owner-authorized operational priority. Does not advance CONTENT-T06, unrelated ALERT tasks, or the tornado draft PR #33.
 

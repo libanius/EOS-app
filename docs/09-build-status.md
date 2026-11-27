@@ -1,5 +1,9 @@
 # 09 — Build Status
 
+## Operational handoff 2026-11-27 (tarde) — PUSH-403-001 §8: 201 sem notificação
+
+PR #35 em produção (dpl_48zWFmRYxA4DoxgtwNWdBFy5VWXm, commit bcebf41). Teste do dono às 11:50 ET: **Apple aceitou (HTTP 201)**, mas **nada apareceu** no iPhone (Foco "Pessoal" estava ligado — suspeito, não confirmado). Projeto duplicado `abre-usa-s-projects/eos-app` foi apagado pelo dono; produção única = `eoss-projects/eos-app` em `eos-app-fawn.vercel.app`. PR #36 adiciona recibo de entrega do service worker (`/api/push/receipt`, só log). **Próximo:** merge #36 → dono desliga Foco, confere Ajustes › Notificações › EOS → novo teste → ler `[EOS push-receipt]` nos logs (Hobby retém 1 h) → registrar diagnóstico no CA9. Entrega no aparelho **não** está concluída. Pendente também: migrar 5 rotas que leem VAPID cru para `lib/vapid.ts`.
+
 ## Operational handoff 2026-11-27 — PUSH-403-001: Apple 403 no TESTE EOS
 
 Dono testou no iPhone: `NÃO ENVIADO · HTTP 502 · provider HTTP 403`. 403 da Apple = JWT VAPID recusado para aquela inscrição. Correção em `specs/PUSH-403-001-apple-recusa-push.md`: `lib/vapid.ts` limpa `\n`/aspas/espaços das variáveis, normaliza `VAPID_SUBJECT`, confere matematicamente o par pública/privada (503 `key_pair_mismatch` antes de gastar a cota); rota de teste devolve `providerReason` (ex. `BadJwtToken`); `lib/push.ts` usa o mesmo módulo e loga `status@host reason=`. No iPhone, a tela MAIS renova sozinha a inscrição feita com chave antiga e renova também após um 403. Pendente: deploy e CA8 (teste no iPhone). Rotas que ainda leem `process.env` direto: planos, círculos, ping, simulação, varredura de perigos.
