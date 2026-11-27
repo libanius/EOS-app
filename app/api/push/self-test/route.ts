@@ -80,6 +80,8 @@ export async function POST(req: NextRequest) {
     title: 'TESTE EOS',
     body: 'Nenhuma emergência está acontecendo',
     url: '/mais',
+    // PUSH-403-001 §8: o worker devolve esta etiqueta no recibo de entrega.
+    tag: 'eos-test-' + Date.now().toString(36),
   })
 
   try {

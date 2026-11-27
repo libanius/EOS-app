@@ -20,6 +20,20 @@ self.addEventListener('push', event => {
   } catch {
     data = { title: 'EOS', body: event.data.text() }
   }
+  /*
+   * PUSH-403-001 §8: recibo de entrega. Sem ele, "a Apple aceitou (201)" e
+   * "nada apareceu no iPhone" ficavam indistinguíveis. O recibo diz ao servidor
+   * que ESTE worker acordou e se a notificação foi exibida — o resto (Foco,
+   * ajustes de notificação) é do iPhone.
+   */
+  const recibo = (shown, erro) =>
+    fetch('/api/push/receipt', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tag: data.tag || null, shown, error: erro || null }),
+    }).catch(() => {})
+
   event.waitUntil(
     self.registration.showNotification(data.title || 'EOS', {
       body: data.body || '',
@@ -28,7 +42,10 @@ self.addEventListener('push', event => {
       // Senders put `url` at the top level; reading only `data.data` made every
       // notification click land on '/'.
       data: data.data || (data.url ? { url: data.url } : undefined),
-    }),
+    }).then(
+      () => recibo(true),
+      e => recibo(false, String((e && e.name) || 'showNotification_failed')).then(() => { throw e }),
+    ),
   )
 })
 

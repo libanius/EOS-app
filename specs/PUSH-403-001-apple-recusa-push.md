@@ -78,7 +78,27 @@ Causas possíveis, todas invisíveis hoje:
 - [x] CA5 — `readVapid` aceita par com sujeira e cai no remetente padrão quando o assunto é inválido.
 - [x] CA6 — `providerReason` devolve `BadJwtToken` do corpo da Apple e `null` para corpo estranho.
 - [x] CA7 — `tsc --noEmit` e a suíte Jest inteira passam.
-- [ ] CA8 — No iPhone, após o deploy: tocar no teste mostra "A Apple aceitou o teste (HTTP 201)" e a notificação TESTE EOS aparece na tela bloqueada.
+- [x] CA8a — No iPhone, após o deploy: tocar no teste mostra "A Apple aceitou o teste (HTTP 201)" (2026-11-27 11:50 ET).
+- [ ] CA8b — A notificação TESTE EOS aparece na tela bloqueada. **Falhou no 1º teste** (201 aceito, nada exibido) → §8.
+- [ ] CA9 — Após o próximo teste, o log de produção tem `[EOS push-receipt] ... tag=eos-test-... shown=true|false` OU a ausência dele, e o diagnóstico de §8 é registrado aqui.
+
+## 8. Recibo de entrega (adendo 2026-11-27)
+
+Após o merge, a Apple respondeu **201** mas nada apareceu no iPhone. Entre a
+Apple e a tela há duas caixas-pretas: o service worker do EOS e os ajustes do
+iOS (Foco, permissões). Para separá-las:
+
+- O payload do teste leva `tag: 'eos-test-<base36>'`.
+- `public/push-sw.js`, ao receber um push, exibe a notificação e então chama
+  `POST /api/push/receipt { tag, shown, error }` (mesma origem, com cookies).
+- A rota só **registra no log** `[EOS push-receipt] user=<8 chars> tag= shown= error=`
+  e responde 204. Sem tabela, sem dado pessoal além do prefixo do id.
+
+Leitura do próximo teste:
+- **sem recibo** → o worker não acordou: Apple não entregou ao aparelho ou o
+  worker instalado é antigo/quebrado → reinstalar o PWA / investigar o worker;
+- **`shown=false`** → `showNotification` falhou dentro do worker (erro no log);
+- **`shown=true`** e nada na tela → o iOS escondeu (Foco, ajustes do EOS).
 
 ## 7. Fora do Escopo
 
