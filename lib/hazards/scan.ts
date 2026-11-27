@@ -38,6 +38,7 @@ import {
   type StoredHazardState,
 } from './transitions'
 import type { Coordinates, HazardEvent } from './types'
+import { readVapid } from '@/lib/vapid'
 
 const A = HAZARD_CONFIG.alerting
 
@@ -447,7 +448,8 @@ export function inQuietHours(
 }
 
 function vapidReady(): boolean {
-  return Boolean(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY)
+  // PUSH-403-001: pronto = par conferido, não só "as duas variáveis existem".
+  return readVapid().ok
 }
 
 async function deliver(
@@ -733,11 +735,12 @@ export async function runHazardScan(): Promise<ScanSummary> {
     return summary
   }
 
-  if (vapidReady()) {
+  const vapid = readVapid()
+  if (vapid.ok) {
     webpush.setVapidDetails(
-      process.env.VAPID_SUBJECT ?? 'mailto:brightscalegroup@gmail.com',
-      process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY as string,
-      process.env.VAPID_PRIVATE_KEY as string,
+      vapid.config.subject,
+      vapid.config.publicKey,
+      vapid.config.privateKey,
     )
   } else {
     // Detection and history still run; only delivery is impossible. Saying so
