@@ -270,9 +270,35 @@ export default function SettingsPage() {
       return
     }
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
+    /*
+     * PUSH-403-001: "Ativado" só olhava se EXISTE inscrição. Uma inscrição feita
+     * com a chave VAPID antiga continua existindo no iPhone, mas a Apple recusa
+     * todo envio para ela com 403. Detectada aqui, é renovada sem pedir nada à
+     * pessoa (a permissão já foi dada).
+     */
     getPushServiceWorkerRegistration()
-      .then(reg => reg.pushManager.getSubscription())
-      .then(sub => setPushEnabled(!!sub)).catch(() => {})
+      .then(async reg => {
+        const sub = await reg.pushManager.getSubscription()
+        setPushEnabled(!!sub)
+        if (sub && inscritaComOutraChave(sub)
+            && 'Notification' in window && Notification.permission === 'granted') {
+          try {
+            await renovarInscricao(reg, sub)
+          } catch {
+            // A antiga já pode ter saído: mostrar a verdade e deixar o botão religar.
+            setPushEnabled(!!(await reg.pushManager.getSubscription().catch(() => null)))
+            setPushMsg(en
+              ? 'Could not renew this device subscription. Turn push alerts on again.'
+              : 'Não foi possível renovar a inscrição deste aparelho. Ative os alertas push de novo.')
+            return
+          }
+          setPushMsg(en
+            ? 'This device was subscribed with an old key. Subscription renewed.'
+            : 'Este aparelho estava inscrito com uma chave antiga. Inscrição renovada.')
+        }
+      })
+      .catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const togglePush = async () => {
@@ -337,7 +363,7 @@ export default function SettingsPage() {
         setPushEnabled(false)
         setPushMsg(en ? 'Push alerts disabled on this device.' : 'Alertas push desativados neste dispositivo.')
       } else {
-        const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+        const vapidKey = vapidKeyBytes()
         if (!vapidKey) throw new Error(en ? 'Push is not configured.' : 'Push não configurado (VAPID key ausente).')
         if ('Notification' in window) {
           const permission = await Notification.requestPermission()
@@ -348,7 +374,7 @@ export default function SettingsPage() {
         }
         const sub = await reg.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(vapidKey),
+          applicationServerKey: vapidKey,
         })
         const subJson = sub.toJSON()
         const res = await fetch('/api/push/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(subJson) })
@@ -373,8 +399,10 @@ export default function SettingsPage() {
     setPushTestMsg('')
     try {
       const reg = await getPushServiceWorkerRegistration()
-      const sub = await reg.pushManager.getSubscription()
+      let sub = await reg.pushManager.getSubscription()
       if (!sub) throw new Error(en ? 'No active subscription on this device.' : 'Não há inscrição ativa neste aparelho.')
+      // PUSH-403-001: nunca testar uma inscrição que a Apple vai recusar.
+      if (inscritaComOutraChave(sub)) sub = await renovarInscricao(reg, sub)
       const res = await fetch('/api/push/self-test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -383,8 +411,23 @@ export default function SettingsPage() {
       const data = await res.json().catch(() => ({}))
       if (!res.ok || !data.ok) {
         const code = data.providerStatus ? ' · provider HTTP ' + data.providerStatus : ''
-        setPushTestMsg((en ? 'NOT SENT' : 'NÃO ENVIADO') + ' · HTTP ' + res.status + code + ' · ' +
-          String(data.error ?? (en ? 'Request failed.' : 'Falha na requisição.')))
+        const reason = typeof data.providerReason === 'string' ? ' · Apple: ' + data.providerReason : ''
+        let extra = ''
+        /*
+         * PUSH-403-001: 403 da Apple = a assinatura do servidor não bate com a
+         * inscrição deste iPhone. Refazer a inscrição é barato e é o conserto
+         * certo quando a chave mudou; o próximo teste diz se resolveu.
+         */
+        if (data.providerStatus === 403) {
+          try {
+            await renovarInscricao(reg, sub)
+            extra = en
+              ? ' · This iPhone subscription was renewed. Try the test again in 10 minutes.'
+              : ' · A inscrição deste iPhone foi renovada. Teste de novo em 10 minutos.'
+          } catch { /* mantém só o diagnóstico */ }
+        }
+        setPushTestMsg((en ? 'NOT SENT' : 'NÃO ENVIADO') + ' · HTTP ' + res.status + code + reason + ' · ' +
+          String(data.error ?? (en ? 'Request failed.' : 'Falha na requisição.')) + extra)
         return
       }
       setPushTestDone(true)
@@ -750,7 +793,54 @@ async function getPushServiceWorkerRegistration(): Promise<ServiceWorkerRegistra
   }
 }
 
-function urlBase64ToUint8Array(base64String: string) {
+/** Chave pública VAPID desta versão do app, limpa de espaços e aspas. */
+function vapidKeyBytes(): Uint8Array<ArrayBuffer> | null {
+  let k = (process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? '').trim()
+  if (k.length >= 2 && (k[0] === '"' || k[0] === "'") && k[k.length - 1] === k[0]) k = k.slice(1, -1).trim()
+  if (!k) return null
+  try { return urlBase64ToUint8Array(k) } catch { return null }
+}
+
+/**
+ * `true` quando a inscrição foi criada com OUTRA chave pública (PUSH-403-001).
+ * Navegador que não expõe a chave usada → `false` (não dá para saber).
+ */
+function inscritaComOutraChave(sub: PushSubscription): boolean {
+  const atual = vapidKeyBytes()
+  const usada = sub.options?.applicationServerKey
+  if (!atual || !usada) return false
+  const bytes = new Uint8Array(usada)
+  if (bytes.length !== atual.length) return true
+  return bytes.some((b, i) => b !== atual[i])
+}
+
+/** Troca a inscrição deste aparelho por uma nova, com a chave atual. */
+async function renovarInscricao(
+  reg: ServiceWorkerRegistration,
+  antiga: PushSubscription,
+): Promise<PushSubscription> {
+  const chave = vapidKeyBytes()
+  if (!chave) throw new Error('VAPID key ausente')
+  await fetch('/api/push/subscribe', {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ endpoint: antiga.endpoint }),
+  }).catch(() => {})
+  await antiga.unsubscribe().catch(() => {})
+  const nova = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: chave })
+  const res = await fetch('/api/push/subscribe', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(nova.toJSON()),
+  })
+  if (!res.ok) {
+    await nova.unsubscribe().catch(() => {})
+    throw new Error((await res.json().catch(() => ({}))).error ?? `HTTP ${res.status}`)
+  }
+  return nova
+}
+
+function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
   const rawData = window.atob(base64)
