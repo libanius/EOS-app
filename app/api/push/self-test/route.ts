@@ -6,6 +6,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import webpush from 'web-push'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { providerReason, readVapid } from '@/lib/vapid'
 
 export const runtime = 'nodejs'
 
@@ -55,10 +56,13 @@ export async function POST(req: NextRequest) {
   if (subError) return response({ error: 'Subscription lookup unavailable' }, 503)
   if (!sub) return response({ error: 'This device is not registered on your account' }, 404)
 
-  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
-  const privateKey = process.env.VAPID_PRIVATE_KEY
-  const subject = process.env.VAPID_SUBJECT
-  if (!publicKey || !privateKey || !subject) return response({ error: 'VAPID not configured' }, 503)
+  // PUSH-403-001: cleaned subject + verified key pair, before spending the quota.
+  const vapid = readVapid()
+  if (!vapid.ok) {
+    console.error('[EOS self-push-test] VAPID problem=' + vapid.problem)
+    return response({ error: 'VAPID configuration invalid', vapidProblem: vapid.problem }, 503)
+  }
+  const { subject, publicKey, privateKey } = vapid.config
 
   // Atomic distributed limit, fail closed: one attempt in ten minutes per account.
   const { data: allowance, error: limitError } = await admin.rpc('consume_rate_limit', {
@@ -97,9 +101,11 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     const status = (error as { statusCode?: unknown }).statusCode
     const providerStatus = typeof status === 'number' ? status : null
-    console.warn('[EOS self-push-test] host=web.push.apple.com status=' + (providerStatus ?? 'network_error'))
+    const reason = providerReason(error)
+    console.warn('[EOS self-push-test] host=web.push.apple.com status=' + (providerStatus ?? 'network_error')
+      + (reason ? ' reason=' + reason : '') + (vapid.subjectFixed ? ' subject=normalized' : ''))
     return response({
-      ok: false, provider: host, providerStatus,
+      ok: false, provider: host, providerStatus, providerReason: reason,
       error: 'Web Push provider rejected the message or could not be reached',
     }, 502)
   }

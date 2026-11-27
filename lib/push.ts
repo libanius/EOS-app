@@ -26,6 +26,7 @@
 import webpush from 'web-push'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { enviarParaAparelhos, type NativeDevice } from '@/lib/push-native'
+import { providerReason, readVapid } from '@/lib/vapid'
 
 export type PushPayload = { title: string; body: string; url?: string }
 
@@ -43,7 +44,7 @@ export type PushResult = {
    * VAPID ausente e APNs configurado, metade sai e metade não, e um campo único
    * teria de escolher qual verdade contar.
    */
-  reason?: 'vapid_not_configured'
+  reason?: 'vapid_not_configured' | 'vapid_invalid'
   nativeNotConfigured?: Array<'ios' | 'android'>
   /** Quebra por transporte. Útil quando só um dos dois está quebrado. */
   breakdown?: { web: { sent: number; failed: number }; native: { sent: number; failed: number } }
@@ -103,17 +104,15 @@ export async function sendPush(
   const noDevice = unicos.filter(id => !comAparelho.has(id)).length
 
   // ── Web Push ─────────────────────────────────────────────────────────────
-  const publica = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
-  const privada = process.env.VAPID_PRIVATE_KEY
-  const assunto = process.env.VAPID_SUBJECT
-  const vapidOk = Boolean(publica && privada && assunto)
+  // PUSH-403-001: assunto limpo e par de chaves conferido antes de enviar.
+  const vapid = readVapid()
 
   let webSent = 0
   let webFailed = 0
   const mortas: string[] = []
 
-  if (vapidOk && linhas.length) {
-    webpush.setVapidDetails(assunto!, publica!, privada!)
+  if (vapid.ok && linhas.length) {
+    webpush.setVapidDetails(vapid.config.subject, vapid.config.publicKey, vapid.config.privateKey)
     const corpo = JSON.stringify({
       title: payload.title,
       body: payload.body,
@@ -130,13 +129,18 @@ export async function sendPush(
         } catch (e) {
           const status = (e as { statusCode?: number }).statusCode
           if (status && MORTA.has(status)) mortas.push(l.endpoint)
+          let host = 'unknown'
+          try { host = new URL(l.endpoint).hostname } catch { /* endpoint inválido */ }
+          const motivo = providerReason(e)
+          console.warn('[EOS] web push falhou: ' + (status ?? 'rede') + '@' + host + (motivo ? ' reason=' + motivo : ''))
           throw e
         }
       }),
     )
     webSent = resultados.filter(r => r.status === 'fulfilled').length
     webFailed = resultados.filter(r => r.status === 'rejected').length
-  } else if (!vapidOk) {
+  } else if (!vapid.ok) {
+    console.error('[EOS] VAPID problem=' + vapid.problem)
     // Sem VAPID as assinaturas existentes não recebem — e isso é falha contável,
     // não ausência de destinatário.
     webFailed = linhas.length
@@ -161,7 +165,7 @@ export async function sendPush(
     failed: webFailed + nativo.failed,
     noDevice,
     pruned: mortas.length + nativo.dead.length,
-    ...(vapidOk ? {} : { reason: 'vapid_not_configured' as const }),
+    ...(vapid.ok ? {} : { reason: vapid.problem === 'missing' ? 'vapid_not_configured' as const : 'vapid_invalid' as const }),
     ...(nativo.notConfigured.length ? { nativeNotConfigured: nativo.notConfigured } : {}),
     breakdown: {
       web: { sent: webSent, failed: webFailed },
