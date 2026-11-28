@@ -47,6 +47,7 @@ import {
 import type { WeatherSnapshot, ActivityId, ActivityCategory, WeatherRecommendation, RiskLevel } from '@/lib/weather/types'
 import LiveIntelligenceNetwork, { HEADLINE_KEY } from '@/components/LiveIntelligenceNetwork'
 import WorldNav from './WorldNav'
+import TornadoEmergency from './TornadoEmergency'
 import type { HazardEvent, HazardClass, UpcomingPrecipitationResult, HazardNetworkSnapshot } from '@/lib/hazards/types'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -303,6 +304,11 @@ function HazardEventCard({ ev, focused, system, language }: { ev: HazardEvent; f
       <p style={{ margin: 0, fontSize: 13, color: '#f0f0f8', fontWeight: 600, lineHeight: 1.4 }}>{ev.title}</p>
       {summary && summary !== ev.title && (
         <p style={{ margin: '3px 0 0', fontSize: 11, color: '#a1a1aa', lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{summary}</p>
+      )}
+      {ev.source.toLowerCase() === 'nws' && (ev.hazardType === 'tornado_warning' || ev.hazardType === 'tornado_watch') && (
+        <div style={{ marginTop: 12 }}>
+          <TornadoEmergency event={ev.hazardType === 'tornado_warning' ? 'Tornado Warning' : 'Tornado Watch'} expiresAt={ev.expiresAt ?? ''} source="National Weather Service" />
+        </div>
       )}
       {ev.officialUrl && (
         <a href={ev.officialUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10, color: meta.color, fontWeight: 700, textDecoration: 'none', display: 'inline-block', marginTop: 4 }}>
